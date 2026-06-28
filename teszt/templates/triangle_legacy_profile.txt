@@ -1,0 +1,16 @@
+size 1000
+finite 1000
+minimum 0
+maximum 0.69999999999999996
+mean 0.035349999999999999
+rms 0.12845194162483314
+absolute_sum 35.349999999999994
+weighted_checksum 8849.2833333333328
+anchor 0 0
+anchor 90 0
+anchor 142 0
+anchor 333 0
+anchor 500 0
+anchor 666 0
+anchor 857 0
+anchor 999 0

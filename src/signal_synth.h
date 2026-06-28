@@ -1,3 +1,5 @@
+#pragma once
+
 namespace signal_synth
 {
     struct qrs_params
@@ -46,6 +48,7 @@ namespace signal_synth
     void simulate_qrs(double* data, unsigned int data_samples, unsigned int sampling_rate, double amp_mod, const qrs_params& params);
     void generate_ecg(double* data, unsigned int data_samples, unsigned int sampling_rate, double frequency, const qrs_params& params);
     void generate_modulated_ecg(double* data, unsigned int data_samples, unsigned int sampling_rate, const ecg_simulation_params& params, const qrs_params& qrs_params);
+    void set_random_seed(unsigned long long seed);
     void add_noise_to_signal(double* data, unsigned int data_samples, double noise_amplitude, unsigned int sampling_rate, double noise_frequency = 0.0);
     void butterworth_bandpass_filter(double* data, unsigned int data_samples, double sampling_rate, double low_freq, double high_freq);
     void butterworth_bandpass_filter_(double* data, unsigned int data_samples, unsigned int sampling_rate, double low_freq, double high_freq);
