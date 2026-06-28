@@ -1057,6 +1057,98 @@ namespace signal_synth
                 }
             }
 
+            bool has_onset_offset = false;
+            unsigned int onset_sample = best_sample;
+            unsigned int offset_sample = best_sample;
+            double onset_time =
+                static_cast<double>(best_sample) /
+                static_cast<double>(sampling_rate_hz);
+            double offset_time = onset_time;
+            if (model.wave == ecg_wave_p ||
+                model.wave == ecg_wave_t)
+            {
+                const auto baseline_at = [&](unsigned int sample) {
+                    const double position = width > 0.0
+                        ? static_cast<double>(sample - left) / width
+                        : 0.0;
+                    return left_value +
+                        position * (right_value - left_value);
+                };
+                const auto excursion_at = [&](unsigned int sample) {
+                    return std::fabs(
+                        samples[sample] - baseline_at(sample));
+                };
+                const double peak_excursion =
+                    excursion_at(best_sample);
+                const double threshold = 0.05 * peak_excursion;
+                bool onset_found = false;
+                bool offset_found = false;
+
+                if (peak_excursion >
+                    32.0 * std::numeric_limits<double>::epsilon())
+                {
+                    for (unsigned int inner = best_sample;
+                         inner > left;
+                         --inner)
+                    {
+                        const unsigned int outer = inner - 1;
+                        const double outer_excursion =
+                            excursion_at(outer);
+                        const double inner_excursion =
+                            excursion_at(inner);
+                        if (outer_excursion <= threshold &&
+                            inner_excursion > threshold)
+                        {
+                            const double denominator =
+                                inner_excursion - outer_excursion;
+                            const double fraction = denominator > 0.0
+                                ? (threshold - outer_excursion) /
+                                    denominator
+                                : 0.0;
+                            onset_sample = inner;
+                            onset_time =
+                                (static_cast<double>(outer) +
+                                    fraction) /
+                                static_cast<double>(sampling_rate_hz);
+                            onset_found = true;
+                            break;
+                        }
+                    }
+
+                    for (unsigned int inner = best_sample;
+                         inner < right;
+                         ++inner)
+                    {
+                        const unsigned int outer = inner + 1;
+                        const double inner_excursion =
+                            excursion_at(inner);
+                        const double outer_excursion =
+                            excursion_at(outer);
+                        if (inner_excursion > threshold &&
+                            outer_excursion <= threshold)
+                        {
+                            const double denominator =
+                                inner_excursion - outer_excursion;
+                            const double fraction = denominator > 0.0
+                                ? (inner_excursion - threshold) /
+                                    denominator
+                                : 1.0;
+                            offset_sample = outer;
+                            offset_time =
+                                (static_cast<double>(inner) +
+                                    fraction) /
+                                static_cast<double>(sampling_rate_hz);
+                            offset_found = true;
+                            break;
+                        }
+                    }
+                }
+                has_onset_offset =
+                    onset_found && offset_found &&
+                    onset_sample < best_sample &&
+                    offset_sample > best_sample;
+            }
+
             result.fiducials_required =
                 saturated_increment(result.fiducials_required);
             if (fiducials &&
@@ -1073,10 +1165,286 @@ namespace signal_synth
                     static_cast<double>(sampling_rate_hz);
                 measured.sample_value = samples[best_sample];
                 measured.interpolated_value = interpolated_value;
+                measured.onset_sample_index = onset_sample;
+                measured.offset_sample_index = offset_sample;
+                measured.onset_time_seconds = onset_time;
+                measured.offset_time_seconds = offset_time;
+                measured.has_onset_offset = has_onset_offset;
                 measured.wave = model.wave;
                 measured.beat_kind = model.beat_kind;
             }
         }
         return result;
+    }
+
+    struct ecg_validation_package::implementation
+    {
+        std::vector<double> channels[ecg_validation_channel_count];
+        std::vector<ecg_model_annotation> model_annotations;
+        std::vector<ecg_measured_fiducial> measured_fiducials;
+    };
+
+    namespace
+    {
+        double validation_event_value(ecg_wave wave)
+        {
+            switch (wave)
+            {
+            case ecg_wave_p:
+                return 0.25;
+            case ecg_wave_q:
+                return -0.25;
+            case ecg_wave_r:
+                return 1.0;
+            case ecg_wave_s:
+                return -0.50;
+            case ecg_wave_t:
+                return 0.50;
+            default:
+                return 0.0;
+            }
+        }
+    }
+
+    ecg_validation_package::ecg_validation_package()
+        : implementation_(new implementation)
+    {
+    }
+
+    ecg_validation_package::ecg_validation_package(
+        const ecg_validation_package& other)
+        : implementation_(new implementation(*other.implementation_))
+    {
+    }
+
+    ecg_validation_package& ecg_validation_package::operator=(
+        const ecg_validation_package& other)
+    {
+        if (this != &other)
+            *implementation_ = *other.implementation_;
+        return *this;
+    }
+
+    ecg_validation_package::~ecg_validation_package()
+    {
+        delete implementation_;
+    }
+
+    bool ecg_validation_package::generate(
+        const ecg_model_config& config,
+        unsigned int requested_sample_count)
+    {
+        if (requested_sample_count == 0)
+            return false;
+
+        ecg_model model(config);
+        if (!model.valid())
+            return false;
+
+        implementation generated;
+        for (int channel_index = 0;
+             channel_index < ecg_validation_channel_count;
+             ++channel_index)
+        {
+            generated.channels[channel_index].assign(
+                requested_sample_count, 0.0);
+        }
+
+        const double duration_seconds =
+            static_cast<double>(requested_sample_count) /
+            static_cast<double>(config.sampling_rate_hz);
+        const double maximum_beat_count =
+            std::ceil(
+                duration_seconds /
+                config.hrv.minimum_rr_seconds) +
+            2.0;
+        if (!finite(maximum_beat_count) ||
+            maximum_beat_count >
+                static_cast<double>(
+                    std::numeric_limits<unsigned int>::max() /
+                    ecg_wave_count))
+        {
+            return false;
+        }
+
+        generated.model_annotations.resize(
+            static_cast<unsigned int>(maximum_beat_count) *
+            ecg_wave_count);
+        const ecg_render_result render_result = model.render(
+            generated.channels[ecg_validation_signal].data(),
+            requested_sample_count,
+            generated.model_annotations.data(),
+            static_cast<unsigned int>(
+                generated.model_annotations.size()));
+        if (render_result.samples_written != requested_sample_count ||
+            render_result.annotations_required >
+                generated.model_annotations.size())
+        {
+            return false;
+        }
+        generated.model_annotations.resize(
+            render_result.annotations_written);
+
+        generated.measured_fiducials.resize(
+            generated.model_annotations.size());
+        const ecg_fiducial_result fiducial_result =
+            measure_ecg_fiducials(
+                generated.channels[ecg_validation_signal].data(),
+                requested_sample_count,
+                config.sampling_rate_hz,
+                generated.model_annotations.data(),
+                static_cast<unsigned int>(
+                    generated.model_annotations.size()),
+                generated.measured_fiducials.data(),
+                static_cast<unsigned int>(
+                    generated.measured_fiducials.size()));
+        generated.measured_fiducials.resize(
+            fiducial_result.fiducials_written);
+
+        std::vector<const ecg_model_annotation*> r_events;
+        for (std::size_t i = 0;
+             i < generated.model_annotations.size();
+             ++i)
+        {
+            const ecg_model_annotation& annotation =
+                generated.model_annotations[i];
+            if (annotation.present &&
+                annotation.sample_index < requested_sample_count)
+            {
+                generated.channels[ecg_validation_model_events]
+                    [annotation.sample_index] =
+                    validation_event_value(annotation.wave);
+            }
+            if (annotation.wave == ecg_wave_r)
+            {
+                r_events.push_back(&annotation);
+                if (annotation.sample_index < requested_sample_count)
+                {
+                    generated.channels[ecg_validation_beat_types]
+                        [annotation.sample_index] =
+                        annotation.beat_kind == ecg_beat_premature
+                            ? 1.0
+                            : (annotation.beat_kind ==
+                                       ecg_beat_compensatory
+                                   ? 0.6
+                                   : 0.2);
+                }
+            }
+        }
+
+        for (std::size_t i = 0;
+             i < generated.measured_fiducials.size();
+             ++i)
+        {
+            const ecg_measured_fiducial& fiducial =
+                generated.measured_fiducials[i];
+            if (fiducial.sample_index < requested_sample_count)
+            {
+                generated.channels[
+                    ecg_validation_measured_fiducials]
+                    [fiducial.sample_index] =
+                    validation_event_value(fiducial.wave);
+            }
+            if (fiducial.has_onset_offset &&
+                fiducial.onset_sample_index < requested_sample_count &&
+                fiducial.offset_sample_index <
+                    requested_sample_count)
+            {
+                const bool is_p = fiducial.wave == ecg_wave_p;
+                generated.channels[
+                    ecg_validation_measured_fiducials]
+                    [fiducial.onset_sample_index] =
+                    is_p ? 0.10 : 0.30;
+                generated.channels[
+                    ecg_validation_measured_fiducials]
+                    [fiducial.offset_sample_index] =
+                    is_p ? 0.15 : 0.40;
+            }
+        }
+
+        if (!r_events.empty())
+        {
+            unsigned int start = 0;
+            double rr_interval =
+                r_events.front()->rr_interval_seconds;
+            for (std::size_t i = 0; i < r_events.size(); ++i)
+            {
+                const unsigned int end =
+                    static_cast<unsigned int>(
+                        std::min<unsigned long long>(
+                            r_events[i]->sample_index,
+                            requested_sample_count));
+                std::fill(
+                    generated.channels[
+                        ecg_validation_rr_intervals].begin() +
+                        start,
+                    generated.channels[
+                        ecg_validation_rr_intervals].begin() +
+                        end,
+                    rr_interval);
+                start = end;
+                if (i + 1 < r_events.size())
+                {
+                    rr_interval =
+                        r_events[i + 1]->rr_interval_seconds;
+                }
+            }
+            std::fill(
+                generated.channels[
+                    ecg_validation_rr_intervals].begin() +
+                    start,
+                generated.channels[
+                    ecg_validation_rr_intervals].end(),
+                rr_interval);
+        }
+
+        *implementation_ = generated;
+        return true;
+    }
+
+    unsigned int ecg_validation_package::sample_count() const
+    {
+        return static_cast<unsigned int>(
+            implementation_->channels[ecg_validation_signal].size());
+    }
+
+    const double* ecg_validation_package::channel(
+        ecg_validation_channel channel_index) const
+    {
+        if (channel_index < ecg_validation_signal ||
+            channel_index >= ecg_validation_channel_count ||
+            implementation_->channels[channel_index].empty())
+        {
+            return 0;
+        }
+        return implementation_->channels[channel_index].data();
+    }
+
+    unsigned int ecg_validation_package::model_annotation_count() const
+    {
+        return static_cast<unsigned int>(
+            implementation_->model_annotations.size());
+    }
+
+    const ecg_model_annotation*
+    ecg_validation_package::model_annotations() const
+    {
+        return implementation_->model_annotations.empty()
+            ? 0
+            : implementation_->model_annotations.data();
+    }
+
+    unsigned int ecg_validation_package::measured_fiducial_count() const
+    {
+        return static_cast<unsigned int>(
+            implementation_->measured_fiducials.size());
+    }
+
+    const ecg_measured_fiducial*
+    ecg_validation_package::measured_fiducials() const
+    {
+        return implementation_->measured_fiducials.empty()
+            ? 0
+            : implementation_->measured_fiducials.data();
     }
 }

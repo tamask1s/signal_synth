@@ -499,6 +499,22 @@ int main()
                 static_cast<double>(fiducial.sample_index) /
                     config.sampling_rate_hz) <=
                 0.5 / config.sampling_rate_hz + 1e-12;
+        if (fiducial.wave == signal_synth::ecg_wave_p ||
+            fiducial.wave == signal_synth::ecg_wave_t)
+        {
+            measured_valid &=
+                fiducial.has_onset_offset &&
+                fiducial.onset_sample_index <
+                    fiducial.sample_index &&
+                fiducial.offset_sample_index >
+                    fiducial.sample_index &&
+                fiducial.onset_time_seconds <
+                    fiducial.time_seconds &&
+                fiducial.offset_time_seconds >
+                    fiducial.time_seconds;
+        }
+        else
+            measured_valid &= !fiducial.has_onset_offset;
         if (fiducial.wave == signal_synth::ecg_wave_r &&
             fiducial.sample_index > 0 &&
             fiducial.sample_index + 1 < whole.size())
@@ -513,6 +529,73 @@ int main()
     ok &= check(
         measured_valid,
         "measured_fiducials_are_exact_sample_extrema");
+
+    signal_synth::ecg_validation_package package;
+    const bool package_generated = package.generate(
+        scenario_config,
+        static_cast<unsigned int>(scenario_signal.size()));
+    bool package_valid =
+        package_generated &&
+        package.sample_count() == scenario_signal.size() &&
+        package.model_annotation_count() ==
+            scenario_annotations.size() &&
+        package.measured_fiducial_count() ==
+            scenario_fiducials.size();
+    for (int channel = 0;
+         package_valid &&
+             channel < signal_synth::ecg_validation_channel_count;
+         ++channel)
+    {
+        package_valid &=
+            package.channel(
+                static_cast<signal_synth::ecg_validation_channel>(
+                    channel)) != 0;
+    }
+    if (package_valid)
+    {
+        package_valid &= std::equal(
+            scenario_signal.begin(),
+            scenario_signal.end(),
+            package.channel(signal_synth::ecg_validation_signal));
+        const signal_synth::ecg_model_annotation* package_annotations =
+            package.model_annotations();
+        for (std::size_t i = 0;
+             package_valid && i < scenario_annotations.size();
+             ++i)
+        {
+            package_valid &= same_annotation(
+                package_annotations[i],
+                scenario_annotations[i]);
+        }
+        const double* measured_channel = package.channel(
+            signal_synth::ecg_validation_measured_fiducials);
+        for (std::size_t i = 0;
+             package_valid && i < scenario_fiducials.size();
+             ++i)
+        {
+            const signal_synth::ecg_measured_fiducial& fiducial =
+                scenario_fiducials[i];
+            if (fiducial.has_onset_offset)
+            {
+                package_valid &=
+                    measured_channel[fiducial.onset_sample_index] !=
+                        0.0 &&
+                    measured_channel[fiducial.offset_sample_index] !=
+                        0.0;
+            }
+        }
+    }
+    ok &= check(
+        package_valid,
+        "validation_package_channels_match_annotations");
+
+    signal_synth::ecg_model_config invalid_package_config =
+        scenario_config;
+    invalid_package_config.hrv.minimum_rr_seconds = 0.0;
+    ok &= check(
+        !package.generate(invalid_package_config, 100) &&
+            package.sample_count() == scenario_signal.size(),
+        "validation_package_generation_is_transactional");
 
     return ok ? 0 : 1;
 }

@@ -18,6 +18,8 @@ The current model provides:
 - baseline respiration coupling;
 - exact continuous event time plus the first sampled index at or after it;
 - measured discrete extrema with parabolic sub-sample interpolation;
+- deterministic 5% onset/offset boundaries for measured P and T waves;
+- a ready-to-display five-channel validation package;
 - copyable and resettable per-instance state.
 
 An `ecg_model_annotation` marks the configured P/Q/R/S/T model event.

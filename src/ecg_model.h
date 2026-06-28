@@ -133,6 +133,11 @@ namespace signal_synth
         double time_seconds;
         double sample_value;
         double interpolated_value;
+        unsigned long long onset_sample_index;
+        unsigned long long offset_sample_index;
+        double onset_time_seconds;
+        double offset_time_seconds;
+        bool has_onset_offset;
         ecg_wave wave;
         ecg_beat_kind beat_kind;
     };
@@ -176,4 +181,38 @@ namespace signal_synth
         unsigned int annotation_count,
         ecg_measured_fiducial* fiducials = 0,
         unsigned int fiducial_capacity = 0);
+
+    enum ecg_validation_channel
+    {
+        ecg_validation_signal = 0,
+        ecg_validation_model_events = 1,
+        ecg_validation_measured_fiducials = 2,
+        ecg_validation_rr_intervals = 3,
+        ecg_validation_beat_types = 4,
+        ecg_validation_channel_count = 5
+    };
+
+    class ecg_validation_package
+    {
+    public:
+        ecg_validation_package();
+        ecg_validation_package(const ecg_validation_package& other);
+        ecg_validation_package& operator=(
+            const ecg_validation_package& other);
+        ~ecg_validation_package();
+
+        bool generate(
+            const ecg_model_config& config,
+            unsigned int sample_count);
+        unsigned int sample_count() const;
+        const double* channel(ecg_validation_channel channel) const;
+        unsigned int model_annotation_count() const;
+        const ecg_model_annotation* model_annotations() const;
+        unsigned int measured_fiducial_count() const;
+        const ecg_measured_fiducial* measured_fiducials() const;
+
+    private:
+        struct implementation;
+        implementation* implementation_;
+    };
 }

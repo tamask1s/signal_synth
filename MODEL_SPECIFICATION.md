@@ -51,8 +51,25 @@ strongest discrete local extremum relative to the window baseline. It reports:
 - a three-point parabolic sub-sample time and interpolated value;
 - the originating model event, beat, and wave.
 
+For P and T waves it also reports onset and offset using a deterministic
+amplitude rule: the boundary is the linearly interpolated 5% crossing of the
+peak excursion from the window's linear baseline. These are operational
+synthetic boundaries, not a claim that one clinical delineation convention is
+universally correct.
+
 The interpolated location is an estimate. The discrete sample index is the
 reproducible measured fiducial.
+
+## Validation package channels
+
+`ecg_validation_package` produces five equal-length channels:
+
+1. ECG samples.
+2. Model-event impulses: P `0.25`, Q `-0.25`, R `1.0`, S `-0.5`, T `0.5`.
+3. Measured impulses using the same peak values, plus P onset `0.10`,
+   P offset `0.15`, T onset `0.30`, and T offset `0.40`.
+4. The RR interval in seconds, held constant between R events.
+5. Beat impulses: sinus `0.2`, compensatory `0.6`, premature `1.0`.
 
 ## Reproducibility
 
