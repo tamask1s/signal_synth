@@ -19,6 +19,79 @@ namespace signal_synth
         double width_radians;
     };
 
+    enum ecg_beat_kind
+    {
+        ecg_beat_sinus = 0,
+        ecg_beat_premature = 1,
+        ecg_beat_compensatory = 2
+    };
+
+    struct ecg_hrv_config
+    {
+        ecg_hrv_config();
+
+        bool enabled;
+        double rr_standard_deviation_seconds;
+        double lf_hf_ratio;
+        double lf_center_frequency_hz;
+        double hf_center_frequency_hz;
+        double lf_bandwidth_hz;
+        double hf_bandwidth_hz;
+        double minimum_rr_seconds;
+        double maximum_rr_seconds;
+        unsigned long long seed;
+    };
+
+    struct ecg_scenario_config
+    {
+        ecg_scenario_config();
+
+        unsigned int premature_every_n_beats;
+        double premature_probability;
+        double premature_rr_ratio;
+        double compensatory_pause_ratio;
+        double premature_p_amplitude_scale;
+        double premature_qrs_amplitude_scale;
+        double premature_qrs_width_scale;
+        double premature_t_amplitude_scale;
+        unsigned long long seed;
+    };
+
+    struct ecg_beat_plan
+    {
+        unsigned long long beat_index;
+        double rr_interval_seconds;
+        bool rr_was_clipped;
+        ecg_beat_kind kind;
+    };
+
+    class ecg_rr_generator
+    {
+    public:
+        ecg_rr_generator();
+        ecg_rr_generator(
+            double mean_heart_rate_bpm,
+            const ecg_hrv_config& hrv,
+            const ecg_scenario_config& scenario);
+        ecg_rr_generator(const ecg_rr_generator& other);
+        ecg_rr_generator& operator=(const ecg_rr_generator& other);
+        ~ecg_rr_generator();
+
+        bool configure(
+            double mean_heart_rate_bpm,
+            const ecg_hrv_config& hrv,
+            const ecg_scenario_config& scenario);
+        bool valid() const;
+        void reset();
+        ecg_beat_plan next(
+            unsigned long long beat_index,
+            double event_time_seconds);
+
+    private:
+        struct implementation;
+        implementation* implementation_;
+    };
+
     struct ecg_model_config
     {
         ecg_model_config();
@@ -28,6 +101,8 @@ namespace signal_synth
         double baseline_amplitude_mv;
         double respiration_frequency_hz;
         ecg_wave_config waves[ecg_wave_count];
+        ecg_hrv_config hrv;
+        ecg_scenario_config scenario;
     };
 
     struct ecg_model_annotation
@@ -37,6 +112,10 @@ namespace signal_synth
         double time_seconds;
         double phase_error_radians;
         ecg_wave wave;
+        bool present;
+        ecg_beat_kind beat_kind;
+        double rr_interval_seconds;
+        bool rr_was_clipped;
     };
 
     struct ecg_render_result
@@ -44,6 +123,24 @@ namespace signal_synth
         unsigned int samples_written;
         unsigned int annotations_written;
         unsigned int annotations_required;
+    };
+
+    struct ecg_measured_fiducial
+    {
+        unsigned long long model_sample_index;
+        unsigned long long sample_index;
+        unsigned long long beat_index;
+        double time_seconds;
+        double sample_value;
+        double interpolated_value;
+        ecg_wave wave;
+        ecg_beat_kind beat_kind;
+    };
+
+    struct ecg_fiducial_result
+    {
+        unsigned int fiducials_written;
+        unsigned int fiducials_required;
     };
 
     class ecg_model
@@ -70,4 +167,13 @@ namespace signal_synth
         struct implementation;
         implementation* implementation_;
     };
+
+    ecg_fiducial_result measure_ecg_fiducials(
+        const double* samples,
+        unsigned int sample_count,
+        unsigned int sampling_rate_hz,
+        const ecg_model_annotation* model_annotations,
+        unsigned int annotation_count,
+        ecg_measured_fiducial* fiducials = 0,
+        unsigned int fiducial_capacity = 0);
 }

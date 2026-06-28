@@ -10,19 +10,25 @@ ground-truth validation package.
 The current model provides:
 
 - deterministic, chunk-invariant streaming;
+- a seeded LF/HF oscillator-bank RR process with configurable SDNN;
+- deterministic periodic or probabilistic premature-beat scenarios;
+- compensatory pauses and configurable premature-beat morphology;
 - configurable P, Q, R, S, and T phase-domain morphology;
 - fourth-order Runge-Kutta integration;
 - baseline respiration coupling;
 - exact continuous event time plus the first sampled index at or after it;
+- measured discrete extrema with parabolic sub-sample interpolation;
 - copyable and resettable per-instance state.
 
-An `ecg_model_annotation` marks the configured P/Q/R/S/T model event. It does
-not claim that this event is the sampled waveform's local extremum. Measured
-fiducials, interval annotations, HRV, arrhythmia scenarios, multilead
-projection, calibrated units, and a validation report are not implemented yet.
+An `ecg_model_annotation` marks the configured P/Q/R/S/T model event.
+`measure_ecg_fiducials` separately measures the strongest local extremum in
+each event window and reports both its exact sample and a parabolic sub-sample
+estimate. Model events and measured fiducials therefore remain distinguishable.
 
-The current output is therefore an engineering model, not clinical validation
-evidence.
+Multilead projection, clinically fitted morphology populations, calibrated
+units, extended arrhythmia scenarios, and a formal validation report are not
+implemented yet. The current output is therefore an engineering model, not
+clinical validation evidence.
 
 ## Build and test
 
@@ -33,5 +39,6 @@ cd /tmp/signal_synth-build
 ctest --output-on-failure
 ```
 
-See `LEGAL_PROVENANCE.md` and `DATA_LICENSES.md` before adding model code,
+See `MODEL_SPECIFICATION.md` for behavioral semantics. Review
+`LEGAL_PROVENANCE.md` and `DATA_LICENSES.md` before adding model code,
 dependencies, datasets, or release artifacts.
