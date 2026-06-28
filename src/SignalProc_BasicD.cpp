@@ -1904,23 +1904,6 @@ public:
         return 0;
     }
 
-    char* CreateFIRFilter(char* a_outdataname, char* a_type, char* a_sampling_rate, char* a_kernel_size, char* a_cutoff1, char* a_cutoff2)
-    {
-        double sampling_rate = atof(a_sampling_rate);
-        unsigned int kernel_size = atoi(a_kernel_size);
-        double cutoff1 = atof(a_cutoff1);
-        //double cutoff2 = atof(a_cutoff2);
-        unsigned int number_of_samples[1] = {kernel_size};
-
-        CVariable* output2 = m_newvariable_proc();
-        output2->Rebuild(1, number_of_samples);
-
-        signal_synth::firHighPassCoefficients(output2->m_data[0], cutoff1, sampling_rate, kernel_size);
-        strcpy(output2->m_varname, a_outdataname);
-        m_variable_list_ref->Insert(a_outdataname, output2);
-        return 0;
-    }
-
 #define MAXINT      2147483647
 #define MININT      -2147483647
 
@@ -2084,14 +2067,12 @@ extern "C"
         case 32:
             return CBasicD::BasicD().CreateSomething(a_param1, a_param2);
         case 33:
-            return CBasicD::BasicD().CreateFIRFilter(a_param1, a_param2, a_param3, a_param4, a_param5, a_param6);
-        case 34:
             return CBasicD::BasicD().Normalize(a_param1, a_param2, a_param3, a_param4);
-        case 35:
+        case 34:
             return CBasicD::BasicD().AssignStr(a_param1, a_param2);
-        case 36:
+        case 35:
             return CBasicD::BasicD().GetStr(a_param1, a_param2);
-        case 37:
+        case 36:
             return CBasicD::BasicD().SaveStr(a_param1, a_param2, a_param3);
         }
         return 0;
@@ -2138,7 +2119,6 @@ extern "C"
         FunctionList.AddElement("AddBandLimitedNoise(invarname, noise_amplitude, noise_frequency_low, noise_frequency_high)");
         FunctionList.AddElement("CreateModulatedSine(outdataname, modulated_sine_params)");
         FunctionList.AddElement("CreateSomething(outdataname, modulated_sine_params)");
-        FunctionList.AddElement("CreateFIRFilter(outdataname, type, sampling_rate, kernel_size, cutoff1, cutoff2)");
         FunctionList.AddElement("Normalize(dataname, min, max)");
         FunctionList.AddElement("AssignStr(dataname, string)");
         FunctionList.AddElement("GetStr(varname, chindx)");

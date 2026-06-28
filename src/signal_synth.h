@@ -55,6 +55,4 @@ namespace signal_synth
     void create_sine(double* data, unsigned int data_len, int sampling_rate, double frequency, double amplitude);
     void create_triangle(double* data, unsigned int data_len, int sampling_rate, double silence_before_triangle_in_msec, double duration_in_msec, double amplitude);
     void create_pulse(double* data, unsigned int data_len, int sampling_rate, double silence_before_pulse_in_msec, double duration_in_msec, double amplitude);
-    void designFIRLowPass(double* h, double fc, double fs, int taps);
-    void firHighPassCoefficients(double* coefficients, double cutoffFreq, double sampleRate, int numTaps);
 }

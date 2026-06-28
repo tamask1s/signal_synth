@@ -269,44 +269,4 @@ namespace signal_synth
         print_line2(data + pulse_starting_point, duration_samples, 0);
     }
 
-    void designFIRLowPass(double* h, double fc, double fs, int taps)
-    {
-        double norm_fc = fc / (fs / 2.0);
-        int mid = taps / 2;
-        for (int n = 0; n < taps; ++n)
-        {
-            if (n == mid)
-                h[n] = 2 * norm_fc;
-            else
-            {
-                double k = PI * (n - mid);
-                h[n] = sin(2 * norm_fc * k) / k;
-            }
-            h[n] *= 0.54 - 0.46 * cos(2 * PI * n / (taps - 1));
-        }
-        double sum = 0.0;
-        for (int i = 0; i < taps; ++i)
-            sum += h[i];
-        for (int i = 0; i < taps; ++i)
-            h[i] /= sum;
-    }
-
-    void firHighPassCoefficients(double* coefficients, double cutoffFreq, double sampleRate, int numTaps)
-    {
-        double normCutoff = cutoffFreq / (sampleRate / 2.0);
-        int midPoint = numTaps / 2;
-        for (int n = 0; n < numTaps; ++n)
-        {
-            if (n == midPoint)
-                coefficients[n] = 2.0 * normCutoff;
-            else
-            {
-                double k = n - midPoint;
-                coefficients[n] = sin(2.0 * PI * normCutoff * k) / (PI * k);
-                coefficients[n] *= 0.54 - 0.46 * cos(2.0 * PI * n / (numTaps - 1));
-            }
-        }
-        for (int n = 0; n < numTaps; ++n)
-            coefficients[n] = (n == midPoint ? 1.0 : 0.0) - coefficients[n];
-    }
 }
