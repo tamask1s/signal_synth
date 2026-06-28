@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(signal_synth_test LANGUAGES CXX)
 
+enable_testing()
+
 add_executable(
     signal_synth_test
     signal_synth_test.cpp
@@ -9,8 +11,24 @@ add_executable(
 target_include_directories(signal_synth_test PRIVATE ../src)
 target_compile_features(signal_synth_test PRIVATE cxx_std_11)
 
+add_executable(
+    ecg_model_test
+    ecg_model_test.cpp
+    ../src/ecg_model.cpp)
+
+target_include_directories(ecg_model_test PRIVATE ../src)
+target_compile_features(ecg_model_test PRIVATE cxx_std_11)
+
+add_test(NAME signal_synth_test COMMAND signal_synth_test)
+set_tests_properties(
+    signal_synth_test
+    PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/..")
+add_test(NAME ecg_model_test COMMAND ecg_model_test)
+
 if(MSVC)
     target_compile_options(signal_synth_test PRIVATE /W4)
+    target_compile_options(ecg_model_test PRIVATE /W4)
 else()
     target_compile_options(signal_synth_test PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(ecg_model_test PRIVATE -Wall -Wextra -Wpedantic)
 endif()

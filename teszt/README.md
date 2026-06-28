@@ -7,6 +7,11 @@ g++ -std=c++11 -Wall -Wextra -Wpedantic \
     teszt/signal_synth_test.cpp src/signal_synth.cpp \
     -o /tmp/signal_synth_test
 /tmp/signal_synth_test
+
+g++ -std=c++11 -Wall -Wextra -Wpedantic \
+    teszt/ecg_model_test.cpp src/ecg_model.cpp \
+    -o /tmp/ecg_model_test
+/tmp/ecg_model_test
 ```
 
 To intentionally refresh the golden summaries:
