@@ -20,6 +20,12 @@ copied, translated, adapted, or used as a source-level reference for this
 repository. The scientific paper and its equations may be used as the
 published model specification.
 
+The clinical timeline, conduction, morphology, fiducial, 3D vector, and
+12-lead projection code in `src/clinical_ecg.cpp` is an independent
+implementation based on general electrophysiology definitions and equations
+recorded in `CLINICAL_ECG_SPECIFICATION.md`. It does not include code, model
+weights, parameter tables, or data copied from another ECG generator.
+
 Contributors must record any additional implementation source, dataset, or
 third-party dependency before adding code derived from it.
 
