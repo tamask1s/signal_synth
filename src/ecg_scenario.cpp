@@ -15,7 +15,7 @@ namespace signal_synth
     namespace
     {
         const unsigned int SCENARIO_SCHEMA_VERSION = 1;
-        const unsigned int SCENARIO_ENGINE_VERSION = 1;
+        const unsigned int SCENARIO_ENGINE_VERSION = 2;
         const unsigned long long DEFAULT_SEED = 0x5343454e4152494fULL;
         const ecg_condition_code NO_CONDITION = ecg_condition_count;
 
@@ -39,6 +39,18 @@ namespace signal_synth
             ecg_condition_code condition;
             ecg_condition_code related;
             std::string message;
+        };
+
+        struct phenotype_assertion
+        {
+            ecg_condition_code condition;
+            ecg_phenotype_assertion_code code;
+            ecg_phenotype_assertion_status status;
+            double measured;
+            double minimum;
+            double maximum;
+            std::string name;
+            std::string unit;
         };
 
         template <typename enum_type>
@@ -226,15 +238,17 @@ namespace signal_synth
     struct ecg_scenario_report::implementation
     {
         bool success;
+        bool phenotype_passed;
         unsigned long long fingerprint;
         std::vector<effective_condition_entry> effective_conditions;
         std::vector<report_issue> issues;
+        std::vector<phenotype_assertion> assertions;
         unsigned int generated_sample_count;
         unsigned int engine_version;
         unsigned long long run_fingerprint;
 
         implementation()
-            : success(false), fingerprint(0), generated_sample_count(0), engine_version(SCENARIO_ENGINE_VERSION), run_fingerprint(0)
+            : success(false), phenotype_passed(false), fingerprint(0), generated_sample_count(0), engine_version(SCENARIO_ENGINE_VERSION), run_fingerprint(0)
         {
         }
     };
@@ -459,6 +473,299 @@ namespace signal_synth
                     config.scenario.premature_every_n_beats = scenario.ectopic_every_n_beats ? scenario.ectopic_every_n_beats : 5;
             }
         }
+
+        void add_assertion(ecg_scenario_report::implementation& report, ecg_condition_code condition, ecg_phenotype_assertion_code code, double measured, double minimum, double maximum, const char* name, const char* unit)
+        {
+            const double tolerance = 1e-9 * std::max(1.0, std::max(std::fabs(minimum), std::fabs(maximum)));
+            const bool passed = std::isfinite(measured) && measured + tolerance >= minimum && measured - tolerance <= maximum;
+            const ecg_condition_info* info = find_ecg_condition(condition);
+            const std::string full_name = std::string(info ? info->scp_code : "") + ": " + name;
+            report.assertions.push_back(phenotype_assertion{condition, code, passed ? ecg_assertion_passed : ecg_assertion_failed, measured, minimum, maximum, full_name, unit});
+        }
+
+        double mean_heart_rate(const clinical_ecg_record& record)
+        {
+            const clinical_beat_annotation* beats = record.beats();
+            if (!beats || record.beat_count() < 2)
+                return -1.0;
+            double rr_sum = 0.0;
+            for (unsigned int index = 1; index < record.beat_count(); ++index)
+                rr_sum += beats[index].r_peak_time_seconds - beats[index - 1].r_peak_time_seconds;
+            return 60.0 * (record.beat_count() - 1) / rr_sum;
+        }
+
+        double median_atrial_rate(const clinical_ecg_record& record)
+        {
+            const clinical_atrial_event* events = record.atrial_events();
+            if (!events || record.atrial_event_count() < 2)
+                return -1.0;
+            std::vector<double> intervals;
+            intervals.reserve(record.atrial_event_count() - 1);
+            for (unsigned int index = 1; index < record.atrial_event_count(); ++index)
+                intervals.push_back(events[index].onset_time_seconds - events[index - 1].onset_time_seconds);
+            std::sort(intervals.begin(), intervals.end());
+            const double median = intervals[intervals.size() / 2];
+            return median > 0.0 ? 60.0 / median : -1.0;
+        }
+
+        double rr_standard_deviation(const clinical_ecg_record& record)
+        {
+            const clinical_beat_annotation* beats = record.beats();
+            if (!beats || record.beat_count() < 3)
+                return -1.0;
+            double mean = 0.0;
+            for (unsigned int index = 1; index < record.beat_count(); ++index)
+                mean += beats[index].r_peak_time_seconds - beats[index - 1].r_peak_time_seconds;
+            mean /= record.beat_count() - 1;
+            double variance = 0.0;
+            for (unsigned int index = 1; index < record.beat_count(); ++index)
+            {
+                const double difference = beats[index].r_peak_time_seconds - beats[index - 1].r_peak_time_seconds - mean;
+                variance += difference * difference;
+            }
+            return std::sqrt(variance / (record.beat_count() - 1));
+        }
+
+        double beat_fraction(const clinical_ecg_record& record, clinical_rhythm rhythm)
+        {
+            const clinical_beat_annotation* beats = record.beats();
+            if (!beats || record.beat_count() == 0)
+                return -1.0;
+            unsigned int matching = 0;
+            for (unsigned int index = 0; index < record.beat_count(); ++index)
+                matching += beats[index].rhythm == rhythm ? 1U : 0U;
+            return static_cast<double>(matching) / record.beat_count();
+        }
+
+        double p_wave_fraction(const clinical_ecg_record& record)
+        {
+            const clinical_beat_annotation* beats = record.beats();
+            if (!beats || record.beat_count() == 0)
+                return -1.0;
+            unsigned int present = 0;
+            for (unsigned int index = 0; index < record.beat_count(); ++index)
+                present += beats[index].p_present ? 1U : 0U;
+            return static_cast<double>(present) / record.beat_count();
+        }
+
+        double mean_annotation_value(const clinical_ecg_record& record, ecg_phenotype_assertion_code code)
+        {
+            const clinical_beat_annotation* beats = record.beats();
+            if (!beats || record.beat_count() == 0)
+                return -1.0;
+            double sum = 0.0;
+            unsigned int count = 0;
+            for (unsigned int index = 0; index < record.beat_count(); ++index)
+            {
+                double value = -1.0;
+                if (code == ecg_assert_pr_interval && beats[index].linked_atrial_index >= 0)
+                    value = beats[index].pr_interval_seconds;
+                else if (code == ecg_assert_qrs_duration)
+                    value = beats[index].qrs_duration_seconds;
+                else if (code == ecg_assert_qtc_interval)
+                    value = beats[index].qtc_interval_seconds;
+                if (value >= 0.0)
+                {
+                    sum += value;
+                    ++count;
+                }
+            }
+            return count ? sum / count : -1.0;
+        }
+
+        unsigned int origin_count(const clinical_ecg_record& record, clinical_ventricular_origin origin)
+        {
+            const clinical_beat_annotation* beats = record.beats();
+            unsigned int count = 0;
+            for (unsigned int index = 0; beats && index < record.beat_count(); ++index)
+                count += beats[index].origin == origin ? 1U : 0U;
+            return count;
+        }
+
+        double ectopic_cadence_fraction(const clinical_ecg_record& record, clinical_ventricular_origin origin, unsigned int cadence)
+        {
+            const clinical_beat_annotation* beats = record.beats();
+            unsigned int ectopic_count = 0;
+            unsigned int matching = 0;
+            for (unsigned int index = 0; beats && index < record.beat_count(); ++index)
+            {
+                if (beats[index].origin != origin)
+                    continue;
+                ++ectopic_count;
+                matching += (index + 1) % cadence == 0 ? 1U : 0U;
+            }
+            return ectopic_count ? static_cast<double>(matching) / ectopic_count : -1.0;
+        }
+
+        double premature_coupling_ratio(const clinical_ecg_record& record, clinical_ventricular_origin origin)
+        {
+            const clinical_beat_annotation* beats = record.beats();
+            double sum = 0.0;
+            unsigned int count = 0;
+            for (unsigned int index = 1; beats && index < record.beat_count(); ++index)
+            {
+                if (beats[index].origin == origin && beats[index - 1].rr_interval_seconds > 0.0)
+                {
+                    sum += beats[index].rr_interval_seconds / beats[index - 1].rr_interval_seconds;
+                    ++count;
+                }
+            }
+            return count ? sum / count : -1.0;
+        }
+
+        double dropped_atrial_count(const clinical_ecg_record& record)
+        {
+            const clinical_atrial_event* events = record.atrial_events();
+            unsigned int count = 0;
+            for (unsigned int index = 0; events && index < record.atrial_event_count(); ++index)
+                count += events[index].conducted ? 0U : 1U;
+            return count;
+        }
+
+        double mobitz_pattern_metric(const clinical_ecg_record& record, ecg_second_degree_av_pattern pattern)
+        {
+            const clinical_beat_annotation* beats = record.beats();
+            if (!beats || record.beat_count() < 2)
+                return -1.0;
+            if (pattern == ecg_second_degree_mobitz_i)
+            {
+                unsigned int increases = 0;
+                for (unsigned int index = 1; index < record.beat_count(); ++index)
+                    increases += beats[index].pr_interval_seconds > beats[index - 1].pr_interval_seconds + 1e-9 ? 1U : 0U;
+                return increases;
+            }
+            double mean = 0.0;
+            for (unsigned int index = 0; index < record.beat_count(); ++index)
+                mean += beats[index].pr_interval_seconds;
+            mean /= record.beat_count();
+            double variance = 0.0;
+            for (unsigned int index = 0; index < record.beat_count(); ++index)
+            {
+                const double difference = beats[index].pr_interval_seconds - mean;
+                variance += difference * difference;
+            }
+            return std::sqrt(variance / record.beat_count());
+        }
+
+        double terminal_source_polarity(const clinical_ecg_record& record)
+        {
+            const clinical_beat_annotation* beats = record.beats();
+            const double* terminal_x = record.source_data(clinical_source_terminal, clinical_axis_x);
+            if (!beats || !terminal_x || record.beat_count() == 0)
+                return 0.0;
+            double sum = 0.0;
+            unsigned int count = 0;
+            for (unsigned int index = 0; index < record.beat_count(); ++index)
+            {
+                const unsigned long long sample = static_cast<unsigned long long>(std::llround(beats[index].s_peak_time_seconds * record.sampling_rate_hz()));
+                if (sample < record.sample_count())
+                {
+                    sum += terminal_x[sample];
+                    ++count;
+                }
+            }
+            return count ? sum / count : 0.0;
+        }
+
+        double pacing_evidence_count(const clinical_ecg_record& record)
+        {
+            unsigned int spikes = 0;
+            const clinical_fiducial_annotation* fiducials = record.fiducials();
+            for (unsigned int index = 0; fiducials && index < record.fiducial_count(); ++index)
+                spikes += fiducials[index].kind == clinical_pacing_spike && fiducials[index].present ? 1U : 0U;
+            return std::min(static_cast<double>(origin_count(record, clinical_origin_paced)), static_cast<double>(spikes));
+        }
+
+        void evaluate_phenotype(const ecg_qa_scenario::implementation& scenario, const clinical_ecg_record& record, ecg_scenario_report::implementation& report)
+        {
+            const double count_limit = std::max(record.beat_count(), record.atrial_event_count());
+            const clinical_ventricular_origin ectopic_origin = has_condition(scenario.conditions, ecg_condition_pac) ? clinical_origin_pac : clinical_origin_pvc;
+            for (const scenario_condition& requested : scenario.conditions)
+            {
+                switch (requested.code)
+                {
+                case ecg_condition_norm:
+                    add_assertion(report, requested.code, ecg_assert_rhythm, beat_fraction(record, clinical_rhythm_sinus), 1.0, 1.0, "sinus rhythm beats", "ratio");
+                    add_assertion(report, requested.code, ecg_assert_p_wave_presence, p_wave_fraction(record), 1.0, 1.0, "P waves present", "ratio");
+                    add_assertion(report, requested.code, ecg_assert_qrs_duration, mean_annotation_value(record, ecg_assert_qrs_duration), 0.04, 0.12, "normal QRS duration", "s");
+                    break;
+                case ecg_condition_sr:
+                    add_assertion(report, requested.code, ecg_assert_rhythm, beat_fraction(record, clinical_rhythm_sinus), 1.0, 1.0, "sinus rhythm beats", "ratio");
+                    add_assertion(report, requested.code, ecg_assert_p_wave_presence, p_wave_fraction(record), 1.0, 1.0, "P waves present", "ratio");
+                    break;
+                case ecg_condition_afib:
+                    add_assertion(report, requested.code, ecg_assert_rhythm, beat_fraction(record, clinical_rhythm_atrial_fibrillation), 1.0, 1.0, "AF rhythm beats", "ratio");
+                    add_assertion(report, requested.code, ecg_assert_p_wave_presence, p_wave_fraction(record), 0.0, 0.0, "P waves absent", "ratio");
+                    add_assertion(report, requested.code, ecg_assert_rr_variability, rr_standard_deviation(record), 0.03, 2.0, "irregular RR", "s");
+                    break;
+                case ecg_condition_aflt:
+                    add_assertion(report, requested.code, ecg_assert_rhythm, beat_fraction(record, clinical_rhythm_atrial_flutter), 1.0, 1.0, "flutter rhythm beats", "ratio");
+                    add_assertion(report, requested.code, ecg_assert_atrial_ventricular_ratio, record.beat_count() ? static_cast<double>(record.atrial_event_count()) / record.beat_count() : -1.0, 1.8, 6.5, "atrial to ventricular events", "ratio");
+                    break;
+                case ecg_condition_svtac:
+                    add_assertion(report, requested.code, ecg_assert_rhythm, beat_fraction(record, clinical_rhythm_supraventricular_tachycardia), 1.0, 1.0, "SVT rhythm beats", "ratio");
+                    add_assertion(report, requested.code, ecg_assert_heart_rate, mean_heart_rate(record), 100.0, 400.0, "tachycardic rate", "bpm");
+                    add_assertion(report, requested.code, ecg_assert_qrs_duration, mean_annotation_value(record, ecg_assert_qrs_duration), 0.04, 0.12, "narrow QRS", "s");
+                    break;
+                case ecg_condition_stach:
+                    add_assertion(report, requested.code, ecg_assert_heart_rate, median_atrial_rate(record), 100.0, 400.0, "sinus tachycardia rate", "bpm");
+                    break;
+                case ecg_condition_sbrad:
+                    add_assertion(report, requested.code, ecg_assert_heart_rate, median_atrial_rate(record), 10.0, 60.0, "sinus bradycardia rate", "bpm");
+                    break;
+                case ecg_condition_sarrh:
+                    add_assertion(report, requested.code, ecg_assert_rr_variability, rr_standard_deviation(record), 0.015, 2.0, "RR variability", "s");
+                    break;
+                case ecg_condition_pac:
+                case ecg_condition_pvc:
+                case ecg_condition_prc:
+                    add_assertion(report, requested.code, ecg_assert_ectopic_origin, origin_count(record, ectopic_origin), 1.0, count_limit, "expected ectopic beats", "count");
+                    add_assertion(report, requested.code, ecg_assert_premature_coupling, premature_coupling_ratio(record, ectopic_origin), 0.0, 0.9, "premature coupling", "ratio");
+                    break;
+                case ecg_condition_bigu:
+                    add_assertion(report, requested.code, ecg_assert_ectopic_cadence, ectopic_cadence_fraction(record, ectopic_origin, 2), 1.0, 1.0, "bigeminal cadence", "ratio");
+                    break;
+                case ecg_condition_trigu:
+                    add_assertion(report, requested.code, ecg_assert_ectopic_cadence, ectopic_cadence_fraction(record, ectopic_origin, 3), 1.0, 1.0, "trigeminal cadence", "ratio");
+                    break;
+                case ecg_condition_1avb:
+                case ecg_condition_lpr:
+                    add_assertion(report, requested.code, ecg_assert_pr_interval, mean_annotation_value(record, ecg_assert_pr_interval), 0.2, 1.0, "prolonged PR interval", "s");
+                    break;
+                case ecg_condition_2avb:
+                    add_assertion(report, requested.code, ecg_assert_dropped_atrial_events, dropped_atrial_count(record), 1.0, count_limit, "non-conducted atrial events", "count");
+                    if (scenario.second_degree_pattern == ecg_second_degree_mobitz_i)
+                        add_assertion(report, requested.code, ecg_assert_av_pattern, mobitz_pattern_metric(record, scenario.second_degree_pattern), 1.0, count_limit, "Wenckebach PR progression", "count");
+                    else
+                        add_assertion(report, requested.code, ecg_assert_av_pattern, mobitz_pattern_metric(record, scenario.second_degree_pattern), 0.0, 0.001, "Mobitz II stable PR", "s");
+                    break;
+                case ecg_condition_3avb:
+                    add_assertion(report, requested.code, ecg_assert_dropped_atrial_events, record.atrial_event_count() ? dropped_atrial_count(record) / record.atrial_event_count() : -1.0, 1.0, 1.0, "complete AV dissociation", "ratio");
+                    add_assertion(report, requested.code, ecg_assert_ventricular_escape, record.beat_count() ? static_cast<double>(origin_count(record, clinical_origin_ventricular_escape)) / record.beat_count() : -1.0, 1.0, 1.0, "ventricular escape beats", "ratio");
+                    break;
+                case ecg_condition_crbbb:
+                    add_assertion(report, requested.code, ecg_assert_qrs_duration, mean_annotation_value(record, ecg_assert_qrs_duration), 0.13, 0.5, "wide QRS", "s");
+                    add_assertion(report, requested.code, ecg_assert_terminal_source_polarity, terminal_source_polarity(record), 0.000001, 10.0, "rightward terminal source", "mV");
+                    break;
+                case ecg_condition_clbbb:
+                    add_assertion(report, requested.code, ecg_assert_qrs_duration, mean_annotation_value(record, ecg_assert_qrs_duration), 0.14, 0.5, "wide QRS", "s");
+                    add_assertion(report, requested.code, ecg_assert_terminal_source_polarity, terminal_source_polarity(record), -10.0, -0.000001, "leftward terminal source", "mV");
+                    break;
+                case ecg_condition_lngqt:
+                    add_assertion(report, requested.code, ecg_assert_qtc_interval, mean_annotation_value(record, ecg_assert_qtc_interval), 0.44, 2.0, "prolonged QTc", "s");
+                    break;
+                case ecg_condition_pace:
+                    add_assertion(report, requested.code, ecg_assert_rhythm, beat_fraction(record, clinical_rhythm_paced), 1.0, 1.0, "paced rhythm beats", "ratio");
+                    add_assertion(report, requested.code, ecg_assert_pacing, pacing_evidence_count(record), 1.0, count_limit, "paced beats with spike annotations", "count");
+                    break;
+                default:
+                    break;
+                }
+            }
+            report.phenotype_passed = !report.assertions.empty();
+            for (const phenotype_assertion& assertion : report.assertions)
+                report.phenotype_passed = report.phenotype_passed && assertion.status == ecg_assertion_passed;
+        }
     }
 
     const ecg_condition_info* ecg_condition_catalog()
@@ -478,7 +785,8 @@ namespace signal_synth
 
     const ecg_condition_info* find_ecg_condition(ecg_condition_code code)
     {
-        return valid_condition(code) ? &condition_catalog[enum_value(code)] : 0;
+        const int index = enum_value(code);
+        return index >= 0 && index < ecg_condition_count ? &condition_catalog[index] : 0;
     }
 
     const ecg_condition_info* find_ecg_condition(const char* scp_code)
@@ -778,6 +1086,56 @@ namespace signal_synth
         return implementation_->generated_sample_count;
     }
 
+    bool ecg_scenario_report::phenotype_passed() const
+    {
+        return implementation_->phenotype_passed;
+    }
+
+    unsigned int ecg_scenario_report::assertion_count() const
+    {
+        return static_cast<unsigned int>(implementation_->assertions.size());
+    }
+
+    ecg_condition_code ecg_scenario_report::assertion_condition(unsigned int index) const
+    {
+        return index < implementation_->assertions.size() ? implementation_->assertions[index].condition : ecg_condition_count;
+    }
+
+    ecg_phenotype_assertion_code ecg_scenario_report::assertion_code(unsigned int index) const
+    {
+        return index < implementation_->assertions.size() ? implementation_->assertions[index].code : ecg_assertion_code_count;
+    }
+
+    ecg_phenotype_assertion_status ecg_scenario_report::assertion_status(unsigned int index) const
+    {
+        return index < implementation_->assertions.size() ? implementation_->assertions[index].status : ecg_assertion_not_evaluated;
+    }
+
+    double ecg_scenario_report::assertion_measured_value(unsigned int index) const
+    {
+        return index < implementation_->assertions.size() ? implementation_->assertions[index].measured : 0.0;
+    }
+
+    double ecg_scenario_report::assertion_minimum(unsigned int index) const
+    {
+        return index < implementation_->assertions.size() ? implementation_->assertions[index].minimum : 0.0;
+    }
+
+    double ecg_scenario_report::assertion_maximum(unsigned int index) const
+    {
+        return index < implementation_->assertions.size() ? implementation_->assertions[index].maximum : 0.0;
+    }
+
+    const char* ecg_scenario_report::assertion_name(unsigned int index) const
+    {
+        return index < implementation_->assertions.size() ? implementation_->assertions[index].name.c_str() : "";
+    }
+
+    const char* ecg_scenario_report::assertion_unit(unsigned int index) const
+    {
+        return index < implementation_->assertions.size() ? implementation_->assertions[index].unit.c_str() : "";
+    }
+
     bool ecg_scenario_engine::validate(const ecg_qa_scenario& scenario, ecg_scenario_report& report) const
     {
         ecg_scenario_report::implementation fresh;
@@ -823,9 +1181,21 @@ namespace signal_synth
         if (!compile(scenario, config, report))
             return false;
         clinical_ecg_generator generator(config);
-        if (!generator.generate(sample_count, output))
+        clinical_ecg_record generated;
+        if (!generator.generate(sample_count, generated))
         {
             add_issue(*report.implementation_, ecg_issue_error, ecg_issue_generation_failed, NO_CONDITION, NO_CONDITION, "Clinical ECG generation failed.");
+            report.implementation_->success = false;
+            return false;
+        }
+        try
+        {
+            evaluate_phenotype(*scenario.implementation_, generated, *report.implementation_);
+            output = generated;
+        }
+        catch (...)
+        {
+            add_issue(*report.implementation_, ecg_issue_error, ecg_issue_generation_failed, NO_CONDITION, NO_CONDITION, "Phenotype assertion evaluation failed.");
             report.implementation_->success = false;
             return false;
         }

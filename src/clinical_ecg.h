@@ -19,6 +19,26 @@ namespace signal_synth
         clinical_lead_count = 12
     };
 
+    enum clinical_ecg_source
+    {
+        clinical_source_atrial = 0,
+        clinical_source_septal = 1,
+        clinical_source_ventricular = 2,
+        clinical_source_terminal = 3,
+        clinical_source_repolarization = 4,
+        clinical_source_injury = 5,
+        clinical_source_pacing = 6,
+        clinical_source_count = 7
+    };
+
+    enum clinical_ecg_axis
+    {
+        clinical_axis_x = 0,
+        clinical_axis_y = 1,
+        clinical_axis_z = 2,
+        clinical_axis_count = 3
+    };
+
     enum clinical_rhythm
     {
         clinical_rhythm_sinus = 0,
@@ -167,6 +187,15 @@ namespace signal_synth
         double lead_gain[clinical_lead_count];
     };
 
+    struct clinical_source_config
+    {
+        clinical_source_config();
+
+        double gain[clinical_source_count];
+        double axis_offset_degrees[clinical_source_count];
+        double elevation_offset_degrees[clinical_source_count];
+    };
+
     struct clinical_ecg_config
     {
         clinical_ecg_config();
@@ -177,6 +206,7 @@ namespace signal_synth
         clinical_rhythm_config rhythm;
         clinical_scenario_config scenario;
         clinical_lead_config leads;
+        clinical_source_config sources;
     };
 
     struct clinical_atrial_event
@@ -244,6 +274,10 @@ namespace signal_synth
         unsigned int lead_count() const;
         const char* lead_name(unsigned int lead_index) const;
         const double* lead_data(unsigned int lead_index) const;
+        unsigned int source_count() const;
+        const char* source_name(unsigned int source_index) const;
+        const double* source_data(unsigned int source_index, unsigned int axis_index) const;
+        const double* vcg_data(unsigned int axis_index) const;
         unsigned int atrial_event_count() const;
         const clinical_atrial_event* atrial_events() const;
         unsigned int beat_count() const;

@@ -4,6 +4,7 @@
 #include <cmath>
 #include <iostream>
 #include <limits>
+#include <string>
 
 namespace
 {
@@ -25,11 +26,20 @@ namespace
 
     bool same_record(const signal_synth::clinical_ecg_record& left, const signal_synth::clinical_ecg_record& right)
     {
-        if (left.sampling_rate_hz() != right.sampling_rate_hz() || left.sample_count() != right.sample_count() || left.lead_count() != right.lead_count() || left.atrial_event_count() != right.atrial_event_count() || left.beat_count() != right.beat_count() || left.fiducial_count() != right.fiducial_count())
+        if (left.sampling_rate_hz() != right.sampling_rate_hz() || left.sample_count() != right.sample_count() || left.lead_count() != right.lead_count() || left.source_count() != right.source_count() || left.atrial_event_count() != right.atrial_event_count() || left.beat_count() != right.beat_count() || left.fiducial_count() != right.fiducial_count())
             return false;
         for (unsigned int lead = 0; lead < left.lead_count(); ++lead)
             for (unsigned int sample = 0; sample < left.sample_count(); ++sample)
                 if (left.lead_data(lead)[sample] != right.lead_data(lead)[sample])
+                    return false;
+        for (unsigned int source = 0; source < left.source_count(); ++source)
+            for (unsigned int axis = 0; axis < signal_synth::clinical_axis_count; ++axis)
+                for (unsigned int sample = 0; sample < left.sample_count(); ++sample)
+                    if (left.source_data(source, axis)[sample] != right.source_data(source, axis)[sample])
+                        return false;
+        for (unsigned int axis = 0; axis < signal_synth::clinical_axis_count; ++axis)
+            for (unsigned int sample = 0; sample < left.sample_count(); ++sample)
+                if (left.vcg_data(axis)[sample] != right.vcg_data(axis)[sample])
                     return false;
         const signal_synth::clinical_atrial_event* left_atrial = left.atrial_events();
         const signal_synth::clinical_atrial_event* right_atrial = right.atrial_events();
@@ -46,6 +56,45 @@ namespace
         for (unsigned int i = 0; i < left.fiducial_count(); ++i)
             if (left_fiducials[i].beat_index != right_fiducials[i].beat_index || left_fiducials[i].atrial_index != right_fiducials[i].atrial_index || left_fiducials[i].lead_index != right_fiducials[i].lead_index || left_fiducials[i].kind != right_fiducials[i].kind || left_fiducials[i].source != right_fiducials[i].source || left_fiducials[i].sample_index != right_fiducials[i].sample_index || left_fiducials[i].time_seconds != right_fiducials[i].time_seconds || left_fiducials[i].amplitude_mv != right_fiducials[i].amplitude_mv || left_fiducials[i].present != right_fiducials[i].present)
                 return false;
+        return true;
+    }
+
+    bool exact_source_sum(const signal_synth::clinical_ecg_record& record)
+    {
+        for (unsigned int axis = 0; axis < signal_synth::clinical_axis_count; ++axis)
+        {
+            const double* total = record.vcg_data(axis);
+            if (!total)
+                return false;
+            for (unsigned int sample = 0; sample < record.sample_count(); ++sample)
+            {
+                double sum = 0.0;
+                for (unsigned int source = 0; source < record.source_count(); ++source)
+                {
+                    const double* data = record.source_data(source, axis);
+                    if (!data || !std::isfinite(data[sample]))
+                        return false;
+                    sum += data[sample];
+                }
+                if (sum != total[sample])
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    bool expected_sources_present(const signal_synth::clinical_ecg_record& record)
+    {
+        const unsigned int active_sources[] = {signal_synth::clinical_source_atrial, signal_synth::clinical_source_septal, signal_synth::clinical_source_ventricular, signal_synth::clinical_source_terminal, signal_synth::clinical_source_repolarization};
+        for (unsigned int source : active_sources)
+        {
+            double maximum = 0.0;
+            for (unsigned int axis = 0; axis < signal_synth::clinical_axis_count; ++axis)
+                for (unsigned int sample = 0; sample < record.sample_count(); ++sample)
+                    maximum = std::max(maximum, std::fabs(record.source_data(source, axis)[sample]));
+            if (maximum < 0.001)
+                return false;
+        }
         return true;
     }
 
@@ -156,6 +205,8 @@ int main()
     signal_synth::clinical_ecg_record record;
     ok &= check(generator.valid() && generator.generate(5000, record), "default_generation");
     ok &= check(record.sampling_rate_hz() == 500 && record.sample_count() == 5000 && record.lead_count() == 12 && record.beat_count() == 10 && record.atrial_event_count() == 10, "default_record_shape");
+    ok &= check(record.source_count() == signal_synth::clinical_source_count && record.source_name(signal_synth::clinical_source_atrial) == std::string("Atrial") && record.source_name(999)[0] == '\0' && !record.source_data(999, 0) && !record.vcg_data(999), "multi_source_public_contract");
+    ok &= check(exact_source_sum(record) && expected_sources_present(record), "source_components_sum_exactly_to_vcg");
     ok &= check(finite_nontrivial_leads(record), "all_leads_finite_and_nontrivial");
     ok &= check(exact_limb_leads(record), "einthoven_and_goldberger_identities");
     ok &= check(valid_timeline(record), "timeline_and_links_are_consistent");
@@ -175,6 +226,9 @@ int main()
     contradictory.rhythm.rhythm = signal_synth::clinical_rhythm_atrial_fibrillation;
     contradictory.rhythm.av_conduction = signal_synth::clinical_av_mobitz_ii;
     ok &= check(!signal_synth::clinical_ecg_generator(contradictory).valid(), "unsupported_rhythm_combination_is_rejected");
+    signal_synth::clinical_ecg_config invalid_source = config;
+    invalid_source.sources.gain[signal_synth::clinical_source_atrial] = std::numeric_limits<double>::quiet_NaN();
+    ok &= check(!signal_synth::clinical_ecg_generator(invalid_source).valid(), "invalid_source_configuration_is_rejected");
     signal_synth::clinical_ecg_record preserved = record;
     ok &= check(!generator.generate(0, preserved) && same_record(record, preserved), "failed_generation_preserves_output");
     signal_synth::clinical_ecg_config overflowing = config;
@@ -188,6 +242,19 @@ int main()
     signal_synth::clinical_ecg_record rotated;
     signal_synth::clinical_ecg_generator(rotated_config).generate(5000, rotated);
     ok &= check(rotated.lead_data(signal_synth::clinical_lead_i)[250] != record.lead_data(signal_synth::clinical_lead_i)[250] && exact_limb_leads(rotated), "vcg_rotation_changes_projection");
+
+    signal_synth::clinical_ecg_config no_repolarization_config = config;
+    no_repolarization_config.sources.gain[signal_synth::clinical_source_repolarization] = 0.0;
+    signal_synth::clinical_ecg_record no_repolarization;
+    signal_synth::clinical_ecg_generator(no_repolarization_config).generate(5000, no_repolarization);
+    double repolarization_maximum = 0.0;
+    double lead_difference = 0.0;
+    for (unsigned int axis = 0; axis < signal_synth::clinical_axis_count; ++axis)
+        for (unsigned int sample = 0; sample < no_repolarization.sample_count(); ++sample)
+            repolarization_maximum = std::max(repolarization_maximum, std::fabs(no_repolarization.source_data(signal_synth::clinical_source_repolarization, axis)[sample]));
+    for (unsigned int sample = 0; sample < record.sample_count(); ++sample)
+        lead_difference = std::max(lead_difference, std::fabs(record.lead_data(signal_synth::clinical_lead_ii)[sample] - no_repolarization.lead_data(signal_synth::clinical_lead_ii)[sample]));
+    ok &= check(repolarization_maximum == 0.0 && lead_difference > 0.01 && exact_source_sum(no_repolarization), "individual_source_gain_controls_rendering");
 
     signal_synth::clinical_ecg_config pvc_config = config;
     pvc_config.scenario.premature_every_n_beats = 5;

@@ -28,6 +28,8 @@ namespace signal_synth
             unsigned int sampling_rate_hz;
             unsigned int sample_count;
             std::vector<double> leads[clinical_lead_count];
+            std::vector<double> sources[clinical_source_count][clinical_axis_count];
+            std::vector<double> vcg[clinical_axis_count];
             std::vector<clinical_atrial_event> atrial_events;
             std::vector<clinical_beat_annotation> beats;
             std::vector<clinical_fiducial_annotation> fiducials;
@@ -64,6 +66,11 @@ namespace signal_synth
             const double elevation = radians(elevation_degrees);
             const double horizontal = std::cos(elevation);
             return vec3{amplitude * horizontal * std::cos(axis), amplitude * horizontal * std::sin(axis), amplitude * std::sin(elevation)};
+        }
+
+        vec3 source_vector(const clinical_ecg_config& config, clinical_ecg_source source, double amplitude, double axis_degrees, double elevation_degrees)
+        {
+            return spatial_vector(amplitude * config.sources.gain[source], axis_degrees + config.sources.axis_offset_degrees[source], elevation_degrees + config.sources.elevation_offset_degrees[source]);
         }
 
         vec3 rotate_vector(const vec3& input, const clinical_lead_config& config)
@@ -167,6 +174,9 @@ namespace signal_synth
                     return false;
             for (int lead = 0; lead < clinical_lead_count; ++lead)
                 if (!finite(config.leads.lead_gain[lead]) || config.leads.lead_gain[lead] <= 0.0)
+                    return false;
+            for (int source = 0; source < clinical_source_count; ++source)
+                if (!finite(config.sources.gain[source]) || config.sources.gain[source] < 0.0 || !finite(config.sources.axis_offset_degrees[source]) || !finite(config.sources.elevation_offset_degrees[source]))
                     return false;
             if (!finite(config.leads.yaw_degrees) || !finite(config.leads.pitch_degrees) || !finite(config.leads.roll_degrees))
                 return false;
@@ -473,65 +483,39 @@ namespace signal_synth
             }
         }
 
-        vec3 interpolate(const vec3& start_value, const vec3& end_value, double position)
+        void render_injury_wave(std::vector<vec3>& source, unsigned int sampling_rate, const clinical_beat_annotation& beat, const vec3& j_value, const vec3& st_value)
         {
-            const double blend = smoothstep(position);
-            return add(scale(start_value, 1.0 - blend), scale(end_value, blend));
-        }
-
-        void render_ventricular_wave(std::vector<vec3>& source, unsigned int sampling_rate, const clinical_beat_annotation& beat, const vec3& q, const vec3& r, const vec3& s, const vec3& j, const vec3& st_end)
-        {
-            const int first = std::max(0, static_cast<int>(std::floor(beat.qrs_onset_time_seconds * sampling_rate)));
-            const int last = std::min(static_cast<int>(source.size()) - 1, static_cast<int>(std::ceil(beat.t_onset_time_seconds * sampling_rate)));
-            const vec3 zero = vec3{0.0, 0.0, 0.0};
-            for (int sample = first; sample <= last; ++sample)
-            {
-                const double time = static_cast<double>(sample) / sampling_rate;
-                vec3 value = zero;
-                if (time >= beat.qrs_onset_time_seconds && time < beat.q_peak_time_seconds)
-                    value = interpolate(zero, q, (time - beat.qrs_onset_time_seconds) / (beat.q_peak_time_seconds - beat.qrs_onset_time_seconds));
-                else if (time >= beat.q_peak_time_seconds && time < beat.r_peak_time_seconds)
-                    value = interpolate(q, r, (time - beat.q_peak_time_seconds) / (beat.r_peak_time_seconds - beat.q_peak_time_seconds));
-                else if (time >= beat.r_peak_time_seconds && time < beat.s_peak_time_seconds)
-                    value = interpolate(r, s, (time - beat.r_peak_time_seconds) / (beat.s_peak_time_seconds - beat.r_peak_time_seconds));
-                else if (time >= beat.s_peak_time_seconds && time < beat.qrs_offset_time_seconds)
-                    value = interpolate(s, j, (time - beat.s_peak_time_seconds) / (beat.qrs_offset_time_seconds - beat.s_peak_time_seconds));
-                else if (time >= beat.qrs_offset_time_seconds && time < beat.t_onset_time_seconds)
-                    value = interpolate(j, st_end, (time - beat.qrs_offset_time_seconds) / (beat.t_onset_time_seconds - beat.qrs_offset_time_seconds));
-                source[sample] = add(source[sample], value);
-            }
-        }
-
-        void render_t_wave(std::vector<vec3>& source, unsigned int sampling_rate, const clinical_beat_annotation& beat, const vec3& st_value, const vec3& t_amplitude)
-        {
-            const int first = std::max(0, static_cast<int>(std::floor(beat.t_onset_time_seconds * sampling_rate)));
+            const int first = std::max(0, static_cast<int>(std::floor(beat.qrs_offset_time_seconds * sampling_rate)));
             const int last = std::min(static_cast<int>(source.size()) - 1, static_cast<int>(std::ceil(beat.t_offset_time_seconds * sampling_rate)));
             for (int sample = first; sample <= last; ++sample)
             {
                 const double time = static_cast<double>(sample) / sampling_rate;
-                if (time < beat.t_onset_time_seconds || time > beat.t_offset_time_seconds)
+                if (time < beat.qrs_offset_time_seconds || time > beat.t_offset_time_seconds)
                     continue;
-                const double baseline_shape = 1.0 - smoothstep((time - beat.t_onset_time_seconds) / (beat.t_offset_time_seconds - beat.t_onset_time_seconds));
-                double wave_shape = 0.0;
-                if (time <= beat.t_peak_time_seconds)
-                    wave_shape = smoothstep((time - beat.t_onset_time_seconds) / (beat.t_peak_time_seconds - beat.t_onset_time_seconds));
+                vec3 value = vec3{0.0, 0.0, 0.0};
+                if (time <= beat.t_onset_time_seconds)
+                {
+                    const double blend = smoothstep((time - beat.qrs_offset_time_seconds) / (beat.t_onset_time_seconds - beat.qrs_offset_time_seconds));
+                    value = add(scale(j_value, 1.0 - blend), scale(st_value, blend));
+                }
                 else
-                    wave_shape = 1.0 - smoothstep((time - beat.t_peak_time_seconds) / (beat.t_offset_time_seconds - beat.t_peak_time_seconds));
-                source[sample] = add(source[sample], add(scale(st_value, baseline_shape), scale(t_amplitude, wave_shape)));
+                    value = scale(st_value, 1.0 - smoothstep((time - beat.t_onset_time_seconds) / (beat.t_offset_time_seconds - beat.t_onset_time_seconds)));
+                source[sample] = add(source[sample], value);
             }
         }
 
-        void render_source(const clinical_ecg_config& config, generated_clinical_data& output, std::vector<vec3>& source)
+        void render_sources(const clinical_ecg_config& config, generated_clinical_data& output, std::vector<vec3> sources[clinical_source_count])
         {
-            source.assign(output.sample_count, vec3{0.0, 0.0, 0.0});
+            for (int source = 0; source < clinical_source_count; ++source)
+                sources[source].assign(output.sample_count, vec3{0.0, 0.0, 0.0});
             if (config.rhythm.rhythm == clinical_rhythm_atrial_fibrillation)
             {
-                const vec3 fibrillation_axis = spatial_vector(0.015, config.morphology.p_axis_degrees, config.morphology.p_elevation_degrees);
+                const vec3 fibrillation_axis = source_vector(config, clinical_source_atrial, 0.015, config.morphology.p_axis_degrees, config.morphology.p_elevation_degrees);
                 for (unsigned int sample = 0; sample < output.sample_count; ++sample)
                 {
                     const double time = static_cast<double>(sample) / output.sampling_rate_hz;
                     const double value = std::sin(TWO_PI * 6.1 * time + 0.7) + 0.6 * std::sin(TWO_PI * 7.3 * time + 2.1);
-                    source[sample] = add(source[sample], scale(fibrillation_axis, value));
+                    sources[clinical_source_atrial][sample] = add(sources[clinical_source_atrial][sample], scale(fibrillation_axis, value));
                 }
             }
             for (const clinical_atrial_event& atrial : output.atrial_events)
@@ -541,49 +525,82 @@ namespace signal_synth
                 double amplitude = config.morphology.p_amplitude_mv;
                 if (config.rhythm.rhythm == clinical_rhythm_atrial_flutter)
                     amplitude *= 0.6;
-                render_compact_wave(source, output.sampling_rate_hz, atrial.onset_time_seconds, atrial.peak_time_seconds, atrial.offset_time_seconds, spatial_vector(amplitude, config.morphology.p_axis_degrees, config.morphology.p_elevation_degrees));
+                render_compact_wave(sources[clinical_source_atrial], output.sampling_rate_hz, atrial.onset_time_seconds, atrial.peak_time_seconds, atrial.offset_time_seconds, source_vector(config, clinical_source_atrial, amplitude, config.morphology.p_axis_degrees, config.morphology.p_elevation_degrees));
             }
             for (const clinical_beat_annotation& beat : output.beats)
             {
-                double axis = config.morphology.qrs_axis_degrees;
+                double septal_axis = config.morphology.qrs_axis_degrees;
+                double ventricular_axis = config.morphology.qrs_axis_degrees;
+                double terminal_axis = config.morphology.qrs_axis_degrees;
                 double q_amplitude = config.morphology.q_amplitude_mv;
                 double r_amplitude = config.morphology.r_amplitude_mv;
                 double s_amplitude = config.morphology.s_amplitude_mv;
                 double t_amplitude = config.morphology.t_amplitude_mv;
                 if (beat.intraventricular_conduction == clinical_iv_lbbb)
                 {
-                    axis -= 45.0;
-                    q_amplitude = 0.0;
-                    r_amplitude *= 0.85;
-                    s_amplitude *= 0.5;
+                    septal_axis += 180.0;
+                    ventricular_axis -= 35.0;
+                    terminal_axis -= 55.0;
+                    q_amplitude = std::fabs(q_amplitude) * 0.25;
+                    r_amplitude *= 1.05;
+                    s_amplitude *= 0.65;
                 }
                 else if (beat.intraventricular_conduction == clinical_iv_rbbb)
                 {
-                    axis += 55.0;
-                    s_amplitude *= 1.6;
+                    terminal_axis += 95.0;
+                    s_amplitude *= 1.8;
                 }
                 if (beat.origin == clinical_origin_pvc || beat.origin == clinical_origin_ventricular_escape || beat.origin == clinical_origin_vt || beat.origin == clinical_origin_paced)
                 {
-                    axis += 90.0;
+                    septal_axis += 90.0;
+                    ventricular_axis += 90.0;
+                    terminal_axis += 120.0;
                     q_amplitude *= 0.5;
                     r_amplitude *= 0.85;
                     s_amplitude *= 1.8;
                     t_amplitude *= -0.8;
                 }
-                const vec3 q = spatial_vector(q_amplitude, axis, config.morphology.qrs_elevation_degrees);
-                const vec3 r = spatial_vector(r_amplitude, axis, config.morphology.qrs_elevation_degrees);
-                const vec3 s = spatial_vector(s_amplitude, axis, config.morphology.qrs_elevation_degrees);
-                const vec3 j = spatial_vector(config.morphology.st_j_amplitude_mv, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees);
+                render_compact_wave(sources[clinical_source_septal], output.sampling_rate_hz, beat.qrs_onset_time_seconds, beat.q_peak_time_seconds, beat.r_peak_time_seconds, source_vector(config, clinical_source_septal, q_amplitude, septal_axis, config.morphology.qrs_elevation_degrees));
+                render_compact_wave(sources[clinical_source_ventricular], output.sampling_rate_hz, beat.q_peak_time_seconds, beat.r_peak_time_seconds, beat.s_peak_time_seconds, source_vector(config, clinical_source_ventricular, r_amplitude, ventricular_axis, config.morphology.qrs_elevation_degrees));
+                render_compact_wave(sources[clinical_source_terminal], output.sampling_rate_hz, beat.r_peak_time_seconds, beat.s_peak_time_seconds, beat.qrs_offset_time_seconds, source_vector(config, clinical_source_terminal, s_amplitude, terminal_axis, config.morphology.qrs_elevation_degrees));
                 const double st_end_amplitude = config.morphology.st_j_amplitude_mv + config.morphology.st_slope_mv_per_second * (beat.t_onset_time_seconds - beat.qrs_offset_time_seconds);
-                const vec3 st_end = spatial_vector(st_end_amplitude, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees);
-                render_ventricular_wave(source, output.sampling_rate_hz, beat, q, r, s, j, st_end);
-                render_t_wave(source, output.sampling_rate_hz, beat, st_end, spatial_vector(t_amplitude, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees));
+                const vec3 j = source_vector(config, clinical_source_injury, config.morphology.st_j_amplitude_mv, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees);
+                const vec3 st_end = source_vector(config, clinical_source_injury, st_end_amplitude, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees);
+                render_injury_wave(sources[clinical_source_injury], output.sampling_rate_hz, beat, j, st_end);
+                render_compact_wave(sources[clinical_source_repolarization], output.sampling_rate_hz, beat.t_onset_time_seconds, beat.t_peak_time_seconds, beat.t_offset_time_seconds, source_vector(config, clinical_source_repolarization, t_amplitude, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees));
                 if (beat.origin == clinical_origin_paced)
                 {
                     const int spike_sample = static_cast<int>(std::llround(beat.qrs_onset_time_seconds * output.sampling_rate_hz));
-                    if (spike_sample >= 0 && static_cast<unsigned int>(spike_sample) < source.size())
-                        source[spike_sample] = add(source[spike_sample], spatial_vector(2.0, axis, 20.0));
+                    if (spike_sample >= 0 && static_cast<unsigned int>(spike_sample) < sources[clinical_source_pacing].size())
+                        sources[clinical_source_pacing][spike_sample] = add(sources[clinical_source_pacing][spike_sample], source_vector(config, clinical_source_pacing, 2.0, ventricular_axis, 20.0));
                 }
+            }
+        }
+
+        double axis_value(const vec3& value, int axis)
+        {
+            return axis == clinical_axis_x ? value.x : axis == clinical_axis_y ? value.y : value.z;
+        }
+
+        void combine_sources(const clinical_ecg_config& config, const std::vector<vec3> raw_sources[clinical_source_count], generated_clinical_data& output, std::vector<vec3>& total)
+        {
+            total.assign(output.sample_count, vec3{0.0, 0.0, 0.0});
+            for (int source = 0; source < clinical_source_count; ++source)
+                for (int axis = 0; axis < clinical_axis_count; ++axis)
+                    output.sources[source][axis].assign(output.sample_count, 0.0);
+            for (int axis = 0; axis < clinical_axis_count; ++axis)
+                output.vcg[axis].assign(output.sample_count, 0.0);
+            for (unsigned int sample = 0; sample < output.sample_count; ++sample)
+            {
+                for (int source = 0; source < clinical_source_count; ++source)
+                {
+                    const vec3 oriented = rotate_vector(raw_sources[source][sample], config.leads);
+                    total[sample] = add(total[sample], oriented);
+                    for (int axis = 0; axis < clinical_axis_count; ++axis)
+                        output.sources[source][axis][sample] = axis_value(oriented, axis);
+                }
+                for (int axis = 0; axis < clinical_axis_count; ++axis)
+                    output.vcg[axis][sample] = axis_value(total[sample], axis);
             }
         }
 
@@ -601,7 +618,7 @@ namespace signal_synth
                 output.leads[lead].assign(output.sample_count, 0.0);
             for (unsigned int sample = 0; sample < output.sample_count; ++sample)
             {
-                const vec3 cardiac = rotate_vector(source[sample], config.leads);
+                const vec3 cardiac = source[sample];
                 const double lead_i = cardiac.x;
                 const double lead_ii = 0.5 * cardiac.x + 0.8660254037844386 * cardiac.y;
                 output.leads[clinical_lead_i][sample] = config.leads.lead_gain[clinical_lead_i] * lead_i;
@@ -615,10 +632,19 @@ namespace signal_synth
             }
         }
 
-        bool finite_leads(const generated_clinical_data& output)
+        bool finite_output(const generated_clinical_data& output)
         {
             for (int lead = 0; lead < clinical_lead_count; ++lead)
                 for (double sample : output.leads[lead])
+                    if (!finite(sample))
+                        return false;
+            for (int source = 0; source < clinical_source_count; ++source)
+                for (int axis = 0; axis < clinical_axis_count; ++axis)
+                    for (double sample : output.sources[source][axis])
+                        if (!finite(sample))
+                            return false;
+            for (int axis = 0; axis < clinical_axis_count; ++axis)
+                for (double sample : output.vcg[axis])
                     if (!finite(sample))
                         return false;
             return true;
@@ -728,6 +754,7 @@ namespace signal_synth
         }
 
         const char* lead_names[clinical_lead_count] = {"I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"};
+        const char* source_names[clinical_source_count] = {"Atrial", "Septal", "Ventricular", "Terminal", "Repolarization", "Injury", "Pacing"};
     }
 
     clinical_timing_config::clinical_timing_config()
@@ -757,6 +784,16 @@ namespace signal_synth
             lead_gain[lead] = 1.0;
     }
 
+    clinical_source_config::clinical_source_config()
+    {
+        for (int source = 0; source < clinical_source_count; ++source)
+        {
+            gain[source] = 1.0;
+            axis_offset_degrees[source] = 0.0;
+            elevation_offset_degrees[source] = 0.0;
+        }
+    }
+
     clinical_ecg_config::clinical_ecg_config()
         : sampling_rate_hz(500)
     {
@@ -767,6 +804,8 @@ namespace signal_synth
         unsigned int sampling_rate_hz;
         unsigned int sample_count;
         std::vector<double> leads[clinical_lead_count];
+        std::vector<double> sources[clinical_source_count][clinical_axis_count];
+        std::vector<double> vcg[clinical_axis_count];
         std::vector<clinical_atrial_event> atrial_events;
         std::vector<clinical_beat_annotation> beats;
         std::vector<clinical_fiducial_annotation> fiducials;
@@ -822,6 +861,26 @@ namespace signal_synth
     const double* clinical_ecg_record::lead_data(unsigned int lead_index) const
     {
         return lead_index < clinical_lead_count && !implementation_->leads[lead_index].empty() ? implementation_->leads[lead_index].data() : 0;
+    }
+
+    unsigned int clinical_ecg_record::source_count() const
+    {
+        return clinical_source_count;
+    }
+
+    const char* clinical_ecg_record::source_name(unsigned int source_index) const
+    {
+        return source_index < clinical_source_count ? source_names[source_index] : "";
+    }
+
+    const double* clinical_ecg_record::source_data(unsigned int source_index, unsigned int axis_index) const
+    {
+        return source_index < clinical_source_count && axis_index < clinical_axis_count && !implementation_->sources[source_index][axis_index].empty() ? implementation_->sources[source_index][axis_index].data() : 0;
+    }
+
+    const double* clinical_ecg_record::vcg_data(unsigned int axis_index) const
+    {
+        return axis_index < clinical_axis_count && !implementation_->vcg[axis_index].empty() ? implementation_->vcg[axis_index].data() : 0;
     }
 
     unsigned int clinical_ecg_record::atrial_event_count() const
@@ -933,10 +992,12 @@ namespace signal_synth
                 generate_atrial_conduction_timeline(implementation_->config, duration, generated);
             else
                 generate_sequential_timeline(implementation_->config, duration, generated);
-            std::vector<vec3> source;
-            render_source(implementation_->config, generated, source);
-            project_leads(implementation_->config, source, generated);
-            if (!finite_leads(generated))
+            std::vector<vec3> raw_sources[clinical_source_count];
+            std::vector<vec3> total_source;
+            render_sources(implementation_->config, generated, raw_sources);
+            combine_sources(implementation_->config, raw_sources, generated, total_source);
+            project_leads(implementation_->config, total_source, generated);
+            if (!finite_output(generated))
                 return false;
             build_construction_fiducials(generated);
             build_lead_measurements(implementation_->config, generated);
@@ -945,6 +1006,11 @@ namespace signal_synth
             completed.sample_count = generated.sample_count;
             for (int lead = 0; lead < clinical_lead_count; ++lead)
                 completed.leads[lead].swap(generated.leads[lead]);
+            for (int source = 0; source < clinical_source_count; ++source)
+                for (int axis = 0; axis < clinical_axis_count; ++axis)
+                    completed.sources[source][axis].swap(generated.sources[source][axis]);
+            for (int axis = 0; axis < clinical_axis_count; ++axis)
+                completed.vcg[axis].swap(generated.vcg[axis]);
             completed.atrial_events.swap(generated.atrial_events);
             completed.beats.swap(generated.beats);
             completed.fiducials.swap(generated.fiducials);

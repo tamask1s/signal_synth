@@ -3,9 +3,10 @@
 ## Record model
 
 `clinical_ecg_generator::generate` creates one `clinical_ecg_record` containing
-12 equal-length ECG leads, atrial events, ventricular beat annotations, and
-fiducials. Lead order is I, II, III, aVR, aVL, aVF, V1-V6. Signal units are mV
-and event times are seconds from the first sample.
+12 equal-length ECG leads, seven three-axis cardiac source components, their
+summed VCG, atrial events, ventricular beat annotations, and fiducials. Lead
+order is I, II, III, aVR, aVL, aVF, V1-V6. Signal units are mV and event times
+are seconds from the first sample.
 
 Generation is transactional: invalid configuration, zero sample count, or an
 unconfigured generator leaves the destination record unchanged. Allocation
@@ -49,11 +50,18 @@ QT may be fixed or derived from QTc:
 The configured QRS and T durations impose a lower bound on QT so the generated
 fiducials remain ordered.
 
-## Vector model and leads
+## Multi-source vector model and leads
 
-P, QRS, ST, and T are synthesized as smooth, piecewise 3D cardiac vectors.
-Axis and elevation are independently configurable. Yaw, pitch, and roll rotate
-the complete cardiac vector before projection.
+Model v2 separates atrial activation, septal activation, main ventricular
+activation, terminal ventricular activation, repolarization, injury current,
+and pacing into seven smooth 3D source vectors. Every source has an independent
+gain, axis offset, and elevation offset. Yaw, pitch, and roll then rotate every
+source into the shared body frame.
+
+`clinical_ecg_record::source_data(source, axis)` exposes each rotated source
+component and `vcg_data(axis)` exposes their exact sample-wise sum. The 12
+leads are projected exclusively from this summed VCG, so source decomposition,
+VCG, and lead output remain auditable parts of one generated record.
 
 I and II are independent frontal projections. At unit lead gains:
 
@@ -89,6 +97,7 @@ Events outside the sampled record remain absent from the fiducial list or have
 The engine provides known-by-construction test inputs and annotations for
 detector, storage, visualization, and processing validation. Current limitations
 include no population-fitted parameter distribution, no torso volume conductor,
-no ischemia/infarct territory model, no respiratory axis motion, and no
-calibrated acquisition artifact layer. These are required before claiming a
-clinically representative validation package.
+no ischemia/infarct territory model, no respiratory axis motion, no
+electromechanical coupling, and no calibrated acquisition artifact layer. The
+seven components are engineering source abstractions, not anatomically resolved
+dipoles. These limitations preclude clinical-representation claims.

@@ -47,6 +47,32 @@ namespace
                     return false;
         return true;
     }
+
+    bool all_assertions_passed(const signal_synth::ecg_scenario_report& report)
+    {
+        if (!report.phenotype_passed() || report.assertion_count() == 0)
+            return false;
+        for (unsigned int index = 0; index < report.assertion_count(); ++index)
+            if (report.assertion_status(index) != signal_synth::ecg_assertion_passed || report.assertion_condition(index) == signal_synth::ecg_condition_count || report.assertion_code(index) == signal_synth::ecg_assertion_code_count || !report.assertion_name(index)[0] || !report.assertion_unit(index)[0])
+                return false;
+        return true;
+    }
+
+    bool generated_phenotype_passes(const signal_synth::ecg_scenario_engine& engine, const signal_synth::ecg_qa_scenario& scenario)
+    {
+        signal_synth::clinical_ecg_record record;
+        signal_synth::ecg_scenario_report report;
+        const bool generated = engine.generate(scenario, 5000, record, report);
+        const bool passed = generated && report.success() && all_assertions_passed(report);
+        if (!passed)
+        {
+            std::cerr << "Phenotype assertion failure for condition " << (scenario.condition_count() ? static_cast<int>(scenario.condition(0)) : -1) << '\n';
+            for (unsigned int index = 0; index < report.assertion_count(); ++index)
+                if (report.assertion_status(index) != signal_synth::ecg_assertion_passed)
+                    std::cerr << "  " << report.assertion_name(index) << " measured=" << report.assertion_measured_value(index) << " expected=[" << report.assertion_minimum(index) << ", " << report.assertion_maximum(index) << "]\n";
+        }
+        return passed;
+    }
 }
 
 int main()
@@ -82,7 +108,7 @@ int main()
     second.add_condition(signal_synth::ecg_condition_pvc, 0.8);
     second.set_heart_rate_bpm(72.0);
     second.set_seed(1234);
-    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 1 && signal_synth::ecg_scenario_engine_version() == 1, "fingerprint_is_order_independent_and_versioned");
+    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 1 && signal_synth::ecg_scenario_engine_version() == 2, "fingerprint_is_order_independent_and_versioned");
     signal_synth::ecg_qa_scenario changed = first;
     changed.set_seed(1235);
     ok &= check(first.fingerprint() != changed.fingerprint(), "fingerprint_covers_generation_seed");
@@ -174,7 +200,7 @@ int main()
     atrial_fibrillation.set_rr_variability_seconds(0.12);
     signal_synth::clinical_ecg_record generated_a;
     signal_synth::clinical_ecg_record generated_b;
-    ok &= check(engine.generate(atrial_fibrillation, 5000, generated_a, report) && report.success() && report.generated_sample_count() == 5000 && report.run_fingerprint() != report.scenario_fingerprint() && generated_a.lead_count() == 12 && generated_a.atrial_event_count() == 0 && generated_a.beat_count() > 0, "high_level_scenario_generation");
+    ok &= check(engine.generate(atrial_fibrillation, 5000, generated_a, report) && report.success() && report.phenotype_passed() && report.assertion_count() == 3 && report.generated_sample_count() == 5000 && report.run_fingerprint() != report.scenario_fingerprint() && generated_a.lead_count() == 12 && generated_a.atrial_event_count() == 0 && generated_a.beat_count() > 0, "high_level_scenario_generation");
     signal_synth::ecg_scenario_report repeated_report;
     engine.generate(atrial_fibrillation, 5000, generated_b, repeated_report);
     ok &= check(same_signal(generated_a, generated_b) && report.scenario_fingerprint() == repeated_report.scenario_fingerprint() && report.run_fingerprint() == repeated_report.run_fingerprint(), "scenario_generation_is_reproducible");
@@ -182,6 +208,63 @@ int main()
     signal_synth::clinical_ecg_record preserved_record = generated_a;
     ok &= check(!engine.generate(unsupported, 5000, preserved_record, report) && same_signal(generated_a, preserved_record), "failed_scenario_generation_preserves_output");
     ok &= check(!engine.generate(atrial_fibrillation, 0, preserved_record, report) && report_has_issue(report, signal_synth::ecg_issue_invalid_parameter) && same_signal(generated_a, preserved_record), "zero_length_generation_is_transactional");
+
+    signal_synth::ecg_qa_scenario normal;
+    normal.add_condition(signal_synth::ecg_condition_norm);
+    signal_synth::ecg_qa_scenario sinus;
+    sinus.add_condition(signal_synth::ecg_condition_sr);
+    signal_synth::ecg_qa_scenario flutter_assertions;
+    flutter_assertions.add_condition(signal_synth::ecg_condition_aflt);
+    signal_synth::ecg_qa_scenario svt;
+    svt.add_condition(signal_synth::ecg_condition_svtac);
+    signal_synth::ecg_qa_scenario sinus_tachycardia;
+    sinus_tachycardia.add_condition(signal_synth::ecg_condition_stach);
+    signal_synth::ecg_qa_scenario sinus_bradycardia;
+    sinus_bradycardia.add_condition(signal_synth::ecg_condition_sbrad);
+    signal_synth::ecg_qa_scenario sinus_arrhythmia;
+    sinus_arrhythmia.add_condition(signal_synth::ecg_condition_sarrh);
+    signal_synth::ecg_qa_scenario paced;
+    paced.add_condition(signal_synth::ecg_condition_pace);
+    signal_synth::ecg_qa_scenario tachycardia_with_pvc;
+    tachycardia_with_pvc.add_condition(signal_synth::ecg_condition_stach);
+    tachycardia_with_pvc.add_condition(signal_synth::ecg_condition_pvc);
+    tachycardia_with_pvc.set_heart_rate_bpm(120.0);
+    ok &= check(generated_phenotype_passes(engine, normal) && generated_phenotype_passes(engine, sinus) && generated_phenotype_passes(engine, atrial_fibrillation) && generated_phenotype_passes(engine, flutter_assertions) && generated_phenotype_passes(engine, svt) && generated_phenotype_passes(engine, sinus_tachycardia) && generated_phenotype_passes(engine, sinus_bradycardia) && generated_phenotype_passes(engine, sinus_arrhythmia) && generated_phenotype_passes(engine, paced) && generated_phenotype_passes(engine, tachycardia_with_pvc), "rhythm_phenotype_assertions");
+
+    signal_synth::ecg_qa_scenario pac_assertions;
+    pac_assertions.add_condition(signal_synth::ecg_condition_pac);
+    signal_synth::ecg_qa_scenario pvc_assertions;
+    pvc_assertions.add_condition(signal_synth::ecg_condition_pvc);
+    signal_synth::ecg_qa_scenario bigeminy;
+    bigeminy.add_condition(signal_synth::ecg_condition_pvc);
+    bigeminy.add_condition(signal_synth::ecg_condition_bigu);
+    signal_synth::ecg_qa_scenario trigeminy;
+    trigeminy.add_condition(signal_synth::ecg_condition_pac);
+    trigeminy.add_condition(signal_synth::ecg_condition_trigu);
+    ok &= check(generated_phenotype_passes(engine, pac_assertions) && generated_phenotype_passes(engine, pvc_assertions) && generated_phenotype_passes(engine, bigeminy) && generated_phenotype_passes(engine, trigeminy), "ectopy_phenotype_assertions");
+    signal_synth::clinical_ecg_record too_short_record;
+    signal_synth::ecg_scenario_report too_short_report;
+    ok &= check(engine.generate(pvc_assertions, 400, too_short_record, too_short_report) && too_short_report.success() && !too_short_report.phenotype_passed() && too_short_report.assertion_count() > 0, "failed_phenotype_assertions_preserve_generated_waveform");
+
+    signal_synth::ecg_qa_scenario first_degree_assertions;
+    first_degree_assertions.add_condition(signal_synth::ecg_condition_1avb);
+    signal_synth::ecg_qa_scenario prolonged_pr;
+    prolonged_pr.add_condition(signal_synth::ecg_condition_lpr);
+    signal_synth::ecg_qa_scenario mobitz_i;
+    mobitz_i.add_condition(signal_synth::ecg_condition_2avb);
+    mobitz_i.set_second_degree_av_pattern(signal_synth::ecg_second_degree_mobitz_i);
+    signal_synth::ecg_qa_scenario mobitz_ii;
+    mobitz_ii.add_condition(signal_synth::ecg_condition_2avb);
+    mobitz_ii.set_second_degree_av_pattern(signal_synth::ecg_second_degree_mobitz_ii);
+    signal_synth::ecg_qa_scenario complete_block;
+    complete_block.add_condition(signal_synth::ecg_condition_3avb);
+    signal_synth::ecg_qa_scenario right_bundle;
+    right_bundle.add_condition(signal_synth::ecg_condition_crbbb);
+    signal_synth::ecg_qa_scenario left_bundle;
+    left_bundle.add_condition(signal_synth::ecg_condition_clbbb);
+    signal_synth::ecg_qa_scenario long_qt;
+    long_qt.add_condition(signal_synth::ecg_condition_lngqt);
+    ok &= check(generated_phenotype_passes(engine, first_degree_assertions) && generated_phenotype_passes(engine, prolonged_pr) && generated_phenotype_passes(engine, mobitz_i) && generated_phenotype_passes(engine, mobitz_ii) && generated_phenotype_passes(engine, complete_block) && generated_phenotype_passes(engine, right_bundle) && generated_phenotype_passes(engine, left_bundle) && generated_phenotype_passes(engine, long_qt) && generated_phenotype_passes(engine, tachy_block), "conduction_phenotype_assertions");
 
     std::cout << (ok ? "All ECG scenario tests passed.\n" : "ECG scenario test failure.\n");
     return ok ? 0 : 1;

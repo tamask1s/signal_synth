@@ -3,8 +3,8 @@
 `signal_synth` is a C++11 signal-generation library under active development.
 The existing `signal_synth` API provides the legacy generators. `ecg_model`
 provides the stateful phase-domain ECG and five-channel validation package.
-`clinical_ecg` adds a structured clinical timeline, 3D cardiac vector model,
-12-lead projection, and construction/measured fiducials. `ecg_scenario`
+`clinical_ecg` adds a structured clinical timeline, seven-source 3D cardiac
+vector model, 12-lead projection, and construction/measured fiducials. `ecg_scenario`
 provides the versioned product-facing QA scenario contract, complete PTB-XL
 condition catalog, strict validation, reproducibility fingerprint, and audit
 report.
@@ -41,10 +41,14 @@ The `clinical_ecg` API provides:
 - LBBB and RBBB morphology branches;
 - fixed, Bazett, Fridericia, Framingham and Hodges QT correction;
 - deterministic RR variability and periodic premature/pause scenarios;
-- a 3D cardiac vector projected to the standard 12 lead names;
+- seven independently configurable 3D source components and their summed VCG;
+- a 3D VCG projected to the standard 12 lead names;
 - exact Einthoven and Goldberger identities at default lead gains;
 - global construction fiducials and measured P/Q/R/S/T peaks per lead;
-- copyable records with 12 signal channels and structured annotations.
+- condition-specific rhythm/conduction phenotype assertions with measured
+  values and pass/fail ranges;
+- copyable records with 12 leads, 24 source/VCG channels, and structured
+  annotations.
 
 The `ecg_scenario` API separates catalog coverage from waveform support. It
 rejects unsupported or incompatible conditions rather than silently producing

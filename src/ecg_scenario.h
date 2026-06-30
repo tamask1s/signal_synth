@@ -148,6 +148,34 @@ namespace signal_synth
         ecg_issue_generation_failed = 7
     };
 
+    enum ecg_phenotype_assertion_code
+    {
+        ecg_assert_rhythm = 0,
+        ecg_assert_heart_rate = 1,
+        ecg_assert_rr_variability = 2,
+        ecg_assert_p_wave_presence = 3,
+        ecg_assert_atrial_ventricular_ratio = 4,
+        ecg_assert_ectopic_origin = 5,
+        ecg_assert_ectopic_cadence = 6,
+        ecg_assert_premature_coupling = 7,
+        ecg_assert_pr_interval = 8,
+        ecg_assert_dropped_atrial_events = 9,
+        ecg_assert_av_pattern = 10,
+        ecg_assert_ventricular_escape = 11,
+        ecg_assert_qrs_duration = 12,
+        ecg_assert_terminal_source_polarity = 13,
+        ecg_assert_qtc_interval = 14,
+        ecg_assert_pacing = 15,
+        ecg_assertion_code_count = 16
+    };
+
+    enum ecg_phenotype_assertion_status
+    {
+        ecg_assertion_not_evaluated = 0,
+        ecg_assertion_passed = 1,
+        ecg_assertion_failed = 2
+    };
+
     class ecg_qa_scenario
     {
     public:
@@ -213,6 +241,16 @@ namespace signal_synth
         ecg_condition_code issue_related_condition(unsigned int index) const;
         const char* issue_message(unsigned int index) const;
         unsigned int generated_sample_count() const;
+        bool phenotype_passed() const;
+        unsigned int assertion_count() const;
+        ecg_condition_code assertion_condition(unsigned int index) const;
+        ecg_phenotype_assertion_code assertion_code(unsigned int index) const;
+        ecg_phenotype_assertion_status assertion_status(unsigned int index) const;
+        double assertion_measured_value(unsigned int index) const;
+        double assertion_minimum(unsigned int index) const;
+        double assertion_maximum(unsigned int index) const;
+        const char* assertion_name(unsigned int index) const;
+        const char* assertion_unit(unsigned int index) const;
 
     private:
         implementation* implementation_;

@@ -80,6 +80,27 @@ condition severities, warnings/errors, and generated sample count. Compilation
 and generation are transactional: failure preserves the destination config or
 signal record.
 
+## Phenotype assertions
+
+Scenario engine version 2 evaluates requested supported conditions against the
+generated record. Assertions use beat and atrial-event annotations, exact
+fiducials, and multi-source VCG data rather than treating the requested label as
+proof that a phenotype was rendered.
+
+The assertion set covers rhythm class, mean heart rate, RR variability, P-wave
+presence, atrial-to-ventricular ratio, ectopic origin/cadence/coupling, PR
+interval, dropped atrial events, Mobitz pattern, ventricular escape, QRS width,
+bundle-branch terminal-source polarity, QTc, and pacing evidence. Each report
+entry contains the owning condition, assertion code, measured value, accepted
+range, unit, label, and pass/fail status.
+
+`success()` reports validation and waveform-generation success.
+`phenotype_passed()` independently reports whether every evaluated phenotype
+assertion passed. A generated waveform is retained when an assertion fails,
+which allows failed QA cases to be inspected and exported. Assertions are
+ground-truth consistency checks for this generator, not clinical diagnostic
+criteria or external validation claims.
+
 ## Attribution
 
 PTB-XL version 1.0.3:
