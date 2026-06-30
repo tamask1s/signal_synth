@@ -181,6 +181,18 @@ namespace
         return count;
     }
 
+    unsigned int count_present_fiducials(const signal_synth::clinical_ecg_record& record, signal_synth::clinical_fiducial_kind kind, signal_synth::clinical_fiducial_source source)
+    {
+        unsigned int count = 0;
+        for (unsigned int i = 0; i < record.fiducial_count(); ++i)
+        {
+            const signal_synth::clinical_fiducial_annotation& fiducial = record.fiducials()[i];
+            if (fiducial.kind == kind && fiducial.source == source && fiducial.present)
+                ++count;
+        }
+        return count;
+    }
+
     bool all_atrial_unconducted(const signal_synth::clinical_ecg_record& record)
     {
         for (unsigned int i = 0; i < record.atrial_event_count(); ++i)
@@ -255,6 +267,13 @@ int main()
     for (unsigned int sample = 0; sample < record.sample_count(); ++sample)
         lead_difference = std::max(lead_difference, std::fabs(record.lead_data(signal_synth::clinical_lead_ii)[sample] - no_repolarization.lead_data(signal_synth::clinical_lead_ii)[sample]));
     ok &= check(repolarization_maximum == 0.0 && lead_difference > 0.01 && exact_source_sum(no_repolarization), "individual_source_gain_controls_rendering");
+    ok &= check(!no_repolarization.beats()[0].t_present && count_present_fiducials(no_repolarization, signal_synth::clinical_t_peak, signal_synth::clinical_fiducial_construction) == 0 && count_present_fiducials(no_repolarization, signal_synth::clinical_t_peak, signal_synth::clinical_fiducial_lead_measurement) == 0, "disabled_repolarization_removes_t_ground_truth");
+
+    signal_synth::clinical_ecg_config no_atrial_source_config = config;
+    no_atrial_source_config.sources.gain[signal_synth::clinical_source_atrial] = 0.0;
+    signal_synth::clinical_ecg_record no_atrial_source;
+    signal_synth::clinical_ecg_generator(no_atrial_source_config).generate(5000, no_atrial_source);
+    ok &= check(!no_atrial_source.atrial_events()[0].visible && !no_atrial_source.beats()[0].p_present && count_present_fiducials(no_atrial_source, signal_synth::clinical_p_peak, signal_synth::clinical_fiducial_construction) == 0 && count_present_fiducials(no_atrial_source, signal_synth::clinical_p_peak, signal_synth::clinical_fiducial_lead_measurement) == 0, "disabled_atrial_source_removes_p_ground_truth");
 
     signal_synth::clinical_ecg_config pvc_config = config;
     pvc_config.scenario.premature_every_n_beats = 5;

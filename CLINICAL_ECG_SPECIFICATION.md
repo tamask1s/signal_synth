@@ -63,6 +63,12 @@ component and `vcg_data(axis)` exposes their exact sample-wise sum. The 12
 leads are projected exclusively from this summed VCG, so source decomposition,
 VCG, and lead output remain auditable parts of one generated record.
 
+A zero atrial or repolarization source gain makes the corresponding P or T
+construction annotations explicitly absent and suppresses its lead-measured
+fiducials. A nonzero source can still project weakly or cancel in an individual
+lead; construction ground truth describes the global generated source, while
+lead-measured fiducials describe visibility in that lead.
+
 I and II are independent frontal projections. At unit lead gains:
 
 - `III = II - I`

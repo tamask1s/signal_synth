@@ -465,6 +465,19 @@ namespace signal_synth
             }
         }
 
+        void apply_source_presence(const clinical_ecg_config& config, generated_clinical_data& output)
+        {
+            const bool p_source_present = config.sources.gain[clinical_source_atrial] > 0.0 && std::fabs(config.morphology.p_amplitude_mv) > 0.0;
+            const bool t_source_present = config.sources.gain[clinical_source_repolarization] > 0.0 && std::fabs(config.morphology.t_amplitude_mv) > 0.0;
+            for (clinical_atrial_event& atrial : output.atrial_events)
+                atrial.visible = atrial.visible && p_source_present;
+            for (clinical_beat_annotation& beat : output.beats)
+            {
+                beat.p_present = beat.p_present && beat.linked_atrial_index >= 0 && static_cast<unsigned long long>(beat.linked_atrial_index) < output.atrial_events.size() && output.atrial_events[beat.linked_atrial_index].visible;
+                beat.t_present = beat.t_present && t_source_present;
+            }
+        }
+
         void render_compact_wave(std::vector<vec3>& source, unsigned int sampling_rate, double onset, double peak, double offset, const vec3& amplitude)
         {
             if (!(onset < peak && peak < offset))
@@ -745,10 +758,14 @@ namespace signal_synth
             {
                 for (int lead = 0; lead < clinical_lead_count; ++lead)
                 {
-                    measure_peak(output, config, beat.beat_index, beat.linked_atrial_index, lead, clinical_q_peak, beat.qrs_onset_time_seconds, 0.5 * (beat.q_peak_time_seconds + beat.r_peak_time_seconds));
-                    measure_peak(output, config, beat.beat_index, beat.linked_atrial_index, lead, clinical_r_peak, 0.5 * (beat.q_peak_time_seconds + beat.r_peak_time_seconds), 0.5 * (beat.r_peak_time_seconds + beat.s_peak_time_seconds));
-                    measure_peak(output, config, beat.beat_index, beat.linked_atrial_index, lead, clinical_s_peak, 0.5 * (beat.r_peak_time_seconds + beat.s_peak_time_seconds), beat.qrs_offset_time_seconds);
-                    measure_peak(output, config, beat.beat_index, beat.linked_atrial_index, lead, clinical_t_peak, beat.t_onset_time_seconds, beat.t_offset_time_seconds);
+                    if (beat.qrs_present)
+                    {
+                        measure_peak(output, config, beat.beat_index, beat.linked_atrial_index, lead, clinical_q_peak, beat.qrs_onset_time_seconds, 0.5 * (beat.q_peak_time_seconds + beat.r_peak_time_seconds));
+                        measure_peak(output, config, beat.beat_index, beat.linked_atrial_index, lead, clinical_r_peak, 0.5 * (beat.q_peak_time_seconds + beat.r_peak_time_seconds), 0.5 * (beat.r_peak_time_seconds + beat.s_peak_time_seconds));
+                        measure_peak(output, config, beat.beat_index, beat.linked_atrial_index, lead, clinical_s_peak, 0.5 * (beat.r_peak_time_seconds + beat.s_peak_time_seconds), beat.qrs_offset_time_seconds);
+                    }
+                    if (beat.t_present)
+                        measure_peak(output, config, beat.beat_index, beat.linked_atrial_index, lead, clinical_t_peak, beat.t_onset_time_seconds, beat.t_offset_time_seconds);
                 }
             }
         }
@@ -992,6 +1009,7 @@ namespace signal_synth
                 generate_atrial_conduction_timeline(implementation_->config, duration, generated);
             else
                 generate_sequential_timeline(implementation_->config, duration, generated);
+            apply_source_presence(implementation_->config, generated);
             std::vector<vec3> raw_sources[clinical_source_count];
             std::vector<vec3> total_source;
             render_sources(implementation_->config, generated, raw_sources);
