@@ -17,6 +17,11 @@ g++ -std=c++11 -Wall -Wextra -Wpedantic \
     teszt/clinical_ecg_test.cpp src/clinical_ecg.cpp \
     -o /tmp/clinical_ecg_test
 /tmp/clinical_ecg_test
+
+g++ -std=c++11 -Wall -Wextra -Wpedantic \
+    teszt/ecg_scenario_test.cpp src/ecg_scenario.cpp src/clinical_ecg.cpp \
+    -o /tmp/ecg_scenario_test
+/tmp/ecg_scenario_test
 ```
 
 To intentionally refresh the golden summaries:

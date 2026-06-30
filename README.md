@@ -4,7 +4,10 @@
 The existing `signal_synth` API provides the legacy generators. `ecg_model`
 provides the stateful phase-domain ECG and five-channel validation package.
 `clinical_ecg` adds a structured clinical timeline, 3D cardiac vector model,
-12-lead projection, and construction/measured fiducials.
+12-lead projection, and construction/measured fiducials. `ecg_scenario`
+provides the versioned product-facing QA scenario contract, complete PTB-XL
+condition catalog, strict validation, reproducibility fingerprint, and audit
+report.
 
 ## ECG model status
 
@@ -43,6 +46,10 @@ The `clinical_ecg` API provides:
 - global construction fiducials and measured P/Q/R/S/T peaks per lead;
 - copyable records with 12 signal channels and structured annotations.
 
+The `ecg_scenario` API separates catalog coverage from waveform support. It
+rejects unsupported or incompatible conditions rather than silently producing
+a mislabeled signal. See `ECG_SCENARIO_SPECIFICATION.md`.
+
 The clinical engine is a deterministic engineering phantom. Its morphology is
 not fitted to a patient population, and the precordial projection is a compact
 lead-field approximation rather than a torso volume-conductor simulation.
@@ -58,6 +65,7 @@ cd /tmp/signal_synth-build
 ctest --output-on-failure
 ```
 
-See `MODEL_SPECIFICATION.md` and `CLINICAL_ECG_SPECIFICATION.md` for behavioral
-semantics. Review `LEGAL_PROVENANCE.md` and `DATA_LICENSES.md` before adding
-model code, dependencies, datasets, or release artifacts.
+See `MODEL_SPECIFICATION.md`, `CLINICAL_ECG_SPECIFICATION.md`,
+`ECG_SCENARIO_SPECIFICATION.md`, and `PRODUCT_DIRECTION.md`. Review
+`LEGAL_PROVENANCE.md` and `DATA_LICENSES.md` before adding model code,
+dependencies, datasets, or release artifacts.

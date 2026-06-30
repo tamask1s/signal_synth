@@ -4,11 +4,11 @@ No third-party ECG recording is bundled with this library by default.
 Validation tooling should download or import datasets separately and retain
 their original license and attribution metadata.
 
-Candidate datasets currently considered for validation:
+Datasets used or currently considered for validation:
 
 | Dataset | License | Intended use |
 | --- | --- | --- |
-| PTB-XL / PTB-XL+ | CC BY 4.0 | Morphology distributions and fiducials |
+| PTB-XL / PTB-XL+ | CC BY 4.0 | PTB-XL condition catalog metadata is used; waveforms remain external candidates for morphology and fiducial validation |
 | MIT-BIH Arrhythmia Database | ODC Attribution 1.0 | Rhythm and detector validation |
 | MIT-BIH Noise Stress Test Database | ODC Attribution 1.0 | Noise robustness |
 

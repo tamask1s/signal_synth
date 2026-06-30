@@ -26,6 +26,12 @@ implementation based on general electrophysiology definitions and equations
 recorded in `CLINICAL_ECG_SPECIFICATION.md`. It does not include code, model
 weights, parameter tables, or data copied from another ECG generator.
 
+The SCP-ECG condition catalog in `src/ecg_scenario.cpp` uses statement codes,
+ordering, categories, and descriptions from PTB-XL version 1.0.3
+`scp_statements.csv`, distributed under CC BY 4.0. Attribution is recorded in
+`ECG_SCENARIO_SPECIFICATION.md`. No PTB-XL waveform is bundled in this
+repository.
+
 Contributors must record any additional implementation source, dataset, or
 third-party dependency before adding code derived from it.
 
