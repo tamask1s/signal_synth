@@ -108,7 +108,7 @@ int main()
     second.add_condition(signal_synth::ecg_condition_pvc, 0.8);
     second.set_heart_rate_bpm(72.0);
     second.set_seed(1234);
-    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 2 && signal_synth::ecg_scenario_engine_version() == 4, "fingerprint_is_order_independent_and_versioned");
+    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 2 && signal_synth::ecg_scenario_engine_version() == 5, "fingerprint_is_order_independent_and_versioned");
     signal_synth::ecg_qa_scenario changed = first;
     changed.set_seed(1235);
     ok &= check(first.fingerprint() != changed.fingerprint(), "fingerprint_covers_generation_seed");
@@ -124,7 +124,7 @@ int main()
     ok &= check(engine.compile(first, compiled, report) && compiled.rhythm.rhythm == signal_synth::clinical_rhythm_sinus && compiled.scenario.premature_origin == signal_synth::clinical_origin_pvc && compiled.scenario.premature_every_n_beats == 2 && std::fabs(compiled.scenario.premature_coupling_ratio - 0.65) < 1e-12 && compiled.rhythm.seed == 1234, "scenario_compiles_to_clinical_config");
 
     signal_synth::ecg_qa_scenario unsupported;
-    unsupported.add_condition(signal_synth::ecg_condition_imi);
+    unsupported.add_condition(signal_synth::ecg_condition_lafb);
     signal_synth::clinical_ecg_config preserved;
     preserved.rhythm.heart_rate_bpm = 91.0;
     ok &= check(!engine.compile(unsupported, preserved, report) && !report.success() && report_has_issue(report, signal_synth::ecg_issue_unsupported_condition) && preserved.rhythm.heart_rate_bpm == 91.0, "catalog_only_condition_fails_transactionally");

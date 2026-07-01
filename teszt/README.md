@@ -7,13 +7,29 @@ CTest exposes these stable verification suite IDs:
 - `TEST-ECG-PHANTOM-001`
 - `TEST-ECG-MORPH-001`
 - `TEST-ECG-SCENARIO-001`
+- `TEST-ECG-INFARCTION-001`
+- `TEST-ECG-JSON-001`
+- `TEST-ECG-EXPORT-001`
+- `TEST-PPG-001`
+- `TEST-CLI-001`
+- `TEST-BUILD-001`
 
-GitHub Actions procedure `CI-VER-001` executes all five suites on Linux and
+GitHub Actions procedure `CI-VER-001` executes all suites on Linux and
 Windows. See `doc/synsigra_architecture_docs/17_TRACEABILITY_SOP.md` for the
 difference between a test procedure, an execution result, and retained
 verification evidence.
 
-Build and run from the repository root:
+The controlled build and verification path from the repository root is:
+
+```sh
+cmake -H. -Bbuild -DSIGNAL_SYNTH_BUILD_TESTS=ON
+cmake --build build
+cd build
+ctest --output-on-failure
+```
+
+The following direct compiler commands remain useful for focused legacy
+debugging:
 
 ```sh
 g++ -std=c++11 -Wall -Wextra -Wpedantic \

@@ -37,6 +37,8 @@ Implementation increment designs:
   the exact ECG ventricular timeline.
 - `increments/006_HYPERTROPHY_QA_PACK.md` defines six measured multi-source
   hypertrophy and atrial-overload engineering phenotypes.
+- `increments/007_TERRITORIAL_INFARCTION_INJURY_QA_PACK.md` defines the
+  territorial Q-wave, posterior reciprocal, and injury-ST phenotype family.
 
 Traceability demonstration:
 

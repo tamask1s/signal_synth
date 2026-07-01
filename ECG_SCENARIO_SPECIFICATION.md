@@ -34,6 +34,10 @@ Parameterized conditions are `LNGQT`, `CRBBB`, `CLBBB`, `LPR`, `PRC(S)`,
 identifies every accepted parameterized condition. `native_only` policy
 rejects them.
 
+The territorial infarction/injury pack additionally parameterizes `IMI`,
+`ASMI`, `ILMI`, `AMI`, `ALMI`, `LMI`, `IPLMI`, `IPMI`, `PMI`, `INJAS`,
+`INJAL`, `INJIN`, `INJLA`, and `INJIL`.
+
 `PRC(S)` requires a PAC or PVC origin. `BIGU` and `TRIGU` also require one
 ectopic origin and set cadence to two and three beats respectively. `2AVB`
 requires an explicit Mobitz I or Mobitz II pattern.
@@ -48,6 +52,9 @@ Variable severity is currently implemented only for `LNGQT`, `1AVB`, `LPR`,
 `RVH`, `SEHYP`, `VCLVH`, `LAO/LAE`, and `RAO/RAE`. A non-default severity on
 any other condition is rejected so that metadata cannot claim an effect that
 was not rendered.
+
+The same variable-severity contract applies to all 14 territorial
+infarction/injury conditions.
 
 `QWAVE` requires an explicit inferior, anterior, or lateral territory. Its
 septal source orientation and duration are changed before normal 12-lead
@@ -64,6 +71,14 @@ per scenario in this first pack, and it does not compose with the other clean
 morphology phenotypes or complex rhythm/conduction forms. The metrics and
 limits are versioned engineering QA rules, not clinical diagnostic criteria.
 
+The infarction/injury pack uses explicit inferior, septal, anterior, lateral,
+and combined lead masks. Non-posterior infarction conditions use measured
+territorial Q evidence. `PMI`, `IPMI`, and `IPLMI` use an explicitly named
+reciprocal anterior R-wave proxy because the output has no V7-V9 posterior
+leads. Injury conditions use measured territorial ST-J depression. These
+forms are parameterized engineering stress phenotypes and do not establish
+myocardial infarction or acute coronary syndrome.
+
 ## Normalization and validation
 
 Conditions are stored in canonical code order. The report contains both
@@ -75,6 +90,8 @@ explicit and inferred conditions. Current implications include:
 - complete LBBB or RBBB implies `ABQRS`.
 - Q-wave and low/high-voltage morphology implies `ABQRS`.
 - ventricular or septal hypertrophy morphology implies `ABQRS`.
+- infarction morphology implies `ABQRS`;
+- non-posterior and combined Q-wave infarction morphology implies `QWAVE`.
 
 The validator rejects incompatible primary rhythms, conflicting AV-block
 degrees, normal-plus-abnormal combinations, unsupported fidelity, ectopy
@@ -116,7 +133,7 @@ generation fingerprint remains an ECG-engine identity.
 
 ## Phenotype assertions
 
-Scenario engine version 4 evaluates requested supported conditions against the
+Scenario engine version 5 evaluates requested supported conditions against the
 generated record. Assertions use beat and atrial-event annotations, exact
 fiducials, multi-source VCG data, and measured 12-lead morphology rather than
 treating the requested label as proof that a phenotype was rendered.
@@ -129,6 +146,9 @@ amplitude/duration/lead count, low/high QRS voltage, ventricular/septal voltage
 phenotypes, V1 R/S ratio, P duration, and inferior P amplitude. Each report
 entry contains the owning condition, assertion code, measured value, accepted
 range, unit, label, and pass/fail status.
+
+The assertion set also covers territorial infarction Q evidence, posterior
+reciprocal R-wave proxy evidence, and territorial injury ST-J evidence.
 
 `success()` reports validation and waveform-generation success.
 `phenotype_passed()` independently reports whether every evaluated phenotype

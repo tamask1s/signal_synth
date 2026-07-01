@@ -1,0 +1,57 @@
+// Territorial infarction engineering QA phenotypes.
+// Posterior cases expose reciprocal anterior proxy evidence.
+// ECG annotations are emitted as extra channels (annotation_output = 2).
+
+#define SAMPLING_RATE 500
+#define NUMBER_OF_SAMPLES 6000
+#define OUTPUT_BASE ecg_infarction_phenotypes
+
+DataDelete();
+
+GenerateECGQAScenario(imi_ecg, imi_sources, imi_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["IMI"], "heart_rate_bpm":70, "seed":6001}, 2);
+GenerateECGQAScenario(asmi_ecg, asmi_sources, asmi_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["ASMI"], "heart_rate_bpm":70, "seed":6002}, 2);
+GenerateECGQAScenario(ilmi_ecg, ilmi_sources, ilmi_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["ILMI"], "heart_rate_bpm":70, "seed":6003}, 2);
+GenerateECGQAScenario(ami_ecg, ami_sources, ami_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["AMI"], "heart_rate_bpm":70, "seed":6004}, 2);
+GenerateECGQAScenario(almi_ecg, almi_sources, almi_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["ALMI"], "heart_rate_bpm":70, "seed":6005}, 2);
+GenerateECGQAScenario(lmi_ecg, lmi_sources, lmi_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["LMI"], "heart_rate_bpm":70, "seed":6006}, 2);
+GenerateECGQAScenario(iplmi_ecg, iplmi_sources, iplmi_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["IPLMI"], "heart_rate_bpm":70, "seed":6007}, 2);
+GenerateECGQAScenario(ipmi_ecg, ipmi_sources, ipmi_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["IPMI"], "heart_rate_bpm":70, "seed":6008}, 2);
+GenerateECGQAScenario(pmi_ecg, pmi_sources, pmi_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["PMI"], "heart_rate_bpm":70, "seed":6009}, 2);
+
+SaveVarToFile(imi_ecg, CatStrings(OUTPUT_BASE, _imi, .bin), 100, 8);
+SaveVarToFile(asmi_ecg, CatStrings(OUTPUT_BASE, _asmi, .bin), 100, 8);
+SaveVarToFile(ilmi_ecg, CatStrings(OUTPUT_BASE, _ilmi, .bin), 100, 8);
+SaveVarToFile(ami_ecg, CatStrings(OUTPUT_BASE, _ami, .bin), 100, 8);
+SaveVarToFile(almi_ecg, CatStrings(OUTPUT_BASE, _almi, .bin), 100, 8);
+SaveVarToFile(lmi_ecg, CatStrings(OUTPUT_BASE, _lmi, .bin), 100, 8);
+SaveVarToFile(iplmi_ecg, CatStrings(OUTPUT_BASE, _iplmi, .bin), 100, 8);
+SaveVarToFile(ipmi_ecg, CatStrings(OUTPUT_BASE, _ipmi, .bin), 100, 8);
+SaveVarToFile(pmi_ecg, CatStrings(OUTPUT_BASE, _pmi, .bin), 100, 8);
+SaveVarToFile(imi_assertions, CatStrings(OUTPUT_BASE, _imi_assertions, .bin), 100, 8);
+SaveVarToFile(asmi_assertions, CatStrings(OUTPUT_BASE, _asmi_assertions, .bin), 100, 8);
+SaveVarToFile(ilmi_assertions, CatStrings(OUTPUT_BASE, _ilmi_assertions, .bin), 100, 8);
+SaveVarToFile(ami_assertions, CatStrings(OUTPUT_BASE, _ami_assertions, .bin), 100, 8);
+SaveVarToFile(almi_assertions, CatStrings(OUTPUT_BASE, _almi_assertions, .bin), 100, 8);
+SaveVarToFile(lmi_assertions, CatStrings(OUTPUT_BASE, _lmi_assertions, .bin), 100, 8);
+SaveVarToFile(iplmi_assertions, CatStrings(OUTPUT_BASE, _iplmi_assertions, .bin), 100, 8);
+SaveVarToFile(ipmi_assertions, CatStrings(OUTPUT_BASE, _ipmi_assertions, .bin), 100, 8);
+SaveVarToFile(pmi_assertions, CatStrings(OUTPUT_BASE, _pmi_assertions, .bin), 100, 8);
+
+DisplayData(imi_ecg, fit_width,, A2, 001);
+DisplayData(imi_assertions, fit_width,, A2, 001);
+DisplayData(asmi_ecg, fit_width,, A2, 001);
+DisplayData(asmi_assertions, fit_width,, A2, 001);
+DisplayData(ilmi_ecg, fit_width,, A2, 001);
+DisplayData(ilmi_assertions, fit_width,, A2, 001);
+DisplayData(ami_ecg, fit_width,, A2, 001);
+DisplayData(ami_assertions, fit_width,, A2, 001);
+DisplayData(almi_ecg, fit_width,, A2, 001);
+DisplayData(almi_assertions, fit_width,, A2, 001);
+DisplayData(lmi_ecg, fit_width,, A2, 001);
+DisplayData(lmi_assertions, fit_width,, A2, 001);
+DisplayData(iplmi_ecg, fit_width,, A2, 001);
+DisplayData(iplmi_assertions, fit_width,, A2, 001);
+DisplayData(ipmi_ecg, fit_width,, A2, 001);
+DisplayData(ipmi_assertions, fit_width,, A2, 001);
+DisplayData(pmi_ecg, fit_width,, A2, 001);
+DisplayData(pmi_assertions, fit_width,, A2, 001);

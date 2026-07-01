@@ -1,0 +1,36 @@
+// Territorial subendocardial-injury engineering QA phenotypes.
+// ECG annotations are emitted as extra channels (annotation_output = 2).
+
+#define SAMPLING_RATE 500
+#define NUMBER_OF_SAMPLES 6000
+#define OUTPUT_BASE ecg_injury_phenotypes
+
+DataDelete();
+
+GenerateECGQAScenario(injas_ecg, injas_sources, injas_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["INJAS"], "heart_rate_bpm":70, "seed":6101}, 2);
+GenerateECGQAScenario(injal_ecg, injal_sources, injal_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["INJAL"], "heart_rate_bpm":70, "seed":6102}, 2);
+GenerateECGQAScenario(injin_ecg, injin_sources, injin_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["INJIN"], "heart_rate_bpm":70, "seed":6103}, 2);
+GenerateECGQAScenario(injla_ecg, injla_sources, injla_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["INJLA"], "heart_rate_bpm":70, "seed":6104}, 2);
+GenerateECGQAScenario(injil_ecg, injil_sources, injil_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["INJIL"], "heart_rate_bpm":70, "seed":6105}, 2);
+
+SaveVarToFile(injas_ecg, CatStrings(OUTPUT_BASE, _injas, .bin), 100, 8);
+SaveVarToFile(injal_ecg, CatStrings(OUTPUT_BASE, _injal, .bin), 100, 8);
+SaveVarToFile(injin_ecg, CatStrings(OUTPUT_BASE, _injin, .bin), 100, 8);
+SaveVarToFile(injla_ecg, CatStrings(OUTPUT_BASE, _injla, .bin), 100, 8);
+SaveVarToFile(injil_ecg, CatStrings(OUTPUT_BASE, _injil, .bin), 100, 8);
+SaveVarToFile(injas_assertions, CatStrings(OUTPUT_BASE, _injas_assertions, .bin), 100, 8);
+SaveVarToFile(injal_assertions, CatStrings(OUTPUT_BASE, _injal_assertions, .bin), 100, 8);
+SaveVarToFile(injin_assertions, CatStrings(OUTPUT_BASE, _injin_assertions, .bin), 100, 8);
+SaveVarToFile(injla_assertions, CatStrings(OUTPUT_BASE, _injla_assertions, .bin), 100, 8);
+SaveVarToFile(injil_assertions, CatStrings(OUTPUT_BASE, _injil_assertions, .bin), 100, 8);
+
+DisplayData(injas_ecg, fit_width,, A2, 001);
+DisplayData(injas_assertions, fit_width,, A2, 001);
+DisplayData(injal_ecg, fit_width,, A2, 001);
+DisplayData(injal_assertions, fit_width,, A2, 001);
+DisplayData(injin_ecg, fit_width,, A2, 001);
+DisplayData(injin_assertions, fit_width,, A2, 001);
+DisplayData(injla_ecg, fit_width,, A2, 001);
+DisplayData(injla_assertions, fit_width,, A2, 001);
+DisplayData(injil_ecg, fit_width,, A2, 001);
+DisplayData(injil_assertions, fit_width,, A2, 001);

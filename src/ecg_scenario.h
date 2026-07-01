@@ -184,7 +184,11 @@ namespace signal_synth
         ecg_assert_septal_qrs_voltage = 23,
         ecg_assert_p_wave_duration = 24,
         ecg_assert_p_wave_amplitude = 25,
-        ecg_assertion_code_count = 26
+        ecg_assert_posterior_reciprocal_r_amplitude = 26,
+        ecg_assert_posterior_reciprocal_lead_count = 27,
+        ecg_assert_injury_st_deviation = 28,
+        ecg_assert_injury_st_lead_count = 29,
+        ecg_assertion_code_count = 30
     };
 
     enum ecg_phenotype_assertion_status

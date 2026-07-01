@@ -82,6 +82,7 @@ Stable suite IDs use the form `TEST-<AREA>-<NNN>`. The current suites are:
 | `TEST-ECG-PHANTOM-001` | 12-lead phantom, rhythm, conduction, source model | `teszt/clinical_ecg_test.cpp` |
 | `TEST-ECG-MORPH-001` | Measured morphology and lead territories | `teszt/ecg_morphology_test.cpp` |
 | `TEST-ECG-SCENARIO-001` | Scenario validation, fingerprints, assertions | `teszt/ecg_scenario_test.cpp` |
+| `TEST-ECG-INFARCTION-001` | Territorial infarction/injury phenotypes and assertions | `teszt/ecg_infarction_test.cpp` |
 | `TEST-ECG-JSON-001` | Strict scenario JSON, canonicalization and SHA-256 | `teszt/ecg_scenario_json_test.cpp` |
 | `TEST-ECG-EXPORT-001` | Render bundle, export formats, metrics and HTML report | `teszt/ecg_export_test.cpp` |
 | `TEST-PPG-001` | Shared-timeline PPG waveform, linkage and fiducials | `teszt/ppg_model_test.cpp` |

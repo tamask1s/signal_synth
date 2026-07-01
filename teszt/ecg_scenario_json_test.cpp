@@ -91,6 +91,15 @@ int main()
     const std::string unsupported = std::string(input).replace(input.find("\"NORM\""), 6, "\"NDT\"");
     ok &= check(rejects_without_mutation(unsupported, signal_synth::ecg_json_semantic), "reject_unsupported_condition");
 
+    signal_synth::ecg_scenario_document territorial;
+    territorial.scenario_id = "territorial_imi";
+    territorial.ecg.clear_conditions();
+    territorial.ecg.add_condition(signal_synth::ecg_condition_imi, 0.5);
+    signal_synth::ecg_scenario_json_result territorial_result;
+    signal_synth::ecg_scenario_document territorial_roundtrip;
+    signal_synth::ecg_scenario_json_result territorial_repeated;
+    ok &= check(signal_synth::write_ecg_scenario_json(territorial, territorial_result) && signal_synth::parse_ecg_scenario_json(territorial_result.canonical_json, territorial_roundtrip, territorial_repeated) && territorial_roundtrip.ecg.has_condition(signal_synth::ecg_condition_imi) && territorial_roundtrip.ecg.condition_severity(0) == 0.5 && territorial_result.document_fingerprint == territorial_repeated.document_fingerprint, "territorial_condition_json_roundtrip");
+
     signal_synth::ecg_scenario_document invalid_document;
     invalid_document.scenario_id.clear();
     signal_synth::ecg_scenario_json_result invalid_result;
