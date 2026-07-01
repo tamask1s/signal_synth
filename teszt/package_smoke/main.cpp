@@ -1,5 +1,6 @@
 #include <signal_synth/clinical_ecg.h>
 #include <signal_synth/ecg_model.h>
+#include <signal_synth/ecg_export.h>
 #include <signal_synth/ecg_morphology.h>
 #include <signal_synth/ecg_scenario.h>
 #include <signal_synth/ecg_scenario_json.h>
@@ -28,5 +29,7 @@ int main()
         return 4;
     if (!signal_synth::write_ecg_scenario_json(document, json_result))
         return 5;
+    if (std::string(signal_synth::signal_synth_generator_version()).empty())
+        return 6;
     return 0;
 }

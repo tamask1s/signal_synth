@@ -231,3 +231,21 @@ Export/report feature is MVP-complete when:
 - warnings and limitations are included;
 - export package is zipped;
 - package can be regenerated deterministically.
+
+## 14. Current local ECG package
+
+The implemented local schema-v1 ECG package contains:
+
+- canonical `scenario.json`;
+- `metadata.json` with document, generation, and run identities;
+- 12-lead `waveform.csv` in mV;
+- `annotations.json` with beats, atrial events, and construction/measured
+  fiducials;
+- `ground_truth_metrics.json` with HRV metrics and phenotype assertions;
+- `warnings.json`;
+- self-contained `report.html` with an actual Lead II SVG preview;
+- controlled-use `README.txt`.
+
+The artifact bytes intentionally omit wall-clock time so local regeneration is
+deterministic. A future SaaS audit record may add export time, customer,
+license, and download identity outside the render fingerprint.

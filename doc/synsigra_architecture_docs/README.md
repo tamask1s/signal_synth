@@ -34,6 +34,7 @@ signal_synth/
       001_PORTABLE_BUILD_BASELINE.md
       002_VERSIONED_SCENARIO_JSON.md
       003_SCENARIO_CLI_VALIDATE_FINGERPRINT.md
+      004_RENDER_EXPORT_REPORT.md
 ```
 
 Current product positioning:

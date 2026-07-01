@@ -31,6 +31,8 @@ Implementation increment designs:
   scenario document, canonicalization, and fingerprint contract.
 - `increments/003_SCENARIO_CLI_VALIDATE_FINGERPRINT.md` defines the first
   product-facing validate/fingerprint executable.
+- `increments/004_RENDER_EXPORT_REPORT.md` defines deterministic render,
+  export artifacts, and the self-contained HTML evidence report.
 
 Traceability demonstration:
 

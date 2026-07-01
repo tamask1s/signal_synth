@@ -37,6 +37,16 @@ if(NOT usage_result EQUAL 2 OR NOT usage_output STREQUAL "" OR NOT usage_error M
     message(FATAL_ERROR "Usage error contract failed")
 endif()
 
+set(render_dir "${SIGNAL_SYNTH_CLI_WORK_DIR}/render")
+execute_process(COMMAND "${SIGNAL_SYNTH_CLI}" render "${SIGNAL_SYNTH_EXAMPLE}" --out "${render_dir}" RESULT_VARIABLE render_result OUTPUT_VARIABLE render_output ERROR_VARIABLE render_error)
+if(NOT render_result EQUAL 0 OR NOT render_error STREQUAL "" OR NOT render_output MATCHES "^status=rendered" OR NOT EXISTS "${render_dir}/report.html" OR NOT EXISTS "${render_dir}/waveform.csv")
+    message(FATAL_ERROR "CLI render contract failed: ${render_error}")
+endif()
+execute_process(COMMAND "${SIGNAL_SYNTH_CLI}" render "${SIGNAL_SYNTH_EXAMPLE}" --out "${render_dir}" RESULT_VARIABLE overwrite_result OUTPUT_VARIABLE overwrite_output ERROR_VARIABLE overwrite_error)
+if(NOT overwrite_result EQUAL 3 OR NOT overwrite_output STREQUAL "" OR NOT overwrite_error MATCHES "^error=OUTPUT_WRITE_FAILED")
+    message(FATAL_ERROR "CLI no-overwrite contract failed")
+endif()
+
 set(large_file "${SIGNAL_SYNTH_CLI_WORK_DIR}/large.json")
 set(block "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 file(WRITE "${large_file}" "")

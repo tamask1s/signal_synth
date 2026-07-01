@@ -94,9 +94,14 @@ Validate and fingerprint a portable scenario document:
 ```sh
 /tmp/signal_synth-build/signal-synth validate examples/scenarios/ecg_clean.json
 /tmp/signal_synth-build/signal-synth fingerprint examples/scenarios/ecg_clean.json
+/tmp/signal_synth-build/signal-synth render examples/scenarios/ecg_clean.json --out /tmp/ecg_clean_export
 ```
 
 Use `-DSIGNAL_SYNTH_BUILD_CLI=OFF` for a library-only build.
+
+The render command creates deterministic scenario, metadata, 12-lead CSV,
+annotation, metric, warning, HTML report, and README artifacts. Reports and
+exports are synthetic engineering test evidence, not clinical validation.
 
 GitHub Actions runs the five behavioral `TEST-*` suites and the installed
 package smoke suite on Linux and Windows, and preserves the CTest logs as
