@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-007
 
-**Version:** 0.1
+**Version:** 0.2
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Biosignal Algorithms / Verification
 
@@ -279,3 +279,4 @@ remains separate from portable core verification.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-01 | Initial proposed design |
+| 0.2 | 2026-07-01 | Accepted implementation `c4c3204`; Linux and Windows verification passed in CI run `28516223985` |

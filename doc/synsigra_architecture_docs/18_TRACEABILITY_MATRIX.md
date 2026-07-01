@@ -2,7 +2,7 @@
 
 **Document ID:** SYN-TRACE-001
 
-**Version:** 0.2
+**Version:** 0.3
 
 **Status:** Living demonstration record
 
