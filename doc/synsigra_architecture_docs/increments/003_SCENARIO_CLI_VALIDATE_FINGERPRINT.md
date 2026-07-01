@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-003
 
-**Version:** 0.1
+**Version:** 0.2
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Developer Tools / Scenario API
 
@@ -162,3 +162,4 @@ The CLI does not yet produce a validation package; it only validates identity.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-01 | Initial proposed design |
+| 0.2 | 2026-07-01 | Accepted implementation `4466251`; Linux and Windows verification passed in CI run `28506600387` |

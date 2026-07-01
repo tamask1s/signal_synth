@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-002
 
-**Version:** 0.1
+**Version:** 0.2
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Software Architecture / Scenario API
 
@@ -272,3 +272,4 @@ yet satisfy the complete multimodal SRS.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-01 | Initial proposed design |
+| 0.2 | 2026-07-01 | Accepted implementation `bbbd794`; Linux and Windows verification passed in CI run `28506111654` |

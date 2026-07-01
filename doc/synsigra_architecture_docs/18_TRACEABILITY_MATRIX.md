@@ -2,13 +2,13 @@
 
 **Document ID:** SYN-TRACE-001
 
-**Version:** 0.1
+**Version:** 0.2
 
 **Status:** Living demonstration record
 
 **Owner role:** Engineering / Quality
 
-**Scope:** Current implemented baseline and supporting RSPT filter work.
+**Scope:** Current implemented ECG/PPG developer-tool baseline and supporting RSPT filter work.
 
 ## 1. Use and limitations
 
@@ -76,5 +76,6 @@ the tested commit, environment, logs, deviations, approvals, and matrix version.
 - No independent reviewer approval or electronic signature is recorded.
 - No formal risk-control verification matrix exists.
 - No released V&V report or long-term evidence archive exists.
-- The full SRS includes planned PPG, export, report, API, SaaS, and hardware
-  requirements that are not claimed complete by this matrix.
+- The full SRS includes additional ECG/PPG realism, acquisition artifacts,
+  algorithm comparison, SaaS, and hardware requirements that are not claimed
+  complete by this matrix.

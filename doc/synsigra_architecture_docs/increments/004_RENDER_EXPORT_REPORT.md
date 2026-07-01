@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-004
 
-**Version:** 0.1
+**Version:** 0.2
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Export / Reporting / Developer Tools
 
@@ -236,3 +236,4 @@ This package is synthetic engineering test evidence, not clinical validation.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-01 | Initial proposed design |
+| 0.2 | 2026-07-01 | Accepted implementation `22ce7af`; Linux and Windows verification passed in CI run `28507520075` |
