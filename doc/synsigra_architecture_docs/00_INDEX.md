@@ -43,6 +43,8 @@ Implementation increment designs:
   complete ST-T/repolarization condition family and broad-statement proxies.
 - `increments/009_CONTINUOUS_STT_RENDERING.md` corrects discontinuous
   terminal-QRS, ST, and T source transitions.
+- `increments/010_DATABROWSER_FIXED_LABEL_SAFETY.md` corrects fixed-label
+  buffer overflow in the Windows DataBrowser adapter.
 
 Traceability demonstration:
 

@@ -2,7 +2,7 @@
 
 **Document ID:** SYN-TRACE-001
 
-**Version:** 0.5
+**Version:** 0.6
 
 **Status:** Living demonstration record
 
@@ -45,6 +45,7 @@ The authoritative implementation/result details remain in the linked issues.
 | `TRC-ECG12-004` | `REQ-GEN-001..003`, `REQ-ECG-001..003`, `REQ-ECG-006..007`, `REQ-GT-001`, `REQ-VER-003` | Territorial infarction/injury increment | `src/ecg_scenario.*` | `TEST-ECG-INFARCTION-001`, `TEST-ECG-SCENARIO-001` | [signal_synth#19](https://github.com/tamask1s/signal_synth/issues/19) |
 | `TRC-ECG12-005` | `REQ-GEN-001..003`, `REQ-ECG-001..003`, `REQ-ECG-006..007`, `REQ-GT-001`, `REQ-VER-003` | Ischemia, ST-T, and repolarization increment | `src/ecg_scenario.*` | `TEST-ECG-REPOLARIZATION-001`, `TEST-ECG-SCENARIO-001`, `TEST-ECG-JSON-001` | [signal_synth#20](https://github.com/tamask1s/signal_synth/issues/20) |
 | `TRC-ECG12-006` | `REQ-GEN-001..003`, `REQ-ECG-001..003`, `REQ-ECG-006..007`, `REQ-GT-001`, `REQ-NFR-001..005`, `REQ-VER-003` | Continuous ST-T rendering correction | `src/clinical_ecg.cpp`, `src/ecg_scenario.cpp` | `TEST-ECG-PHANTOM-001`, `TEST-ECG-REPOLARIZATION-001` | [signal_synth#21](https://github.com/tamask1s/signal_synth/issues/21) |
+| `TRC-API-002` | `REQ-API-001..003`, `REQ-NFR-003`, `REQ-NFR-008`, `REQ-VER-001` | DataBrowser fixed-label safety correction | SVN `SignalProc_RSPT.cpp` | Standalone guard-buffer test and manual DataBrowser integration; automated app-build gap | [signal_synth#22](https://github.com/tamask1s/signal_synth/issues/22) |
 | `TRC-DSP-001` | Supporting `REQ-NFR-003`, `REQ-NFR-008` | Shared DSP ownership | RSPT FIR design API | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#1](https://github.com/tamask1s/rspt_module/issues/1) |
 | `TRC-DSP-002` | Supporting `REQ-NFR-008` | IIR coefficient contract | RSPT IIR/filter consumers | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#2](https://github.com/tamask1s/rspt_module/issues/2) |
 
