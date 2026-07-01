@@ -6,7 +6,8 @@
 `clinical_ecg` waveform configuration. It represents reproducible ECG
 algorithm-QA scenarios, not diagnoses or clinical claims.
 
-Schema version 1 contains the complete 71-statement PTB-XL SCP-ECG catalog.
+Schema version 2 contains the complete 71-statement PTB-XL SCP-ECG catalog and
+the explicit Q-wave territory parameter.
 The catalog order, codes, statement classes, and names are based on PTB-XL
 version 1.0.3 `scp_statements.csv`, licensed under CC BY 4.0.
 
@@ -26,8 +27,9 @@ Native conditions are `NORM`, `1AVB`, `2AVB`, `3AVB`, `PVC`, `PAC`, `SR`,
 `AFIB`, `PACE`, `AFLT`, and `SVTAC`.
 
 Parameterized conditions are `LNGQT`, `CRBBB`, `CLBBB`, `LPR`, `PRC(S)`,
-`STACH`, `SARRH`, `SBRAD`, `BIGU`, and `TRIGU`. A report warning identifies
-every accepted parameterized condition. `native_only` policy rejects them.
+`STACH`, `SARRH`, `SBRAD`, `BIGU`, `TRIGU`, `QWAVE`, `LVOLT`, and `HVOLT`.
+A report warning identifies every accepted parameterized condition.
+`native_only` policy rejects them.
 
 `PRC(S)` requires a PAC or PVC origin. `BIGU` and `TRIGU` also require one
 ectopic origin and set cadence to two and three beats respectively. `2AVB`
@@ -39,9 +41,16 @@ atrial rate and integer conduction ratio. RR variability is rejected for
 flutter and AV-block timelines until those timelines implement it.
 
 Variable severity is currently implemented only for `LNGQT`, `1AVB`, `LPR`,
-`PAC`, `PVC`, `STACH`, `SARRH`, and `SBRAD`. A non-default severity on any
-other condition is rejected so that metadata cannot claim an effect that was
-not rendered.
+`PAC`, `PVC`, `STACH`, `SARRH`, `SBRAD`, `QWAVE`, `LVOLT`, and `HVOLT`. A
+non-default severity on any other condition is rejected so that metadata
+cannot claim an effect that was not rendered.
+
+`QWAVE` requires an explicit inferior, anterior, or lateral territory. Its
+septal source orientation and duration are changed before normal 12-lead
+projection; leads are never painted directly. `LVOLT` and `HVOLT` scale only
+the septal, main ventricular, and terminal QRS sources. Their assertions use
+measured lead voltages. These are canonical engineering phenotypes and not
+diagnostic interpretations.
 
 ## Normalization and validation
 
@@ -52,6 +61,7 @@ explicit and inferred conditions. Current implications include:
 - sinus rate/arrhythmia and AV-block statements imply `SR`;
 - `NORM` implies `SR`;
 - complete LBBB or RBBB implies `ABQRS`.
+- Q-wave and low/high-voltage morphology implies `ABQRS`.
 
 The validator rejects incompatible primary rhythms, conflicting AV-block
 degrees, normal-plus-abnormal combinations, unsupported fidelity, ectopy
@@ -82,17 +92,18 @@ signal record.
 
 ## Phenotype assertions
 
-Scenario engine version 2 evaluates requested supported conditions against the
+Scenario engine version 3 evaluates requested supported conditions against the
 generated record. Assertions use beat and atrial-event annotations, exact
-fiducials, and multi-source VCG data rather than treating the requested label as
-proof that a phenotype was rendered.
+fiducials, multi-source VCG data, and measured 12-lead morphology rather than
+treating the requested label as proof that a phenotype was rendered.
 
 The assertion set covers rhythm class, mean heart rate, RR variability, P-wave
 presence, atrial-to-ventricular ratio, ectopic origin/cadence/coupling, PR
 interval, dropped atrial events, Mobitz pattern, ventricular escape, QRS width,
-bundle-branch terminal-source polarity, QTc, and pacing evidence. Each report
-entry contains the owning condition, assertion code, measured value, accepted
-range, unit, label, and pass/fail status.
+bundle-branch terminal-source polarity, QTc, pacing evidence, territorial Q
+amplitude/duration/lead count, and low/high QRS voltage. Each report entry
+contains the owning condition, assertion code, measured value, accepted range,
+unit, label, and pass/fail status.
 
 `success()` reports validation and waveform-generation success.
 `phenotype_passed()` independently reports whether every evaluated phenotype

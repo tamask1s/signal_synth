@@ -1,6 +1,7 @@
 #include "ecg_scenario.h"
 
 #include "clinical_ecg.h"
+#include "ecg_morphology.h"
 
 #include <algorithm>
 #include <cmath>
@@ -14,8 +15,8 @@ namespace signal_synth
 {
     namespace
     {
-        const unsigned int SCENARIO_SCHEMA_VERSION = 1;
-        const unsigned int SCENARIO_ENGINE_VERSION = 2;
+        const unsigned int SCENARIO_SCHEMA_VERSION = 2;
+        const unsigned int SCENARIO_ENGINE_VERSION = 3;
         const unsigned long long DEFAULT_SEED = 0x5343454e4152494fULL;
         const ecg_condition_code NO_CONDITION = ecg_condition_count;
 
@@ -80,6 +81,12 @@ namespace signal_synth
             return raw >= ecg_second_degree_unspecified && raw <= ecg_second_degree_mobitz_ii;
         }
 
+        bool valid_q_wave_territory(ecg_q_wave_territory value)
+        {
+            const int raw = enum_value(value);
+            return raw >= ecg_q_wave_unspecified && raw <= ecg_q_wave_lateral;
+        }
+
         // Catalog order and statement names follow PTB-XL 1.0.3 scp_statements.csv (CC BY 4.0).
         const ecg_condition_info condition_catalog[ecg_condition_count] = {
             {ecg_condition_ndt, "NDT", "non-diagnostic T abnormalities", ecg_category_ischemia_repolarization, true, true, false, ecg_support_catalog_only},
@@ -130,14 +137,14 @@ namespace signal_synth
             {ecg_condition_pvc, "PVC", "ventricular premature complex", ecg_category_rhythm, false, true, false, ecg_support_native},
             {ecg_condition_std, "STD_", "non-specific ST depression", ecg_category_ischemia_repolarization, false, true, false, ecg_support_catalog_only},
             {ecg_condition_vclvh, "VCLVH", "voltage criteria for left ventricular hypertrophy", ecg_category_hypertrophy, false, true, false, ecg_support_catalog_only},
-            {ecg_condition_qwave, "QWAVE", "Q waves present", ecg_category_morphology, false, true, false, ecg_support_catalog_only},
+            {ecg_condition_qwave, "QWAVE", "Q waves present", ecg_category_morphology, false, true, false, ecg_support_parameterized},
             {ecg_condition_lowt, "LOWT", "low amplitude T waves", ecg_category_ischemia_repolarization, false, true, false, ecg_support_catalog_only},
             {ecg_condition_nt, "NT_", "non-specific T-wave changes", ecg_category_ischemia_repolarization, false, true, false, ecg_support_catalog_only},
             {ecg_condition_pac, "PAC", "atrial premature complex", ecg_category_rhythm, false, true, false, ecg_support_native},
             {ecg_condition_lpr, "LPR", "prolonged PR interval", ecg_category_conduction, false, true, false, ecg_support_parameterized},
             {ecg_condition_invt, "INVT", "inverted T waves", ecg_category_ischemia_repolarization, false, true, false, ecg_support_catalog_only},
-            {ecg_condition_lvolt, "LVOLT", "low QRS voltages", ecg_category_morphology, false, true, false, ecg_support_catalog_only},
-            {ecg_condition_hvolt, "HVOLT", "high QRS voltage", ecg_category_morphology, false, true, false, ecg_support_catalog_only},
+            {ecg_condition_lvolt, "LVOLT", "low QRS voltages", ecg_category_morphology, false, true, false, ecg_support_parameterized},
+            {ecg_condition_hvolt, "HVOLT", "high QRS voltage", ecg_category_morphology, false, true, false, ecg_support_parameterized},
             {ecg_condition_tab, "TAB_", "T-wave abnormality", ecg_category_ischemia_repolarization, false, true, false, ecg_support_catalog_only},
             {ecg_condition_ste, "STE_", "non-specific ST elevation", ecg_category_ischemia_repolarization, false, true, false, ecg_support_catalog_only},
             {ecg_condition_prc, "PRC(S)", "premature complexes", ecg_category_rhythm, false, true, false, ecg_support_parameterized},
@@ -190,7 +197,7 @@ namespace signal_synth
 
         bool supports_variable_severity(ecg_condition_code code)
         {
-            return code == ecg_condition_lngqt || code == ecg_condition_1avb || code == ecg_condition_lpr || code == ecg_condition_pac || code == ecg_condition_pvc || code == ecg_condition_stach || code == ecg_condition_sarrh || code == ecg_condition_sbrad;
+            return code == ecg_condition_lngqt || code == ecg_condition_1avb || code == ecg_condition_lpr || code == ecg_condition_pac || code == ecg_condition_pvc || code == ecg_condition_stach || code == ecg_condition_sarrh || code == ecg_condition_sbrad || code == ecg_condition_qwave || code == ecg_condition_lvolt || code == ecg_condition_hvolt;
         }
 
         void add_effective(std::vector<effective_condition_entry>& conditions, ecg_condition_code code, double severity, bool inferred)
@@ -227,10 +234,11 @@ namespace signal_synth
         double rr_variability_seconds;
         unsigned int ectopic_every_n_beats;
         ecg_second_degree_av_pattern second_degree_pattern;
+        ecg_q_wave_territory q_wave_territory;
         ecg_scenario_fidelity_policy fidelity_policy;
 
         implementation()
-            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), fidelity_policy(ecg_fidelity_allow_parameterized)
+            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), fidelity_policy(ecg_fidelity_allow_parameterized)
         {
         }
     };
@@ -277,10 +285,18 @@ namespace signal_synth
             }
             if (has_condition(scenario.conditions, ecg_condition_norm) || has_condition(scenario.conditions, ecg_condition_stach) || has_condition(scenario.conditions, ecg_condition_sbrad) || has_condition(scenario.conditions, ecg_condition_sarrh) || has_condition(scenario.conditions, ecg_condition_1avb) || has_condition(scenario.conditions, ecg_condition_2avb) || has_condition(scenario.conditions, ecg_condition_3avb) || has_condition(scenario.conditions, ecg_condition_lpr))
                 add_effective(report.effective_conditions, ecg_condition_sr, 1.0, true);
-            if (has_condition(scenario.conditions, ecg_condition_clbbb) || has_condition(scenario.conditions, ecg_condition_crbbb))
+            if (has_condition(scenario.conditions, ecg_condition_clbbb) || has_condition(scenario.conditions, ecg_condition_crbbb) || has_condition(scenario.conditions, ecg_condition_qwave) || has_condition(scenario.conditions, ecg_condition_lvolt) || has_condition(scenario.conditions, ecg_condition_hvolt))
             {
-                const ecg_condition_code block = has_condition(scenario.conditions, ecg_condition_clbbb) ? ecg_condition_clbbb : ecg_condition_crbbb;
-                add_effective(report.effective_conditions, ecg_condition_abqrs, condition_severity(scenario.conditions, block), true);
+                ecg_condition_code morphology = ecg_condition_hvolt;
+                if (has_condition(scenario.conditions, ecg_condition_clbbb))
+                    morphology = ecg_condition_clbbb;
+                else if (has_condition(scenario.conditions, ecg_condition_crbbb))
+                    morphology = ecg_condition_crbbb;
+                else if (has_condition(scenario.conditions, ecg_condition_qwave))
+                    morphology = ecg_condition_qwave;
+                else if (has_condition(scenario.conditions, ecg_condition_lvolt))
+                    morphology = ecg_condition_lvolt;
+                add_effective(report.effective_conditions, ecg_condition_abqrs, condition_severity(scenario.conditions, morphology), true);
             }
             std::sort(report.effective_conditions.begin(), report.effective_conditions.end(), effective_order);
         }
@@ -361,8 +377,21 @@ namespace signal_synth
                 add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, ecg_condition_2avb, NO_CONDITION, "2AVB requires an explicit Mobitz I or Mobitz II scenario pattern.");
             if (!has_condition(scenario.conditions, ecg_condition_2avb) && scenario.second_degree_pattern != ecg_second_degree_unspecified)
                 add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, ecg_condition_2avb, "A Mobitz pattern requires the 2AVB condition.");
+            if (has_condition(scenario.conditions, ecg_condition_qwave) && scenario.q_wave_territory == ecg_q_wave_unspecified)
+                add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, ecg_condition_qwave, NO_CONDITION, "QWAVE requires an explicit inferior, anterior, or lateral territory.");
+            if (!has_condition(scenario.conditions, ecg_condition_qwave) && scenario.q_wave_territory != ecg_q_wave_unspecified)
+                add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, ecg_condition_qwave, "q_wave_territory requires the QWAVE condition.");
             if (!ectopic_origin && scenario.ectopic_every_n_beats != 0)
                 add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, NO_CONDITION, ecg_condition_prc, "ectopic_every_n_beats requires PAC or PVC.");
+
+            add_conflict(report, scenario.conditions, ecg_condition_lvolt, ecg_condition_hvolt, "Low and high QRS voltage conditions are mutually exclusive.");
+            add_conflict(report, scenario.conditions, ecg_condition_qwave, ecg_condition_lvolt, "The first Q-wave phenotype does not compose with low voltage.");
+            add_conflict(report, scenario.conditions, ecg_condition_qwave, ecg_condition_hvolt, "The first Q-wave phenotype does not compose with high voltage.");
+            const ecg_condition_code morphology_conditions[] = {ecg_condition_qwave, ecg_condition_lvolt, ecg_condition_hvolt};
+            const ecg_condition_code morphology_conflicts[] = {ecg_condition_afib, ecg_condition_aflt, ecg_condition_svtac, ecg_condition_pace, ecg_condition_pac, ecg_condition_pvc, ecg_condition_clbbb, ecg_condition_crbbb};
+            for (unsigned int morphology = 0; morphology < sizeof(morphology_conditions) / sizeof(morphology_conditions[0]); ++morphology)
+                for (unsigned int conflict = 0; conflict < sizeof(morphology_conflicts) / sizeof(morphology_conflicts[0]); ++conflict)
+                    add_conflict(report, scenario.conditions, morphology_conditions[morphology], morphology_conflicts[conflict], "The first clean morphology phenotype does not compose with this rhythm or conduction condition.");
 
             if (scenario.heart_rate_bpm > 0.0)
             {
@@ -456,6 +485,45 @@ namespace signal_synth
 
             if (has_condition(scenario.conditions, ecg_condition_lngqt))
                 config.timing.qtc_ms = 440.0 + 80.0 * condition_severity(scenario.conditions, ecg_condition_lngqt);
+
+            if (has_condition(scenario.conditions, ecg_condition_lvolt))
+            {
+                const double gain = 0.45 - 0.25 * condition_severity(scenario.conditions, ecg_condition_lvolt);
+                config.sources.gain[clinical_source_septal] *= gain;
+                config.sources.gain[clinical_source_ventricular] *= gain;
+                config.sources.gain[clinical_source_terminal] *= gain;
+            }
+            if (has_condition(scenario.conditions, ecg_condition_hvolt))
+            {
+                const double gain = 1.75 + 1.05 * condition_severity(scenario.conditions, ecg_condition_hvolt);
+                config.sources.gain[clinical_source_septal] *= gain;
+                config.sources.gain[clinical_source_ventricular] *= gain;
+                config.sources.gain[clinical_source_terminal] *= gain;
+            }
+            if (has_condition(scenario.conditions, ecg_condition_qwave))
+            {
+                const double severity = condition_severity(scenario.conditions, ecg_condition_qwave);
+                config.morphology.q_amplitude_mv = -(0.30 + 0.35 * severity);
+                config.timing.qrs_q_fraction = 0.24 + 0.06 * severity;
+                config.timing.qrs_r_fraction = 0.62;
+                config.timing.qrs_s_fraction = 0.82;
+                config.sources.gain[clinical_source_septal] *= 1.0 + 0.5 * severity;
+                if (scenario.q_wave_territory == ecg_q_wave_inferior)
+                {
+                    config.sources.axis_offset_degrees[clinical_source_septal] = 15.0;
+                    config.sources.elevation_offset_degrees[clinical_source_septal] = -20.0;
+                }
+                else if (scenario.q_wave_territory == ecg_q_wave_anterior)
+                {
+                    config.sources.axis_offset_degrees[clinical_source_septal] = 135.0;
+                    config.sources.elevation_offset_degrees[clinical_source_septal] = -75.0;
+                }
+                else if (scenario.q_wave_territory == ecg_q_wave_lateral)
+                {
+                    config.sources.axis_offset_degrees[clinical_source_septal] = -45.0;
+                    config.sources.elevation_offset_degrees[clinical_source_septal] = -30.0;
+                }
+            }
 
             const bool pac = has_condition(scenario.conditions, ecg_condition_pac);
             const bool pvc = has_condition(scenario.conditions, ecg_condition_pvc);
@@ -676,10 +744,77 @@ namespace signal_synth
             return std::min(static_cast<double>(origin_count(record, clinical_origin_paced)), static_cast<double>(spikes));
         }
 
+        enum morphology_value
+        {
+            morphology_q_amplitude,
+            morphology_q_duration,
+            morphology_qrs_peak_to_peak
+        };
+
+        ecg_lead_region q_wave_region(ecg_q_wave_territory territory)
+        {
+            if (territory == ecg_q_wave_inferior)
+                return ecg_region_inferior;
+            if (territory == ecg_q_wave_anterior)
+                return ecg_region_anterior;
+            if (territory == ecg_q_wave_lateral)
+                return ecg_region_lateral;
+            return ecg_region_all;
+        }
+
+        double morphology_entry_value(const ecg_lead_morphology& entry, morphology_value value)
+        {
+            if (value == morphology_q_amplitude)
+                return entry.q_amplitude_mv;
+            if (value == morphology_q_duration)
+                return entry.q_duration_seconds;
+            return entry.qrs_peak_to_peak_mv;
+        }
+
+        double morphology_region_extreme(const ecg_morphology_report& morphology, ecg_lead_region region, morphology_value value, bool maximum)
+        {
+            const ecg_lead_morphology* entries = morphology.entries();
+            double result = maximum ? -std::numeric_limits<double>::max() : std::numeric_limits<double>::max();
+            bool found = false;
+            for (unsigned int index = 0; entries && index < morphology.entry_count(); ++index)
+            {
+                if (!ecg_lead_is_in_region(entries[index].lead_index, region))
+                    continue;
+                const double measured = morphology_entry_value(entries[index], value);
+                result = maximum ? std::max(result, measured) : std::min(result, measured);
+                found = true;
+            }
+            return found ? result : -1.0;
+        }
+
+        double pathological_q_lead_count(const ecg_morphology_report& morphology, ecg_lead_region region)
+        {
+            const ecg_lead_morphology* entries = morphology.entries();
+            double amplitude_sum[clinical_lead_count] = {};
+            double duration_sum[clinical_lead_count] = {};
+            unsigned int count[clinical_lead_count] = {};
+            for (unsigned int index = 0; entries && index < morphology.entry_count(); ++index)
+            {
+                const unsigned int lead = entries[index].lead_index;
+                if (!ecg_lead_is_in_region(lead, region))
+                    continue;
+                amplitude_sum[lead] += entries[index].q_amplitude_mv;
+                duration_sum[lead] += entries[index].q_duration_seconds;
+                ++count[lead];
+            }
+            unsigned int matching = 0;
+            for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
+                if (count[lead] && amplitude_sum[lead] / count[lead] <= -0.10 && duration_sum[lead] / count[lead] >= 0.030)
+                    ++matching;
+            return matching;
+        }
+
         void evaluate_phenotype(const ecg_qa_scenario::implementation& scenario, const clinical_ecg_record& record, ecg_scenario_report::implementation& report)
         {
             const double count_limit = std::max(record.beat_count(), record.atrial_event_count());
             const clinical_ventricular_origin ectopic_origin = has_condition(scenario.conditions, ecg_condition_pac) ? clinical_origin_pac : clinical_origin_pvc;
+            ecg_morphology_report morphology;
+            const bool morphology_available = measure_ecg_morphology(record, morphology);
             for (const scenario_condition& requested : scenario.conditions)
             {
                 switch (requested.code)
@@ -757,6 +892,21 @@ namespace signal_synth
                 case ecg_condition_pace:
                     add_assertion(report, requested.code, ecg_assert_rhythm, beat_fraction(record, clinical_rhythm_paced), 1.0, 1.0, "paced rhythm beats", "ratio");
                     add_assertion(report, requested.code, ecg_assert_pacing, pacing_evidence_count(record), 1.0, count_limit, "paced beats with spike annotations", "count");
+                    break;
+                case ecg_condition_qwave:
+                {
+                    const ecg_lead_region region = q_wave_region(scenario.q_wave_territory);
+                    add_assertion(report, requested.code, ecg_assert_q_wave_amplitude, morphology_available ? morphology_region_extreme(morphology, region, morphology_q_amplitude, false) : 0.0, -10.0, -0.10, "territorial Q amplitude", "mV");
+                    add_assertion(report, requested.code, ecg_assert_q_wave_duration, morphology_available ? morphology_region_extreme(morphology, region, morphology_q_duration, true) : -1.0, 0.030, 0.5, "territorial Q duration", "s");
+                    add_assertion(report, requested.code, ecg_assert_q_wave_lead_count, morphology_available ? pathological_q_lead_count(morphology, region) : 0.0, 2.0, clinical_lead_count, "matching territorial leads", "count");
+                    break;
+                }
+                case ecg_condition_lvolt:
+                    add_assertion(report, requested.code, ecg_assert_low_qrs_voltage, morphology_available ? morphology_region_extreme(morphology, ecg_region_limb, morphology_qrs_peak_to_peak, true) : -1.0, 0.0, 0.5, "maximum limb QRS voltage", "mV");
+                    add_assertion(report, requested.code, ecg_assert_low_qrs_voltage, morphology_available ? morphology_region_extreme(morphology, ecg_region_precordial, morphology_qrs_peak_to_peak, true) : -1.0, 0.0, 1.0, "maximum precordial QRS voltage", "mV");
+                    break;
+                case ecg_condition_hvolt:
+                    add_assertion(report, requested.code, ecg_assert_high_qrs_voltage, morphology_available ? morphology_region_extreme(morphology, ecg_region_all, morphology_qrs_peak_to_peak, true) : -1.0, 2.0, 20.0, "maximum QRS voltage", "mV");
                     break;
                 default:
                     break;
@@ -952,6 +1102,19 @@ namespace signal_synth
         return implementation_->second_degree_pattern;
     }
 
+    bool ecg_qa_scenario::set_q_wave_territory(ecg_q_wave_territory value)
+    {
+        if (!valid_q_wave_territory(value))
+            return false;
+        implementation_->q_wave_territory = value;
+        return true;
+    }
+
+    ecg_q_wave_territory ecg_qa_scenario::q_wave_territory() const
+    {
+        return implementation_->q_wave_territory;
+    }
+
     bool ecg_qa_scenario::set_fidelity_policy(ecg_scenario_fidelity_policy value)
     {
         if (!valid_fidelity(value))
@@ -980,6 +1143,7 @@ namespace signal_synth
         hash_u64(hash, quantize(implementation_->rr_variability_seconds, 1000000.0));
         hash_u64(hash, implementation_->ectopic_every_n_beats);
         hash_u64(hash, enum_value(implementation_->second_degree_pattern));
+        hash_u64(hash, enum_value(implementation_->q_wave_territory));
         hash_u64(hash, enum_value(implementation_->fidelity_policy));
         for (const scenario_condition& condition : implementation_->conditions)
         {

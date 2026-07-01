@@ -58,11 +58,11 @@ namespace
         return true;
     }
 
-    bool generated_phenotype_passes(const signal_synth::ecg_scenario_engine& engine, const signal_synth::ecg_qa_scenario& scenario)
+    bool generated_phenotype_passes(const signal_synth::ecg_scenario_engine& engine, const signal_synth::ecg_qa_scenario& scenario, unsigned int sample_count = 5000)
     {
         signal_synth::clinical_ecg_record record;
         signal_synth::ecg_scenario_report report;
-        const bool generated = engine.generate(scenario, 5000, record, report);
+        const bool generated = engine.generate(scenario, sample_count, record, report);
         const bool passed = generated && report.success() && all_assertions_passed(report);
         if (!passed)
         {
@@ -96,7 +96,7 @@ int main()
     ok &= check(signal_synth::ecg_condition_catalog_size() == 71 && scp_codes.size() == 71 && catalog_order, "complete_unique_ordered_scp_catalog");
     ok &= check(diagnostic_count == 44 && form_count == 19 && rhythm_count == 12, "scp_statement_classification_counts");
     ok &= check(!signal_synth::find_ecg_condition("UNKNOWN") && !signal_synth::find_ecg_condition(static_cast<signal_synth::ecg_condition_code>(999)), "unknown_condition_lookup");
-    ok &= check(signal_synth::find_ecg_condition(signal_synth::ecg_condition_lvh)->support == signal_synth::ecg_support_catalog_only && signal_synth::find_ecg_condition(signal_synth::ecg_condition_crbbb)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_afib)->support == signal_synth::ecg_support_native, "support_levels_are_explicit");
+    ok &= check(signal_synth::find_ecg_condition(signal_synth::ecg_condition_lvh)->support == signal_synth::ecg_support_catalog_only && signal_synth::find_ecg_condition(signal_synth::ecg_condition_crbbb)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_qwave)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_afib)->support == signal_synth::ecg_support_native, "support_levels_are_explicit");
 
     signal_synth::ecg_qa_scenario first;
     first.add_condition(signal_synth::ecg_condition_pvc, 0.8);
@@ -108,7 +108,7 @@ int main()
     second.add_condition(signal_synth::ecg_condition_pvc, 0.8);
     second.set_heart_rate_bpm(72.0);
     second.set_seed(1234);
-    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 1 && signal_synth::ecg_scenario_engine_version() == 2, "fingerprint_is_order_independent_and_versioned");
+    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 2 && signal_synth::ecg_scenario_engine_version() == 3, "fingerprint_is_order_independent_and_versioned");
     signal_synth::ecg_qa_scenario changed = first;
     changed.set_seed(1235);
     ok &= check(first.fingerprint() != changed.fingerprint(), "fingerprint_covers_generation_seed");
@@ -265,6 +265,59 @@ int main()
     signal_synth::ecg_qa_scenario long_qt;
     long_qt.add_condition(signal_synth::ecg_condition_lngqt);
     ok &= check(generated_phenotype_passes(engine, first_degree_assertions) && generated_phenotype_passes(engine, prolonged_pr) && generated_phenotype_passes(engine, mobitz_i) && generated_phenotype_passes(engine, mobitz_ii) && generated_phenotype_passes(engine, complete_block) && generated_phenotype_passes(engine, right_bundle) && generated_phenotype_passes(engine, left_bundle) && generated_phenotype_passes(engine, long_qt) && generated_phenotype_passes(engine, tachy_block), "conduction_phenotype_assertions");
+
+    signal_synth::ecg_qa_scenario q_wave_missing_territory;
+    q_wave_missing_territory.add_condition(signal_synth::ecg_condition_qwave);
+    ok &= check(!engine.validate(q_wave_missing_territory, report) && report_has_issue(report, signal_synth::ecg_issue_missing_requirement), "q_wave_requires_explicit_territory");
+    signal_synth::ecg_qa_scenario unused_q_wave_territory;
+    unused_q_wave_territory.add_condition(signal_synth::ecg_condition_sr);
+    unused_q_wave_territory.set_q_wave_territory(signal_synth::ecg_q_wave_inferior);
+    ok &= check(!engine.validate(unused_q_wave_territory, report) && report_has_issue(report, signal_synth::ecg_issue_invalid_parameter), "unused_q_wave_territory_is_rejected");
+    signal_synth::ecg_qa_scenario q_wave_inferior;
+    q_wave_inferior.add_condition(signal_synth::ecg_condition_qwave);
+    q_wave_inferior.set_q_wave_territory(signal_synth::ecg_q_wave_inferior);
+    signal_synth::ecg_qa_scenario q_wave_anterior;
+    q_wave_anterior.add_condition(signal_synth::ecg_condition_qwave);
+    q_wave_anterior.set_q_wave_territory(signal_synth::ecg_q_wave_anterior);
+    signal_synth::ecg_qa_scenario q_wave_lateral;
+    q_wave_lateral.add_condition(signal_synth::ecg_condition_qwave);
+    q_wave_lateral.set_q_wave_territory(signal_synth::ecg_q_wave_lateral);
+    signal_synth::ecg_qa_scenario low_voltage;
+    low_voltage.add_condition(signal_synth::ecg_condition_lvolt);
+    signal_synth::ecg_qa_scenario high_voltage;
+    high_voltage.add_condition(signal_synth::ecg_condition_hvolt);
+    signal_synth::ecg_qa_scenario mild_q_wave;
+    mild_q_wave.add_condition(signal_synth::ecg_condition_qwave, 0.1);
+    mild_q_wave.set_q_wave_territory(signal_synth::ecg_q_wave_inferior);
+    signal_synth::ecg_qa_scenario mild_low_voltage;
+    mild_low_voltage.add_condition(signal_synth::ecg_condition_lvolt, 0.1);
+    signal_synth::ecg_qa_scenario mild_high_voltage;
+    mild_high_voltage.add_condition(signal_synth::ecg_condition_hvolt, 0.1);
+    signal_synth::clinical_ecg_config low_voltage_config;
+    signal_synth::clinical_ecg_config high_voltage_config;
+    signal_synth::clinical_ecg_config q_wave_config;
+    signal_synth::clinical_ecg_config mild_q_wave_config;
+    signal_synth::clinical_ecg_config mild_low_voltage_config;
+    signal_synth::clinical_ecg_config mild_high_voltage_config;
+    ok &= check(engine.compile(low_voltage, low_voltage_config, report) && engine.compile(high_voltage, high_voltage_config, report) && low_voltage_config.sources.gain[signal_synth::clinical_source_ventricular] < 1.0 && high_voltage_config.sources.gain[signal_synth::clinical_source_ventricular] > 1.0 && low_voltage_config.sources.gain[signal_synth::clinical_source_atrial] == 1.0 && high_voltage_config.sources.gain[signal_synth::clinical_source_repolarization] == 1.0, "voltage_conditions_only_scale_qrs_sources");
+    ok &= check(engine.compile(q_wave_inferior, q_wave_config, report) && engine.compile(mild_q_wave, mild_q_wave_config, report) && engine.compile(mild_low_voltage, mild_low_voltage_config, report) && engine.compile(mild_high_voltage, mild_high_voltage_config, report) && std::fabs(mild_q_wave_config.morphology.q_amplitude_mv) < std::fabs(q_wave_config.morphology.q_amplitude_mv) && mild_low_voltage_config.sources.gain[signal_synth::clinical_source_ventricular] > low_voltage_config.sources.gain[signal_synth::clinical_source_ventricular] && mild_high_voltage_config.sources.gain[signal_synth::clinical_source_ventricular] < high_voltage_config.sources.gain[signal_synth::clinical_source_ventricular], "morphology_severity_is_monotonic");
+    ok &= check(generated_phenotype_passes(engine, q_wave_inferior) && generated_phenotype_passes(engine, q_wave_anterior) && generated_phenotype_passes(engine, q_wave_lateral) && generated_phenotype_passes(engine, low_voltage) && generated_phenotype_passes(engine, high_voltage), "morphology_phenotype_assertions");
+    ok &= check(generated_phenotype_passes(engine, mild_q_wave) && generated_phenotype_passes(engine, mild_low_voltage) && generated_phenotype_passes(engine, mild_high_voltage), "mild_morphology_severity_remains_assertable");
+    engine.validate(q_wave_inferior, report);
+    const int q_wave_abqrs = effective_index(report, signal_synth::ecg_condition_abqrs);
+    ok &= check(q_wave_abqrs >= 0 && report.condition_was_inferred(static_cast<unsigned int>(q_wave_abqrs)), "morphology_condition_implies_abqrs");
+    signal_synth::ecg_qa_scenario voltage_conflict;
+    voltage_conflict.add_condition(signal_synth::ecg_condition_lvolt);
+    voltage_conflict.add_condition(signal_synth::ecg_condition_hvolt);
+    ok &= check(!engine.validate(voltage_conflict, report) && report_has_issue(report, signal_synth::ecg_issue_condition_conflict), "morphology_condition_conflicts");
+    signal_synth::ecg_qa_scenario q_wave_changed = q_wave_inferior;
+    q_wave_changed.set_q_wave_territory(signal_synth::ecg_q_wave_anterior);
+    ok &= check(q_wave_changed.fingerprint() != q_wave_inferior.fingerprint(), "fingerprint_covers_q_wave_territory");
+    signal_synth::ecg_qa_scenario q_wave_100_hz = q_wave_inferior;
+    q_wave_100_hz.set_sampling_rate_hz(100);
+    signal_synth::ecg_qa_scenario low_voltage_1000_hz = low_voltage;
+    low_voltage_1000_hz.set_sampling_rate_hz(1000);
+    ok &= check(generated_phenotype_passes(engine, q_wave_100_hz, 1000) && generated_phenotype_passes(engine, low_voltage_1000_hz, 10000), "morphology_assertions_across_sampling_rates");
 
     std::cout << (ok ? "All ECG scenario tests passed.\n" : "ECG scenario test failure.\n");
     return ok ? 0 : 1;

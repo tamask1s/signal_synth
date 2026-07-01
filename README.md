@@ -7,7 +7,8 @@ provides the stateful phase-domain ECG and five-channel validation package.
 vector model, 12-lead projection, and construction/measured fiducials. `ecg_scenario`
 provides the versioned product-facing QA scenario contract, complete PTB-XL
 condition catalog, strict validation, reproducibility fingerprint, and audit
-report.
+report. `ecg_morphology` measures deterministic beat-by-lead morphology from
+the generated 12-lead signal.
 
 ## ECG model status
 
@@ -47,6 +48,9 @@ The `clinical_ecg` API provides:
 - global construction fiducials and measured P/Q/R/S/T peaks per lead;
 - condition-specific rhythm/conduction phenotype assertions with measured
   values and pass/fail ranges;
+- beat-by-lead P/QRS/ST/T morphology metrics and standard lead-region groups;
+- parameterized inferior/anterior/lateral Q-wave, low-voltage, and
+  high-voltage QA phenotypes;
 - copyable records with 12 leads, 24 source/VCG channels, and structured
   annotations.
 

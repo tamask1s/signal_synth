@@ -130,6 +130,14 @@ namespace signal_synth
         ecg_second_degree_mobitz_ii = 2
     };
 
+    enum ecg_q_wave_territory
+    {
+        ecg_q_wave_unspecified = 0,
+        ecg_q_wave_inferior = 1,
+        ecg_q_wave_anterior = 2,
+        ecg_q_wave_lateral = 3
+    };
+
     enum ecg_scenario_issue_severity
     {
         ecg_issue_warning = 0,
@@ -166,7 +174,12 @@ namespace signal_synth
         ecg_assert_terminal_source_polarity = 13,
         ecg_assert_qtc_interval = 14,
         ecg_assert_pacing = 15,
-        ecg_assertion_code_count = 16
+        ecg_assert_q_wave_amplitude = 16,
+        ecg_assert_q_wave_duration = 17,
+        ecg_assert_q_wave_lead_count = 18,
+        ecg_assert_low_qrs_voltage = 19,
+        ecg_assert_high_qrs_voltage = 20,
+        ecg_assertion_code_count = 21
     };
 
     enum ecg_phenotype_assertion_status
@@ -206,6 +219,8 @@ namespace signal_synth
         unsigned int ectopic_every_n_beats() const;
         bool set_second_degree_av_pattern(ecg_second_degree_av_pattern value);
         ecg_second_degree_av_pattern second_degree_av_pattern() const;
+        bool set_q_wave_territory(ecg_q_wave_territory value);
+        ecg_q_wave_territory q_wave_territory() const;
         bool set_fidelity_policy(ecg_scenario_fidelity_policy value);
         ecg_scenario_fidelity_policy fidelity_policy() const;
         unsigned int schema_version() const;

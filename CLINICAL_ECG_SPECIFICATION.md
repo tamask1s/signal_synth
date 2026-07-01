@@ -98,6 +98,19 @@ clinical delineator.
 Events outside the sampled record remain absent from the fiducial list or have
 `present == false`; sample indexes never exceed the signal buffer.
 
+## Measured lead morphology
+
+`ecg_morphology` produces one `ecg_lead_morphology` entry per ventricular beat
+and lead. It measures baseline-relative P/Q/R/S/T amplitudes, 5%-boundary P/T
+durations, Q duration, QRS peak-to-peak and RMS voltage, and ST values at J and
+J+60 ms. Regions group limb, precordial, inferior, anterior, septal, and
+lateral leads without modifying the generated signal.
+
+Construction timing remains in `clinical_beat_annotation`; morphology entries
+are measurements of the projected lead samples. Keeping these layers separate
+allows a scenario report to detect when a requested source phenotype did not
+survive projection.
+
 ## Intended use and limitations
 
 The engine provides known-by-construction test inputs and annotations for

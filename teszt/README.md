@@ -19,7 +19,13 @@ g++ -std=c++11 -Wall -Wextra -Wpedantic \
 /tmp/clinical_ecg_test
 
 g++ -std=c++11 -Wall -Wextra -Wpedantic \
-    teszt/ecg_scenario_test.cpp src/ecg_scenario.cpp src/clinical_ecg.cpp \
+    teszt/ecg_morphology_test.cpp src/ecg_morphology.cpp src/clinical_ecg.cpp \
+    -o /tmp/ecg_morphology_test
+/tmp/ecg_morphology_test
+
+g++ -std=c++11 -Wall -Wextra -Wpedantic \
+    teszt/ecg_scenario_test.cpp src/ecg_scenario.cpp \
+    src/ecg_morphology.cpp src/clinical_ecg.cpp \
     -o /tmp/ecg_scenario_test
 /tmp/ecg_scenario_test
 ```
