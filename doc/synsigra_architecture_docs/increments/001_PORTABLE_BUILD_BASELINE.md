@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-001
 
-**Version:** 0.1
+**Version:** 0.2
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Software Architecture / Engineering
 
@@ -374,3 +374,4 @@ before increasing model breadth.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-01 | Initial proposed architecture increment |
+| 0.2 | 2026-07-01 | Accepted implementation `282f156`; Linux and Windows verification passed in CI run `28505269326` |
