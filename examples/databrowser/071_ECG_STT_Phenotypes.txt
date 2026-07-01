@@ -1,0 +1,71 @@
+// General ST-T and repolarization engineering QA phenotypes.
+// ECG annotations are emitted as extra channels (annotation_output = 2).
+
+#define SAMPLING_RATE 500
+#define NUMBER_OF_SAMPLES 6000
+#define OUTPUT_BASE ecg_stt_phenotypes
+
+DataDelete();
+
+GenerateECGQAScenario(ndt_ecg, ndt_sources, ndt_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["NDT"], "heart_rate_bpm":70, "seed":6201}, 2);
+GenerateECGQAScenario(nst_ecg, nst_sources, nst_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["NST_"], "heart_rate_bpm":70, "seed":6202}, 2);
+GenerateECGQAScenario(dig_ecg, dig_sources, dig_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["DIG"], "heart_rate_bpm":70, "seed":6203}, 2);
+GenerateECGQAScenario(lngqt_ecg, lngqt_sources, lngqt_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["LNGQT"], "heart_rate_bpm":70, "seed":6204}, 2);
+GenerateECGQAScenario(aneur_ecg, aneur_sources, aneur_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["ANEUR"], "heart_rate_bpm":70, "seed":6205}, 2);
+GenerateECGQAScenario(el_ecg, el_sources, el_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["EL"], "heart_rate_bpm":70, "seed":6206}, 2);
+GenerateECGQAScenario(std_ecg, std_sources, std_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["STD_"], "heart_rate_bpm":70, "seed":6207}, 2);
+GenerateECGQAScenario(lowt_ecg, lowt_sources, lowt_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["LOWT"], "heart_rate_bpm":70, "seed":6208}, 2);
+GenerateECGQAScenario(nt_ecg, nt_sources, nt_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["NT_"], "heart_rate_bpm":70, "seed":6209}, 2);
+GenerateECGQAScenario(invt_ecg, invt_sources, invt_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["INVT"], "heart_rate_bpm":70, "seed":6210}, 2);
+GenerateECGQAScenario(tab_ecg, tab_sources, tab_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["TAB_"], "heart_rate_bpm":70, "seed":6211}, 2);
+GenerateECGQAScenario(ste_ecg, ste_sources, ste_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["STE_"], "heart_rate_bpm":70, "seed":6212}, 2);
+
+SaveVarToFile(ndt_ecg, CatStrings(OUTPUT_BASE, _ndt, .bin), 100, 8);
+SaveVarToFile(nst_ecg, CatStrings(OUTPUT_BASE, _nst, .bin), 100, 8);
+SaveVarToFile(dig_ecg, CatStrings(OUTPUT_BASE, _dig, .bin), 100, 8);
+SaveVarToFile(lngqt_ecg, CatStrings(OUTPUT_BASE, _lngqt, .bin), 100, 8);
+SaveVarToFile(aneur_ecg, CatStrings(OUTPUT_BASE, _aneur, .bin), 100, 8);
+SaveVarToFile(el_ecg, CatStrings(OUTPUT_BASE, _el, .bin), 100, 8);
+SaveVarToFile(std_ecg, CatStrings(OUTPUT_BASE, _std, .bin), 100, 8);
+SaveVarToFile(lowt_ecg, CatStrings(OUTPUT_BASE, _lowt, .bin), 100, 8);
+SaveVarToFile(nt_ecg, CatStrings(OUTPUT_BASE, _nt, .bin), 100, 8);
+SaveVarToFile(invt_ecg, CatStrings(OUTPUT_BASE, _invt, .bin), 100, 8);
+SaveVarToFile(tab_ecg, CatStrings(OUTPUT_BASE, _tab, .bin), 100, 8);
+SaveVarToFile(ste_ecg, CatStrings(OUTPUT_BASE, _ste, .bin), 100, 8);
+SaveVarToFile(ndt_assertions, CatStrings(OUTPUT_BASE, _ndt_assertions, .bin), 100, 8);
+SaveVarToFile(nst_assertions, CatStrings(OUTPUT_BASE, _nst_assertions, .bin), 100, 8);
+SaveVarToFile(dig_assertions, CatStrings(OUTPUT_BASE, _dig_assertions, .bin), 100, 8);
+SaveVarToFile(lngqt_assertions, CatStrings(OUTPUT_BASE, _lngqt_assertions, .bin), 100, 8);
+SaveVarToFile(aneur_assertions, CatStrings(OUTPUT_BASE, _aneur_assertions, .bin), 100, 8);
+SaveVarToFile(el_assertions, CatStrings(OUTPUT_BASE, _el_assertions, .bin), 100, 8);
+SaveVarToFile(std_assertions, CatStrings(OUTPUT_BASE, _std_assertions, .bin), 100, 8);
+SaveVarToFile(lowt_assertions, CatStrings(OUTPUT_BASE, _lowt_assertions, .bin), 100, 8);
+SaveVarToFile(nt_assertions, CatStrings(OUTPUT_BASE, _nt_assertions, .bin), 100, 8);
+SaveVarToFile(invt_assertions, CatStrings(OUTPUT_BASE, _invt_assertions, .bin), 100, 8);
+SaveVarToFile(tab_assertions, CatStrings(OUTPUT_BASE, _tab_assertions, .bin), 100, 8);
+SaveVarToFile(ste_assertions, CatStrings(OUTPUT_BASE, _ste_assertions, .bin), 100, 8);
+
+DisplayData(ndt_ecg, fit_width,, A2, 001);
+DisplayData(ndt_assertions, fit_width,, A2, 001);
+DisplayData(nst_ecg, fit_width,, A2, 001);
+DisplayData(nst_assertions, fit_width,, A2, 001);
+DisplayData(dig_ecg, fit_width,, A2, 001);
+DisplayData(dig_assertions, fit_width,, A2, 001);
+DisplayData(lngqt_ecg, fit_width,, A2, 001);
+DisplayData(lngqt_assertions, fit_width,, A2, 001);
+DisplayData(aneur_ecg, fit_width,, A2, 001);
+DisplayData(aneur_assertions, fit_width,, A2, 001);
+DisplayData(el_ecg, fit_width,, A2, 001);
+DisplayData(el_assertions, fit_width,, A2, 001);
+DisplayData(std_ecg, fit_width,, A2, 001);
+DisplayData(std_assertions, fit_width,, A2, 001);
+DisplayData(lowt_ecg, fit_width,, A2, 001);
+DisplayData(lowt_assertions, fit_width,, A2, 001);
+DisplayData(nt_ecg, fit_width,, A2, 001);
+DisplayData(nt_assertions, fit_width,, A2, 001);
+DisplayData(invt_ecg, fit_width,, A2, 001);
+DisplayData(invt_assertions, fit_width,, A2, 001);
+DisplayData(tab_ecg, fit_width,, A2, 001);
+DisplayData(tab_assertions, fit_width,, A2, 001);
+DisplayData(ste_ecg, fit_width,, A2, 001);
+DisplayData(ste_assertions, fit_width,, A2, 001);

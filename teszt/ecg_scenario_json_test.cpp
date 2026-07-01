@@ -88,7 +88,7 @@ int main()
         "[{\"severity\":1,\"code\":\"NORM\"},{\"severity\":1,\"code\":\"NORM\"}]");
     ok &= check(rejects_without_mutation(duplicate_condition, signal_synth::ecg_json_duplicate_condition), "reject_duplicate_condition");
 
-    const std::string unsupported = std::string(input).replace(input.find("\"NORM\""), 6, "\"NDT\"");
+    const std::string unsupported = std::string(input).replace(input.find("\"NORM\""), 6, "\"LAFB\"");
     ok &= check(rejects_without_mutation(unsupported, signal_synth::ecg_json_semantic), "reject_unsupported_condition");
 
     signal_synth::ecg_scenario_document territorial;
@@ -99,6 +99,15 @@ int main()
     signal_synth::ecg_scenario_document territorial_roundtrip;
     signal_synth::ecg_scenario_json_result territorial_repeated;
     ok &= check(signal_synth::write_ecg_scenario_json(territorial, territorial_result) && signal_synth::parse_ecg_scenario_json(territorial_result.canonical_json, territorial_roundtrip, territorial_repeated) && territorial_roundtrip.ecg.has_condition(signal_synth::ecg_condition_imi) && territorial_roundtrip.ecg.condition_severity(0) == 0.5 && territorial_result.document_fingerprint == territorial_repeated.document_fingerprint, "territorial_condition_json_roundtrip");
+
+    signal_synth::ecg_scenario_document ischemia;
+    ischemia.scenario_id = "ischemia_iscal";
+    ischemia.ecg.clear_conditions();
+    ischemia.ecg.add_condition(signal_synth::ecg_condition_iscal, 0.6);
+    signal_synth::ecg_scenario_json_result ischemia_result;
+    signal_synth::ecg_scenario_document ischemia_roundtrip;
+    signal_synth::ecg_scenario_json_result ischemia_repeated;
+    ok &= check(signal_synth::write_ecg_scenario_json(ischemia, ischemia_result) && signal_synth::parse_ecg_scenario_json(ischemia_result.canonical_json, ischemia_roundtrip, ischemia_repeated) && ischemia_roundtrip.ecg.has_condition(signal_synth::ecg_condition_iscal) && ischemia_roundtrip.ecg.condition_severity(0) == 0.6 && ischemia_result.document_fingerprint == ischemia_repeated.document_fingerprint, "ischemia_condition_json_roundtrip");
 
     signal_synth::ecg_scenario_document invalid_document;
     invalid_document.scenario_id.clear();

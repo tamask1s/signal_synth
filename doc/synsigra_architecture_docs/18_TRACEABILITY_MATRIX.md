@@ -2,7 +2,7 @@
 
 **Document ID:** SYN-TRACE-001
 
-**Version:** 0.3
+**Version:** 0.4
 
 **Status:** Living demonstration record
 
@@ -43,6 +43,7 @@ The authoritative implementation/result details remain in the linked issues.
 | `TRC-PPG-001` | `REQ-GEN-001..005`, `REQ-SCN-005`, `REQ-PPG-001..004`, `REQ-GT-001..002`, `REQ-VER-006` | Shared-timeline PPG increment | `src/ppg_model.*`, schema-v2/export integration | `TEST-PPG-001`, `TEST-ECG-JSON-001`, `TEST-ECG-EXPORT-001` | [signal_synth#17](https://github.com/tamask1s/signal_synth/issues/17) |
 | `TRC-ECG12-003` | `REQ-GEN-001..003`, `REQ-ECG-001..003`, `REQ-ECG-006..007`, `REQ-GT-001`, `REQ-VER-003` | Hypertrophy QA pack increment | `src/ecg_scenario.*` | `TEST-ECG-SCENARIO-001` | [signal_synth#18](https://github.com/tamask1s/signal_synth/issues/18) |
 | `TRC-ECG12-004` | `REQ-GEN-001..003`, `REQ-ECG-001..003`, `REQ-ECG-006..007`, `REQ-GT-001`, `REQ-VER-003` | Territorial infarction/injury increment | `src/ecg_scenario.*` | `TEST-ECG-INFARCTION-001`, `TEST-ECG-SCENARIO-001` | [signal_synth#19](https://github.com/tamask1s/signal_synth/issues/19) |
+| `TRC-ECG12-005` | `REQ-GEN-001..003`, `REQ-ECG-001..003`, `REQ-ECG-006..007`, `REQ-GT-001`, `REQ-VER-003` | Ischemia, ST-T, and repolarization increment | `src/ecg_scenario.*` | `TEST-ECG-REPOLARIZATION-001`, `TEST-ECG-SCENARIO-001`, `TEST-ECG-JSON-001` | [signal_synth#20](https://github.com/tamask1s/signal_synth/issues/20) |
 | `TRC-DSP-001` | Supporting `REQ-NFR-003`, `REQ-NFR-008` | Shared DSP ownership | RSPT FIR design API | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#1](https://github.com/tamask1s/rspt_module/issues/1) |
 | `TRC-DSP-002` | Supporting `REQ-NFR-008` | IIR coefficient contract | RSPT IIR/filter consumers | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#2](https://github.com/tamask1s/rspt_module/issues/2) |
 
@@ -56,6 +57,7 @@ The authoritative implementation/result details remain in the linked issues.
 | `TEST-ECG-MORPH-001` | `teszt/ecg_morphology_test.cpp` | Beat/lead morphology and territory measurement |
 | `TEST-ECG-SCENARIO-001` | `teszt/ecg_scenario_test.cpp` | Catalog, validation, fingerprints, phenotype assertions |
 | `TEST-ECG-INFARCTION-001` | `teszt/ecg_infarction_test.cpp` | Territorial Q/ST evidence, posterior proxy, severity and composition |
+| `TEST-ECG-REPOLARIZATION-001` | `teszt/ecg_repolarization_test.cpp` | Territorial ischemia, ST/T evidence, broad proxies, severity and composition |
 | `TEST-ECG-JSON-001` | `teszt/ecg_scenario_json_test.cpp` | Strict parsing, canonicalization, SHA-256, transactional rejection |
 | `TEST-ECG-EXPORT-001` | `teszt/ecg_export_test.cpp` | Render transactionality, artifact formats, metrics, deterministic report |
 | `TEST-PPG-001` | `teszt/ppg_model_test.cpp` | ECG beat linkage, PPG timing, measured peaks, multi-rate determinism |

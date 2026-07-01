@@ -188,7 +188,14 @@ namespace signal_synth
         ecg_assert_posterior_reciprocal_lead_count = 27,
         ecg_assert_injury_st_deviation = 28,
         ecg_assert_injury_st_lead_count = 29,
-        ecg_assertion_code_count = 30
+        ecg_assert_st_deviation = 30,
+        ecg_assert_st_lead_count = 31,
+        ecg_assert_st_slope = 32,
+        ecg_assert_t_amplitude = 33,
+        ecg_assert_t_lead_count = 34,
+        ecg_assert_t_polarity_dispersion = 35,
+        ecg_assert_t_duration = 36,
+        ecg_assertion_code_count = 37
     };
 
     enum ecg_phenotype_assertion_status

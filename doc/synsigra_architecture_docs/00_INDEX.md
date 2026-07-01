@@ -39,6 +39,8 @@ Implementation increment designs:
   hypertrophy and atrial-overload engineering phenotypes.
 - `increments/007_TERRITORIAL_INFARCTION_INJURY_QA_PACK.md` defines the
   territorial Q-wave, posterior reciprocal, and injury-ST phenotype family.
+- `increments/008_ISCHEMIA_STT_REPOLARIZATION_QA_PACK.md` defines the
+  complete ST-T/repolarization condition family and broad-statement proxies.
 
 Traceability demonstration:
 

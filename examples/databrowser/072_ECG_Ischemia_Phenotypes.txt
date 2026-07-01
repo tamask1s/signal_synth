@@ -1,0 +1,46 @@
+// Territorial ischemic ST-T engineering QA phenotypes.
+// ECG annotations are emitted as extra channels (annotation_output = 2).
+
+#define SAMPLING_RATE 500
+#define NUMBER_OF_SAMPLES 6000
+#define OUTPUT_BASE ecg_ischemia_phenotypes
+
+DataDelete();
+
+GenerateECGQAScenario(isc_ecg, isc_sources, isc_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["ISC_"], "heart_rate_bpm":70, "seed":6301}, 2);
+GenerateECGQAScenario(iscal_ecg, iscal_sources, iscal_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["ISCAL"], "heart_rate_bpm":70, "seed":6302}, 2);
+GenerateECGQAScenario(iscin_ecg, iscin_sources, iscin_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["ISCIN"], "heart_rate_bpm":70, "seed":6303}, 2);
+GenerateECGQAScenario(iscil_ecg, iscil_sources, iscil_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["ISCIL"], "heart_rate_bpm":70, "seed":6304}, 2);
+GenerateECGQAScenario(iscas_ecg, iscas_sources, iscas_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["ISCAS"], "heart_rate_bpm":70, "seed":6305}, 2);
+GenerateECGQAScenario(iscla_ecg, iscla_sources, iscla_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["ISCLA"], "heart_rate_bpm":70, "seed":6306}, 2);
+GenerateECGQAScenario(iscan_ecg, iscan_sources, iscan_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["ISCAN"], "heart_rate_bpm":70, "seed":6307}, 2);
+
+SaveVarToFile(isc_ecg, CatStrings(OUTPUT_BASE, _isc, .bin), 100, 8);
+SaveVarToFile(iscal_ecg, CatStrings(OUTPUT_BASE, _iscal, .bin), 100, 8);
+SaveVarToFile(iscin_ecg, CatStrings(OUTPUT_BASE, _iscin, .bin), 100, 8);
+SaveVarToFile(iscil_ecg, CatStrings(OUTPUT_BASE, _iscil, .bin), 100, 8);
+SaveVarToFile(iscas_ecg, CatStrings(OUTPUT_BASE, _iscas, .bin), 100, 8);
+SaveVarToFile(iscla_ecg, CatStrings(OUTPUT_BASE, _iscla, .bin), 100, 8);
+SaveVarToFile(iscan_ecg, CatStrings(OUTPUT_BASE, _iscan, .bin), 100, 8);
+SaveVarToFile(isc_assertions, CatStrings(OUTPUT_BASE, _isc_assertions, .bin), 100, 8);
+SaveVarToFile(iscal_assertions, CatStrings(OUTPUT_BASE, _iscal_assertions, .bin), 100, 8);
+SaveVarToFile(iscin_assertions, CatStrings(OUTPUT_BASE, _iscin_assertions, .bin), 100, 8);
+SaveVarToFile(iscil_assertions, CatStrings(OUTPUT_BASE, _iscil_assertions, .bin), 100, 8);
+SaveVarToFile(iscas_assertions, CatStrings(OUTPUT_BASE, _iscas_assertions, .bin), 100, 8);
+SaveVarToFile(iscla_assertions, CatStrings(OUTPUT_BASE, _iscla_assertions, .bin), 100, 8);
+SaveVarToFile(iscan_assertions, CatStrings(OUTPUT_BASE, _iscan_assertions, .bin), 100, 8);
+
+DisplayData(isc_ecg, fit_width,, A2, 001);
+DisplayData(isc_assertions, fit_width,, A2, 001);
+DisplayData(iscal_ecg, fit_width,, A2, 001);
+DisplayData(iscal_assertions, fit_width,, A2, 001);
+DisplayData(iscin_ecg, fit_width,, A2, 001);
+DisplayData(iscin_assertions, fit_width,, A2, 001);
+DisplayData(iscil_ecg, fit_width,, A2, 001);
+DisplayData(iscil_assertions, fit_width,, A2, 001);
+DisplayData(iscas_ecg, fit_width,, A2, 001);
+DisplayData(iscas_assertions, fit_width,, A2, 001);
+DisplayData(iscla_ecg, fit_width,, A2, 001);
+DisplayData(iscla_assertions, fit_width,, A2, 001);
+DisplayData(iscan_ecg, fit_width,, A2, 001);
+DisplayData(iscan_assertions, fit_width,, A2, 001);

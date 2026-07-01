@@ -16,7 +16,7 @@ namespace signal_synth
     namespace
     {
         const unsigned int SCENARIO_SCHEMA_VERSION = 2;
-        const unsigned int SCENARIO_ENGINE_VERSION = 5;
+        const unsigned int SCENARIO_ENGINE_VERSION = 6;
         const unsigned long long DEFAULT_SEED = 0x5343454e4152494fULL;
         const ecg_condition_code NO_CONDITION = ecg_condition_count;
 
@@ -89,42 +89,42 @@ namespace signal_synth
 
         // Catalog order and statement names follow PTB-XL 1.0.3 scp_statements.csv (CC BY 4.0).
         const ecg_condition_info condition_catalog[ecg_condition_count] = {
-            {ecg_condition_ndt, "NDT", "non-diagnostic T abnormalities", ecg_category_ischemia_repolarization, true, true, false, ecg_support_catalog_only},
-            {ecg_condition_nst, "NST_", "non-specific ST changes", ecg_category_ischemia_repolarization, true, true, false, ecg_support_catalog_only},
-            {ecg_condition_dig, "DIG", "digitalis effect", ecg_category_ischemia_repolarization, true, true, false, ecg_support_catalog_only},
+            {ecg_condition_ndt, "NDT", "non-diagnostic T abnormalities", ecg_category_ischemia_repolarization, true, true, false, ecg_support_parameterized},
+            {ecg_condition_nst, "NST_", "non-specific ST changes", ecg_category_ischemia_repolarization, true, true, false, ecg_support_parameterized},
+            {ecg_condition_dig, "DIG", "digitalis effect", ecg_category_ischemia_repolarization, true, true, false, ecg_support_parameterized},
             {ecg_condition_lngqt, "LNGQT", "long QT interval", ecg_category_ischemia_repolarization, true, true, false, ecg_support_parameterized},
             {ecg_condition_norm, "NORM", "normal ECG", ecg_category_normal, true, false, false, ecg_support_native},
             {ecg_condition_imi, "IMI", "inferior myocardial infarction", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
             {ecg_condition_asmi, "ASMI", "anteroseptal myocardial infarction", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
             {ecg_condition_lvh, "LVH", "left ventricular hypertrophy", ecg_category_hypertrophy, true, false, false, ecg_support_parameterized},
             {ecg_condition_lafb, "LAFB", "left anterior fascicular block", ecg_category_conduction, true, false, false, ecg_support_catalog_only},
-            {ecg_condition_isc, "ISC_", "non-specific ischemic ST-T changes", ecg_category_ischemia_repolarization, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_isc, "ISC_", "non-specific ischemic ST-T changes", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
             {ecg_condition_irbbb, "IRBBB", "incomplete right bundle branch block", ecg_category_conduction, true, false, false, ecg_support_catalog_only},
             {ecg_condition_1avb, "1AVB", "first degree AV block", ecg_category_conduction, true, false, false, ecg_support_native},
             {ecg_condition_ivcd, "IVCD", "non-specific intraventricular conduction disturbance", ecg_category_conduction, true, false, false, ecg_support_catalog_only},
-            {ecg_condition_iscal, "ISCAL", "ischemic ST-T changes in anterolateral leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_iscal, "ISCAL", "ischemic ST-T changes in anterolateral leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
             {ecg_condition_crbbb, "CRBBB", "complete right bundle branch block", ecg_category_conduction, true, false, false, ecg_support_parameterized},
             {ecg_condition_clbbb, "CLBBB", "complete left bundle branch block", ecg_category_conduction, true, false, false, ecg_support_parameterized},
             {ecg_condition_ilmi, "ILMI", "inferolateral myocardial infarction", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
             {ecg_condition_lao_lae, "LAO/LAE", "left atrial overload or enlargement", ecg_category_hypertrophy, true, false, false, ecg_support_parameterized},
             {ecg_condition_ami, "AMI", "anterior myocardial infarction", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
             {ecg_condition_almi, "ALMI", "anterolateral myocardial infarction", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
-            {ecg_condition_iscin, "ISCIN", "ischemic ST-T changes in inferior leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_iscin, "ISCIN", "ischemic ST-T changes in inferior leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
             {ecg_condition_injas, "INJAS", "subendocardial injury in anteroseptal leads", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
             {ecg_condition_lmi, "LMI", "lateral myocardial infarction", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
-            {ecg_condition_iscil, "ISCIL", "ischemic ST-T changes in inferolateral leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_iscil, "ISCIL", "ischemic ST-T changes in inferolateral leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
             {ecg_condition_lpfb, "LPFB", "left posterior fascicular block", ecg_category_conduction, true, false, false, ecg_support_catalog_only},
-            {ecg_condition_iscas, "ISCAS", "ischemic ST-T changes in anteroseptal leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_iscas, "ISCAS", "ischemic ST-T changes in anteroseptal leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
             {ecg_condition_injal, "INJAL", "subendocardial injury in anterolateral leads", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
-            {ecg_condition_iscla, "ISCLA", "ischemic ST-T changes in lateral leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_iscla, "ISCLA", "ischemic ST-T changes in lateral leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
             {ecg_condition_rvh, "RVH", "right ventricular hypertrophy", ecg_category_hypertrophy, true, false, false, ecg_support_parameterized},
-            {ecg_condition_aneur, "ANEUR", "ST-T changes compatible with ventricular aneurysm", ecg_category_ischemia_repolarization, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_aneur, "ANEUR", "ST-T changes compatible with ventricular aneurysm", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
             {ecg_condition_rao_rae, "RAO/RAE", "right atrial overload or enlargement", ecg_category_hypertrophy, true, false, false, ecg_support_parameterized},
-            {ecg_condition_el, "EL", "electrolytic disturbance or drug effect", ecg_category_ischemia_repolarization, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_el, "EL", "electrolytic disturbance or drug effect", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
             {ecg_condition_wpw, "WPW", "Wolff-Parkinson-White syndrome", ecg_category_conduction, true, false, false, ecg_support_catalog_only},
             {ecg_condition_ilbbb, "ILBBB", "incomplete left bundle branch block", ecg_category_conduction, true, false, false, ecg_support_catalog_only},
             {ecg_condition_iplmi, "IPLMI", "inferoposterolateral myocardial infarction", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
-            {ecg_condition_iscan, "ISCAN", "ischemic ST-T changes in anterior leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_iscan, "ISCAN", "ischemic ST-T changes in anterior leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
             {ecg_condition_ipmi, "IPMI", "inferoposterior myocardial infarction", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
             {ecg_condition_sehyp, "SEHYP", "septal hypertrophy", ecg_category_hypertrophy, true, false, false, ecg_support_parameterized},
             {ecg_condition_injin, "INJIN", "subendocardial injury in inferior leads", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
@@ -135,18 +135,18 @@ namespace signal_synth
             {ecg_condition_2avb, "2AVB", "second degree AV block", ecg_category_conduction, true, false, false, ecg_support_native},
             {ecg_condition_abqrs, "ABQRS", "abnormal QRS", ecg_category_morphology, false, true, false, ecg_support_catalog_only},
             {ecg_condition_pvc, "PVC", "ventricular premature complex", ecg_category_rhythm, false, true, false, ecg_support_native},
-            {ecg_condition_std, "STD_", "non-specific ST depression", ecg_category_ischemia_repolarization, false, true, false, ecg_support_catalog_only},
+            {ecg_condition_std, "STD_", "non-specific ST depression", ecg_category_ischemia_repolarization, false, true, false, ecg_support_parameterized},
             {ecg_condition_vclvh, "VCLVH", "voltage criteria for left ventricular hypertrophy", ecg_category_hypertrophy, false, true, false, ecg_support_parameterized},
             {ecg_condition_qwave, "QWAVE", "Q waves present", ecg_category_morphology, false, true, false, ecg_support_parameterized},
-            {ecg_condition_lowt, "LOWT", "low amplitude T waves", ecg_category_ischemia_repolarization, false, true, false, ecg_support_catalog_only},
-            {ecg_condition_nt, "NT_", "non-specific T-wave changes", ecg_category_ischemia_repolarization, false, true, false, ecg_support_catalog_only},
+            {ecg_condition_lowt, "LOWT", "low amplitude T waves", ecg_category_ischemia_repolarization, false, true, false, ecg_support_parameterized},
+            {ecg_condition_nt, "NT_", "non-specific T-wave changes", ecg_category_ischemia_repolarization, false, true, false, ecg_support_parameterized},
             {ecg_condition_pac, "PAC", "atrial premature complex", ecg_category_rhythm, false, true, false, ecg_support_native},
             {ecg_condition_lpr, "LPR", "prolonged PR interval", ecg_category_conduction, false, true, false, ecg_support_parameterized},
-            {ecg_condition_invt, "INVT", "inverted T waves", ecg_category_ischemia_repolarization, false, true, false, ecg_support_catalog_only},
+            {ecg_condition_invt, "INVT", "inverted T waves", ecg_category_ischemia_repolarization, false, true, false, ecg_support_parameterized},
             {ecg_condition_lvolt, "LVOLT", "low QRS voltages", ecg_category_morphology, false, true, false, ecg_support_parameterized},
             {ecg_condition_hvolt, "HVOLT", "high QRS voltage", ecg_category_morphology, false, true, false, ecg_support_parameterized},
-            {ecg_condition_tab, "TAB_", "T-wave abnormality", ecg_category_ischemia_repolarization, false, true, false, ecg_support_catalog_only},
-            {ecg_condition_ste, "STE_", "non-specific ST elevation", ecg_category_ischemia_repolarization, false, true, false, ecg_support_catalog_only},
+            {ecg_condition_tab, "TAB_", "T-wave abnormality", ecg_category_ischemia_repolarization, false, true, false, ecg_support_parameterized},
+            {ecg_condition_ste, "STE_", "non-specific ST elevation", ecg_category_ischemia_repolarization, false, true, false, ecg_support_parameterized},
             {ecg_condition_prc, "PRC(S)", "premature complexes", ecg_category_rhythm, false, true, false, ecg_support_parameterized},
             {ecg_condition_sr, "SR", "sinus rhythm", ecg_category_rhythm, false, false, true, ecg_support_native},
             {ecg_condition_afib, "AFIB", "atrial fibrillation", ecg_category_rhythm, false, false, true, ecg_support_native},
@@ -197,7 +197,7 @@ namespace signal_synth
 
         bool supports_variable_severity(ecg_condition_code code)
         {
-            return code == ecg_condition_lngqt || code == ecg_condition_1avb || code == ecg_condition_lpr || code == ecg_condition_pac || code == ecg_condition_pvc || code == ecg_condition_stach || code == ecg_condition_sarrh || code == ecg_condition_sbrad || code == ecg_condition_qwave || code == ecg_condition_lvolt || code == ecg_condition_hvolt || code == ecg_condition_lvh || code == ecg_condition_rvh || code == ecg_condition_sehyp || code == ecg_condition_vclvh || code == ecg_condition_lao_lae || code == ecg_condition_rao_rae || code == ecg_condition_imi || code == ecg_condition_asmi || code == ecg_condition_ilmi || code == ecg_condition_ami || code == ecg_condition_almi || code == ecg_condition_injas || code == ecg_condition_lmi || code == ecg_condition_injal || code == ecg_condition_iplmi || code == ecg_condition_ipmi || code == ecg_condition_injin || code == ecg_condition_injla || code == ecg_condition_pmi || code == ecg_condition_injil;
+            return code == ecg_condition_lngqt || code == ecg_condition_1avb || code == ecg_condition_lpr || code == ecg_condition_pac || code == ecg_condition_pvc || code == ecg_condition_stach || code == ecg_condition_sarrh || code == ecg_condition_sbrad || code == ecg_condition_qwave || code == ecg_condition_lvolt || code == ecg_condition_hvolt || code == ecg_condition_lvh || code == ecg_condition_rvh || code == ecg_condition_sehyp || code == ecg_condition_vclvh || code == ecg_condition_lao_lae || code == ecg_condition_rao_rae || code == ecg_condition_imi || code == ecg_condition_asmi || code == ecg_condition_ilmi || code == ecg_condition_ami || code == ecg_condition_almi || code == ecg_condition_injas || code == ecg_condition_lmi || code == ecg_condition_injal || code == ecg_condition_iplmi || code == ecg_condition_ipmi || code == ecg_condition_injin || code == ecg_condition_injla || code == ecg_condition_pmi || code == ecg_condition_injil || code == ecg_condition_ndt || code == ecg_condition_nst || code == ecg_condition_dig || code == ecg_condition_isc || code == ecg_condition_iscal || code == ecg_condition_iscin || code == ecg_condition_iscil || code == ecg_condition_iscas || code == ecg_condition_iscla || code == ecg_condition_aneur || code == ecg_condition_el || code == ecg_condition_iscan || code == ecg_condition_std || code == ecg_condition_lowt || code == ecg_condition_nt || code == ecg_condition_invt || code == ecg_condition_tab || code == ecg_condition_ste;
         }
 
         bool is_infarction_condition(ecg_condition_code code)
@@ -219,6 +219,37 @@ namespace signal_synth
         {
             return is_infarction_condition(code) && code != ecg_condition_pmi;
         }
+
+        bool is_territorial_ischemia(ecg_condition_code code)
+        {
+            return code == ecg_condition_isc || code == ecg_condition_iscal || code == ecg_condition_iscin || code == ecg_condition_iscil || code == ecg_condition_iscas || code == ecg_condition_iscla || code == ecg_condition_iscan;
+        }
+
+        bool is_new_repolarization_condition(ecg_condition_code code)
+        {
+            return code == ecg_condition_ndt || code == ecg_condition_nst || code == ecg_condition_dig || is_territorial_ischemia(code) || code == ecg_condition_aneur || code == ecg_condition_el || code == ecg_condition_std || code == ecg_condition_lowt || code == ecg_condition_nt || code == ecg_condition_invt || code == ecg_condition_tab || code == ecg_condition_ste;
+        }
+
+        const ecg_condition_code repolarization_conditions[] = {
+            ecg_condition_ndt,
+            ecg_condition_nst,
+            ecg_condition_dig,
+            ecg_condition_lngqt,
+            ecg_condition_isc,
+            ecg_condition_iscal,
+            ecg_condition_iscin,
+            ecg_condition_iscil,
+            ecg_condition_iscas,
+            ecg_condition_iscla,
+            ecg_condition_aneur,
+            ecg_condition_el,
+            ecg_condition_iscan,
+            ecg_condition_std,
+            ecg_condition_lowt,
+            ecg_condition_nt,
+            ecg_condition_invt,
+            ecg_condition_tab,
+            ecg_condition_ste};
 
         const ecg_condition_code infarction_injury_conditions[] = {
             ecg_condition_imi,
@@ -281,6 +312,16 @@ namespace signal_synth
             return lead_bit(clinical_lead_v1) | lead_bit(clinical_lead_v2) | lead_bit(clinical_lead_v3);
         }
 
+        unsigned int widespread_leads()
+        {
+            return lead_bit(clinical_lead_i) | lead_bit(clinical_lead_ii) | lead_bit(clinical_lead_avl) | lead_bit(clinical_lead_avf) | lead_bit(clinical_lead_v3) | lead_bit(clinical_lead_v4) | lead_bit(clinical_lead_v5) | lead_bit(clinical_lead_v6);
+        }
+
+        unsigned int all_leads()
+        {
+            return (1U << clinical_lead_count) - 1U;
+        }
+
         unsigned int infarction_q_leads(ecg_condition_code code)
         {
             if (code == ecg_condition_imi || code == ecg_condition_ipmi)
@@ -310,6 +351,25 @@ namespace signal_synth
                 return lateral_leads();
             if (code == ecg_condition_injil)
                 return inferolateral_leads();
+            return 0;
+        }
+
+        unsigned int ischemia_leads(ecg_condition_code code)
+        {
+            if (code == ecg_condition_isc)
+                return widespread_leads();
+            if (code == ecg_condition_iscal)
+                return anterolateral_leads();
+            if (code == ecg_condition_iscin)
+                return inferior_leads();
+            if (code == ecg_condition_iscil)
+                return inferolateral_leads();
+            if (code == ecg_condition_iscas)
+                return anteroseptal_leads();
+            if (code == ecg_condition_iscla)
+                return lateral_leads();
+            if (code == ecg_condition_iscan)
+                return anterior_leads();
             return 0;
         }
 
@@ -427,6 +487,21 @@ namespace signal_synth
                     if (has_infarction_q_wave(condition.code))
                         add_effective(report.effective_conditions, ecg_condition_qwave, condition.severity, true);
                 }
+                if (is_territorial_ischemia(condition.code))
+                {
+                    add_effective(report.effective_conditions, ecg_condition_std, condition.severity, true);
+                    add_effective(report.effective_conditions, ecg_condition_invt, condition.severity, true);
+                }
+                else if (condition.code == ecg_condition_dig)
+                    add_effective(report.effective_conditions, ecg_condition_std, condition.severity, true);
+                else if (condition.code == ecg_condition_aneur)
+                {
+                    add_effective(report.effective_conditions, ecg_condition_ste, condition.severity, true);
+                    add_effective(report.effective_conditions, ecg_condition_qwave, condition.severity, true);
+                    add_effective(report.effective_conditions, ecg_condition_abqrs, condition.severity, true);
+                }
+                else if (condition.code == ecg_condition_el)
+                    add_effective(report.effective_conditions, ecg_condition_tab, condition.severity, true);
             }
             std::sort(report.effective_conditions.begin(), report.effective_conditions.end(), effective_order);
         }
@@ -538,7 +613,20 @@ namespace signal_synth
                     add_conflict(report, scenario.conditions, infarction_injury_conditions[left], hypertrophy_conditions[hypertrophy], "The first infarction/injury QA pack does not compose with a hypertrophy phenotype.");
             }
 
-            const ecg_condition_code morphology_conditions[] = {ecg_condition_qwave, ecg_condition_lvolt, ecg_condition_hvolt, ecg_condition_lvh, ecg_condition_rvh, ecg_condition_sehyp, ecg_condition_vclvh, ecg_condition_lao_lae, ecg_condition_rao_rae, ecg_condition_imi, ecg_condition_asmi, ecg_condition_ilmi, ecg_condition_ami, ecg_condition_almi, ecg_condition_injas, ecg_condition_lmi, ecg_condition_injal, ecg_condition_iplmi, ecg_condition_ipmi, ecg_condition_injin, ecg_condition_injla, ecg_condition_pmi, ecg_condition_injil};
+            for (unsigned int left = 0; left < sizeof(repolarization_conditions) / sizeof(repolarization_conditions[0]); ++left)
+            {
+                for (unsigned int right = left + 1; right < sizeof(repolarization_conditions) / sizeof(repolarization_conditions[0]); ++right)
+                    add_conflict(report, scenario.conditions, repolarization_conditions[left], repolarization_conditions[right], "The first ST-T/repolarization QA pack supports one family phenotype per scenario.");
+                add_conflict(report, scenario.conditions, repolarization_conditions[left], ecg_condition_qwave, "The ST-T/repolarization QA pack does not compose with explicit Q-wave morphology.");
+                add_conflict(report, scenario.conditions, repolarization_conditions[left], ecg_condition_lvolt, "The ST-T/repolarization QA pack does not compose with low QRS voltage.");
+                add_conflict(report, scenario.conditions, repolarization_conditions[left], ecg_condition_hvolt, "The ST-T/repolarization QA pack does not compose with high QRS voltage.");
+                for (unsigned int hypertrophy = 0; hypertrophy < sizeof(hypertrophy_conditions) / sizeof(hypertrophy_conditions[0]); ++hypertrophy)
+                    add_conflict(report, scenario.conditions, repolarization_conditions[left], hypertrophy_conditions[hypertrophy], "The first ST-T/repolarization QA pack does not compose with a hypertrophy phenotype.");
+                for (unsigned int infarction = 0; infarction < sizeof(infarction_injury_conditions) / sizeof(infarction_injury_conditions[0]); ++infarction)
+                    add_conflict(report, scenario.conditions, repolarization_conditions[left], infarction_injury_conditions[infarction], "The first ST-T/repolarization QA pack does not compose with an infarction/injury phenotype.");
+            }
+
+            const ecg_condition_code morphology_conditions[] = {ecg_condition_qwave, ecg_condition_lvolt, ecg_condition_hvolt, ecg_condition_lvh, ecg_condition_rvh, ecg_condition_sehyp, ecg_condition_vclvh, ecg_condition_lao_lae, ecg_condition_rao_rae, ecg_condition_imi, ecg_condition_asmi, ecg_condition_ilmi, ecg_condition_ami, ecg_condition_almi, ecg_condition_injas, ecg_condition_lmi, ecg_condition_injal, ecg_condition_iplmi, ecg_condition_ipmi, ecg_condition_injin, ecg_condition_injla, ecg_condition_pmi, ecg_condition_injil, ecg_condition_ndt, ecg_condition_nst, ecg_condition_dig, ecg_condition_lngqt, ecg_condition_isc, ecg_condition_iscal, ecg_condition_iscin, ecg_condition_iscil, ecg_condition_iscas, ecg_condition_iscla, ecg_condition_aneur, ecg_condition_el, ecg_condition_iscan, ecg_condition_std, ecg_condition_lowt, ecg_condition_nt, ecg_condition_invt, ecg_condition_tab, ecg_condition_ste};
             const ecg_condition_code morphology_conflicts[] = {ecg_condition_afib, ecg_condition_aflt, ecg_condition_svtac, ecg_condition_pace, ecg_condition_pac, ecg_condition_pvc, ecg_condition_clbbb, ecg_condition_crbbb};
             for (unsigned int morphology = 0; morphology < sizeof(morphology_conditions) / sizeof(morphology_conditions[0]); ++morphology)
                 for (unsigned int conflict = 0; conflict < sizeof(morphology_conflicts) / sizeof(morphology_conflicts[0]); ++conflict)
@@ -664,6 +752,119 @@ namespace signal_synth
             config.morphology.st_j_amplitude_mv = -(0.08 + 0.18 * severity);
             config.sources.axis_offset_degrees[clinical_source_injury] = axis - config.morphology.t_axis_degrees;
             config.sources.elevation_offset_degrees[clinical_source_injury] = elevation - config.morphology.t_elevation_degrees;
+        }
+
+        void repolarization_source_orientation(ecg_condition_code code, double& axis, double& elevation)
+        {
+            if (code == ecg_condition_iscin)
+            {
+                axis = 60.0;
+                elevation = 0.0;
+            }
+            else if (code == ecg_condition_iscas)
+            {
+                axis = 180.0;
+                elevation = -55.0;
+            }
+            else if (code == ecg_condition_iscan)
+            {
+                axis = 180.0;
+                elevation = -45.0;
+            }
+            else if (code == ecg_condition_iscal)
+            {
+                axis = 0.0;
+                elevation = -35.0;
+            }
+            else if (code == ecg_condition_iscla)
+            {
+                axis = 0.0;
+                elevation = -10.0;
+            }
+            else
+            {
+                axis = 45.0;
+                elevation = -15.0;
+            }
+        }
+
+        void orient_repolarization_source(clinical_ecg_source source, double axis, double elevation, clinical_ecg_config& config)
+        {
+            config.sources.axis_offset_degrees[source] = axis - config.morphology.t_axis_degrees;
+            config.sources.elevation_offset_degrees[source] = elevation - config.morphology.t_elevation_degrees;
+        }
+
+        void compile_territorial_ischemia(ecg_condition_code code, double severity, clinical_ecg_config& config)
+        {
+            double axis = 0.0;
+            double elevation = 0.0;
+            repolarization_source_orientation(code, axis, elevation);
+            config.morphology.st_j_amplitude_mv = -(0.08 + 0.16 * severity);
+            config.morphology.t_amplitude_mv = -(0.10 + 0.14 * severity);
+            orient_repolarization_source(clinical_source_injury, axis, elevation, config);
+            orient_repolarization_source(clinical_source_repolarization, axis, elevation, config);
+        }
+
+        void compile_repolarization_condition(ecg_condition_code code, double severity, clinical_ecg_config& config)
+        {
+            if (is_territorial_ischemia(code))
+            {
+                compile_territorial_ischemia(code, severity, config);
+                return;
+            }
+            if (code == ecg_condition_nst)
+            {
+                config.morphology.st_j_amplitude_mv = -(0.025 + 0.075 * severity);
+                config.morphology.st_slope_mv_per_second = -(0.05 + 0.15 * severity);
+                orient_repolarization_source(clinical_source_injury, 45.0, -15.0, config);
+            }
+            else if (code == ecg_condition_dig)
+            {
+                config.morphology.st_j_amplitude_mv = -(0.08 + 0.12 * severity);
+                config.morphology.st_slope_mv_per_second = -(0.25 + 0.35 * severity);
+                config.morphology.t_amplitude_mv = 0.18 - 0.04 * severity;
+                orient_repolarization_source(clinical_source_injury, 45.0, -15.0, config);
+            }
+            else if (code == ecg_condition_std)
+            {
+                config.morphology.st_j_amplitude_mv = -(0.06 + 0.14 * severity);
+                orient_repolarization_source(clinical_source_injury, 45.0, -15.0, config);
+            }
+            else if (code == ecg_condition_ste)
+            {
+                config.morphology.st_j_amplitude_mv = 0.06 + 0.14 * severity;
+                orient_repolarization_source(clinical_source_injury, 45.0, -15.0, config);
+            }
+            else if (code == ecg_condition_lowt)
+                config.morphology.t_amplitude_mv = 0.08 - 0.04 * severity;
+            else if (code == ecg_condition_invt)
+                config.morphology.t_amplitude_mv = -(0.12 + 0.18 * severity);
+            else if (code == ecg_condition_ndt)
+            {
+                config.morphology.t_amplitude_mv = 0.20 - 0.06 * severity;
+                orient_repolarization_source(clinical_source_repolarization, 65.0 + 25.0 * severity, 10.0, config);
+            }
+            else if (code == ecg_condition_nt)
+            {
+                config.morphology.t_amplitude_mv = 0.20 - 0.08 * severity;
+                orient_repolarization_source(clinical_source_repolarization, 100.0 + 30.0 * severity, -10.0, config);
+            }
+            else if (code == ecg_condition_tab)
+            {
+                config.morphology.t_amplitude_mv = 0.18;
+                orient_repolarization_source(clinical_source_repolarization, 150.0 + 30.0 * severity, -35.0, config);
+            }
+            else if (code == ecg_condition_aneur)
+            {
+                compile_infarction_q(ecg_condition_ami, severity, config);
+                config.morphology.st_j_amplitude_mv = 0.10 + 0.18 * severity;
+                orient_repolarization_source(clinical_source_injury, 180.0, -55.0, config);
+            }
+            else if (code == ecg_condition_el)
+            {
+                config.morphology.t_amplitude_mv = 0.35 + 0.35 * severity;
+                config.timing.t_duration_ms = 170.0 - 60.0 * severity;
+            }
         }
 
         void compile_conditions(const ecg_qa_scenario::implementation& scenario, clinical_ecg_config& config)
@@ -805,6 +1006,8 @@ namespace signal_synth
                     compile_posterior_proxy(condition.severity, config);
                 if (is_injury_condition(condition.code))
                     compile_injury(condition.code, condition.severity, config);
+                if (is_new_repolarization_condition(condition.code))
+                    compile_repolarization_condition(condition.code, condition.severity, config);
             }
             if (has_condition(scenario.conditions, ecg_condition_qwave))
             {
@@ -1059,7 +1262,10 @@ namespace signal_synth
             morphology_r_amplitude,
             morphology_s_amplitude,
             morphology_qrs_peak_to_peak,
-            morphology_st_j
+            morphology_st_j,
+            morphology_st_j60,
+            morphology_t_amplitude,
+            morphology_t_duration
         };
 
         ecg_lead_region q_wave_region(ecg_q_wave_territory territory)
@@ -1089,6 +1295,12 @@ namespace signal_synth
                 return entry.s_amplitude_mv;
             if (value == morphology_st_j)
                 return entry.st_j_mv;
+            if (value == morphology_st_j60)
+                return entry.st_j60_mv;
+            if (value == morphology_t_amplitude)
+                return entry.t_amplitude_mv;
+            if (value == morphology_t_duration)
+                return entry.t_duration_seconds;
             return entry.qrs_peak_to_peak_mv;
         }
 
@@ -1188,13 +1400,64 @@ namespace signal_synth
             return matching;
         }
 
-        double depressed_st_lead_count(const ecg_morphology_report& morphology, unsigned int leads)
+        double depressed_st_lead_count(const ecg_morphology_report& morphology, unsigned int leads, double threshold = -0.03)
         {
             unsigned int matching = 0;
             for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
-                if ((leads & lead_bit(lead)) != 0 && morphology_lead_mean(morphology, lead, morphology_st_j) <= -0.03)
+                if ((leads & lead_bit(lead)) != 0 && morphology_lead_mean(morphology, lead, morphology_st_j) <= threshold)
                     ++matching;
             return matching;
+        }
+
+        double elevated_st_lead_count(const ecg_morphology_report& morphology, unsigned int leads, double threshold = 0.03)
+        {
+            unsigned int matching = 0;
+            for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
+                if ((leads & lead_bit(lead)) != 0 && morphology_lead_mean(morphology, lead, morphology_st_j) >= threshold)
+                    ++matching;
+            return matching;
+        }
+
+        double negative_t_lead_count(const ecg_morphology_report& morphology, unsigned int leads, double threshold = -0.03)
+        {
+            unsigned int matching = 0;
+            for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
+                if ((leads & lead_bit(lead)) != 0 && morphology_lead_mean(morphology, lead, morphology_t_amplitude) <= threshold)
+                    ++matching;
+            return matching;
+        }
+
+        double positive_t_lead_count(const ecg_morphology_report& morphology, unsigned int leads, double threshold = 0.03)
+        {
+            unsigned int matching = 0;
+            for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
+                if ((leads & lead_bit(lead)) != 0 && morphology_lead_mean(morphology, lead, morphology_t_amplitude) >= threshold)
+                    ++matching;
+            return matching;
+        }
+
+        double maximum_absolute_t_amplitude(const ecg_morphology_report& morphology, unsigned int leads)
+        {
+            double maximum = -1.0;
+            for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
+                if ((leads & lead_bit(lead)) != 0)
+                    maximum = std::max(maximum, std::fabs(morphology_lead_mean(morphology, lead, morphology_t_amplitude)));
+            return maximum;
+        }
+
+        double st_slope_extreme(const ecg_morphology_report& morphology, unsigned int leads, bool maximum)
+        {
+            double result = maximum ? -std::numeric_limits<double>::max() : std::numeric_limits<double>::max();
+            bool found = false;
+            for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
+            {
+                if ((leads & lead_bit(lead)) == 0)
+                    continue;
+                const double slope = morphology_lead_mean(morphology, lead, morphology_st_j60) - morphology_lead_mean(morphology, lead, morphology_st_j);
+                result = maximum ? std::max(result, slope) : std::min(result, slope);
+                found = true;
+            }
+            return found ? result : -1.0;
         }
 
         void q_component_masks(ecg_condition_code code, unsigned int& first, unsigned int& second)
@@ -1223,6 +1486,22 @@ namespace signal_synth
                 second = lateral_leads();
             }
             else if (code == ecg_condition_injil)
+            {
+                first = inferior_leads();
+                second = lateral_leads();
+            }
+        }
+
+        void ischemia_component_masks(ecg_condition_code code, unsigned int& first, unsigned int& second)
+        {
+            first = ischemia_leads(code);
+            second = 0;
+            if (code == ecg_condition_iscal)
+            {
+                first = anterior_leads();
+                second = lateral_leads();
+            }
+            else if (code == ecg_condition_iscil)
             {
                 first = inferior_leads();
                 second = lateral_leads();
@@ -1260,6 +1539,75 @@ namespace signal_synth
             add_assertion(report, code, ecg_assert_injury_st_lead_count, available ? depressed_st_lead_count(morphology, first) : 0.0, 2.0, clinical_lead_count, second ? "first depressed ST lead group" : "depressed ST leads", "count");
             if (second)
                 add_assertion(report, code, ecg_assert_injury_st_lead_count, available ? depressed_st_lead_count(morphology, second) : 0.0, 2.0, clinical_lead_count, "second depressed ST lead group", "count");
+        }
+
+        void add_ischemia_assertions(ecg_condition_code code, double severity, const ecg_morphology_report& morphology, bool available, ecg_scenario_report::implementation& report)
+        {
+            const unsigned int leads = ischemia_leads(code);
+            const double minimum_count = code == ecg_condition_isc ? 3.0 : 2.0;
+            const double st_threshold = -(0.01 + 0.02 * severity);
+            const double t_threshold = -(0.01 + 0.02 * severity);
+            unsigned int first = 0;
+            unsigned int second = 0;
+            ischemia_component_masks(code, first, second);
+            add_assertion(report, code, ecg_assert_st_deviation, available ? morphology_mask_extreme(morphology, leads, morphology_st_j, false) : 0.0, -10.0, -0.05, "territorial ST-J depression", "mV");
+            add_assertion(report, code, ecg_assert_st_lead_count, available ? depressed_st_lead_count(morphology, first, st_threshold) : 0.0, minimum_count, clinical_lead_count, second ? "first depressed ST lead group" : "depressed ST leads", "count");
+            if (second)
+                add_assertion(report, code, ecg_assert_st_lead_count, available ? depressed_st_lead_count(morphology, second, st_threshold) : 0.0, 2.0, clinical_lead_count, "second depressed ST lead group", "count");
+            add_assertion(report, code, ecg_assert_t_amplitude, available ? morphology_mask_extreme(morphology, leads, morphology_t_amplitude, false) : 0.0, -10.0, -0.05, "territorial negative T amplitude", "mV");
+            add_assertion(report, code, ecg_assert_t_lead_count, available ? negative_t_lead_count(morphology, first, t_threshold) : 0.0, minimum_count, clinical_lead_count, second ? "first negative T lead group" : "negative T leads", "count");
+            if (second)
+                add_assertion(report, code, ecg_assert_t_lead_count, available ? negative_t_lead_count(morphology, second, t_threshold) : 0.0, 2.0, clinical_lead_count, "second negative T lead group", "count");
+        }
+
+        void add_repolarization_assertions(ecg_condition_code code, double severity, const ecg_morphology_report& morphology, bool available, ecg_scenario_report::implementation& report)
+        {
+            const unsigned int leads = widespread_leads();
+            const double st_threshold = 0.01 + 0.02 * severity;
+            const double t_threshold = 0.01 + 0.02 * severity;
+            if (code == ecg_condition_nst || code == ecg_condition_dig || code == ecg_condition_std)
+            {
+                add_assertion(report, code, ecg_assert_st_deviation, available ? morphology_mask_extreme(morphology, leads, morphology_st_j, false) : 0.0, -10.0, code == ecg_condition_nst ? -0.015 : -0.05, "ST-J depression", "mV");
+                add_assertion(report, code, ecg_assert_st_lead_count, available ? depressed_st_lead_count(morphology, leads, -st_threshold) : 0.0, code == ecg_condition_nst ? 1.0 : 3.0, clinical_lead_count, "depressed ST leads", "count");
+                if (code == ecg_condition_nst || code == ecg_condition_dig)
+                    add_assertion(report, code, ecg_assert_st_slope, available ? st_slope_extreme(morphology, leads, false) : 0.0, -10.0, -0.005, "downsloping ST change at J+60", "mV");
+            }
+            else if (code == ecg_condition_ste)
+            {
+                add_assertion(report, code, ecg_assert_st_deviation, available ? morphology_mask_extreme(morphology, leads, morphology_st_j, true) : 0.0, 0.05, 10.0, "ST-J elevation", "mV");
+                add_assertion(report, code, ecg_assert_st_lead_count, available ? elevated_st_lead_count(morphology, leads, st_threshold) : 0.0, 3.0, clinical_lead_count, "elevated ST leads", "count");
+            }
+            else if (code == ecg_condition_lowt)
+                add_assertion(report, code, ecg_assert_t_amplitude, available ? maximum_absolute_t_amplitude(morphology, leads) : -1.0, 0.005, 0.12, "maximum absolute T amplitude", "mV");
+            else if (code == ecg_condition_invt)
+            {
+                add_assertion(report, code, ecg_assert_t_amplitude, available ? morphology_mask_extreme(morphology, leads, morphology_t_amplitude, false) : 0.0, -10.0, -0.08, "negative T amplitude", "mV");
+                add_assertion(report, code, ecg_assert_t_lead_count, available ? negative_t_lead_count(morphology, leads, -t_threshold) : 0.0, 3.0, clinical_lead_count, "negative T leads", "count");
+            }
+            else if (code == ecg_condition_ndt || code == ecg_condition_nt)
+            {
+                add_assertion(report, code, ecg_assert_t_amplitude, available ? maximum_absolute_t_amplitude(morphology, all_leads()) : -1.0, 0.05, 0.40, "maximum absolute T amplitude", "mV");
+                add_assertion(report, code, ecg_assert_t_lead_count, available ? negative_t_lead_count(morphology, all_leads(), -t_threshold) : 0.0, code == ecg_condition_ndt ? 1.0 : 2.0, clinical_lead_count, "negative T leads", "count");
+            }
+            else if (code == ecg_condition_tab)
+            {
+                add_assertion(report, code, ecg_assert_t_polarity_dispersion, available ? positive_t_lead_count(morphology, all_leads(), t_threshold) : 0.0, 2.0, clinical_lead_count, "positive T leads", "count");
+                add_assertion(report, code, ecg_assert_t_polarity_dispersion, available ? negative_t_lead_count(morphology, all_leads(), -t_threshold) : 0.0, 2.0, clinical_lead_count, "negative T leads", "count");
+            }
+            else if (code == ecg_condition_aneur)
+            {
+                const unsigned int anterior = anterior_leads();
+                add_assertion(report, code, ecg_assert_q_wave_amplitude, available ? morphology_mask_extreme(morphology, anterior, morphology_q_amplitude, false) : 0.0, -10.0, -0.10, "anterior Q amplitude", "mV");
+                add_assertion(report, code, ecg_assert_q_wave_duration, available ? morphology_mask_extreme(morphology, anterior, morphology_q_duration, true) : -1.0, 0.030, 0.5, "anterior Q duration", "s");
+                add_assertion(report, code, ecg_assert_q_wave_lead_count, available ? pathological_q_lead_count_mask(morphology, anterior) : 0.0, 2.0, clinical_lead_count, "anterior pathological Q leads", "count");
+                add_assertion(report, code, ecg_assert_st_deviation, available ? morphology_mask_extreme(morphology, anterior, morphology_st_j, true) : 0.0, 0.05, 10.0, "persistent anterior ST-J elevation proxy", "mV");
+                add_assertion(report, code, ecg_assert_st_lead_count, available ? elevated_st_lead_count(morphology, anterior) : 0.0, 2.0, clinical_lead_count, "elevated anterior ST leads", "count");
+            }
+            else if (code == ecg_condition_el)
+            {
+                add_assertion(report, code, ecg_assert_t_amplitude, available ? maximum_absolute_t_amplitude(morphology, leads) : -1.0, 0.25, 10.0, "maximum absolute T amplitude", "mV");
+                add_assertion(report, code, ecg_assert_t_duration, available ? morphology_mask_extreme(morphology, leads, morphology_t_duration, true) : -1.0, 0.04, 0.17, "maximum T duration", "s");
+            }
         }
 
         double left_ventricular_voltage_index(const ecg_morphology_report& morphology)
@@ -1378,6 +1726,28 @@ namespace signal_synth
                     break;
                 case ecg_condition_lngqt:
                     add_assertion(report, requested.code, ecg_assert_qtc_interval, mean_annotation_value(record, ecg_assert_qtc_interval), 0.44, 2.0, "prolonged QTc", "s");
+                    break;
+                case ecg_condition_isc:
+                case ecg_condition_iscal:
+                case ecg_condition_iscin:
+                case ecg_condition_iscil:
+                case ecg_condition_iscas:
+                case ecg_condition_iscla:
+                case ecg_condition_iscan:
+                    add_ischemia_assertions(requested.code, requested.severity, morphology, morphology_available, report);
+                    break;
+                case ecg_condition_ndt:
+                case ecg_condition_nst:
+                case ecg_condition_dig:
+                case ecg_condition_aneur:
+                case ecg_condition_el:
+                case ecg_condition_std:
+                case ecg_condition_lowt:
+                case ecg_condition_nt:
+                case ecg_condition_invt:
+                case ecg_condition_tab:
+                case ecg_condition_ste:
+                    add_repolarization_assertions(requested.code, requested.severity, morphology, morphology_available, report);
                     break;
                 case ecg_condition_pace:
                     add_assertion(report, requested.code, ecg_assert_rhythm, beat_fraction(record, clinical_rhythm_paced), 1.0, 1.0, "paced rhythm beats", "ratio");
