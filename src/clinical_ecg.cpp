@@ -95,6 +95,18 @@ namespace signal_synth
             return value * value * (3.0 - 2.0 * value);
         }
 
+        vec3 cubic_hermite(const vec3& first_value, const vec3& last_value, const vec3& first_derivative, const vec3& last_derivative, double duration, double position)
+        {
+            position = std::max(0.0, std::min(1.0, position));
+            const double position2 = position * position;
+            const double position3 = position2 * position;
+            const double first_value_weight = 2.0 * position3 - 3.0 * position2 + 1.0;
+            const double first_derivative_weight = position3 - 2.0 * position2 + position;
+            const double last_value_weight = -2.0 * position3 + 3.0 * position2;
+            const double last_derivative_weight = position3 - position2;
+            return add(add(scale(first_value, first_value_weight), scale(first_derivative, first_derivative_weight * duration)), add(scale(last_value, last_value_weight), scale(last_derivative, last_derivative_weight * duration)));
+        }
+
         std::uint64_t mix64(std::uint64_t value)
         {
             value += 0x9e3779b97f4a7c15ULL;
@@ -496,23 +508,28 @@ namespace signal_synth
             }
         }
 
-        void render_injury_wave(std::vector<vec3>& source, unsigned int sampling_rate, const clinical_beat_annotation& beat, const vec3& j_value, const vec3& st_value)
+        void render_injury_wave(std::vector<vec3>& source, unsigned int sampling_rate, const clinical_beat_annotation& beat, const vec3& j_value, const vec3& st_slope)
         {
-            const int first = std::max(0, static_cast<int>(std::floor(beat.qrs_offset_time_seconds * sampling_rate)));
+            const vec3 zero = vec3{0.0, 0.0, 0.0};
+            const double terminal_duration = beat.j_point_time_seconds - beat.s_peak_time_seconds;
+            const double t_return_duration = beat.t_offset_time_seconds - beat.t_onset_time_seconds;
+            if (terminal_duration <= 0.0 || t_return_duration <= 0.0)
+                return;
+            const vec3 st_end = add(j_value, scale(st_slope, beat.t_onset_time_seconds - beat.j_point_time_seconds));
+            const int first = std::max(0, static_cast<int>(std::floor(beat.s_peak_time_seconds * sampling_rate)));
             const int last = std::min(static_cast<int>(source.size()) - 1, static_cast<int>(std::ceil(beat.t_offset_time_seconds * sampling_rate)));
             for (int sample = first; sample <= last; ++sample)
             {
                 const double time = static_cast<double>(sample) / sampling_rate;
-                if (time < beat.qrs_offset_time_seconds || time > beat.t_offset_time_seconds)
+                if (time < beat.s_peak_time_seconds || time > beat.t_offset_time_seconds)
                     continue;
-                vec3 value = vec3{0.0, 0.0, 0.0};
-                if (time <= beat.t_onset_time_seconds)
-                {
-                    const double blend = smoothstep((time - beat.qrs_offset_time_seconds) / (beat.t_onset_time_seconds - beat.qrs_offset_time_seconds));
-                    value = add(scale(j_value, 1.0 - blend), scale(st_value, blend));
-                }
+                vec3 value = zero;
+                if (time <= beat.j_point_time_seconds)
+                    value = cubic_hermite(zero, j_value, zero, st_slope, terminal_duration, (time - beat.s_peak_time_seconds) / terminal_duration);
+                else if (time <= beat.t_onset_time_seconds)
+                    value = add(j_value, scale(st_slope, time - beat.j_point_time_seconds));
                 else
-                    value = scale(st_value, 1.0 - smoothstep((time - beat.t_onset_time_seconds) / (beat.t_offset_time_seconds - beat.t_onset_time_seconds)));
+                    value = cubic_hermite(st_end, zero, st_slope, zero, t_return_duration, (time - beat.t_onset_time_seconds) / t_return_duration);
                 source[sample] = add(source[sample], value);
             }
         }
@@ -576,10 +593,9 @@ namespace signal_synth
                 render_compact_wave(sources[clinical_source_septal], output.sampling_rate_hz, beat.qrs_onset_time_seconds, beat.q_peak_time_seconds, beat.r_peak_time_seconds, source_vector(config, clinical_source_septal, q_amplitude, septal_axis, config.morphology.qrs_elevation_degrees));
                 render_compact_wave(sources[clinical_source_ventricular], output.sampling_rate_hz, beat.q_peak_time_seconds, beat.r_peak_time_seconds, beat.s_peak_time_seconds, source_vector(config, clinical_source_ventricular, r_amplitude, ventricular_axis, config.morphology.qrs_elevation_degrees));
                 render_compact_wave(sources[clinical_source_terminal], output.sampling_rate_hz, beat.r_peak_time_seconds, beat.s_peak_time_seconds, beat.qrs_offset_time_seconds, source_vector(config, clinical_source_terminal, s_amplitude, terminal_axis, config.morphology.qrs_elevation_degrees));
-                const double st_end_amplitude = config.morphology.st_j_amplitude_mv + config.morphology.st_slope_mv_per_second * (beat.t_onset_time_seconds - beat.qrs_offset_time_seconds);
                 const vec3 j = source_vector(config, clinical_source_injury, config.morphology.st_j_amplitude_mv, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees);
-                const vec3 st_end = source_vector(config, clinical_source_injury, st_end_amplitude, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees);
-                render_injury_wave(sources[clinical_source_injury], output.sampling_rate_hz, beat, j, st_end);
+                const vec3 st_slope = source_vector(config, clinical_source_injury, config.morphology.st_slope_mv_per_second, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees);
+                render_injury_wave(sources[clinical_source_injury], output.sampling_rate_hz, beat, j, st_slope);
                 render_compact_wave(sources[clinical_source_repolarization], output.sampling_rate_hz, beat.t_onset_time_seconds, beat.t_peak_time_seconds, beat.t_offset_time_seconds, source_vector(config, clinical_source_repolarization, t_amplitude, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees));
                 if (beat.origin == clinical_origin_paced)
                 {

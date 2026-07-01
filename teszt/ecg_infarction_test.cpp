@@ -122,7 +122,7 @@ int main()
     for (unsigned int index = 0; index < sizeof(injury_conditions) / sizeof(injury_conditions[0]); ++index)
         support_levels = support_levels && signal_synth::find_ecg_condition(injury_conditions[index])->support == signal_synth::ecg_support_parameterized;
     ok &= check(support_levels, "all_infarction_injury_conditions_are_parameterized");
-    ok &= check(signal_synth::ecg_scenario_engine_version() == 6, "engine_version_includes_repolarization_semantics");
+    ok &= check(signal_synth::ecg_scenario_engine_version() == 7, "engine_version_includes_continuous_stt_semantics");
 
     bool default_phenotypes = true;
     bool mild_phenotypes = true;

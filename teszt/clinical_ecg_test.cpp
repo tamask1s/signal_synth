@@ -409,7 +409,10 @@ int main()
     signal_synth::clinical_ecg_record st;
     signal_synth::clinical_ecg_generator(st_config).generate(1500, st);
     const unsigned int t_onset_sample = static_cast<unsigned int>(std::floor(st.beats()[0].t_onset_time_seconds * st.sampling_rate_hz()));
+    const unsigned int j_after_sample = static_cast<unsigned int>(std::ceil(st.beats()[0].j_point_time_seconds * st.sampling_rate_hz()));
     const double* st_lead = st.lead_data(signal_synth::clinical_lead_ii);
+    const double* injury_x = st.source_data(signal_synth::clinical_source_injury, signal_synth::clinical_axis_x);
+    ok &= check(std::fabs(injury_x[j_after_sample] - injury_x[j_after_sample - 1]) < 0.25 * std::fabs(injury_x[j_after_sample]), "terminal_qrs_to_j_transition_has_no_level_step");
     ok &= check(std::fabs(st_lead[t_onset_sample + 1] - st_lead[t_onset_sample]) < 0.02, "st_to_t_transition_is_continuous");
 
     std::cout << (ok ? "All clinical ECG tests passed.\n" : "Clinical ECG test failure.\n");

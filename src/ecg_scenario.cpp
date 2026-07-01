@@ -16,7 +16,7 @@ namespace signal_synth
     namespace
     {
         const unsigned int SCENARIO_SCHEMA_VERSION = 2;
-        const unsigned int SCENARIO_ENGINE_VERSION = 6;
+        const unsigned int SCENARIO_ENGINE_VERSION = 7;
         const unsigned long long DEFAULT_SEED = 0x5343454e4152494fULL;
         const ecg_condition_code NO_CONDITION = ecg_condition_count;
 
@@ -1570,7 +1570,7 @@ namespace signal_synth
                 add_assertion(report, code, ecg_assert_st_deviation, available ? morphology_mask_extreme(morphology, leads, morphology_st_j, false) : 0.0, -10.0, code == ecg_condition_nst ? -0.015 : -0.05, "ST-J depression", "mV");
                 add_assertion(report, code, ecg_assert_st_lead_count, available ? depressed_st_lead_count(morphology, leads, -st_threshold) : 0.0, code == ecg_condition_nst ? 1.0 : 3.0, clinical_lead_count, "depressed ST leads", "count");
                 if (code == ecg_condition_nst || code == ecg_condition_dig)
-                    add_assertion(report, code, ecg_assert_st_slope, available ? st_slope_extreme(morphology, leads, false) : 0.0, -10.0, -0.005, "downsloping ST change at J+60", "mV");
+                    add_assertion(report, code, ecg_assert_st_slope, available ? st_slope_extreme(morphology, leads, false) : 0.0, -10.0, code == ecg_condition_nst ? -(0.002 + 0.003 * severity) : -0.005, "downsloping ST change at J+60", "mV");
             }
             else if (code == ecg_condition_ste)
             {

@@ -41,6 +41,8 @@ Implementation increment designs:
   territorial Q-wave, posterior reciprocal, and injury-ST phenotype family.
 - `increments/008_ISCHEMIA_STT_REPOLARIZATION_QA_PACK.md` defines the
   complete ST-T/repolarization condition family and broad-statement proxies.
+- `increments/009_CONTINUOUS_STT_RENDERING.md` corrects discontinuous
+  terminal-QRS, ST, and T source transitions.
 
 Traceability demonstration:
 

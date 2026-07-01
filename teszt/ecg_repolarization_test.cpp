@@ -1,6 +1,7 @@
 #include "../src/ecg_scenario.h"
 #include "../src/clinical_ecg.h"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 
@@ -28,6 +29,25 @@ namespace
         signal_synth::ecg_condition_invt,
         signal_synth::ecg_condition_tab,
         signal_synth::ecg_condition_ste};
+
+    const signal_synth::ecg_condition_code injury_rendering_conditions[] = {
+        signal_synth::ecg_condition_nst,
+        signal_synth::ecg_condition_dig,
+        signal_synth::ecg_condition_isc,
+        signal_synth::ecg_condition_iscal,
+        signal_synth::ecg_condition_iscin,
+        signal_synth::ecg_condition_iscil,
+        signal_synth::ecg_condition_iscas,
+        signal_synth::ecg_condition_iscla,
+        signal_synth::ecg_condition_aneur,
+        signal_synth::ecg_condition_iscan,
+        signal_synth::ecg_condition_std,
+        signal_synth::ecg_condition_ste,
+        signal_synth::ecg_condition_injas,
+        signal_synth::ecg_condition_injal,
+        signal_synth::ecg_condition_injin,
+        signal_synth::ecg_condition_injla,
+        signal_synth::ecg_condition_injil};
 
     bool check(bool condition, const char* name)
     {
@@ -113,6 +133,59 @@ namespace
             *captured = report;
         return passed;
     }
+
+    double source_scale(const signal_synth::clinical_ecg_record& record, unsigned int axis)
+    {
+        const double* data = record.source_data(signal_synth::clinical_source_injury, axis);
+        double maximum = 0.0;
+        for (unsigned int sample = 0; sample < record.sample_count(); ++sample)
+            maximum = std::max(maximum, std::fabs(data[sample]));
+        return maximum;
+    }
+
+    double boundary_curvature_ratio(const signal_synth::clinical_ecg_record& record, unsigned int axis, double time_seconds, double scale)
+    {
+        if (scale <= 1e-12)
+            return 0.0;
+        const double* data = record.source_data(signal_synth::clinical_source_injury, axis);
+        const unsigned int center = static_cast<unsigned int>(std::llround(time_seconds * record.sampling_rate_hz()));
+        double maximum = 0.0;
+        for (unsigned int sample = center - 2; sample <= center + 2; ++sample)
+            maximum = std::max(maximum, std::fabs(data[sample + 1] - 2.0 * data[sample] + data[sample - 1]) / scale);
+        return maximum;
+    }
+
+    double j_step_ratio(const signal_synth::clinical_ecg_record& record, unsigned int axis, double time_seconds)
+    {
+        const double* data = record.source_data(signal_synth::clinical_source_injury, axis);
+        const unsigned int center = static_cast<unsigned int>(std::ceil(time_seconds * record.sampling_rate_hz()));
+        double local_scale = 0.0;
+        for (unsigned int sample = center - 2; sample <= center + 2; ++sample)
+            local_scale = std::max(local_scale, std::fabs(data[sample]));
+        return local_scale > 1e-12 ? std::fabs(data[center] - data[center - 1]) / local_scale : 0.0;
+    }
+
+    bool injury_boundaries_are_smooth(const signal_synth::clinical_ecg_record& record)
+    {
+        const double j_curvature_limit = record.sampling_rate_hz() <= 100 ? 0.80 : record.sampling_rate_hz() <= 500 ? 0.08 : 0.025;
+        const double j_step_limit = record.sampling_rate_hz() <= 100 ? 0.75 : 0.20;
+        const double t_curvature_limit = record.sampling_rate_hz() <= 100 ? 0.04 : record.sampling_rate_hz() <= 500 ? 0.005 : 0.002;
+        double scales[signal_synth::clinical_axis_count] = {};
+        for (unsigned int axis = 0; axis < signal_synth::clinical_axis_count; ++axis)
+            scales[axis] = source_scale(record, axis);
+        for (unsigned int beat_index = 0; beat_index < record.beat_count(); ++beat_index)
+        {
+            const signal_synth::clinical_beat_annotation& beat = record.beats()[beat_index];
+            if (beat.s_peak_time_seconds < 0.05 || beat.t_offset_time_seconds + 0.05 >= static_cast<double>(record.sample_count()) / record.sampling_rate_hz())
+                continue;
+            for (unsigned int axis = 0; axis < signal_synth::clinical_axis_count; ++axis)
+            {
+                if (j_step_ratio(record, axis, beat.j_point_time_seconds) > j_step_limit || boundary_curvature_ratio(record, axis, beat.j_point_time_seconds, scales[axis]) > j_curvature_limit || boundary_curvature_ratio(record, axis, beat.t_onset_time_seconds, scales[axis]) > t_curvature_limit || boundary_curvature_ratio(record, axis, beat.t_offset_time_seconds, scales[axis]) > t_curvature_limit)
+                    return false;
+            }
+        }
+        return true;
+    }
 }
 
 int main()
@@ -127,7 +200,7 @@ int main()
     for (unsigned int index = 0; index < sizeof(stt_conditions) / sizeof(stt_conditions[0]); ++index)
         support_levels = support_levels && signal_synth::find_ecg_condition(stt_conditions[index])->support == signal_synth::ecg_support_parameterized;
     ok &= check(support_levels, "all_ischemia_stt_conditions_are_parameterized");
-    ok &= check(signal_synth::ecg_scenario_engine_version() == 6, "repolarization_semantics_increment_engine_version");
+    ok &= check(signal_synth::ecg_scenario_engine_version() == 7, "continuous_stt_semantics_increment_engine_version");
 
     bool default_phenotypes = true;
     bool mild_phenotypes = true;
@@ -229,6 +302,24 @@ int main()
     for (unsigned int index = 0; index < sizeof(stt_conditions) / sizeof(stt_conditions[0]); ++index)
         sampling_rates = generated_phenotype_passes(engine, make_scenario(stt_conditions[index], 1.0, 100), 1200) && generated_phenotype_passes(engine, make_scenario(stt_conditions[index], 1.0, 1000), 12000) && sampling_rates;
     ok &= check(sampling_rates, "assertions_across_sampling_rates");
+
+    bool continuous_boundaries = true;
+    const unsigned int continuity_rates[] = {100, 500, 1000};
+    for (unsigned int rate_index = 0; rate_index < sizeof(continuity_rates) / sizeof(continuity_rates[0]); ++rate_index)
+    {
+        for (unsigned int condition_index = 0; condition_index < sizeof(injury_rendering_conditions) / sizeof(injury_rendering_conditions[0]); ++condition_index)
+        {
+            const unsigned int rate = continuity_rates[rate_index];
+            signal_synth::clinical_ecg_record record;
+            signal_synth::ecg_scenario_report continuity_report;
+            const bool generated = engine.generate(make_scenario(injury_rendering_conditions[condition_index], 1.0, rate), rate * 12, record, continuity_report);
+            const bool smooth = generated && injury_boundaries_are_smooth(record);
+            if (!smooth)
+                std::cerr << "Continuity failure for " << signal_synth::find_ecg_condition(injury_rendering_conditions[condition_index])->scp_code << " at " << rate << " Hz\n";
+            continuous_boundaries = smooth && continuous_boundaries;
+        }
+    }
+    ok &= check(continuous_boundaries, "injury_source_boundaries_are_sampled_smoothly");
 
     std::cout << (ok ? "All ECG ischemia/ST-T tests passed.\n" : "ECG ischemia/ST-T test failure.\n");
     return ok ? 0 : 1;
