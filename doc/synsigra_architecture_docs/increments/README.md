@@ -32,3 +32,12 @@ CI jobs and the traceability matrix has been updated.
 These records describe engineering design and verification intent. They do
 not establish clinical validity, MDR compliance, or a qualified test
 environment.
+
+Current records:
+
+- `001_PORTABLE_BUILD_BASELINE.md`
+- `002_VERSIONED_SCENARIO_JSON.md`
+- `003_SCENARIO_CLI_VALIDATE_FINGERPRINT.md`
+- `004_RENDER_EXPORT_REPORT.md`
+- `005_SHARED_TIMELINE_PPG.md`
+- `006_HYPERTROPHY_QA_PACK.md`

@@ -35,6 +35,8 @@ Implementation increment designs:
   export artifacts, and the self-contained HTML evidence report.
 - `increments/005_SHARED_TIMELINE_PPG.md` defines schema-v2 PPG generated from
   the exact ECG ventricular timeline.
+- `increments/006_HYPERTROPHY_QA_PACK.md` defines six measured multi-source
+  hypertrophy and atrial-overload engineering phenotypes.
 
 Traceability demonstration:
 

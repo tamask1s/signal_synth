@@ -179,7 +179,12 @@ namespace signal_synth
         ecg_assert_q_wave_lead_count = 18,
         ecg_assert_low_qrs_voltage = 19,
         ecg_assert_high_qrs_voltage = 20,
-        ecg_assertion_code_count = 21
+        ecg_assert_left_ventricular_voltage = 21,
+        ecg_assert_right_precordial_rs_ratio = 22,
+        ecg_assert_septal_qrs_voltage = 23,
+        ecg_assert_p_wave_duration = 24,
+        ecg_assert_p_wave_amplitude = 25,
+        ecg_assertion_code_count = 26
     };
 
     enum ecg_phenotype_assertion_status

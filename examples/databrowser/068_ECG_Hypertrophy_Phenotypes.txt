@@ -1,0 +1,41 @@
+// Parameterized hypertrophy and atrial-overload engineering QA phenotypes.
+// ECG annotations are emitted as extra channels (annotation_output = 2).
+
+#define SAMPLING_RATE 500
+#define NUMBER_OF_SAMPLES 6000
+#define OUTPUT_BASE ecg_hypertrophy_phenotypes
+
+DataDelete();
+
+GenerateECGQAScenario(lvh_ecg, lvh_sources, lvh_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["LVH"], "heart_rate_bpm":70, "seed":5001}, 2);
+GenerateECGQAScenario(rvh_ecg, rvh_sources, rvh_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["RVH"], "heart_rate_bpm":70, "seed":5002}, 2);
+GenerateECGQAScenario(septal_hypertrophy_ecg, septal_hypertrophy_sources, septal_hypertrophy_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["SEHYP"], "heart_rate_bpm":70, "seed":5003}, 2);
+GenerateECGQAScenario(lvh_voltage_ecg, lvh_voltage_sources, lvh_voltage_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["VCLVH"], "heart_rate_bpm":70, "seed":5004}, 2);
+GenerateECGQAScenario(lae_ecg, lae_sources, lae_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["LAO/LAE"], "heart_rate_bpm":70, "seed":5005}, 2);
+GenerateECGQAScenario(rae_ecg, rae_sources, rae_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["RAO/RAE"], "heart_rate_bpm":70, "seed":5006}, 2);
+
+SaveVarToFile(lvh_ecg, CatStrings(OUTPUT_BASE, _lvh, .bin), 100, 8);
+SaveVarToFile(rvh_ecg, CatStrings(OUTPUT_BASE, _rvh, .bin), 100, 8);
+SaveVarToFile(septal_hypertrophy_ecg, CatStrings(OUTPUT_BASE, _septal, .bin), 100, 8);
+SaveVarToFile(lvh_voltage_ecg, CatStrings(OUTPUT_BASE, _vclvh, .bin), 100, 8);
+SaveVarToFile(lae_ecg, CatStrings(OUTPUT_BASE, _lae, .bin), 100, 8);
+SaveVarToFile(rae_ecg, CatStrings(OUTPUT_BASE, _rae, .bin), 100, 8);
+SaveVarToFile(lvh_assertions, CatStrings(OUTPUT_BASE, _lvh_assertions, .bin), 100, 8);
+SaveVarToFile(rvh_assertions, CatStrings(OUTPUT_BASE, _rvh_assertions, .bin), 100, 8);
+SaveVarToFile(septal_hypertrophy_assertions, CatStrings(OUTPUT_BASE, _septal_assertions, .bin), 100, 8);
+SaveVarToFile(lvh_voltage_assertions, CatStrings(OUTPUT_BASE, _vclvh_assertions, .bin), 100, 8);
+SaveVarToFile(lae_assertions, CatStrings(OUTPUT_BASE, _lae_assertions, .bin), 100, 8);
+SaveVarToFile(rae_assertions, CatStrings(OUTPUT_BASE, _rae_assertions, .bin), 100, 8);
+
+DisplayData(lvh_ecg, fit_width,, A2, 001);
+DisplayData(lvh_assertions, fit_width,, A2, 001);
+DisplayData(rvh_ecg, fit_width,, A2, 001);
+DisplayData(rvh_assertions, fit_width,, A2, 001);
+DisplayData(septal_hypertrophy_ecg, fit_width,, A2, 001);
+DisplayData(septal_hypertrophy_assertions, fit_width,, A2, 001);
+DisplayData(lvh_voltage_ecg, fit_width,, A2, 001);
+DisplayData(lvh_voltage_assertions, fit_width,, A2, 001);
+DisplayData(lae_ecg, fit_width,, A2, 001);
+DisplayData(lae_assertions, fit_width,, A2, 001);
+DisplayData(rae_ecg, fit_width,, A2, 001);
+DisplayData(rae_assertions, fit_width,, A2, 001);

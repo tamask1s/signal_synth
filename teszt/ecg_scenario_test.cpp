@@ -96,7 +96,7 @@ int main()
     ok &= check(signal_synth::ecg_condition_catalog_size() == 71 && scp_codes.size() == 71 && catalog_order, "complete_unique_ordered_scp_catalog");
     ok &= check(diagnostic_count == 44 && form_count == 19 && rhythm_count == 12, "scp_statement_classification_counts");
     ok &= check(!signal_synth::find_ecg_condition("UNKNOWN") && !signal_synth::find_ecg_condition(static_cast<signal_synth::ecg_condition_code>(999)), "unknown_condition_lookup");
-    ok &= check(signal_synth::find_ecg_condition(signal_synth::ecg_condition_lvh)->support == signal_synth::ecg_support_catalog_only && signal_synth::find_ecg_condition(signal_synth::ecg_condition_crbbb)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_qwave)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_afib)->support == signal_synth::ecg_support_native, "support_levels_are_explicit");
+    ok &= check(signal_synth::find_ecg_condition(signal_synth::ecg_condition_lvh)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_rvh)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_sehyp)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_vclvh)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_lao_lae)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_rao_rae)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_crbbb)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_afib)->support == signal_synth::ecg_support_native, "support_levels_are_explicit");
 
     signal_synth::ecg_qa_scenario first;
     first.add_condition(signal_synth::ecg_condition_pvc, 0.8);
@@ -108,7 +108,7 @@ int main()
     second.add_condition(signal_synth::ecg_condition_pvc, 0.8);
     second.set_heart_rate_bpm(72.0);
     second.set_seed(1234);
-    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 2 && signal_synth::ecg_scenario_engine_version() == 3, "fingerprint_is_order_independent_and_versioned");
+    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 2 && signal_synth::ecg_scenario_engine_version() == 4, "fingerprint_is_order_independent_and_versioned");
     signal_synth::ecg_qa_scenario changed = first;
     changed.set_seed(1235);
     ok &= check(first.fingerprint() != changed.fingerprint(), "fingerprint_covers_generation_seed");
@@ -124,7 +124,7 @@ int main()
     ok &= check(engine.compile(first, compiled, report) && compiled.rhythm.rhythm == signal_synth::clinical_rhythm_sinus && compiled.scenario.premature_origin == signal_synth::clinical_origin_pvc && compiled.scenario.premature_every_n_beats == 2 && std::fabs(compiled.scenario.premature_coupling_ratio - 0.65) < 1e-12 && compiled.rhythm.seed == 1234, "scenario_compiles_to_clinical_config");
 
     signal_synth::ecg_qa_scenario unsupported;
-    unsupported.add_condition(signal_synth::ecg_condition_lvh);
+    unsupported.add_condition(signal_synth::ecg_condition_imi);
     signal_synth::clinical_ecg_config preserved;
     preserved.rhythm.heart_rate_bpm = 91.0;
     ok &= check(!engine.compile(unsupported, preserved, report) && !report.success() && report_has_issue(report, signal_synth::ecg_issue_unsupported_condition) && preserved.rhythm.heart_rate_bpm == 91.0, "catalog_only_condition_fails_transactionally");
@@ -318,6 +318,72 @@ int main()
     signal_synth::ecg_qa_scenario low_voltage_1000_hz = low_voltage;
     low_voltage_1000_hz.set_sampling_rate_hz(1000);
     ok &= check(generated_phenotype_passes(engine, q_wave_100_hz, 1000) && generated_phenotype_passes(engine, low_voltage_1000_hz, 10000), "morphology_assertions_across_sampling_rates");
+
+    signal_synth::ecg_qa_scenario left_ventricular_hypertrophy;
+    left_ventricular_hypertrophy.add_condition(signal_synth::ecg_condition_lvh);
+    signal_synth::ecg_qa_scenario right_ventricular_hypertrophy;
+    right_ventricular_hypertrophy.add_condition(signal_synth::ecg_condition_rvh);
+    signal_synth::ecg_qa_scenario septal_hypertrophy;
+    septal_hypertrophy.add_condition(signal_synth::ecg_condition_sehyp);
+    signal_synth::ecg_qa_scenario left_voltage_criteria;
+    left_voltage_criteria.add_condition(signal_synth::ecg_condition_vclvh);
+    signal_synth::ecg_qa_scenario left_atrial_overload;
+    left_atrial_overload.add_condition(signal_synth::ecg_condition_lao_lae);
+    signal_synth::ecg_qa_scenario right_atrial_overload;
+    right_atrial_overload.add_condition(signal_synth::ecg_condition_rao_rae);
+    ok &= check(generated_phenotype_passes(engine, left_ventricular_hypertrophy) && generated_phenotype_passes(engine, right_ventricular_hypertrophy) && generated_phenotype_passes(engine, septal_hypertrophy) && generated_phenotype_passes(engine, left_voltage_criteria) && generated_phenotype_passes(engine, left_atrial_overload) && generated_phenotype_passes(engine, right_atrial_overload), "hypertrophy_phenotype_assertions");
+
+    signal_synth::ecg_qa_scenario mild_left_ventricular_hypertrophy;
+    mild_left_ventricular_hypertrophy.add_condition(signal_synth::ecg_condition_lvh, 0.1);
+    signal_synth::ecg_qa_scenario mild_right_ventricular_hypertrophy;
+    mild_right_ventricular_hypertrophy.add_condition(signal_synth::ecg_condition_rvh, 0.1);
+    signal_synth::ecg_qa_scenario mild_septal_hypertrophy;
+    mild_septal_hypertrophy.add_condition(signal_synth::ecg_condition_sehyp, 0.1);
+    signal_synth::ecg_qa_scenario mild_left_voltage_criteria;
+    mild_left_voltage_criteria.add_condition(signal_synth::ecg_condition_vclvh, 0.1);
+    signal_synth::ecg_qa_scenario mild_left_atrial_overload;
+    mild_left_atrial_overload.add_condition(signal_synth::ecg_condition_lao_lae, 0.1);
+    signal_synth::ecg_qa_scenario mild_right_atrial_overload;
+    mild_right_atrial_overload.add_condition(signal_synth::ecg_condition_rao_rae, 0.1);
+    signal_synth::clinical_ecg_config lvh_config;
+    signal_synth::clinical_ecg_config mild_lvh_config;
+    signal_synth::clinical_ecg_config rvh_config;
+    signal_synth::clinical_ecg_config mild_rvh_config;
+    signal_synth::clinical_ecg_config septal_config;
+    signal_synth::clinical_ecg_config mild_septal_config;
+    signal_synth::clinical_ecg_config vclvh_config;
+    signal_synth::clinical_ecg_config mild_vclvh_config;
+    signal_synth::clinical_ecg_config lae_config;
+    signal_synth::clinical_ecg_config mild_lae_config;
+    signal_synth::clinical_ecg_config rae_config;
+    signal_synth::clinical_ecg_config mild_rae_config;
+    ok &= check(engine.compile(left_ventricular_hypertrophy, lvh_config, report) && engine.compile(mild_left_ventricular_hypertrophy, mild_lvh_config, report) && engine.compile(right_ventricular_hypertrophy, rvh_config, report) && engine.compile(mild_right_ventricular_hypertrophy, mild_rvh_config, report) && engine.compile(septal_hypertrophy, septal_config, report) && engine.compile(mild_septal_hypertrophy, mild_septal_config, report) && engine.compile(left_voltage_criteria, vclvh_config, report) && engine.compile(mild_left_voltage_criteria, mild_vclvh_config, report) && engine.compile(left_atrial_overload, lae_config, report) && engine.compile(mild_left_atrial_overload, mild_lae_config, report) && engine.compile(right_atrial_overload, rae_config, report) && engine.compile(mild_right_atrial_overload, mild_rae_config, report), "hypertrophy_conditions_compile");
+    ok &= check(lvh_config.sources.gain[signal_synth::clinical_source_ventricular] > mild_lvh_config.sources.gain[signal_synth::clinical_source_ventricular] && rvh_config.sources.gain[signal_synth::clinical_source_ventricular] > mild_rvh_config.sources.gain[signal_synth::clinical_source_ventricular] && septal_config.sources.gain[signal_synth::clinical_source_septal] > mild_septal_config.sources.gain[signal_synth::clinical_source_septal] && vclvh_config.sources.gain[signal_synth::clinical_source_ventricular] > mild_vclvh_config.sources.gain[signal_synth::clinical_source_ventricular] && lae_config.timing.p_duration_ms > mild_lae_config.timing.p_duration_ms && rae_config.morphology.p_amplitude_mv > mild_rae_config.morphology.p_amplitude_mv, "hypertrophy_severity_is_monotonic");
+    ok &= check(generated_phenotype_passes(engine, mild_left_ventricular_hypertrophy) && generated_phenotype_passes(engine, mild_right_ventricular_hypertrophy) && generated_phenotype_passes(engine, mild_septal_hypertrophy) && generated_phenotype_passes(engine, mild_left_voltage_criteria) && generated_phenotype_passes(engine, mild_left_atrial_overload) && generated_phenotype_passes(engine, mild_right_atrial_overload), "mild_hypertrophy_severity_remains_assertable");
+
+    engine.validate(left_ventricular_hypertrophy, report);
+    const int lvh_abqrs = effective_index(report, signal_synth::ecg_condition_abqrs);
+    engine.validate(left_atrial_overload, report);
+    const int lae_abqrs = effective_index(report, signal_synth::ecg_condition_abqrs);
+    ok &= check(lvh_abqrs >= 0 && lae_abqrs < 0, "ventricular_hypertrophy_only_implies_abqrs");
+    signal_synth::ecg_qa_scenario hypertrophy_conflict;
+    hypertrophy_conflict.add_condition(signal_synth::ecg_condition_lvh);
+    hypertrophy_conflict.add_condition(signal_synth::ecg_condition_rvh);
+    ok &= check(!engine.validate(hypertrophy_conflict, report) && report_has_issue(report, signal_synth::ecg_issue_condition_conflict), "hypertrophy_composition_is_explicitly_rejected");
+    signal_synth::ecg_qa_scenario hypertrophy_fidelity = left_ventricular_hypertrophy;
+    hypertrophy_fidelity.set_fidelity_policy(signal_synth::ecg_fidelity_native_only);
+    ok &= check(!engine.validate(hypertrophy_fidelity, report) && report_has_issue(report, signal_synth::ecg_issue_fidelity_policy), "hypertrophy_parameterized_fidelity_is_audited");
+
+    signal_synth::clinical_ecg_record hypertrophy_first;
+    signal_synth::clinical_ecg_record hypertrophy_second;
+    signal_synth::ecg_scenario_report hypertrophy_first_report;
+    signal_synth::ecg_scenario_report hypertrophy_second_report;
+    ok &= check(engine.generate(right_ventricular_hypertrophy, 5000, hypertrophy_first, hypertrophy_first_report) && engine.generate(right_ventricular_hypertrophy, 5000, hypertrophy_second, hypertrophy_second_report) && same_signal(hypertrophy_first, hypertrophy_second) && hypertrophy_first_report.run_fingerprint() == hypertrophy_second_report.run_fingerprint(), "hypertrophy_generation_is_reproducible");
+    signal_synth::ecg_qa_scenario lvh_100_hz = left_ventricular_hypertrophy;
+    lvh_100_hz.set_sampling_rate_hz(100);
+    signal_synth::ecg_qa_scenario lae_1000_hz = left_atrial_overload;
+    lae_1000_hz.set_sampling_rate_hz(1000);
+    ok &= check(generated_phenotype_passes(engine, lvh_100_hz, 1000) && generated_phenotype_passes(engine, lae_1000_hz, 10000), "hypertrophy_assertions_across_sampling_rates");
 
     std::cout << (ok ? "All ECG scenario tests passed.\n" : "ECG scenario test failure.\n");
     return ok ? 0 : 1;
