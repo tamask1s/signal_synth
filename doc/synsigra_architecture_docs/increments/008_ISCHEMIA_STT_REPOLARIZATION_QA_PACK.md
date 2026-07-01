@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-008
 
-**Version:** 0.2
+**Version:** 0.3
 
-**Status:** Implemented; verification pending
+**Status:** Verified
 
 **Owner role:** Biosignal Algorithms / Verification
 
@@ -259,9 +259,26 @@ into this implementation.
 5. Synchronize core/scripts and run release plus sanitizer verification.
 6. Commit, push, verify Linux/Windows CI, update traceability, and close issue.
 
-## 16. Change log
+## 16. Verification record
+
+- implementation commit:
+  [`cd6ab95`](https://github.com/tamask1s/signal_synth/commit/cd6ab959f9c53c3c80b116a3ab5fe04c6dc7a28e);
+- `CI-VER-001`:
+  [GitHub Actions run 28518794062](https://github.com/tamask1s/signal_synth/actions/runs/28518794062),
+  successful on Ubuntu and Windows C++11;
+- local release verification: 12/12 CTest suites passed;
+- local ASan/UBSan verification: 11/11 applicable suites passed with package
+  smoke excluded;
+- `ecg_scenario.h`, `ecg_scenario.cpp`, and DataBrowser scripts 071/072 were
+  synchronized to the SVN-managed working copy and verified byte-identical.
+
+The Windows DataBrowser application was not compiled in this environment.
+That manual integration evidence remains outside `CI-VER-001`.
+
+## 17. Change log
 
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-01 | Initial proposed design |
 | 0.2 | 2026-07-01 | Implemented engine v6, measured assertions, tests, and DataBrowser packs |
+| 0.3 | 2026-07-01 | Recorded release, sanitizer, synchronization, and cross-platform CI evidence |
