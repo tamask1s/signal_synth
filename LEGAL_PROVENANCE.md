@@ -35,6 +35,11 @@ repository.
 Contributors must record any additional implementation source, dataset, or
 third-party dependency before adding code derived from it.
 
+The schema-v1 JSON parser, canonical writer, and SHA-256 implementation in
+`ecg_scenario_json.cpp` are project-owned implementations written from public
+JSON and SHA-256 algorithm specifications. No third-party JSON or
+cryptographic source code is embedded.
+
 ## Commercial release gate
 
 Before commercial release, obtain a jurisdiction-specific freedom-to-operate

@@ -32,6 +32,7 @@ signal_synth/
     increments/
       README.md
       001_PORTABLE_BUILD_BASELINE.md
+      002_VERSIONED_SCENARIO_JSON.md
 ```
 
 Current product positioning:

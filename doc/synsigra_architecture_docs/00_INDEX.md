@@ -27,6 +27,8 @@ Implementation increment designs:
   lifecycle for each implementation increment.
 - `increments/001_PORTABLE_BUILD_BASELINE.md` proposes the next increment:
   one root, installable C++ library build exercised by all verification suites.
+- `increments/002_VERSIONED_SCENARIO_JSON.md` defines the strict portable
+  scenario document, canonicalization, and fingerprint contract.
 
 Traceability demonstration:
 

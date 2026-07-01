@@ -10,7 +10,8 @@ vector model, 12-lead projection, and construction/measured fiducials. `ecg_scen
 provides the versioned product-facing QA scenario contract, complete PTB-XL
 condition catalog, strict validation, reproducibility fingerprint, and audit
 report. `ecg_morphology` measures deterministic beat-by-lead morphology from
-the generated 12-lead signal.
+the generated 12-lead signal. `ecg_scenario_json` provides strict schema-v1
+JSON parsing, canonical serialization, and SHA-256 document identity.
 
 ## ECG model status
 

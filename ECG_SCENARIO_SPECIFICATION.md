@@ -90,6 +90,12 @@ condition severities, warnings/errors, and generated sample count. Compilation
 and generation are transactional: failure preserves the destination config or
 signal record.
 
+The portable schema-v1 JSON document adds a separate SHA-256 fingerprint over
+canonical UTF-8 JSON. This identifies the exact document including metadata.
+It does not replace the normalized 64-bit generation fingerprint and is not a
+digital signature. Unknown, duplicate, malformed, or unsupported JSON content
+is rejected transactionally.
+
 ## Phenotype assertions
 
 Scenario engine version 3 evaluates requested supported conditions against the

@@ -9,7 +9,8 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/ecg_model.h
     src/clinical_ecg.h
     src/ecg_morphology.h
-    src/ecg_scenario.h)
+    src/ecg_scenario.h
+    src/ecg_scenario_json.h)
 
 add_library(
     signal_synth
@@ -18,7 +19,8 @@ add_library(
     src/ecg_model.cpp
     src/clinical_ecg.cpp
     src/ecg_morphology.cpp
-    src/ecg_scenario.cpp)
+    src/ecg_scenario.cpp
+    src/ecg_scenario_json.cpp)
 
 add_library(signal_synth::signal_synth ALIAS signal_synth)
 
