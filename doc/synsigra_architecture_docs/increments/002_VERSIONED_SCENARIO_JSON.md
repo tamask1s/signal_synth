@@ -132,7 +132,9 @@ Rules:
 - tags are unique, non-empty, and canonicalized lexicographically;
 - `scenario_id` contains 1 to 128 ASCII letters, digits, dots, underscores, or
   hyphens; other strings must be valid JSON/UTF-8 and must not contain NUL;
-- numeric values must be finite and within typed API ranges;
+- numeric values must be finite and within typed API ranges; integer fields
+  use exact decimal token conversion and the seed supports the full `uint64`
+  range without binary floating-point conversion;
 - `duration_seconds * sample_rate_hz` must be a positive integral sample count
   representable by `unsigned int`;
 - schema versions other than 1 fail explicitly;

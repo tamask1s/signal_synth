@@ -3,6 +3,7 @@
 #include "clinical_ecg.h"
 #include "ecg_morphology.h"
 #include "ecg_scenario_json.h"
+#include "ppg_model.h"
 
 #include <string>
 #include <vector>
@@ -22,15 +23,20 @@ namespace signal_synth
         double sdnn_seconds;
         double rmssd_seconds;
         double pnn50_percent;
+        unsigned int ppg_pulse_count;
+        double mean_ppg_onset_delay_seconds;
+        double mean_ppg_peak_delay_seconds;
     };
 
     struct ecg_render_bundle
     {
         ecg_scenario_document document;
         ecg_scenario_json_result document_identity;
+        std::string render_identity;
         clinical_ecg_record record;
         ecg_scenario_report scenario_report;
         ecg_morphology_report morphology;
+        ppg_record ppg;
         ecg_ground_truth_metrics metrics;
     };
 

@@ -70,7 +70,7 @@ int main()
     ok &= check(rejects_without_mutation("[]", signal_synth::ecg_json_type), "reject_root_type");
     ok &= check(rejects_without_mutation("{", signal_synth::ecg_json_syntax), "reject_truncated_json");
     ok &= check(rejects_without_mutation(input + "x", signal_synth::ecg_json_syntax), "reject_trailing_data");
-    ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":2"), signal_synth::ecg_json_schema_version), "reject_schema_version");
+    ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":3"), signal_synth::ecg_json_schema_version), "reject_schema_version");
     ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":1,\"schema_version\":1"), signal_synth::ecg_json_duplicate_key), "reject_duplicate_key");
     ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":1,\"unknown\":0"), signal_synth::ecg_json_unknown_field), "reject_unknown_field");
     ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"name\":\"Clean ECG\","), 19, ""), signal_synth::ecg_json_missing_field), "reject_missing_field");
@@ -95,6 +95,23 @@ int main()
     invalid_document.scenario_id.clear();
     signal_synth::ecg_scenario_json_result invalid_result;
     ok &= check(!signal_synth::write_ecg_scenario_json(invalid_document, invalid_result) && invalid_result.messages[0].path == "$.scenario_id", "typed_document_validation");
+
+    signal_synth::ecg_scenario_document multimodal;
+    multimodal.schema_version = 2;
+    multimodal.scenario_id = "ecg_ppg";
+    multimodal.ppg.enabled = true;
+    signal_synth::ecg_scenario_json_result multimodal_result;
+    ok &= check(signal_synth::write_ecg_scenario_json(multimodal, multimodal_result) && multimodal_result.canonical_json.find("\"ppg\":{\"enabled\":true") != std::string::npos, "schema_v2_ppg_serialization");
+    signal_synth::ecg_scenario_document multimodal_roundtrip;
+    signal_synth::ecg_scenario_json_result multimodal_repeated;
+    ok &= check(signal_synth::parse_ecg_scenario_json(multimodal_result.canonical_json, multimodal_roundtrip, multimodal_repeated) && multimodal_roundtrip.ppg.enabled && multimodal_repeated.document_fingerprint == multimodal_result.document_fingerprint, "schema_v2_ppg_roundtrip");
+    multimodal_roundtrip.ppg.pulse_delay_ms += 1.0;
+    signal_synth::ecg_scenario_json_result changed_ppg;
+    ok &= check(signal_synth::write_ecg_scenario_json(multimodal_roundtrip, changed_ppg) && changed_ppg.document_fingerprint != multimodal_result.document_fingerprint && changed_ppg.generation_fingerprint == multimodal_result.generation_fingerprint, "ppg_changes_document_not_ecg_fingerprint");
+
+    signal_synth::ecg_scenario_document v1_with_ppg;
+    v1_with_ppg.ppg.enabled = true;
+    ok &= check(!signal_synth::write_ecg_scenario_json(v1_with_ppg, invalid_result) && invalid_result.messages[0].path == "$.ppg", "schema_v1_rejects_unrepresentable_ppg");
 
     return ok ? 0 : 1;
 }

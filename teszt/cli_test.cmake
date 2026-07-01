@@ -1,4 +1,4 @@
-if(NOT DEFINED SIGNAL_SYNTH_CLI OR NOT DEFINED SIGNAL_SYNTH_EXAMPLE OR NOT DEFINED SIGNAL_SYNTH_CLI_WORK_DIR)
+if(NOT DEFINED SIGNAL_SYNTH_CLI OR NOT DEFINED SIGNAL_SYNTH_EXAMPLE OR NOT DEFINED SIGNAL_SYNTH_PPG_EXAMPLE OR NOT DEFINED SIGNAL_SYNTH_CLI_WORK_DIR)
     message(FATAL_ERROR "CLI test paths are not configured")
 endif()
 
@@ -45,6 +45,16 @@ endif()
 execute_process(COMMAND "${SIGNAL_SYNTH_CLI}" render "${SIGNAL_SYNTH_EXAMPLE}" --out "${render_dir}" RESULT_VARIABLE overwrite_result OUTPUT_VARIABLE overwrite_output ERROR_VARIABLE overwrite_error)
 if(NOT overwrite_result EQUAL 3 OR NOT overwrite_output STREQUAL "" OR NOT overwrite_error MATCHES "^error=OUTPUT_WRITE_FAILED")
     message(FATAL_ERROR "CLI no-overwrite contract failed")
+endif()
+
+set(ppg_render_dir "${SIGNAL_SYNTH_CLI_WORK_DIR}/ppg_render")
+execute_process(COMMAND "${SIGNAL_SYNTH_CLI}" render "${SIGNAL_SYNTH_PPG_EXAMPLE}" --out "${ppg_render_dir}" RESULT_VARIABLE ppg_render_result OUTPUT_VARIABLE ppg_render_output ERROR_VARIABLE ppg_render_error)
+if(NOT ppg_render_result EQUAL 0 OR NOT ppg_render_error STREQUAL "" OR NOT ppg_render_output MATCHES "document_fingerprint=sha256:455e7e3bb1833f1357a93ace324c7a8b216db43ffd06631133dd4239a2b3cd2c" OR NOT EXISTS "${ppg_render_dir}/waveform.csv")
+    message(FATAL_ERROR "CLI ECG/PPG render failed: ${ppg_render_error}")
+endif()
+file(STRINGS "${ppg_render_dir}/waveform.csv" ppg_csv_header LIMIT_COUNT 1)
+if(NOT ppg_csv_header MATCHES "ppg_green_au$")
+    message(FATAL_ERROR "CLI ECG/PPG export has no PPG channel")
 endif()
 
 set(large_file "${SIGNAL_SYNTH_CLI_WORK_DIR}/large.json")

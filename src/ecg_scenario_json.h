@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ecg_scenario.h"
+#include "ppg_model.h"
 
 #include <string>
 #include <vector>
@@ -43,6 +44,7 @@ namespace signal_synth
         std::vector<std::string> tags;
         double duration_seconds;
         ecg_qa_scenario ecg;
+        ppg_config ppg;
 
         unsigned int sample_count() const;
     };

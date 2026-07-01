@@ -467,11 +467,20 @@ namespace
 
     bool integral_number(const json_value& value, unsigned long long maximum, unsigned long long& output)
     {
-        if (value.type != json_value::number_kind || value.number < 0.0 || value.number > static_cast<double>(maximum) || std::floor(value.number) != value.number)
+        if (value.type != json_value::number_kind || value.token.empty())
             return false;
-        if (value.number > 9007199254740991.0)
-            return false;
-        output = static_cast<unsigned long long>(value.number);
+        unsigned long long parsed = 0;
+        for (std::size_t i = 0; i < value.token.size(); ++i)
+        {
+            const char c = value.token[i];
+            if (c < '0' || c > '9')
+                return false;
+            const unsigned int digit = static_cast<unsigned int>(c - '0');
+            if (parsed > (maximum - digit) / 10u)
+                return false;
+            parsed = parsed * 10u + digit;
+        }
+        output = parsed;
         return true;
     }
 
@@ -625,10 +634,28 @@ namespace
         return output.str();
     }
 
+    bool default_ppg_config(const signal_synth::ppg_config& config)
+    {
+        const signal_synth::ppg_config defaults;
+        return config.enabled == defaults.enabled
+            && config.pulse_delay_ms == defaults.pulse_delay_ms
+            && config.rise_time_ms == defaults.rise_time_ms
+            && config.decay_time_ms == defaults.decay_time_ms
+            && config.amplitude_au == defaults.amplitude_au
+            && config.baseline_au == defaults.baseline_au
+            && config.dicrotic_delay_ms == defaults.dicrotic_delay_ms
+            && config.dicrotic_width_ms == defaults.dicrotic_width_ms
+            && config.dicrotic_amplitude_ratio == defaults.dicrotic_amplitude_ratio;
+    }
+
     bool validate_document(const signal_synth::ecg_scenario_document& document, signal_synth::ecg_scenario_json_result& result, std::vector<std::string>& sorted_tags)
     {
-        if (document.schema_version != 1)
-            add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema version 1 is supported");
+        if (document.schema_version < 1 || document.schema_version > 2)
+            add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema versions 1 and 2 are supported");
+        if (document.schema_version == 1 && !default_ppg_config(document.ppg))
+            add_message(result, signal_synth::ecg_json_semantic, "$.ppg", "schema version 1 cannot represent PPG configuration");
+        if (document.schema_version == 2 && !signal_synth::ppg_generator(document.ppg).valid())
+            add_message(result, signal_synth::ecg_json_range, "$.ppg", "invalid PPG configuration");
         if (!safe_identifier(document.scenario_id))
             add_message(result, signal_synth::ecg_json_range, "$.scenario_id", "scenario_id must contain 1 to 128 ASCII letters, digits, dots, underscores, or hyphens");
         if (!safe_text(document.name, 1, 256))
@@ -668,7 +695,7 @@ namespace
     {
         std::ostringstream output;
         output.imbue(std::locale::classic());
-        output << "{\"schema_version\":1,\"scenario_id\":" << escape_json(document.scenario_id)
+        output << "{\"schema_version\":" << document.schema_version << ",\"scenario_id\":" << escape_json(document.scenario_id)
                << ",\"name\":" << escape_json(document.name)
                << ",\"description\":" << escape_json(document.description)
                << ",\"author\":" << escape_json(document.author)
@@ -697,7 +724,21 @@ namespace
             output << "{\"code\":" << escape_json(info ? info->scp_code : "")
                    << ",\"severity\":" << format_double(document.ecg.condition_severity(i)) << '}';
         }
-        output << "]}}";
+        output << "]}";
+        if (document.schema_version >= 2)
+        {
+            output << ",\"ppg\":{\"enabled\":" << (document.ppg.enabled ? "true" : "false")
+                   << ",\"pulse_delay_ms\":" << format_double(document.ppg.pulse_delay_ms)
+                   << ",\"rise_time_ms\":" << format_double(document.ppg.rise_time_ms)
+                   << ",\"decay_time_ms\":" << format_double(document.ppg.decay_time_ms)
+                   << ",\"amplitude_au\":" << format_double(document.ppg.amplitude_au)
+                   << ",\"baseline_au\":" << format_double(document.ppg.baseline_au)
+                   << ",\"dicrotic_delay_ms\":" << format_double(document.ppg.dicrotic_delay_ms)
+                   << ",\"dicrotic_width_ms\":" << format_double(document.ppg.dicrotic_width_ms)
+                   << ",\"dicrotic_amplitude_ratio\":" << format_double(document.ppg.dicrotic_amplitude_ratio)
+                   << '}';
+        }
+        output << '}';
         return output.str();
     }
 }
@@ -777,7 +818,7 @@ namespace signal_synth
             return false;
         }
 
-        const char* top_fields[] = {"schema_version","scenario_id","name","description","author","tags","duration_seconds","sample_rate_hz","seed","ecg"};
+        const char* top_fields[] = {"schema_version","scenario_id","name","description","author","tags","duration_seconds","sample_rate_hz","seed","ecg","ppg"};
         if (!allowed_fields(root, top_fields, sizeof(top_fields) / sizeof(top_fields[0]), "$", fresh_result))
         {
             result = fresh_result;
@@ -801,9 +842,10 @@ namespace signal_synth
         }
 
         unsigned long long integer = 0;
-        if (!integral_number(*schema, 1, integer) || integer != 1)
-            add_message(fresh_result, ecg_json_schema_version, "$.schema_version", "only schema version 1 is supported");
+        if (!integral_number(*schema, 2, integer) || integer < 1 || integer > 2)
+            add_message(fresh_result, ecg_json_schema_version, "$.schema_version", "only schema versions 1 and 2 are supported");
         ecg_scenario_document document;
+        document.schema_version = static_cast<unsigned int>(integer);
         document.ecg.clear_conditions();
         document.scenario_id = scenario_id->string;
         document.name = name->string;
@@ -828,8 +870,8 @@ namespace signal_synth
         }
         if (!integral_number(*sample_rate, std::numeric_limits<unsigned int>::max(), integer) || !document.ecg.set_sampling_rate_hz(static_cast<unsigned int>(integer)))
             add_message(fresh_result, ecg_json_range, "$.sample_rate_hz", "invalid sampling rate");
-        if (!integral_number(*seed, 9007199254740991ull, integer) || !document.ecg.set_seed(integer))
-            add_message(fresh_result, ecg_json_range, "$.seed", "seed must be an exactly representable non-negative integer");
+        if (!integral_number(*seed, std::numeric_limits<unsigned long long>::max(), integer) || !document.ecg.set_seed(integer))
+            add_message(fresh_result, ecg_json_range, "$.seed", "seed must be an unsigned 64-bit decimal integer");
 
         const char* ecg_fields[] = {"heart_rate_bpm","rr_variability_seconds","ectopic_every_n_beats","second_degree_av_pattern","q_wave_territory","fidelity_policy","conditions"};
         allowed_fields(*ecg, ecg_fields, sizeof(ecg_fields) / sizeof(ecg_fields[0]), "$.ecg", fresh_result);
@@ -914,6 +956,42 @@ namespace signal_synth
                 }
                 if (!document.ecg.add_condition(info->code, severity->number))
                     add_message(fresh_result, ecg_json_range, path + ".severity", "invalid condition severity");
+            }
+        }
+
+        const json_value* ppg = member(root, "ppg");
+        if (document.schema_version == 1 && ppg)
+            add_message(fresh_result, ecg_json_unknown_field, "$.ppg", "PPG requires schema version 2");
+        if (document.schema_version == 2)
+        {
+            if (!ppg)
+                add_message(fresh_result, ecg_json_missing_field, "$.ppg", "required field is missing");
+            else if (ppg->type != json_value::object_kind)
+                add_message(fresh_result, ecg_json_type, "$.ppg", "field has the wrong JSON type");
+            else
+            {
+                const char* ppg_fields[] = {"enabled","pulse_delay_ms","rise_time_ms","decay_time_ms","amplitude_au","baseline_au","dicrotic_delay_ms","dicrotic_width_ms","dicrotic_amplitude_ratio"};
+                allowed_fields(*ppg, ppg_fields, sizeof(ppg_fields) / sizeof(ppg_fields[0]), "$.ppg", fresh_result);
+                const json_value* enabled = required(*ppg, "enabled", json_value::bool_kind, "$.ppg", fresh_result);
+                const json_value* pulse_delay = required(*ppg, "pulse_delay_ms", json_value::number_kind, "$.ppg", fresh_result);
+                const json_value* rise = required(*ppg, "rise_time_ms", json_value::number_kind, "$.ppg", fresh_result);
+                const json_value* decay = required(*ppg, "decay_time_ms", json_value::number_kind, "$.ppg", fresh_result);
+                const json_value* amplitude = required(*ppg, "amplitude_au", json_value::number_kind, "$.ppg", fresh_result);
+                const json_value* baseline = required(*ppg, "baseline_au", json_value::number_kind, "$.ppg", fresh_result);
+                const json_value* dicrotic_delay = required(*ppg, "dicrotic_delay_ms", json_value::number_kind, "$.ppg", fresh_result);
+                const json_value* dicrotic_width = required(*ppg, "dicrotic_width_ms", json_value::number_kind, "$.ppg", fresh_result);
+                const json_value* dicrotic_amplitude = required(*ppg, "dicrotic_amplitude_ratio", json_value::number_kind, "$.ppg", fresh_result);
+                if (enabled) document.ppg.enabled = enabled->boolean;
+                if (pulse_delay) document.ppg.pulse_delay_ms = pulse_delay->number;
+                if (rise) document.ppg.rise_time_ms = rise->number;
+                if (decay) document.ppg.decay_time_ms = decay->number;
+                if (amplitude) document.ppg.amplitude_au = amplitude->number;
+                if (baseline) document.ppg.baseline_au = baseline->number;
+                if (dicrotic_delay) document.ppg.dicrotic_delay_ms = dicrotic_delay->number;
+                if (dicrotic_width) document.ppg.dicrotic_width_ms = dicrotic_width->number;
+                if (dicrotic_amplitude) document.ppg.dicrotic_amplitude_ratio = dicrotic_amplitude->number;
+                if (!ppg_generator(document.ppg).valid())
+                    add_message(fresh_result, ecg_json_range, "$.ppg", "invalid PPG configuration");
             }
         }
 

@@ -84,6 +84,7 @@ Stable suite IDs use the form `TEST-<AREA>-<NNN>`. The current suites are:
 | `TEST-ECG-SCENARIO-001` | Scenario validation, fingerprints, assertions | `teszt/ecg_scenario_test.cpp` |
 | `TEST-ECG-JSON-001` | Strict scenario JSON, canonicalization and SHA-256 | `teszt/ecg_scenario_json_test.cpp` |
 | `TEST-ECG-EXPORT-001` | Render bundle, export formats, metrics and HTML report | `teszt/ecg_export_test.cpp` |
+| `TEST-PPG-001` | Shared-timeline PPG waveform, linkage and fiducials | `teszt/ppg_model_test.cpp` |
 | `TEST-CLI-001` | CLI input, output, exit-code and size-limit contract | `teszt/cli_test.cmake` |
 | `TEST-BUILD-001` | Installed CMake package discovery, link and execution | `teszt/package_smoke/` |
 

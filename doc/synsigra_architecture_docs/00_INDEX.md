@@ -33,6 +33,8 @@ Implementation increment designs:
   product-facing validate/fingerprint executable.
 - `increments/004_RENDER_EXPORT_REPORT.md` defines deterministic render,
   export artifacts, and the self-contained HTML evidence report.
+- `increments/005_SHARED_TIMELINE_PPG.md` defines schema-v2 PPG generated from
+  the exact ECG ventricular timeline.
 
 Traceability demonstration:
 

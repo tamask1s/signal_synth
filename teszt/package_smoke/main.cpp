@@ -5,6 +5,7 @@
 #include <signal_synth/ecg_scenario.h>
 #include <signal_synth/ecg_scenario_json.h>
 #include <signal_synth/signal_synth.h>
+#include <signal_synth/ppg_model.h>
 
 int main()
 {
@@ -18,6 +19,7 @@ int main()
     signal_synth::ecg_scenario_engine engine;
     signal_synth::ecg_scenario_document document;
     signal_synth::ecg_scenario_json_result json_result;
+    signal_synth::ppg_config ppg;
 
     if (legacy.amplitude_r <= 0.0 || !signal_synth::ecg_model(model).valid() || !signal_synth::clinical_ecg_generator(clinical).valid())
         return 1;
@@ -31,5 +33,7 @@ int main()
         return 5;
     if (std::string(signal_synth::signal_synth_generator_version()).empty())
         return 6;
+    if (ppg.pulse_delay_ms <= 0.0)
+        return 7;
     return 0;
 }

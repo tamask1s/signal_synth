@@ -40,6 +40,11 @@ The schema-v1 JSON parser, canonical writer, and SHA-256 implementation in
 JSON and SHA-256 algorithm specifications. No third-party JSON or
 cryptographic source code is embedded.
 
+The PPG waveform and linked-fiducial implementation in `ppg_model.cpp` is a
+project-owned engineering model based on elementary smooth pulse components.
+It contains no copied waveform, fitted patient data, third-party generator
+code, or model weights.
+
 ## Commercial release gate
 
 Before commercial release, obtain a jurisdiction-specific freedom-to-operate

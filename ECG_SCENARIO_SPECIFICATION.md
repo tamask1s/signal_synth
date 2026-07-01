@@ -6,8 +6,10 @@
 `clinical_ecg` waveform configuration. It represents reproducible ECG
 algorithm-QA scenarios, not diagnoses or clinical claims.
 
-Schema version 2 contains the complete 71-statement PTB-XL SCP-ECG catalog and
-the explicit Q-wave territory parameter.
+The typed ECG scenario engine uses schema version 2 for the complete
+71-statement PTB-XL SCP-ECG catalog and explicit Q-wave territory parameter.
+The portable document contract separately supports document schema v1
+(ECG-only) and v2 (explicit linked PPG configuration).
 The catalog order, codes, statement classes, and names are based on PTB-XL
 version 1.0.3 `scp_statements.csv`, licensed under CC BY 4.0.
 
@@ -95,6 +97,11 @@ canonical UTF-8 JSON. This identifies the exact document including metadata.
 It does not replace the normalized 64-bit generation fingerprint and is not a
 digital signature. Unknown, duplicate, malformed, or unsupported JSON content
 is rejected transactionally.
+
+Portable document schema v2 appends an explicit PPG object. Schema-v1
+canonical bytes remain unchanged and cannot silently carry PPG settings.
+PPG fields participate in the document SHA-256 while the existing 64-bit ECG
+generation fingerprint remains an ECG-engine identity.
 
 ## Phenotype assertions
 

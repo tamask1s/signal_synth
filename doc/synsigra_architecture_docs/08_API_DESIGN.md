@@ -69,6 +69,11 @@ signal-synth report scenario.json --out output/report.html
 signal-synth examples --out examples/
 ```
 
+Current implemented local commands are `validate`, `fingerprint`, and
+`render`. `render` creates the deterministic ECG or ECG+PPG evidence package
+defined in `10_EXPORT_AND_REPORTING.md`; the remaining commands above are
+planned contracts.
+
 Future commands:
 
 ```bash

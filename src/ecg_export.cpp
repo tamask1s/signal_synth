@@ -157,6 +157,31 @@ namespace
         return metrics;
     }
 
+    void add_ppg_metrics(const signal_synth::ppg_record& ppg, signal_synth::ecg_ground_truth_metrics& metrics)
+    {
+        double onset_delay = 0.0;
+        double peak_delay = 0.0;
+        unsigned int peak_count = 0;
+        for (unsigned int i = 0; i < ppg.annotation_count(); ++i)
+        {
+            const signal_synth::ppg_annotation& annotation = ppg.annotations()[i];
+            if (annotation.kind == signal_synth::ppg_pulse_onset && annotation.source == signal_synth::ppg_fiducial_construction)
+            {
+                ++metrics.ppg_pulse_count;
+                onset_delay += annotation.time_seconds - annotation.ecg_r_time_seconds;
+            }
+            if (annotation.kind == signal_synth::ppg_systolic_peak && annotation.source == signal_synth::ppg_fiducial_measurement)
+            {
+                ++peak_count;
+                peak_delay += annotation.time_seconds - annotation.ecg_r_time_seconds;
+            }
+        }
+        if (metrics.ppg_pulse_count)
+            metrics.mean_ppg_onset_delay_seconds = onset_delay / metrics.ppg_pulse_count;
+        if (peak_count)
+            metrics.mean_ppg_peak_delay_seconds = peak_delay / peak_count;
+    }
+
     std::string waveform_csv(const signal_synth::ecg_render_bundle& render)
     {
         std::ostringstream output;
@@ -165,12 +190,16 @@ namespace
         output << "sample_index,time_seconds";
         for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
             output << ',' << render.record.lead_name(lead) << "_mv";
+        if (render.ppg.sample_count())
+            output << ",ppg_green_au";
         output << '\n';
         for (unsigned int sample = 0; sample < render.record.sample_count(); ++sample)
         {
             output << sample << ',' << static_cast<double>(sample) / render.record.sampling_rate_hz();
             for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
                 output << ',' << normalized_zero(render.record.lead_data(lead)[sample]);
+            if (render.ppg.sample_count())
+                output << ',' << normalized_zero(render.ppg.samples()[sample]);
             output << '\n';
         }
         return output.str();
@@ -183,6 +212,7 @@ namespace
         output << std::setprecision(std::numeric_limits<double>::max_digits10);
         output << "{\"schema_version\":1,\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint)
                << ",\"generation_fingerprint\":" << render.document_identity.generation_fingerprint
+               << ",\"render_identity\":" << json_string(render.render_identity)
                << ",\"beats\":[";
         for (unsigned int i = 0; i < render.record.beat_count(); ++i)
         {
@@ -234,7 +264,29 @@ namespace
                    << ",\"amplitude_mv\":" << fiducial.amplitude_mv
                    << ",\"present\":" << boolean(fiducial.present) << '}';
         }
-        output << "],\"artifact_intervals\":[]}";
+        output << ']';
+        if (render.document.schema_version >= 2)
+        {
+            output << ",\"ppg_fiducials\":[";
+            for (unsigned int i = 0; i < render.ppg.annotation_count(); ++i)
+            {
+                if (i)
+                    output << ',';
+                const signal_synth::ppg_annotation& annotation = render.ppg.annotations()[i];
+                const char* kind = annotation.kind == signal_synth::ppg_pulse_onset ? "pulse_onset"
+                    : annotation.kind == signal_synth::ppg_systolic_peak ? "systolic_peak"
+                    : annotation.kind == signal_synth::ppg_dicrotic_feature ? "dicrotic_feature" : "pulse_offset";
+                output << "{\"ecg_beat_index\":" << annotation.ecg_beat_index
+                       << ",\"ecg_r_time_seconds\":" << annotation.ecg_r_time_seconds
+                       << ",\"kind\":" << json_string(kind)
+                       << ",\"source\":" << json_string(annotation.source == signal_synth::ppg_fiducial_construction ? "construction" : "measurement")
+                       << ",\"sample_index\":" << annotation.sample_index
+                       << ",\"time_seconds\":" << annotation.time_seconds
+                       << ",\"value_au\":" << annotation.value_au << '}';
+            }
+            output << ']';
+        }
+        output << ",\"artifact_intervals\":[]}";
         return output.str();
     }
 
@@ -268,7 +320,12 @@ namespace
                    << ",\"maximum\":" << render.scenario_report.assertion_maximum(i)
                    << ",\"unit\":" << json_string(render.scenario_report.assertion_unit(i)) << '}';
         }
-        output << "]}";
+        output << ']';
+        if (render.document.schema_version >= 2)
+            output << ",\"ppg\":{\"pulse_count\":" << metrics.ppg_pulse_count
+                   << ",\"mean_onset_delay_seconds\":" << metrics.mean_ppg_onset_delay_seconds
+                   << ",\"mean_measured_peak_delay_seconds\":" << metrics.mean_ppg_peak_delay_seconds << '}';
+        output << '}';
         return output.str();
     }
 
@@ -296,14 +353,15 @@ namespace
                << "},\"scenario\":{\"id\":" << json_string(render.document.scenario_id)
                << ",\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint)
                << ",\"generation_fingerprint\":" << render.document_identity.generation_fingerprint
-               << ",\"run_fingerprint\":" << render.scenario_report.run_fingerprint()
+               << ",\"render_identity\":" << json_string(render.render_identity)
+               << ",\"ecg_run_fingerprint\":" << render.scenario_report.run_fingerprint()
                << ",\"scenario_schema_version\":" << render.document.schema_version
                << ",\"engine_version\":" << render.scenario_report.engine_version()
                << ",\"seed\":" << render.document.ecg.seed()
                << "},\"render\":{\"sample_rate_hz\":" << render.record.sampling_rate_hz()
                << ",\"sample_count\":" << render.record.sample_count()
                << ",\"duration_seconds\":" << std::setprecision(std::numeric_limits<double>::max_digits10) << render.document.duration_seconds
-               << ",\"channel_count\":" << render.record.lead_count()
+               << ",\"channel_count\":" << render.record.lead_count() + (render.ppg.sample_count() ? 1u : 0u)
                << ",\"channels\":[";
         for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
         {
@@ -311,6 +369,8 @@ namespace
                 output << ',';
             output << "{\"name\":" << json_string(render.record.lead_name(lead)) << ",\"unit\":\"mV\"}";
         }
+        if (render.ppg.sample_count())
+            output << ",{\"name\":\"ppg_green\",\"unit\":\"a.u.\"}";
         output << "],\"timestamp_policy\":\"not_recorded_for_deterministic_local_export\""
                << "},\"intended_use\":\"synthetic engineering algorithm testing and QA\","
                << "\"not_for\":\"diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment\"}";
@@ -348,6 +408,37 @@ namespace
         return output.str();
     }
 
+    std::string ppg_svg_preview(const signal_synth::ppg_record& record)
+    {
+        const double* samples = record.samples();
+        if (!samples || !record.sample_count())
+            return "";
+        const unsigned int point_count = std::min(1000u, record.sample_count());
+        double minimum = samples[0], maximum = samples[0];
+        for (unsigned int i = 0; i < point_count; ++i)
+        {
+            const unsigned int sample = point_count == 1 ? 0 : static_cast<unsigned int>((static_cast<unsigned long long>(i) * (record.sample_count() - 1)) / (point_count - 1));
+            minimum = std::min(minimum, samples[sample]);
+            maximum = std::max(maximum, samples[sample]);
+        }
+        const double span = maximum > minimum ? maximum - minimum : 1.0;
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << std::fixed << std::setprecision(2)
+               << "<svg viewBox=\"0 0 1000 240\" role=\"img\" aria-label=\"PPG waveform preview\"><rect width=\"1000\" height=\"240\" fill=\"#fff\"/><path d=\"M0 220H1000\" stroke=\"#d1d5db\"/><polyline fill=\"none\" stroke=\"#067647\" stroke-width=\"1.5\" points=\"";
+        for (unsigned int i = 0; i < point_count; ++i)
+        {
+            const unsigned int sample = point_count == 1 ? 0 : static_cast<unsigned int>((static_cast<unsigned long long>(i) * (record.sample_count() - 1)) / (point_count - 1));
+            const double x = point_count == 1 ? 0.0 : 1000.0 * i / (point_count - 1);
+            const double y = 220.0 - 200.0 * (samples[sample] - minimum) / span;
+            if (i)
+                output << ' ';
+            output << x << ',' << y;
+        }
+        output << "\"/></svg>";
+        return output.str();
+    }
+
     std::string report_html(const signal_synth::ecg_render_bundle& render)
     {
         std::ostringstream output;
@@ -367,9 +458,11 @@ namespace
                << "<h2>Identity</h2><table><tr><th>Scenario</th><td>" << html_text(render.document.scenario_id)
                << "</td></tr><tr><th>Document fingerprint</th><td>" << html_text(render.document_identity.document_fingerprint)
                << "</td></tr><tr><th>Generation fingerprint</th><td>" << render.document_identity.generation_fingerprint
-               << "</td></tr><tr><th>Run fingerprint</th><td>" << render.scenario_report.run_fingerprint()
+               << "</td></tr><tr><th>Render identity</th><td>" << html_text(render.render_identity)
+               << "</td></tr><tr><th>ECG run fingerprint</th><td>" << render.scenario_report.run_fingerprint()
                << "</td></tr><tr><th>Generator</th><td>" << signal_synth::signal_synth_generator_version()
                << "</td></tr></table><h2>Lead II Preview</h2>" << svg_preview(render.record)
+               << (render.ppg.sample_count() ? "<h2>PPG Preview</h2>" + ppg_svg_preview(render.ppg) : "")
                << "<h2>Ground Truth Summary</h2><table><tr><th>Beats</th><td>" << render.metrics.beat_count
                << "</td></tr><tr><th>Mean HR</th><td>" << render.metrics.mean_heart_rate_bpm
                << " bpm</td></tr><tr><th>Mean RR</th><td>" << render.metrics.mean_rr_seconds
@@ -410,7 +503,7 @@ namespace
 namespace signal_synth
 {
     ecg_ground_truth_metrics::ecg_ground_truth_metrics()
-        : beat_count(0), atrial_event_count(0), fiducial_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0)
+        : beat_count(0), atrial_event_count(0), fiducial_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), ppg_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0)
     {
     }
 
@@ -448,6 +541,11 @@ namespace signal_synth
             result = fresh_result;
             return false;
         }
+        {
+            std::ostringstream identity;
+            identity << fresh.document_identity.document_fingerprint << ":ecg-run-" << fresh.scenario_report.run_fingerprint();
+            fresh.render_identity = identity.str();
+        }
         if (!measure_ecg_morphology(fresh.record, fresh.morphology))
         {
             fresh_result.messages.push_back("ECG morphology measurement failed");
@@ -455,6 +553,13 @@ namespace signal_synth
             return false;
         }
         fresh.metrics = calculate_metrics(fresh.record);
+        if (!ppg_generator(document.ppg).generate(fresh.record, fresh.ppg))
+        {
+            fresh_result.messages.push_back("PPG generation failed");
+            result = fresh_result;
+            return false;
+        }
+        add_ppg_metrics(fresh.ppg, fresh.metrics);
         fresh_result.success = true;
         output = fresh;
         result = fresh_result;

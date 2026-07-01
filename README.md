@@ -11,7 +11,9 @@ provides the versioned product-facing QA scenario contract, complete PTB-XL
 condition catalog, strict validation, reproducibility fingerprint, and audit
 report. `ecg_morphology` measures deterministic beat-by-lead morphology from
 the generated 12-lead signal. `ecg_scenario_json` provides strict schema-v1
-JSON parsing, canonical serialization, and SHA-256 document identity.
+and schema-v2 JSON parsing, canonical serialization, and SHA-256 document
+identity. `ppg_model` generates a linked optical pulse channel from the exact
+ECG ventricular timeline.
 
 ## ECG model status
 
@@ -112,6 +114,7 @@ This is engineering verification evidence, not clinical validation or a claim
 of MDR compliance.
 
 See `MODEL_SPECIFICATION.md`, `CLINICAL_ECG_SPECIFICATION.md`,
-`ECG_SCENARIO_SPECIFICATION.md`, and `PRODUCT_DIRECTION.md`. Review
+`ECG_SCENARIO_SPECIFICATION.md`, `PPG_MODEL_SPECIFICATION.md`, and
+`PRODUCT_DIRECTION.md`. Review
 `LEGAL_PROVENANCE.md` and `DATA_LICENSES.md` before adding model code,
 dependencies, datasets, or release artifacts.

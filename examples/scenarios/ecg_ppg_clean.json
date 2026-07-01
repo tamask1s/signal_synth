@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "scenario_id": "ecg_ppg_clean_001",
+  "name": "Clean ECG and PPG",
+  "description": "Deterministic ECG and linked optical pulse engineering scenario.",
+  "author": "Synsigra",
+  "tags": ["clean", "ecg", "ppg"],
+  "duration_seconds": 10,
+  "sample_rate_hz": 500,
+  "seed": 12345,
+  "ecg": {
+    "heart_rate_bpm": 70,
+    "rr_variability_seconds": 0,
+    "ectopic_every_n_beats": 0,
+    "second_degree_av_pattern": "unspecified",
+    "q_wave_territory": "unspecified",
+    "fidelity_policy": "allow_parameterized",
+    "conditions": [
+      {"code": "NORM", "severity": 1}
+    ]
+  },
+  "ppg": {
+    "enabled": true,
+    "pulse_delay_ms": 180,
+    "rise_time_ms": 120,
+    "decay_time_ms": 300,
+    "amplitude_au": 1,
+    "baseline_au": 0,
+    "dicrotic_delay_ms": 180,
+    "dicrotic_width_ms": 80,
+    "dicrotic_amplitude_ratio": 0.15
+  }
+}

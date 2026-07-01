@@ -44,6 +44,7 @@ int main()
     signal_synth::ecg_render_bundle render;
     signal_synth::ecg_export_result result;
     ok &= check(signal_synth::render_ecg_document(document, render, result) && result.success, "render_valid_document");
+    ok &= check(render.render_identity.find(render.document_identity.document_fingerprint + ":ecg-run-") == 0, "render_identity_contract");
     ok &= check(render.record.sample_count() == document.sample_count() && render.record.lead_count() == 12 && render.morphology.entry_count() == render.record.beat_count() * 12, "render_bundle_shape");
     ok &= check(render.metrics.beat_count == render.record.beat_count() && render.metrics.mean_rr_seconds > 0.0 && render.metrics.mean_heart_rate_bpm > 0.0, "ground_truth_metrics");
     ok &= check(render.metrics.sdnn_seconds == 0.0 && render.metrics.rmssd_seconds == 0.0, "constant_rr_metrics_normalize_roundoff");
@@ -72,6 +73,7 @@ int main()
     ok &= check(metadata && metadata->content.find("\"channels\":[{\"name\":\"I\",\"unit\":\"mV\"}") != std::string::npos && metadata->content.find("{\"name\":\"V6\",\"unit\":\"mV\"}]") != std::string::npos, "channel_metadata_contract");
     ok &= check(report && report->content.find("&lt;Export &amp; Report&gt;") != std::string::npos && report->content.find("<polyline") != std::string::npos, "html_escape_and_actual_plot");
     ok &= check(report && report->content.find("not a clinical validation certificate") != std::string::npos && report->content.find("clinically validated") == std::string::npos, "controlled_report_claims");
+    ok &= check(csv && csv->content.find("ppg_green_au") == std::string::npos && annotations && annotations->content.find("\"ppg_fiducials\"") == std::string::npos, "schema_v1_export_remains_ecg_only");
 
     signal_synth::ecg_render_bundle repeated_render;
     signal_synth::ecg_export_bundle repeated_bundle;
@@ -86,6 +88,25 @@ int main()
     signal_synth::ecg_export_bundle preserved_export = bundle;
     ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 8, "failed_export_is_transactional");
     ok &= check(std::string(signal_synth::signal_synth_generator_version()) == "0.1.0-dev", "runtime_generator_version");
+
+    signal_synth::ecg_scenario_document multimodal = document;
+    multimodal.schema_version = 2;
+    multimodal.scenario_id = "ecg_ppg_export";
+    multimodal.ppg.enabled = true;
+    signal_synth::ecg_render_bundle multimodal_render;
+    signal_synth::ecg_export_bundle multimodal_bundle;
+    ok &= check(signal_synth::render_ecg_document(multimodal, multimodal_render, result) && multimodal_render.ppg.sample_count() == multimodal_render.record.sample_count(), "multimodal_render");
+    ok &= check(multimodal_render.render_identity != render.render_identity, "ppg_document_changes_render_identity");
+    ok &= check(multimodal_render.metrics.ppg_pulse_count > 0 && std::fabs(multimodal_render.metrics.mean_ppg_onset_delay_seconds - 0.18) < 1e-12 && multimodal_render.metrics.mean_ppg_peak_delay_seconds > 0.18, "ppg_delay_metrics");
+    ok &= check(signal_synth::build_ecg_export_bundle(multimodal_render, multimodal_bundle, result), "multimodal_export");
+    const signal_synth::ecg_text_artifact* multimodal_csv = multimodal_bundle.find("waveform.csv");
+    const signal_synth::ecg_text_artifact* multimodal_annotations = multimodal_bundle.find("annotations.json");
+    const signal_synth::ecg_text_artifact* multimodal_metrics = multimodal_bundle.find("ground_truth_metrics.json");
+    const signal_synth::ecg_text_artifact* multimodal_report = multimodal_bundle.find("report.html");
+    ok &= check(multimodal_csv && multimodal_csv->content.find(",ppg_green_au\n") != std::string::npos, "ppg_csv_channel");
+    ok &= check(multimodal_annotations && multimodal_annotations->content.find("\"ppg_fiducials\":[{") != std::string::npos, "ppg_annotation_export");
+    ok &= check(multimodal_metrics && multimodal_metrics->content.find("\"ppg\":{\"pulse_count\":") != std::string::npos, "ppg_metric_export");
+    ok &= check(multimodal_report && multimodal_report->content.find("<h2>PPG Preview</h2><svg") != std::string::npos, "ppg_report_preview");
 
     return ok ? 0 : 1;
 }

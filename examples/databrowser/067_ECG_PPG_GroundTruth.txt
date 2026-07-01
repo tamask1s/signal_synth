@@ -1,0 +1,45 @@
+// Shared-timeline ECG and PPG with linked construction/measured ground truth.
+// annotation_output: 1 markers, 2 annotation channels, 3 none.
+
+#define SAMPLING_RATE 500
+#define NUMBER_OF_SAMPLES 15000
+#define OUTPUT_BASE synthetic_ecg_ppg
+
+DataDelete();
+
+GenerateSyntheticECGPPG(synthetic_ecg_ppg, NUMBER_OF_SAMPLES, SAMPLING_RATE,
+{
+    "ecg": {
+        "heart_rate_bpm": 72,
+        "atrial_rate_bpm": 72,
+        "rr_variability_seconds": 0.035,
+        "minimum_rr_seconds": 0.25,
+        "maximum_rr_seconds": 3.0,
+        "seed": 123456789,
+        "p_duration_ms": 100,
+        "pr_interval_ms": 160,
+        "qrs_duration_ms": 90,
+        "qtc_ms": 410,
+        "qt_correction_type": 2,
+        "p_amplitude_mv": 0.12,
+        "q_amplitude_mv": -0.15,
+        "r_amplitude_mv": 1.0,
+        "s_amplitude_mv": -0.28,
+        "t_amplitude_mv": 0.30
+    },
+    "ppg": {
+        "enabled": true,
+        "pulse_delay_ms": 180,
+        "rise_time_ms": 120,
+        "decay_time_ms": 300,
+        "amplitude_au": 1.0,
+        "baseline_au": 0.0,
+        "dicrotic_delay_ms": 180,
+        "dicrotic_width_ms": 80,
+        "dicrotic_amplitude_ratio": 0.15
+    }
+}, 1);
+
+SaveVarToFile(synthetic_ecg_ppg, CatStrings(OUTPUT_BASE, .bin), 100, 8);
+DisplayData(synthetic_ecg_ppg, fit_width,, A2, 001);
+SavePic(synthetic_ecg_ppg, CatStrings(OUTPUT_BASE, .gif));

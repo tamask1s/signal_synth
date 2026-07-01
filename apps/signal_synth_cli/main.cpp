@@ -168,7 +168,8 @@ int main(int argc, char** argv)
                       << "artifact_count=" << export_bundle.artifacts.size() << '\n'
                       << "document_fingerprint=" << result.document_fingerprint << '\n'
                       << "generation_fingerprint=" << result.generation_fingerprint << '\n'
-                      << "run_fingerprint=" << render.scenario_report.run_fingerprint() << '\n';
+                      << "render_identity=" << render.render_identity << '\n'
+                      << "ecg_run_fingerprint=" << render.scenario_report.run_fingerprint() << '\n';
             return 0;
         }
         if (command == "validate")

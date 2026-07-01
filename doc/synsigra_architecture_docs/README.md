@@ -35,6 +35,7 @@ signal_synth/
       002_VERSIONED_SCENARIO_JSON.md
       003_SCENARIO_CLI_VALIDATE_FINGERPRINT.md
       004_RENDER_EXPORT_REPORT.md
+      005_SHARED_TIMELINE_PPG.md
 ```
 
 Current product positioning:
