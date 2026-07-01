@@ -1,70 +1,43 @@
 cmake_minimum_required(VERSION 3.10)
-project(signal_synth_test LANGUAGES CXX)
 
-enable_testing()
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    project(signal_synth_test LANGUAGES CXX)
+    set(SIGNAL_SYNTH_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(SIGNAL_SYNTH_INSTALL ON CACHE BOOL "" FORCE)
+    add_subdirectory(.. signal_synth_core)
+    enable_testing()
+endif()
 
-add_executable(
-    signal_synth_test
-    signal_synth_test.cpp
-    ../src/signal_synth.cpp)
+function(signal_synth_add_test target source test_id)
+    add_executable(${target} ${source})
+    target_link_libraries(${target} PRIVATE signal_synth::signal_synth)
+    target_compile_features(${target} PRIVATE cxx_std_11)
+    set_target_properties(${target} PROPERTIES CXX_EXTENSIONS OFF)
 
-target_include_directories(signal_synth_test PRIVATE ../src)
-target_compile_features(signal_synth_test PRIVATE cxx_std_11)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
 
-add_executable(
-    ecg_model_test
-    ecg_model_test.cpp
-    ../src/ecg_model.cpp)
+    add_test(NAME ${test_id} COMMAND ${target})
+endfunction()
 
-target_include_directories(ecg_model_test PRIVATE ../src)
-target_compile_features(ecg_model_test PRIVATE cxx_std_11)
-
-add_executable(
-    clinical_ecg_test
-    clinical_ecg_test.cpp
-    ../src/clinical_ecg.cpp)
-
-target_include_directories(clinical_ecg_test PRIVATE ../src)
-target_compile_features(clinical_ecg_test PRIVATE cxx_std_11)
-
-add_executable(
-    ecg_morphology_test
-    ecg_morphology_test.cpp
-    ../src/ecg_morphology.cpp
-    ../src/clinical_ecg.cpp)
-
-target_include_directories(ecg_morphology_test PRIVATE ../src)
-target_compile_features(ecg_morphology_test PRIVATE cxx_std_11)
-
-add_executable(
-    ecg_scenario_test
-    ecg_scenario_test.cpp
-    ../src/ecg_scenario.cpp
-    ../src/ecg_morphology.cpp
-    ../src/clinical_ecg.cpp)
-
-target_include_directories(ecg_scenario_test PRIVATE ../src)
-target_compile_features(ecg_scenario_test PRIVATE cxx_std_11)
-
-add_test(NAME TEST-SYNTH-001 COMMAND signal_synth_test)
+signal_synth_add_test(signal_synth_test signal_synth_test.cpp TEST-SYNTH-001)
 set_tests_properties(
     TEST-SYNTH-001
     PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/..")
-add_test(NAME TEST-ECG-MODEL-001 COMMAND ecg_model_test)
-add_test(NAME TEST-ECG-PHANTOM-001 COMMAND clinical_ecg_test)
-add_test(NAME TEST-ECG-MORPH-001 COMMAND ecg_morphology_test)
-add_test(NAME TEST-ECG-SCENARIO-001 COMMAND ecg_scenario_test)
+signal_synth_add_test(ecg_model_test ecg_model_test.cpp TEST-ECG-MODEL-001)
+signal_synth_add_test(clinical_ecg_test clinical_ecg_test.cpp TEST-ECG-PHANTOM-001)
+signal_synth_add_test(ecg_morphology_test ecg_morphology_test.cpp TEST-ECG-MORPH-001)
+signal_synth_add_test(ecg_scenario_test ecg_scenario_test.cpp TEST-ECG-SCENARIO-001)
 
-if(MSVC)
-    target_compile_options(signal_synth_test PRIVATE /W4)
-    target_compile_options(ecg_model_test PRIVATE /W4)
-    target_compile_options(clinical_ecg_test PRIVATE /W4)
-    target_compile_options(ecg_morphology_test PRIVATE /W4)
-    target_compile_options(ecg_scenario_test PRIVATE /W4)
-else()
-    target_compile_options(signal_synth_test PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(ecg_model_test PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(clinical_ecg_test PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(ecg_morphology_test PRIVATE -Wall -Wextra -Wpedantic)
-    target_compile_options(ecg_scenario_test PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+add_test(
+    NAME TEST-BUILD-001
+    COMMAND
+        ${CMAKE_COMMAND}
+        -DSIGNAL_SYNTH_BUILD_DIR=${CMAKE_BINARY_DIR}
+        -DSIGNAL_SYNTH_SMOKE_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/package_smoke
+        -DSIGNAL_SYNTH_SMOKE_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/package_smoke_work
+        -DSIGNAL_SYNTH_BUILD_CONFIG=$<CONFIGURATION>
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/package_smoke/run.cmake)

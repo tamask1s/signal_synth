@@ -82,6 +82,7 @@ Stable suite IDs use the form `TEST-<AREA>-<NNN>`. The current suites are:
 | `TEST-ECG-PHANTOM-001` | 12-lead phantom, rhythm, conduction, source model | `teszt/clinical_ecg_test.cpp` |
 | `TEST-ECG-MORPH-001` | Measured morphology and lead territories | `teszt/ecg_morphology_test.cpp` |
 | `TEST-ECG-SCENARIO-001` | Scenario validation, fingerprints, assertions | `teszt/ecg_scenario_test.cpp` |
+| `TEST-BUILD-001` | Installed CMake package discovery, link and execution | `teszt/package_smoke/` |
 
 `CI-VER-001` is the cross-platform GitHub Actions procedure defined in
 `.github/workflows/verification.yml`.

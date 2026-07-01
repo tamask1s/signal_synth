@@ -29,6 +29,9 @@ signal_synth/
     16_REPO_REVIEW.md
     17_TRACEABILITY_SOP.md
     18_TRACEABILITY_MATRIX.md
+    increments/
+      README.md
+      001_PORTABLE_BUILD_BASELINE.md
 ```
 
 Current product positioning:
@@ -42,3 +45,7 @@ Non-goal:
 The traceability SOP and matrix demonstrate an MDR-style navigation and
 evidence workflow. They are not a declaration of MDR compliance or a complete
 regulated quality system.
+
+`increments/` contains one design record per implementation increment. Create
+and accept the relevant record before opening implementation work under the
+traceability SOP.

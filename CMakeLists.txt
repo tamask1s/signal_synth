@@ -1,0 +1,68 @@
+cmake_minimum_required(VERSION 3.10)
+project(signal_synth LANGUAGES CXX)
+
+option(SIGNAL_SYNTH_BUILD_TESTS "Build signal_synth verification tests" ON)
+option(SIGNAL_SYNTH_INSTALL "Install the signal_synth library and CMake package" ON)
+
+set(SIGNAL_SYNTH_PUBLIC_HEADERS
+    src/signal_synth.h
+    src/ecg_model.h
+    src/clinical_ecg.h
+    src/ecg_morphology.h
+    src/ecg_scenario.h)
+
+add_library(
+    signal_synth
+    STATIC
+    src/signal_synth.cpp
+    src/ecg_model.cpp
+    src/clinical_ecg.cpp
+    src/ecg_morphology.cpp
+    src/ecg_scenario.cpp)
+
+add_library(signal_synth::signal_synth ALIAS signal_synth)
+
+target_compile_features(signal_synth PUBLIC cxx_std_11)
+set_target_properties(signal_synth PROPERTIES CXX_EXTENSIONS OFF)
+target_include_directories(
+    signal_synth
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+        $<INSTALL_INTERFACE:include>)
+
+if(MSVC)
+    target_compile_options(signal_synth PRIVATE /W4)
+else()
+    target_compile_options(signal_synth PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+if(SIGNAL_SYNTH_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(teszt)
+endif()
+
+if(SIGNAL_SYNTH_INSTALL)
+    include(CMakePackageConfigHelpers)
+    set(SIGNAL_SYNTH_INSTALL_CMAKEDIR "lib/cmake/signal_synth")
+
+    install(
+        TARGETS signal_synth
+        EXPORT signal_synth-targets
+        ARCHIVE DESTINATION lib)
+    install(FILES ${SIGNAL_SYNTH_PUBLIC_HEADERS} DESTINATION include/signal_synth)
+    install(
+        EXPORT signal_synth-targets
+        FILE signal_synth-targets.cmake
+        NAMESPACE signal_synth::
+        DESTINATION ${SIGNAL_SYNTH_INSTALL_CMAKEDIR})
+
+    configure_package_config_file(
+        cmake/signal_synth-config.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/signal_synth-config.cmake
+        INSTALL_DESTINATION ${SIGNAL_SYNTH_INSTALL_CMAKEDIR}
+        NO_SET_AND_CHECK_MACRO
+        NO_CHECK_REQUIRED_COMPONENTS_MACRO)
+    install(
+        FILES ${CMAKE_CURRENT_BINARY_DIR}/signal_synth-config.cmake
+        DESTINATION ${SIGNAL_SYNTH_INSTALL_CMAKEDIR})
+endif()

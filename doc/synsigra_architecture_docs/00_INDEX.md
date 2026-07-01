@@ -21,6 +21,13 @@ Recommended read order:
 17. `17_TRACEABILITY_SOP.md`
 18. `18_TRACEABILITY_MATRIX.md`
 
+Implementation increment designs:
+
+- `increments/README.md` defines the required architecture-record content and
+  lifecycle for each implementation increment.
+- `increments/001_PORTABLE_BUILD_BASELINE.md` proposes the next increment:
+  one root, installable C++ library build exercised by all verification suites.
+
 Traceability demonstration:
 
 - `17_TRACEABILITY_SOP.md` defines issue, commit, test, CI-evidence, review,

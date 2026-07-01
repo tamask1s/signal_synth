@@ -69,14 +69,28 @@ clinical validation evidence.
 ## Build and test
 
 ```sh
-cmake -Hteszt -B/tmp/signal_synth-build
+cmake -H. -B/tmp/signal_synth-build -DSIGNAL_SYNTH_BUILD_TESTS=ON
 cmake --build /tmp/signal_synth-build
 cd /tmp/signal_synth-build
 ctest --output-on-failure
 ```
 
-GitHub Actions runs the same five stable `TEST-*` suites on Linux and Windows
-and preserves the CTest logs as finite-retention artifacts. See the
+Installable consumers can use the exported CMake package:
+
+```sh
+cmake -H. -B/tmp/signal_synth-build -DSIGNAL_SYNTH_BUILD_TESTS=OFF
+cmake --build /tmp/signal_synth-build
+cmake -DCMAKE_INSTALL_PREFIX=/tmp/signal_synth-prefix -P /tmp/signal_synth-build/cmake_install.cmake
+```
+
+```cmake
+find_package(signal_synth CONFIG REQUIRED)
+target_link_libraries(your_target PRIVATE signal_synth::signal_synth)
+```
+
+GitHub Actions runs the five behavioral `TEST-*` suites and the installed
+package smoke suite on Linux and Windows, and preserves the CTest logs as
+finite-retention artifacts. See the
 [traceability SOP](doc/synsigra_architecture_docs/17_TRACEABILITY_SOP.md) and
 [demonstration matrix](doc/synsigra_architecture_docs/18_TRACEABILITY_MATRIX.md).
 This is engineering verification evidence, not clinical validation or a claim
