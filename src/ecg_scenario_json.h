@@ -29,6 +29,8 @@ namespace signal_synth
         std::string message;
     };
 
+    const char* ecg_scenario_json_message_code_name(ecg_scenario_json_message_code code);
+
     struct ecg_scenario_document
     {
         ecg_scenario_document();

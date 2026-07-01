@@ -62,10 +62,10 @@ int main()
     ok &= check(signal_synth::write_ecg_scenario_json(roundtrip, renamed), "write_typed_document");
     ok &= check(renamed.document_fingerprint != parsed.document_fingerprint && renamed.generation_fingerprint == parsed.generation_fingerprint, "document_and_generation_identity_are_distinct");
 
-    const std::string unicode = std::string(input).replace(input.find("ecg_clean_001"), 13, "ecg_\\uD834\\uDD1E");
+    const std::string unicode = std::string(input).replace(input.find("\"description\":\"test\""), 20, "\"description\":\"\\uD834\\uDD1E\"");
     signal_synth::ecg_scenario_document unicode_document;
     signal_synth::ecg_scenario_json_result unicode_result;
-    ok &= check(signal_synth::parse_ecg_scenario_json(unicode, unicode_document, unicode_result) && unicode_document.scenario_id.size() == 8, "unicode_surrogate_pair");
+    ok &= check(signal_synth::parse_ecg_scenario_json(unicode, unicode_document, unicode_result) && unicode_document.description.size() == 4, "unicode_surrogate_pair");
 
     ok &= check(rejects_without_mutation("[]", signal_synth::ecg_json_type), "reject_root_type");
     ok &= check(rejects_without_mutation("{", signal_synth::ecg_json_syntax), "reject_truncated_json");

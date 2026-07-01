@@ -29,6 +29,8 @@ Implementation increment designs:
   one root, installable C++ library build exercised by all verification suites.
 - `increments/002_VERSIONED_SCENARIO_JSON.md` defines the strict portable
   scenario document, canonicalization, and fingerprint contract.
+- `increments/003_SCENARIO_CLI_VALIDATE_FINGERPRINT.md` defines the first
+  product-facing validate/fingerprint executable.
 
 Traceability demonstration:
 

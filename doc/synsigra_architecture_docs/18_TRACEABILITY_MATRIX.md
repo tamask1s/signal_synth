@@ -38,6 +38,7 @@ The authoritative implementation/result details remain in the linked issues.
 | `TRC-QMS-001` | `REQ-GEN-006`, `REQ-NFR-002`, `REQ-NFR-008`, `REQ-DOC-001..002` | V&V plan, quality plan, this SOP | `.github/workflows/verification.yml`, `teszt/CMakeLists.txt` | `CI-VER-001`, all five `TEST-*` suites | [signal_synth#12](https://github.com/tamask1s/signal_synth/issues/12) |
 | `TRC-BUILD-001` | `REQ-GEN-004`, `REQ-NFR-002..003`, `REQ-NFR-008`, `REQ-DOC-001..002` | Portable build increment | `CMakeLists.txt`, `cmake/`, `teszt/package_smoke/` | `TEST-BUILD-001`, all existing behavior suites | [signal_synth#13](https://github.com/tamask1s/signal_synth/issues/13) |
 | `TRC-SCN-002` | `REQ-GEN-001..006`, `REQ-SCN-001..003`, `REQ-SCN-006`, `REQ-NFR-001..003`, `REQ-NFR-008` | Versioned scenario JSON increment | `src/ecg_scenario_json.*` | `TEST-ECG-JSON-001`, `TEST-BUILD-001` | [signal_synth#14](https://github.com/tamask1s/signal_synth/issues/14) |
+| `TRC-CLI-001` | `REQ-GEN-002`, `REQ-GEN-004..006`, `REQ-SCN-006`, `REQ-API-001`, `REQ-NFR-006..008` | Scenario CLI increment | `apps/signal_synth_cli/` | `TEST-CLI-001`, `TEST-BUILD-001` | [signal_synth#15](https://github.com/tamask1s/signal_synth/issues/15) |
 | `TRC-DSP-001` | Supporting `REQ-NFR-003`, `REQ-NFR-008` | Shared DSP ownership | RSPT FIR design API | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#1](https://github.com/tamask1s/rspt_module/issues/1) |
 | `TRC-DSP-002` | Supporting `REQ-NFR-008` | IIR coefficient contract | RSPT IIR/filter consumers | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#2](https://github.com/tamask1s/rspt_module/issues/2) |
 
@@ -51,6 +52,7 @@ The authoritative implementation/result details remain in the linked issues.
 | `TEST-ECG-MORPH-001` | `teszt/ecg_morphology_test.cpp` | Beat/lead morphology and territory measurement |
 | `TEST-ECG-SCENARIO-001` | `teszt/ecg_scenario_test.cpp` | Catalog, validation, fingerprints, phenotype assertions |
 | `TEST-ECG-JSON-001` | `teszt/ecg_scenario_json_test.cpp` | Strict parsing, canonicalization, SHA-256, transactional rejection |
+| `TEST-CLI-001` | `teszt/cli_test.cmake` | CLI file/stdin, stdout/stderr, exit codes and size limit |
 | `TEST-BUILD-001` | `teszt/package_smoke/` | Installed package discovery, public-header compilation, link and execution |
 | `CI-VER-001` | `.github/workflows/verification.yml` | Linux and Windows configure/build/test execution |
 

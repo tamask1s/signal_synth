@@ -480,6 +480,19 @@ namespace
         return value.size() >= minimum && value.size() <= maximum && value.find('\0') == std::string::npos && valid_utf8(value);
     }
 
+    bool safe_identifier(const std::string& value)
+    {
+        if (value.empty() || value.size() > 128)
+            return false;
+        for (std::size_t i = 0; i < value.size(); ++i)
+        {
+            const char c = value[i];
+            if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '_' || c == '-'))
+                return false;
+        }
+        return true;
+    }
+
     std::string escape_json(const std::string& value)
     {
         static const char hex[] = "0123456789abcdef";
@@ -616,8 +629,8 @@ namespace
     {
         if (document.schema_version != 1)
             add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema version 1 is supported");
-        if (!safe_text(document.scenario_id, 1, 128))
-            add_message(result, signal_synth::ecg_json_range, "$.scenario_id", "scenario_id must contain 1 to 128 valid UTF-8 bytes");
+        if (!safe_identifier(document.scenario_id))
+            add_message(result, signal_synth::ecg_json_range, "$.scenario_id", "scenario_id must contain 1 to 128 ASCII letters, digits, dots, underscores, or hyphens");
         if (!safe_text(document.name, 1, 256))
             add_message(result, signal_synth::ecg_json_range, "$.name", "name must contain 1 to 256 valid UTF-8 bytes");
         if (!safe_text(document.description, 0, 4096))
@@ -691,6 +704,25 @@ namespace
 
 namespace signal_synth
 {
+    const char* ecg_scenario_json_message_code_name(ecg_scenario_json_message_code code)
+    {
+        switch (code)
+        {
+        case ecg_json_syntax: return "SCENARIO_JSON_SYNTAX";
+        case ecg_json_duplicate_key: return "SCENARIO_JSON_DUPLICATE_KEY";
+        case ecg_json_unknown_field: return "SCENARIO_JSON_UNKNOWN_FIELD";
+        case ecg_json_missing_field: return "SCENARIO_JSON_MISSING_FIELD";
+        case ecg_json_type: return "SCENARIO_JSON_TYPE";
+        case ecg_json_range: return "SCENARIO_JSON_RANGE";
+        case ecg_json_schema_version: return "SCENARIO_JSON_SCHEMA_VERSION";
+        case ecg_json_duplicate_condition: return "SCENARIO_JSON_DUPLICATE_CONDITION";
+        case ecg_json_duplicate_tag: return "SCENARIO_JSON_DUPLICATE_TAG";
+        case ecg_json_semantic: return "SCENARIO_JSON_SEMANTIC";
+        case ecg_json_internal: return "SCENARIO_JSON_INTERNAL";
+        }
+        return "SCENARIO_JSON_INTERNAL";
+    }
+
     ecg_scenario_document::ecg_scenario_document()
         : schema_version(1), scenario_id("ecg_scenario"), name("ECG scenario"), description(""), author(""), duration_seconds(10.0)
     {

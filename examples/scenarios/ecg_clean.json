@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "scenario_id": "ecg_clean_001",
+  "name": "Clean ECG",
+  "description": "Deterministic clean ECG engineering scenario.",
+  "author": "Synsigra",
+  "tags": ["clean", "ecg"],
+  "duration_seconds": 10,
+  "sample_rate_hz": 500,
+  "seed": 12345,
+  "ecg": {
+    "heart_rate_bpm": 70,
+    "rr_variability_seconds": 0,
+    "ectopic_every_n_beats": 0,
+    "second_degree_av_pattern": "unspecified",
+    "q_wave_territory": "unspecified",
+    "fidelity_policy": "allow_parameterized",
+    "conditions": [
+      {"code": "NORM", "severity": 1}
+    ]
+  }
+}

@@ -130,7 +130,8 @@ Rules:
 - duplicate conditions are errors;
 - conditions are canonicalized in catalog order;
 - tags are unique, non-empty, and canonicalized lexicographically;
-- strings must be valid JSON/UTF-8 and must not contain NUL;
+- `scenario_id` contains 1 to 128 ASCII letters, digits, dots, underscores, or
+  hyphens; other strings must be valid JSON/UTF-8 and must not contain NUL;
 - numeric values must be finite and within typed API ranges;
 - `duration_seconds * sample_rate_hz` must be a positive integral sample count
   representable by `unsigned int`;

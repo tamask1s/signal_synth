@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.10)
 project(signal_synth LANGUAGES CXX)
 
 option(SIGNAL_SYNTH_BUILD_TESTS "Build signal_synth verification tests" ON)
+option(SIGNAL_SYNTH_BUILD_CLI "Build the signal-synth command-line tool" ON)
 option(SIGNAL_SYNTH_INSTALL "Install the signal_synth library and CMake package" ON)
 
 set(SIGNAL_SYNTH_PUBLIC_HEADERS
@@ -38,6 +39,18 @@ else()
     target_compile_options(signal_synth PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+if(SIGNAL_SYNTH_BUILD_CLI)
+    add_executable(signal_synth_cli apps/signal_synth_cli/main.cpp)
+    target_link_libraries(signal_synth_cli PRIVATE signal_synth::signal_synth)
+    target_compile_features(signal_synth_cli PRIVATE cxx_std_11)
+    set_target_properties(signal_synth_cli PROPERTIES CXX_EXTENSIONS OFF OUTPUT_NAME signal-synth)
+    if(MSVC)
+        target_compile_options(signal_synth_cli PRIVATE /W4)
+    else()
+        target_compile_options(signal_synth_cli PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endif()
+
 if(SIGNAL_SYNTH_BUILD_TESTS)
     enable_testing()
     add_subdirectory(teszt)
@@ -51,6 +64,9 @@ if(SIGNAL_SYNTH_INSTALL)
         TARGETS signal_synth
         EXPORT signal_synth-targets
         ARCHIVE DESTINATION lib)
+    if(SIGNAL_SYNTH_BUILD_CLI)
+        install(TARGETS signal_synth_cli RUNTIME DESTINATION bin)
+    endif()
     install(FILES ${SIGNAL_SYNTH_PUBLIC_HEADERS} DESTINATION include/signal_synth)
     install(
         EXPORT signal_synth-targets

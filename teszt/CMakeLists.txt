@@ -41,4 +41,16 @@ add_test(
         -DSIGNAL_SYNTH_SMOKE_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/package_smoke
         -DSIGNAL_SYNTH_SMOKE_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/package_smoke_work
         -DSIGNAL_SYNTH_BUILD_CONFIG=$<CONFIGURATION>
+        -DSIGNAL_SYNTH_EXPECT_CLI=${SIGNAL_SYNTH_BUILD_CLI}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/package_smoke/run.cmake)
+
+if(TARGET signal_synth_cli)
+    add_test(
+        NAME TEST-CLI-001
+        COMMAND
+            ${CMAKE_COMMAND}
+            -DSIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>
+            -DSIGNAL_SYNTH_EXAMPLE=${CMAKE_CURRENT_SOURCE_DIR}/../examples/scenarios/ecg_clean.json
+            -DSIGNAL_SYNTH_CLI_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/cli_test_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/cli_test.cmake)
+endif()

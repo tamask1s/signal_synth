@@ -89,6 +89,15 @@ find_package(signal_synth CONFIG REQUIRED)
 target_link_libraries(your_target PRIVATE signal_synth::signal_synth)
 ```
 
+Validate and fingerprint a portable scenario document:
+
+```sh
+/tmp/signal_synth-build/signal-synth validate examples/scenarios/ecg_clean.json
+/tmp/signal_synth-build/signal-synth fingerprint examples/scenarios/ecg_clean.json
+```
+
+Use `-DSIGNAL_SYNTH_BUILD_CLI=OFF` for a library-only build.
+
 GitHub Actions runs the five behavioral `TEST-*` suites and the installed
 package smoke suite on Linux and Windows, and preserves the CTest logs as
 finite-retention artifacts. See the
