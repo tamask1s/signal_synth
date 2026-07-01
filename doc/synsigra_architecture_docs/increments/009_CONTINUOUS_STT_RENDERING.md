@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-009
 
-**Version:** 0.2
+**Version:** 0.3
 
-**Status:** Implemented; verification pending
+**Status:** Verified
 
 **Owner role:** Biosignal Algorithms / Verification
 
@@ -152,9 +152,30 @@ No external source code or waveform data is copied.
 5. Run release, sanitizer, and cross-platform verification.
 6. Synchronize DataBrowser/SVN files and close the issue with evidence.
 
-## 13. Change log
+## 13. Verification record
+
+- implementation commit:
+  [`b0c8754`](https://github.com/tamask1s/signal_synth/commit/b0c875439dad84e13c0d4e7115a957d013317761);
+- `CI-VER-001`:
+  [GitHub Actions run 28522008833](https://github.com/tamask1s/signal_synth/actions/runs/28522008833),
+  successful on Ubuntu and Windows C++11;
+- local release verification: 12/12 CTest suites passed;
+- local ASan/UBSan verification: 11/11 applicable suites passed with package
+  smoke excluded;
+- sampled continuity regression passed for 17 injury-source conditions, every
+  generated beat, and 100, 500, and 1000 Hz;
+- direct before/after waveform plots confirmed removal of block-like J steps
+  in `NST_`, `DIG`, `STD_`, `STE_`, `ANEUR`, and territorial ischemia;
+- `clinical_ecg.*` and `ecg_scenario.*` were synchronized to the SVN-managed
+  DataBrowser working copy and verified byte-identical.
+
+The Windows DataBrowser application was not compiled in this environment.
+Interactive execution of scripts 071/072 remains manual integration evidence.
+
+## 14. Change log
 
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-01 | Initial defect analysis and accepted correction design |
 | 0.2 | 2026-07-01 | Implemented C1 rendering, engine v7, and multi-rate sampled continuity regression |
+| 0.3 | 2026-07-01 | Recorded waveform inspection, release, sanitizer, synchronization, and cross-platform CI evidence |
