@@ -1,5 +1,7 @@
 # signal_synth
 
+[![Verification](https://github.com/tamask1s/signal_synth/actions/workflows/verification.yml/badge.svg)](https://github.com/tamask1s/signal_synth/actions/workflows/verification.yml)
+
 `signal_synth` is a C++11 signal-generation library under active development.
 The existing `signal_synth` API provides the legacy generators. `ecg_model`
 provides the stateful phase-domain ECG and five-channel validation package.
@@ -72,6 +74,13 @@ cmake --build /tmp/signal_synth-build
 cd /tmp/signal_synth-build
 ctest --output-on-failure
 ```
+
+GitHub Actions runs the same five stable `TEST-*` suites on Linux and Windows
+and preserves the CTest logs as finite-retention artifacts. See the
+[traceability SOP](doc/synsigra_architecture_docs/17_TRACEABILITY_SOP.md) and
+[demonstration matrix](doc/synsigra_architecture_docs/18_TRACEABILITY_MATRIX.md).
+This is engineering verification evidence, not clinical validation or a claim
+of MDR compliance.
 
 See `MODEL_SPECIFICATION.md`, `CLINICAL_ECG_SPECIFICATION.md`,
 `ECG_SCENARIO_SPECIFICATION.md`, and `PRODUCT_DIRECTION.md`. Review

@@ -27,6 +27,8 @@ The project should be documented as an engineering-grade biosignal algorithm QA 
 | MDR Readiness and Quality | Future regulatory bridge | Regulatory/Quality |
 | Implementation Roadmap | Work sequencing | Product/Engineering |
 | Repository Review | Review of current `signal_synth` direction | Architect |
+| Traceability and Change-Control SOP | Issue, commit, test, CI and evidence workflow | Engineering/Quality |
+| Demonstration Traceability Matrix | Requirements to design, code, tests and records | Engineering/Quality |
 
 ## 3. Future MDR documentation set
 
@@ -71,3 +73,7 @@ Use Markdown first. Keep all docs versioned in Git. Each document should include
 Do not let documentation imply clinical claims. The baseline product claim should remain:
 
 > Synthetic, reproducible, ground-truth-controlled ECG/PPG engineering scenarios for algorithm development, QA and regression testing.
+
+The current traceability records are a process demonstration. They are not a
+QMS, regulatory submission, clinical validation package, or declaration of MDR
+compliance.

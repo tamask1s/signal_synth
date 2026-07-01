@@ -1,5 +1,18 @@
 # signal_synth tests
 
+CTest exposes these stable verification suite IDs:
+
+- `TEST-SYNTH-001`
+- `TEST-ECG-MODEL-001`
+- `TEST-ECG-PHANTOM-001`
+- `TEST-ECG-MORPH-001`
+- `TEST-ECG-SCENARIO-001`
+
+GitHub Actions procedure `CI-VER-001` executes all five suites on Linux and
+Windows. See `doc/synsigra_architecture_docs/17_TRACEABILITY_SOP.md` for the
+difference between a test procedure, an execution result, and retained
+verification evidence.
+
 Build and run from the repository root:
 
 ```sh

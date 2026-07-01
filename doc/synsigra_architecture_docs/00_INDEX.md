@@ -18,6 +18,17 @@ Recommended read order:
 14. `14_MDR_READINESS_AND_QUALITY.md`
 15. `15_IMPLEMENTATION_ROADMAP.md`
 16. `16_REPO_REVIEW.md`
+17. `17_TRACEABILITY_SOP.md`
+18. `18_TRACEABILITY_MATRIX.md`
+
+Traceability demonstration:
+
+- `17_TRACEABILITY_SOP.md` defines issue, commit, test, CI-evidence, review,
+  and release-record rules.
+- `18_TRACEABILITY_MATRIX.md` links implemented requirements to design,
+  source, verification procedures, and GitHub records.
+- These records demonstrate MDR-style navigation but do not claim MDR
+  compliance or clinical validation.
 
 Primary immediate implementation targets:
 

@@ -27,6 +27,8 @@ signal_synth/
     14_MDR_READINESS_AND_QUALITY.md
     15_IMPLEMENTATION_ROADMAP.md
     16_REPO_REVIEW.md
+    17_TRACEABILITY_SOP.md
+    18_TRACEABILITY_MATRIX.md
 ```
 
 Current product positioning:
@@ -36,3 +38,7 @@ Current product positioning:
 Non-goal:
 
 > It is not currently a medical diagnostic device, patient monitor, certified medical-device validator, or standalone clinical validation system.
+
+The traceability SOP and matrix demonstrate an MDR-style navigation and
+evidence workflow. They are not a declaration of MDR compliance or a complete
+regulated quality system.

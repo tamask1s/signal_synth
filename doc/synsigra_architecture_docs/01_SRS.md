@@ -2,7 +2,7 @@
 
 **Document ID:** SYN-SRS-001  
 **Product:** Synsigra Testbench  
-**Version:** 0.1-draft  
+**Version:** 0.2-draft
 **Status:** Draft for MVP planning  
 **Date:** 2026-07-01  
 **Owner:** TBD  
@@ -1352,6 +1352,29 @@ Future documentation may include:
 - tool-validation package;
 - technical file index.
 
+### REQ-DOC-001 — Development Traceability
+
+Implemented work shall be traceable from a stable requirement or documented
+engineering objective through design input, issue, implementation commit, and
+verification procedure.
+
+Priority: Must
+
+MVP: Yes
+
+### REQ-DOC-002 — Verification Evidence Identity
+
+Automated verification evidence shall identify the tested commit, test
+procedure ID, execution platform, result, and known retention limitation.
+
+Priority: Must
+
+MVP: Yes
+
+These controls demonstrate an auditable engineering workflow. They do not by
+themselves establish MDR compliance, clinical validation, or a qualified test
+environment.
+
 ---
 
 ## 28. Open Questions
@@ -1413,3 +1436,4 @@ Future documentation may include:
 | Version | Date | Description |
 |---|---|---|
 | 0.1-draft | 2026-07-01 | Initial MVP SRS draft |
+| 0.2-draft | 2026-07-01 | Added development traceability and verification-evidence identity requirements |

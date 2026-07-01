@@ -46,14 +46,14 @@ add_executable(
 target_include_directories(ecg_scenario_test PRIVATE ../src)
 target_compile_features(ecg_scenario_test PRIVATE cxx_std_11)
 
-add_test(NAME signal_synth_test COMMAND signal_synth_test)
+add_test(NAME TEST-SYNTH-001 COMMAND signal_synth_test)
 set_tests_properties(
-    signal_synth_test
+    TEST-SYNTH-001
     PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/..")
-add_test(NAME ecg_model_test COMMAND ecg_model_test)
-add_test(NAME clinical_ecg_test COMMAND clinical_ecg_test)
-add_test(NAME ecg_morphology_test COMMAND ecg_morphology_test)
-add_test(NAME ecg_scenario_test COMMAND ecg_scenario_test)
+add_test(NAME TEST-ECG-MODEL-001 COMMAND ecg_model_test)
+add_test(NAME TEST-ECG-PHANTOM-001 COMMAND clinical_ecg_test)
+add_test(NAME TEST-ECG-MORPH-001 COMMAND ecg_morphology_test)
+add_test(NAME TEST-ECG-SCENARIO-001 COMMAND ecg_scenario_test)
 
 if(MSVC)
     target_compile_options(signal_synth_test PRIVATE /W4)

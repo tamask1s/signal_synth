@@ -75,14 +75,27 @@ Outputs should match according to defined tolerance or exactly where feasible.
 
 ### 3.5 Cross-platform verification
 
-Later:
+Current automated baseline:
 
 - Linux x86_64;
 - Windows;
+
+Later:
+
 - macOS;
-- compiler variation.
+- additional compiler variation.
 
 If floating-point exactness cannot be guaranteed, define tolerances and document limitations.
+
+### 3.6 Automated CI verification
+
+`CI-VER-001` configures, builds, and runs all CTest suites on Linux and
+Windows for each push and pull request. The workflow preserves the CTest output
+as a finite-retention artifact.
+
+The workflow definition is a verification procedure. A specific successful
+workflow run and its artifacts are the execution evidence. Release evidence
+must identify and preserve the exact run, commit, platform, and deviations.
 
 ## 4. Scenario validation tests
 
@@ -190,18 +203,22 @@ This does not make Synsigra a certified medical-device validator, but it makes i
 Maintain traceability:
 
 ```text
-Requirement -> Design element -> Test case -> Test result -> Report section
+Requirement -> Design element -> Issue -> Commit -> Test ID -> CI result
 ```
 
 Example:
 
 ```text
-SRS-FUNC-ECG-001
-  -> ecg_model::render
-  -> TEST-ECG-CLEAN-001
-  -> passing build 0.1.0
-  -> V&V Report section 4.1
+REQ-GEN-001
+  -> Algorithm Design section 4
+  -> TRC-ECG-001 / GitHub issue
+  -> ecg_model implementation commit
+  -> TEST-ECG-MODEL-001
+  -> CI-VER-001 run for the exact commit
 ```
+
+Operational rules are defined in `17_TRACEABILITY_SOP.md`. The current
+requirement-to-evidence index is `18_TRACEABILITY_MATRIX.md`.
 
 ## 10. Release criteria
 
@@ -213,6 +230,7 @@ A release should not be tagged if:
 - reports omit disclaimers;
 - export metadata omits version/fingerprint;
 - unsupported conditions are silently accepted.
+- required Linux or Windows CI jobs fail.
 
 ## 11. Current repo assessment
 
@@ -235,3 +253,12 @@ If the product later becomes MDR-relevant, this V&V plan is only a starting poin
 - IEC 62304 software lifecycle;
 - clinical evaluation strategy if applicable;
 - post-market processes if marketed as a device.
+
+## 13. Current evidence limitations
+
+- GitHub Actions logs and artifacts have finite retention.
+- The current CI is not an independently qualified test environment.
+- Manual SVN/DataBrowser checks are not executed by this workflow.
+- Passing tests verify specified synthetic behavior, not clinical validity.
+- A regulated release would require approved protocols, controlled baselines,
+  deviations, review records, and durable evidence storage.

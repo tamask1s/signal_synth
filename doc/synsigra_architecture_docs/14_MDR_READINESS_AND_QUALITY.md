@@ -194,8 +194,16 @@ The next most important documents for readiness are:
 6. SOUP/Dependency List;
 7. Release Notes template.
 
+The repository now includes a demonstration traceability SOP and living matrix.
+They show how links and automated evidence can be organized, but they do not
+close the QMS, risk-management, validation, approval, or evidence-retention
+gaps listed in this plan.
+
 ## 14. Practical recommendation
 
 Continue as a non-medical engineering/R&D product.
 
 Design the documentation so that future MDR work is not impossible, but do not enter MDR scope accidentally through marketing language.
+
+Follow `17_TRACEABILITY_SOP.md` for repository work and maintain
+`18_TRACEABILITY_MATRIX.md` as a navigable demonstration record.
