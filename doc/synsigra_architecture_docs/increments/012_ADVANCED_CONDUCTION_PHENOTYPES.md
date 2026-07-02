@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-012
 
-**Version:** 0.1
+**Version:** 0.2
 
-**Status:** Proposed
+**Status:** Implementing
 
 **Owner role:** Biosignal Algorithms / Verification
 
@@ -12,7 +12,7 @@
 
 **Proposed traceability ID:** `TRC-ECG12-008`
 
-**Implementation issue:** to be created before acceptance and implementation
+**Implementation issue:** [signal_synth#24](https://github.com/tamask1s/signal_synth/issues/24)
 
 ## 1. Decision
 
@@ -68,10 +68,9 @@ pre-excitation configuration and smooth delta-wave activation path with:
 - secondary repolarization change;
 - explicit construction and measured delta-wave evidence.
 
-Whether pre-excitation requires an eighth auditable source or a separately
-exposed component of the existing septal source must be decided before the
-public API is accepted. Source-count compatibility with DataBrowser is a
-specific design gate.
+Pre-excitation is rendered as a separately asserted smooth component of the
+existing septal source in this increment. The public source count remains
+seven so existing DataBrowser source-channel contracts do not change.
 
 ## 4. Lead-domain phenotype contracts
 
@@ -118,9 +117,10 @@ Create `TEST-ECG-CONDUCTION-001` covering:
 - extension of `TEST-ECG-MORPH-QUALITY-001` to every newly executable catalog
   condition.
 
-Regenerate the 12-lead morphology atlas and add one DataBrowser script showing
-all six cases in separate displays with selectable marker/channel/none
-annotation mode through the existing SignalProc_RSPT API convention.
+Extend the catalog-wide morphology gate and add one DataBrowser script showing
+all six cases in separate displays through the existing `GenerateECGQAScenario`
+API. Annotation mode remains selectable through that API's existing
+`annotation_output` parameter.
 
 ## 7. DataBrowser integration
 
@@ -190,3 +190,4 @@ No external waveform data or implementation code will be copied.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-02 | Proposed dependency-ordered advanced conduction pack |
+| 0.2 | 2026-07-02 | Accepted implementation issue, fixed WPW source-count decision, and moved to implementation |

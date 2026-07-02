@@ -16,7 +16,7 @@ namespace signal_synth
     namespace
     {
         const unsigned int SCENARIO_SCHEMA_VERSION = 2;
-        const unsigned int SCENARIO_ENGINE_VERSION = 8;
+        const unsigned int SCENARIO_ENGINE_VERSION = 9;
         const unsigned long long DEFAULT_SEED = 0x5343454e4152494fULL;
         const ecg_condition_code NO_CONDITION = ecg_condition_count;
 
@@ -97,11 +97,11 @@ namespace signal_synth
             {ecg_condition_imi, "IMI", "inferior myocardial infarction", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
             {ecg_condition_asmi, "ASMI", "anteroseptal myocardial infarction", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
             {ecg_condition_lvh, "LVH", "left ventricular hypertrophy", ecg_category_hypertrophy, true, false, false, ecg_support_parameterized},
-            {ecg_condition_lafb, "LAFB", "left anterior fascicular block", ecg_category_conduction, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_lafb, "LAFB", "left anterior fascicular block", ecg_category_conduction, true, false, false, ecg_support_parameterized},
             {ecg_condition_isc, "ISC_", "non-specific ischemic ST-T changes", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
-            {ecg_condition_irbbb, "IRBBB", "incomplete right bundle branch block", ecg_category_conduction, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_irbbb, "IRBBB", "incomplete right bundle branch block", ecg_category_conduction, true, false, false, ecg_support_parameterized},
             {ecg_condition_1avb, "1AVB", "first degree AV block", ecg_category_conduction, true, false, false, ecg_support_native},
-            {ecg_condition_ivcd, "IVCD", "non-specific intraventricular conduction disturbance", ecg_category_conduction, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_ivcd, "IVCD", "non-specific intraventricular conduction disturbance", ecg_category_conduction, true, false, false, ecg_support_parameterized},
             {ecg_condition_iscal, "ISCAL", "ischemic ST-T changes in anterolateral leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
             {ecg_condition_crbbb, "CRBBB", "complete right bundle branch block", ecg_category_conduction, true, false, false, ecg_support_parameterized},
             {ecg_condition_clbbb, "CLBBB", "complete left bundle branch block", ecg_category_conduction, true, false, false, ecg_support_parameterized},
@@ -113,7 +113,7 @@ namespace signal_synth
             {ecg_condition_injas, "INJAS", "subendocardial injury in anteroseptal leads", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
             {ecg_condition_lmi, "LMI", "lateral myocardial infarction", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
             {ecg_condition_iscil, "ISCIL", "ischemic ST-T changes in inferolateral leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
-            {ecg_condition_lpfb, "LPFB", "left posterior fascicular block", ecg_category_conduction, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_lpfb, "LPFB", "left posterior fascicular block", ecg_category_conduction, true, false, false, ecg_support_parameterized},
             {ecg_condition_iscas, "ISCAS", "ischemic ST-T changes in anteroseptal leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
             {ecg_condition_injal, "INJAL", "subendocardial injury in anterolateral leads", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
             {ecg_condition_iscla, "ISCLA", "ischemic ST-T changes in lateral leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
@@ -121,8 +121,8 @@ namespace signal_synth
             {ecg_condition_aneur, "ANEUR", "ST-T changes compatible with ventricular aneurysm", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
             {ecg_condition_rao_rae, "RAO/RAE", "right atrial overload or enlargement", ecg_category_hypertrophy, true, false, false, ecg_support_parameterized},
             {ecg_condition_el, "EL", "electrolytic disturbance or drug effect", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
-            {ecg_condition_wpw, "WPW", "Wolff-Parkinson-White syndrome", ecg_category_conduction, true, false, false, ecg_support_catalog_only},
-            {ecg_condition_ilbbb, "ILBBB", "incomplete left bundle branch block", ecg_category_conduction, true, false, false, ecg_support_catalog_only},
+            {ecg_condition_wpw, "WPW", "Wolff-Parkinson-White syndrome", ecg_category_conduction, true, false, false, ecg_support_parameterized},
+            {ecg_condition_ilbbb, "ILBBB", "incomplete left bundle branch block", ecg_category_conduction, true, false, false, ecg_support_parameterized},
             {ecg_condition_iplmi, "IPLMI", "inferoposterolateral myocardial infarction", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
             {ecg_condition_iscan, "ISCAN", "ischemic ST-T changes in anterior leads", ecg_category_ischemia_repolarization, true, false, false, ecg_support_parameterized},
             {ecg_condition_ipmi, "IPMI", "inferoposterior myocardial infarction", ecg_category_infarction_injury, true, false, false, ecg_support_parameterized},
@@ -197,7 +197,7 @@ namespace signal_synth
 
         bool supports_variable_severity(ecg_condition_code code)
         {
-            return code == ecg_condition_lngqt || code == ecg_condition_1avb || code == ecg_condition_lpr || code == ecg_condition_pac || code == ecg_condition_pvc || code == ecg_condition_stach || code == ecg_condition_sarrh || code == ecg_condition_sbrad || code == ecg_condition_qwave || code == ecg_condition_lvolt || code == ecg_condition_hvolt || code == ecg_condition_lvh || code == ecg_condition_rvh || code == ecg_condition_sehyp || code == ecg_condition_vclvh || code == ecg_condition_lao_lae || code == ecg_condition_rao_rae || code == ecg_condition_imi || code == ecg_condition_asmi || code == ecg_condition_ilmi || code == ecg_condition_ami || code == ecg_condition_almi || code == ecg_condition_injas || code == ecg_condition_lmi || code == ecg_condition_injal || code == ecg_condition_iplmi || code == ecg_condition_ipmi || code == ecg_condition_injin || code == ecg_condition_injla || code == ecg_condition_pmi || code == ecg_condition_injil || code == ecg_condition_ndt || code == ecg_condition_nst || code == ecg_condition_dig || code == ecg_condition_isc || code == ecg_condition_iscal || code == ecg_condition_iscin || code == ecg_condition_iscil || code == ecg_condition_iscas || code == ecg_condition_iscla || code == ecg_condition_aneur || code == ecg_condition_el || code == ecg_condition_iscan || code == ecg_condition_std || code == ecg_condition_lowt || code == ecg_condition_nt || code == ecg_condition_invt || code == ecg_condition_tab || code == ecg_condition_ste;
+            return code == ecg_condition_lngqt || code == ecg_condition_lafb || code == ecg_condition_irbbb || code == ecg_condition_ivcd || code == ecg_condition_lpfb || code == ecg_condition_wpw || code == ecg_condition_ilbbb || code == ecg_condition_1avb || code == ecg_condition_lpr || code == ecg_condition_pac || code == ecg_condition_pvc || code == ecg_condition_stach || code == ecg_condition_sarrh || code == ecg_condition_sbrad || code == ecg_condition_qwave || code == ecg_condition_lvolt || code == ecg_condition_hvolt || code == ecg_condition_lvh || code == ecg_condition_rvh || code == ecg_condition_sehyp || code == ecg_condition_vclvh || code == ecg_condition_lao_lae || code == ecg_condition_rao_rae || code == ecg_condition_imi || code == ecg_condition_asmi || code == ecg_condition_ilmi || code == ecg_condition_ami || code == ecg_condition_almi || code == ecg_condition_injas || code == ecg_condition_lmi || code == ecg_condition_injal || code == ecg_condition_iplmi || code == ecg_condition_ipmi || code == ecg_condition_injin || code == ecg_condition_injla || code == ecg_condition_pmi || code == ecg_condition_injil || code == ecg_condition_ndt || code == ecg_condition_nst || code == ecg_condition_dig || code == ecg_condition_isc || code == ecg_condition_iscal || code == ecg_condition_iscin || code == ecg_condition_iscil || code == ecg_condition_iscas || code == ecg_condition_iscla || code == ecg_condition_aneur || code == ecg_condition_el || code == ecg_condition_iscan || code == ecg_condition_std || code == ecg_condition_lowt || code == ecg_condition_nt || code == ecg_condition_invt || code == ecg_condition_tab || code == ecg_condition_ste;
         }
 
         bool is_infarction_condition(ecg_condition_code code)
@@ -228,6 +228,11 @@ namespace signal_synth
         bool is_new_repolarization_condition(ecg_condition_code code)
         {
             return code == ecg_condition_ndt || code == ecg_condition_nst || code == ecg_condition_dig || is_territorial_ischemia(code) || code == ecg_condition_aneur || code == ecg_condition_el || code == ecg_condition_std || code == ecg_condition_lowt || code == ecg_condition_nt || code == ecg_condition_invt || code == ecg_condition_tab || code == ecg_condition_ste;
+        }
+
+        bool is_clean_conduction_morphology(ecg_condition_code code)
+        {
+            return code == ecg_condition_lafb || code == ecg_condition_irbbb || code == ecg_condition_ivcd || code == ecg_condition_crbbb || code == ecg_condition_clbbb || code == ecg_condition_lpfb || code == ecg_condition_wpw || code == ecg_condition_ilbbb;
         }
 
         const ecg_condition_code repolarization_conditions[] = {
@@ -458,13 +463,25 @@ namespace signal_synth
             }
             if (has_condition(scenario.conditions, ecg_condition_norm) || has_condition(scenario.conditions, ecg_condition_stach) || has_condition(scenario.conditions, ecg_condition_sbrad) || has_condition(scenario.conditions, ecg_condition_sarrh) || has_condition(scenario.conditions, ecg_condition_1avb) || has_condition(scenario.conditions, ecg_condition_2avb) || has_condition(scenario.conditions, ecg_condition_3avb) || has_condition(scenario.conditions, ecg_condition_lpr))
                 add_effective(report.effective_conditions, ecg_condition_sr, 1.0, true);
-            if (has_condition(scenario.conditions, ecg_condition_clbbb) || has_condition(scenario.conditions, ecg_condition_crbbb) || has_condition(scenario.conditions, ecg_condition_qwave) || has_condition(scenario.conditions, ecg_condition_lvolt) || has_condition(scenario.conditions, ecg_condition_hvolt) || has_condition(scenario.conditions, ecg_condition_lvh) || has_condition(scenario.conditions, ecg_condition_rvh) || has_condition(scenario.conditions, ecg_condition_sehyp) || has_condition(scenario.conditions, ecg_condition_vclvh))
+            if (has_condition(scenario.conditions, ecg_condition_clbbb) || has_condition(scenario.conditions, ecg_condition_crbbb) || has_condition(scenario.conditions, ecg_condition_lafb) || has_condition(scenario.conditions, ecg_condition_irbbb) || has_condition(scenario.conditions, ecg_condition_ivcd) || has_condition(scenario.conditions, ecg_condition_lpfb) || has_condition(scenario.conditions, ecg_condition_wpw) || has_condition(scenario.conditions, ecg_condition_ilbbb) || has_condition(scenario.conditions, ecg_condition_qwave) || has_condition(scenario.conditions, ecg_condition_lvolt) || has_condition(scenario.conditions, ecg_condition_hvolt) || has_condition(scenario.conditions, ecg_condition_lvh) || has_condition(scenario.conditions, ecg_condition_rvh) || has_condition(scenario.conditions, ecg_condition_sehyp) || has_condition(scenario.conditions, ecg_condition_vclvh))
             {
                 ecg_condition_code morphology = ecg_condition_hvolt;
                 if (has_condition(scenario.conditions, ecg_condition_clbbb))
                     morphology = ecg_condition_clbbb;
                 else if (has_condition(scenario.conditions, ecg_condition_crbbb))
                     morphology = ecg_condition_crbbb;
+                else if (has_condition(scenario.conditions, ecg_condition_lafb))
+                    morphology = ecg_condition_lafb;
+                else if (has_condition(scenario.conditions, ecg_condition_irbbb))
+                    morphology = ecg_condition_irbbb;
+                else if (has_condition(scenario.conditions, ecg_condition_ivcd))
+                    morphology = ecg_condition_ivcd;
+                else if (has_condition(scenario.conditions, ecg_condition_lpfb))
+                    morphology = ecg_condition_lpfb;
+                else if (has_condition(scenario.conditions, ecg_condition_wpw))
+                    morphology = ecg_condition_wpw;
+                else if (has_condition(scenario.conditions, ecg_condition_ilbbb))
+                    morphology = ecg_condition_ilbbb;
                 else if (has_condition(scenario.conditions, ecg_condition_qwave))
                     morphology = ecg_condition_qwave;
                 else if (has_condition(scenario.conditions, ecg_condition_lvolt))
@@ -563,7 +580,19 @@ namespace signal_synth
             add_conflict(report, scenario.conditions, ecg_condition_sarrh, ecg_condition_2avb, "The current AV block timeline does not apply beat-wise sinus arrhythmia.");
             add_conflict(report, scenario.conditions, ecg_condition_sarrh, ecg_condition_3avb, "The current AV block timeline does not apply beat-wise sinus arrhythmia.");
             add_conflict(report, scenario.conditions, ecg_condition_lpr, ecg_condition_3avb, "A prolonged PR interval is undefined during complete AV dissociation.");
-            add_conflict(report, scenario.conditions, ecg_condition_clbbb, ecg_condition_crbbb, "Complete left and right bundle branch blocks cannot share the current single conduction model.");
+            const ecg_condition_code clean_conduction_conditions[] = {ecg_condition_lafb, ecg_condition_irbbb, ecg_condition_ivcd, ecg_condition_crbbb, ecg_condition_clbbb, ecg_condition_lpfb, ecg_condition_wpw, ecg_condition_ilbbb};
+            for (unsigned int left = 0; left < sizeof(clean_conduction_conditions) / sizeof(clean_conduction_conditions[0]); ++left)
+            {
+                for (unsigned int right = left + 1; right < sizeof(clean_conduction_conditions) / sizeof(clean_conduction_conditions[0]); ++right)
+                    add_conflict(report, scenario.conditions, clean_conduction_conditions[left], clean_conduction_conditions[right], "The advanced conduction QA pack supports one clean intraventricular/pre-excitation phenotype per scenario.");
+                for (unsigned int rhythm = 0; rhythm < sizeof(non_sinus_rhythms) / sizeof(non_sinus_rhythms[0]); ++rhythm)
+                    add_conflict(report, scenario.conditions, clean_conduction_conditions[left], non_sinus_rhythms[rhythm], "The advanced conduction QA pack currently requires a sinus conducted rhythm.");
+                for (unsigned int block = 0; block < sizeof(av_blocks) / sizeof(av_blocks[0]); ++block)
+                    add_conflict(report, scenario.conditions, clean_conduction_conditions[left], av_blocks[block], "The advanced conduction QA pack currently supports one conduction-family phenotype per scenario.");
+                add_conflict(report, scenario.conditions, clean_conduction_conditions[left], ecg_condition_lpr, "The advanced conduction QA pack currently supports one conduction-family phenotype per scenario.");
+                add_conflict(report, scenario.conditions, clean_conduction_conditions[left], ecg_condition_pac, "The advanced conduction QA pack currently rejects periodic ectopy composition.");
+                add_conflict(report, scenario.conditions, clean_conduction_conditions[left], ecg_condition_pvc, "The advanced conduction QA pack currently rejects periodic ectopy composition.");
+            }
             add_conflict(report, scenario.conditions, ecg_condition_bigu, ecg_condition_trigu, "Bigeminal and trigeminal patterns are mutually exclusive.");
             add_conflict(report, scenario.conditions, ecg_condition_pac, ecg_condition_pvc, "The current periodic ectopy scenario supports one ectopic origin.");
             for (unsigned int rhythm = 0; rhythm < sizeof(non_sinus_rhythms) / sizeof(non_sinus_rhythms[0]); ++rhythm)
@@ -627,7 +656,7 @@ namespace signal_synth
             }
 
             const ecg_condition_code morphology_conditions[] = {ecg_condition_qwave, ecg_condition_lvolt, ecg_condition_hvolt, ecg_condition_lvh, ecg_condition_rvh, ecg_condition_sehyp, ecg_condition_vclvh, ecg_condition_lao_lae, ecg_condition_rao_rae, ecg_condition_imi, ecg_condition_asmi, ecg_condition_ilmi, ecg_condition_ami, ecg_condition_almi, ecg_condition_injas, ecg_condition_lmi, ecg_condition_injal, ecg_condition_iplmi, ecg_condition_ipmi, ecg_condition_injin, ecg_condition_injla, ecg_condition_pmi, ecg_condition_injil, ecg_condition_ndt, ecg_condition_nst, ecg_condition_dig, ecg_condition_lngqt, ecg_condition_isc, ecg_condition_iscal, ecg_condition_iscin, ecg_condition_iscil, ecg_condition_iscas, ecg_condition_iscla, ecg_condition_aneur, ecg_condition_el, ecg_condition_iscan, ecg_condition_std, ecg_condition_lowt, ecg_condition_nt, ecg_condition_invt, ecg_condition_tab, ecg_condition_ste};
-            const ecg_condition_code morphology_conflicts[] = {ecg_condition_afib, ecg_condition_aflt, ecg_condition_svtac, ecg_condition_pace, ecg_condition_pac, ecg_condition_pvc, ecg_condition_clbbb, ecg_condition_crbbb};
+            const ecg_condition_code morphology_conflicts[] = {ecg_condition_afib, ecg_condition_aflt, ecg_condition_svtac, ecg_condition_pace, ecg_condition_pac, ecg_condition_pvc, ecg_condition_lafb, ecg_condition_irbbb, ecg_condition_ivcd, ecg_condition_crbbb, ecg_condition_clbbb, ecg_condition_lpfb, ecg_condition_wpw, ecg_condition_ilbbb};
             for (unsigned int morphology = 0; morphology < sizeof(morphology_conditions) / sizeof(morphology_conditions[0]); ++morphology)
                 for (unsigned int conflict = 0; conflict < sizeof(morphology_conflicts) / sizeof(morphology_conflicts[0]); ++conflict)
                     add_conflict(report, scenario.conditions, morphology_conditions[morphology], morphology_conflicts[conflict], "The first clean morphology phenotype does not compose with this rhythm or conduction condition.");
@@ -867,6 +896,53 @@ namespace signal_synth
             }
         }
 
+        void compile_advanced_conduction(ecg_condition_code code, double severity, clinical_ecg_config& config)
+        {
+            if (code == ecg_condition_lafb)
+            {
+                config.rhythm.intraventricular_conduction = clinical_iv_left_anterior_fascicular;
+                config.timing.qrs_duration_ms = 92.0 + 18.0 * severity;
+                config.sources.gain[clinical_source_ventricular] *= 0.95 + 0.10 * severity;
+                config.sources.gain[clinical_source_terminal] *= 0.90 + 0.10 * severity;
+            }
+            else if (code == ecg_condition_lpfb)
+            {
+                config.rhythm.intraventricular_conduction = clinical_iv_left_posterior_fascicular;
+                config.timing.qrs_duration_ms = 92.0 + 18.0 * severity;
+                config.sources.gain[clinical_source_ventricular] *= 0.95 + 0.10 * severity;
+                config.sources.gain[clinical_source_terminal] *= 0.90 + 0.10 * severity;
+            }
+            else if (code == ecg_condition_irbbb)
+            {
+                config.rhythm.intraventricular_conduction = clinical_iv_incomplete_rbbb;
+                config.timing.qrs_duration_ms = 100.0 + 18.0 * severity;
+            }
+            else if (code == ecg_condition_ilbbb)
+            {
+                config.rhythm.intraventricular_conduction = clinical_iv_incomplete_lbbb;
+                config.timing.qrs_duration_ms = 110.0 + 8.0 * severity;
+            }
+            else if (code == ecg_condition_ivcd)
+            {
+                config.rhythm.intraventricular_conduction = clinical_iv_nonspecific_delay;
+                config.timing.qrs_duration_ms = 120.0 + 20.0 * severity;
+                config.timing.qrs_r_fraction = 0.48;
+                config.timing.qrs_s_fraction = 0.78;
+            }
+            else if (code == ecg_condition_wpw)
+            {
+                config.rhythm.preexcitation = clinical_preexcitation_wpw;
+                config.timing.p_duration_ms = 75.0;
+                config.timing.pr_interval_ms = 112.0 - 27.0 * severity;
+                config.timing.qrs_duration_ms = 118.0 + 18.0 * severity;
+                config.timing.qrs_q_fraction = 0.32;
+                config.timing.qrs_r_fraction = 0.58;
+                config.timing.qrs_s_fraction = 0.82;
+                config.morphology.q_amplitude_mv = 0.0;
+                config.morphology.t_amplitude_mv = -(0.12 + 0.08 * severity);
+            }
+        }
+
         void compile_conditions(const ecg_qa_scenario::implementation& scenario, clinical_ecg_config& config)
         {
             config.sampling_rate_hz = scenario.sampling_rate_hz;
@@ -931,6 +1007,9 @@ namespace signal_synth
                 config.rhythm.intraventricular_conduction = clinical_iv_lbbb;
             if (has_condition(scenario.conditions, ecg_condition_crbbb))
                 config.rhythm.intraventricular_conduction = clinical_iv_rbbb;
+            for (const scenario_condition& condition : scenario.conditions)
+                if (is_clean_conduction_morphology(condition.code))
+                    compile_advanced_conduction(condition.code, condition.severity, config);
 
             if (has_condition(scenario.conditions, ecg_condition_lngqt))
                 config.timing.qtc_ms = 440.0 + 80.0 * condition_severity(scenario.conditions, ecg_condition_lngqt);
@@ -1625,6 +1704,131 @@ namespace signal_synth
             return r >= 0.0 && s < 0.0 ? r / std::max(std::fabs(s), 1e-12) : -1.0;
         }
 
+        unsigned int record_sample_at(const clinical_ecg_record& record, double time_seconds)
+        {
+            if (time_seconds <= 0.0)
+                return 0;
+            const unsigned long long sample = static_cast<unsigned long long>(std::llround(time_seconds * record.sampling_rate_hz()));
+            return static_cast<unsigned int>(std::min<unsigned long long>(sample, record.sample_count() ? record.sample_count() - 1 : 0));
+        }
+
+        double mean_lead_at_beat_time(const clinical_ecg_record& record, unsigned int lead, double clinical_beat_annotation::*time_member)
+        {
+            const clinical_beat_annotation* beats = record.beats();
+            const double* signal = record.lead_data(lead);
+            if (!beats || !signal || record.beat_count() == 0)
+                return 0.0;
+            double sum = 0.0;
+            unsigned int count = 0;
+            for (unsigned int index = 0; index < record.beat_count(); ++index)
+            {
+                const unsigned int sample = record_sample_at(record, beats[index].*time_member);
+                if (sample < record.sample_count())
+                {
+                    sum += signal[sample];
+                    ++count;
+                }
+            }
+            return count ? sum / count : 0.0;
+        }
+
+        double frontal_axis_degrees(const clinical_ecg_record& record)
+        {
+            const double lead_i = mean_lead_at_beat_time(record, clinical_lead_i, &clinical_beat_annotation::r_peak_time_seconds);
+            const double lead_ii = mean_lead_at_beat_time(record, clinical_lead_ii, &clinical_beat_annotation::r_peak_time_seconds);
+            const double y = (lead_ii - 0.5 * lead_i) / 0.8660254037844386;
+            double axis = std::atan2(y, lead_i) * 180.0 / 3.14159265358979323846;
+            if (axis > 180.0)
+                axis -= 360.0;
+            if (axis < -180.0)
+                axis += 360.0;
+            return axis;
+        }
+
+        double minimum_mean_r_amplitude(const ecg_morphology_report& morphology, unsigned int leads)
+        {
+            double result = std::numeric_limits<double>::max();
+            bool found = false;
+            for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
+            {
+                if ((leads & lead_bit(lead)) == 0)
+                    continue;
+                result = std::min(result, morphology_lead_mean(morphology, lead, morphology_r_amplitude));
+                found = true;
+            }
+            return found ? result : -1.0;
+        }
+
+        double minimum_mean_terminal_sample(const clinical_ecg_record& record, unsigned int leads)
+        {
+            double result = std::numeric_limits<double>::max();
+            bool found = false;
+            for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
+            {
+                if ((leads & lead_bit(lead)) == 0)
+                    continue;
+                result = std::min(result, mean_lead_at_beat_time(record, lead, &clinical_beat_annotation::s_peak_time_seconds));
+                found = true;
+            }
+            return found ? result : 0.0;
+        }
+
+        double maximum_mean_terminal_sample(const clinical_ecg_record& record, unsigned int leads)
+        {
+            double result = -std::numeric_limits<double>::max();
+            bool found = false;
+            for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
+            {
+                if ((leads & lead_bit(lead)) == 0)
+                    continue;
+                result = std::max(result, mean_lead_at_beat_time(record, lead, &clinical_beat_annotation::s_peak_time_seconds));
+                found = true;
+            }
+            return found ? result : 0.0;
+        }
+
+        double complete_bbb_contract_match(const clinical_ecg_record& record)
+        {
+            if (record.beat_count() < 1)
+                return 0.0;
+            const clinical_beat_annotation& beat = record.beats()[0];
+            const unsigned int q = record_sample_at(record, beat.q_peak_time_seconds);
+            const unsigned int r = record_sample_at(record, beat.r_peak_time_seconds);
+            const unsigned int s = record_sample_at(record, beat.s_peak_time_seconds);
+            const unsigned int t = record_sample_at(record, beat.t_peak_time_seconds);
+            const double* lead_i = record.lead_data(clinical_lead_i);
+            const double* v1 = record.lead_data(clinical_lead_v1);
+            const double* v5 = record.lead_data(clinical_lead_v5);
+            const double* v6 = record.lead_data(clinical_lead_v6);
+            if (!lead_i || !v1 || !v5 || !v6)
+                return 0.0;
+            const bool rbbb = beat.qrs_duration_seconds >= 0.120 && v1[q] > 0.02 && v1[r] < -0.20 && v1[s] > 0.15 && lead_i[s] < -0.15 && v6[s] < -0.15 && v1[t] < -0.05 && lead_i[t] > 0.05 && v6[t] > 0.05;
+            const bool lbbb = beat.qrs_duration_seconds >= 0.120 && std::fabs(lead_i[q]) < 0.01 && std::fabs(v6[q]) < 0.01 && v1[r] < -0.20 && v1[s] < -0.10 && lead_i[r] > 0.30 && lead_i[s] > 0.10 && v5[s] > 0.10 && v6[r] > 0.30 && v6[s] > 0.10 && v1[t] > 0.05 && lead_i[t] < -0.05 && v6[t] < -0.05;
+            return rbbb || lbbb ? 1.0 : 0.0;
+        }
+
+        double delta_wave_evidence(const clinical_ecg_record& record)
+        {
+            const clinical_beat_annotation* beats = record.beats();
+            const double* lead_ii = record.lead_data(clinical_lead_ii);
+            if (!beats || !lead_ii || record.beat_count() == 0)
+                return -1.0;
+            double sum = 0.0;
+            unsigned int count = 0;
+            for (unsigned int index = 0; index < record.beat_count(); ++index)
+            {
+                const double early_time = std::min(beats[index].qrs_onset_time_seconds + 0.035, 0.5 * (beats[index].qrs_onset_time_seconds + beats[index].r_peak_time_seconds));
+                const unsigned int onset = record_sample_at(record, beats[index].qrs_onset_time_seconds);
+                const unsigned int early = record_sample_at(record, early_time);
+                if (early < record.sample_count() && onset < record.sample_count())
+                {
+                    sum += std::fabs(lead_ii[early] - lead_ii[onset]);
+                    ++count;
+                }
+            }
+            return count ? sum / count : -1.0;
+        }
+
         double pathological_q_lead_count(const ecg_morphology_report& morphology, ecg_lead_region region)
         {
             const ecg_lead_morphology* entries = morphology.entries();
@@ -1645,6 +1849,55 @@ namespace signal_synth
                 if (count[lead] && amplitude_sum[lead] / count[lead] <= -0.10 && duration_sum[lead] / count[lead] >= 0.030)
                     ++matching;
             return matching;
+        }
+
+        void add_advanced_conduction_assertions(ecg_condition_code code, double severity, const clinical_ecg_record& record, const ecg_morphology_report& morphology, bool available, ecg_scenario_report::implementation& report)
+        {
+            const double qrs = mean_annotation_value(record, ecg_assert_qrs_duration);
+            const unsigned int limb_lateral = lead_bit(clinical_lead_i) | lead_bit(clinical_lead_avl);
+            const unsigned int lateral_terminal = lead_bit(clinical_lead_i) | lead_bit(clinical_lead_v6);
+            const unsigned int inferior = inferior_leads();
+            if (code == ecg_condition_irbbb)
+            {
+                add_assertion(report, code, ecg_assert_qrs_duration, qrs, 0.100, 0.1195, "incomplete RBBB QRS duration", "s");
+                add_assertion(report, code, ecg_assert_terminal_v1_polarity, terminal_v1_polarity(record), 0.02, 10.0, "positive terminal V1 force", "mV");
+                add_assertion(report, code, ecg_assert_lateral_qrs_polarity, maximum_mean_terminal_sample(record, lateral_terminal), -10.0, -0.03, "terminal lateral S force", "mV");
+                add_assertion(report, code, ecg_assert_t_amplitude, available ? morphology_lead_mean(morphology, clinical_lead_v1, morphology_t_amplitude) : 0.0, -10.0, -0.01, "right-precordial secondary T", "mV");
+            }
+            else if (code == ecg_condition_ilbbb)
+            {
+                add_assertion(report, code, ecg_assert_qrs_duration, qrs, 0.110, 0.1195, "incomplete LBBB QRS duration", "s");
+                add_assertion(report, code, ecg_assert_terminal_v1_polarity, terminal_v1_polarity(record), -10.0, -0.02, "negative terminal V1 force", "mV");
+                add_assertion(report, code, ecg_assert_lateral_qrs_polarity, minimum_mean_terminal_sample(record, lateral_terminal), 0.03, 10.0, "positive lateral terminal activation", "mV");
+                add_assertion(report, code, ecg_assert_t_amplitude, available ? morphology_lead_mean(morphology, clinical_lead_v6, morphology_t_amplitude) : 0.0, -10.0, -0.01, "lateral secondary T", "mV");
+            }
+            else if (code == ecg_condition_lafb)
+            {
+                add_assertion(report, code, ecg_assert_qrs_duration, qrs, 0.040, 0.1195, "sub-complete-BBB QRS duration", "s");
+                add_assertion(report, code, ecg_assert_frontal_axis, frontal_axis_degrees(record), -90.0, -30.0, "left frontal QRS axis", "deg");
+                add_assertion(report, code, ecg_assert_lateral_qrs_polarity, available ? minimum_mean_r_amplitude(morphology, limb_lateral) : -1.0, 0.08, 10.0, "qR-compatible lateral R", "mV");
+                add_assertion(report, code, ecg_assert_inferior_qrs_polarity, maximum_mean_terminal_sample(record, inferior), -10.0, -0.03, "rS-compatible inferior terminal force", "mV");
+            }
+            else if (code == ecg_condition_lpfb)
+            {
+                add_assertion(report, code, ecg_assert_qrs_duration, qrs, 0.040, 0.1195, "sub-complete-BBB QRS duration", "s");
+                add_assertion(report, code, ecg_assert_frontal_axis, frontal_axis_degrees(record), 90.0, 150.0, "right frontal QRS axis", "deg");
+                add_assertion(report, code, ecg_assert_lateral_qrs_polarity, maximum_mean_terminal_sample(record, limb_lateral), -10.0, -0.03, "rS-compatible lateral terminal force", "mV");
+                add_assertion(report, code, ecg_assert_inferior_qrs_polarity, available ? minimum_mean_r_amplitude(morphology, lead_bit(clinical_lead_iii) | lead_bit(clinical_lead_avf)) : -1.0, 0.08, 10.0, "qR-compatible inferior R", "mV");
+            }
+            else if (code == ecg_condition_ivcd)
+            {
+                add_assertion(report, code, ecg_assert_qrs_duration, qrs, 0.120, 0.170, "nonspecific wide QRS", "s");
+                add_assertion(report, code, ecg_assert_complete_bbb_exclusion, complete_bbb_contract_match(record), 0.0, 0.0, "complete BBB contract match", "bool");
+                add_assertion(report, code, ecg_assert_terminal_v1_polarity, terminal_v1_polarity(record), -0.15, 0.15, "nonspecific terminal V1 force", "mV");
+            }
+            else if (code == ecg_condition_wpw)
+            {
+                add_assertion(report, code, ecg_assert_pr_interval, mean_annotation_value(record, ecg_assert_pr_interval), 0.070, 0.1195, "short PR interval", "s");
+                add_assertion(report, code, ecg_assert_qrs_duration, qrs, 0.120, 0.170, "pre-excited QRS duration", "s");
+                add_assertion(report, code, ecg_assert_delta_wave, delta_wave_evidence(record), 0.025 + 0.020 * severity, 10.0, "early delta upstroke evidence", "mV");
+                add_assertion(report, code, ecg_assert_t_lead_count, available ? negative_t_lead_count(morphology, widespread_leads(), -0.02) : 0.0, 2.0, clinical_lead_count, "secondary negative T leads", "count");
+            }
         }
 
         void evaluate_phenotype(const ecg_qa_scenario::implementation& scenario, const clinical_ecg_record& record, ecg_scenario_report::implementation& report)
@@ -1723,6 +1976,14 @@ namespace signal_synth
                 case ecg_condition_clbbb:
                     add_assertion(report, requested.code, ecg_assert_qrs_duration, mean_annotation_value(record, ecg_assert_qrs_duration), 0.14, 0.5, "wide QRS", "s");
                     add_assertion(report, requested.code, ecg_assert_terminal_v1_polarity, terminal_v1_polarity(record), -10.0, -0.000001, "negative terminal V1 force", "mV");
+                    break;
+                case ecg_condition_lafb:
+                case ecg_condition_irbbb:
+                case ecg_condition_ivcd:
+                case ecg_condition_lpfb:
+                case ecg_condition_wpw:
+                case ecg_condition_ilbbb:
+                    add_advanced_conduction_assertions(requested.code, requested.severity, record, morphology, morphology_available, report);
                     break;
                 case ecg_condition_lngqt:
                     add_assertion(report, requested.code, ecg_assert_qtc_interval, mean_annotation_value(record, ecg_assert_qtc_interval), 0.44, 2.0, "prolonged QTc", "s");

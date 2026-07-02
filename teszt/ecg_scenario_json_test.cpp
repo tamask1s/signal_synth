@@ -88,7 +88,7 @@ int main()
         "[{\"severity\":1,\"code\":\"NORM\"},{\"severity\":1,\"code\":\"NORM\"}]");
     ok &= check(rejects_without_mutation(duplicate_condition, signal_synth::ecg_json_duplicate_condition), "reject_duplicate_condition");
 
-    const std::string unsupported = std::string(input).replace(input.find("\"NORM\""), 6, "\"LAFB\"");
+    const std::string unsupported = std::string(input).replace(input.find("\"NORM\""), 6, "\"PSVT\"");
     ok &= check(rejects_without_mutation(unsupported, signal_synth::ecg_json_semantic), "reject_unsupported_condition");
 
     signal_synth::ecg_scenario_document territorial;

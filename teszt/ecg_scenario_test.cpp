@@ -96,7 +96,7 @@ int main()
     ok &= check(signal_synth::ecg_condition_catalog_size() == 71 && scp_codes.size() == 71 && catalog_order, "complete_unique_ordered_scp_catalog");
     ok &= check(diagnostic_count == 44 && form_count == 19 && rhythm_count == 12, "scp_statement_classification_counts");
     ok &= check(!signal_synth::find_ecg_condition("UNKNOWN") && !signal_synth::find_ecg_condition(static_cast<signal_synth::ecg_condition_code>(999)), "unknown_condition_lookup");
-    ok &= check(signal_synth::find_ecg_condition(signal_synth::ecg_condition_lvh)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_rvh)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_sehyp)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_vclvh)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_lao_lae)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_rao_rae)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_crbbb)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_afib)->support == signal_synth::ecg_support_native, "support_levels_are_explicit");
+    ok &= check(signal_synth::find_ecg_condition(signal_synth::ecg_condition_lvh)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_rvh)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_sehyp)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_vclvh)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_lao_lae)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_rao_rae)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_crbbb)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_lafb)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_wpw)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_psvt)->support == signal_synth::ecg_support_catalog_only && signal_synth::find_ecg_condition(signal_synth::ecg_condition_afib)->support == signal_synth::ecg_support_native, "support_levels_are_explicit");
 
     signal_synth::ecg_qa_scenario first;
     first.add_condition(signal_synth::ecg_condition_pvc, 0.8);
@@ -108,7 +108,7 @@ int main()
     second.add_condition(signal_synth::ecg_condition_pvc, 0.8);
     second.set_heart_rate_bpm(72.0);
     second.set_seed(1234);
-    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 2 && signal_synth::ecg_scenario_engine_version() == 8, "fingerprint_is_order_independent_and_versioned");
+    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 2 && signal_synth::ecg_scenario_engine_version() == 9, "fingerprint_is_order_independent_and_versioned");
     signal_synth::ecg_qa_scenario changed = first;
     changed.set_seed(1235);
     ok &= check(first.fingerprint() != changed.fingerprint(), "fingerprint_covers_generation_seed");
@@ -124,7 +124,7 @@ int main()
     ok &= check(engine.compile(first, compiled, report) && compiled.rhythm.rhythm == signal_synth::clinical_rhythm_sinus && compiled.scenario.premature_origin == signal_synth::clinical_origin_pvc && compiled.scenario.premature_every_n_beats == 2 && std::fabs(compiled.scenario.premature_coupling_ratio - 0.65) < 1e-12 && compiled.rhythm.seed == 1234, "scenario_compiles_to_clinical_config");
 
     signal_synth::ecg_qa_scenario unsupported;
-    unsupported.add_condition(signal_synth::ecg_condition_lafb);
+    unsupported.add_condition(signal_synth::ecg_condition_psvt);
     signal_synth::clinical_ecg_config preserved;
     preserved.rhythm.heart_rate_bpm = 91.0;
     ok &= check(!engine.compile(unsupported, preserved, report) && !report.success() && report_has_issue(report, signal_synth::ecg_issue_unsupported_condition) && preserved.rhythm.heart_rate_bpm == 91.0, "catalog_only_condition_fails_transactionally");
@@ -264,7 +264,19 @@ int main()
     left_bundle.add_condition(signal_synth::ecg_condition_clbbb);
     signal_synth::ecg_qa_scenario long_qt;
     long_qt.add_condition(signal_synth::ecg_condition_lngqt);
-    ok &= check(generated_phenotype_passes(engine, first_degree_assertions) && generated_phenotype_passes(engine, prolonged_pr) && generated_phenotype_passes(engine, mobitz_i) && generated_phenotype_passes(engine, mobitz_ii) && generated_phenotype_passes(engine, complete_block) && generated_phenotype_passes(engine, right_bundle) && generated_phenotype_passes(engine, left_bundle) && generated_phenotype_passes(engine, long_qt) && generated_phenotype_passes(engine, tachy_block), "conduction_phenotype_assertions");
+    signal_synth::ecg_qa_scenario left_anterior_fascicular;
+    left_anterior_fascicular.add_condition(signal_synth::ecg_condition_lafb);
+    signal_synth::ecg_qa_scenario incomplete_right_bundle;
+    incomplete_right_bundle.add_condition(signal_synth::ecg_condition_irbbb);
+    signal_synth::ecg_qa_scenario nonspecific_ivcd;
+    nonspecific_ivcd.add_condition(signal_synth::ecg_condition_ivcd);
+    signal_synth::ecg_qa_scenario left_posterior_fascicular;
+    left_posterior_fascicular.add_condition(signal_synth::ecg_condition_lpfb);
+    signal_synth::ecg_qa_scenario preexcitation;
+    preexcitation.add_condition(signal_synth::ecg_condition_wpw);
+    signal_synth::ecg_qa_scenario incomplete_left_bundle;
+    incomplete_left_bundle.add_condition(signal_synth::ecg_condition_ilbbb);
+    ok &= check(generated_phenotype_passes(engine, first_degree_assertions) && generated_phenotype_passes(engine, prolonged_pr) && generated_phenotype_passes(engine, mobitz_i) && generated_phenotype_passes(engine, mobitz_ii) && generated_phenotype_passes(engine, complete_block) && generated_phenotype_passes(engine, right_bundle) && generated_phenotype_passes(engine, left_bundle) && generated_phenotype_passes(engine, long_qt) && generated_phenotype_passes(engine, left_anterior_fascicular) && generated_phenotype_passes(engine, incomplete_right_bundle) && generated_phenotype_passes(engine, nonspecific_ivcd) && generated_phenotype_passes(engine, left_posterior_fascicular) && generated_phenotype_passes(engine, preexcitation) && generated_phenotype_passes(engine, incomplete_left_bundle) && generated_phenotype_passes(engine, tachy_block), "conduction_phenotype_assertions");
 
     signal_synth::ecg_qa_scenario q_wave_missing_territory;
     q_wave_missing_territory.add_condition(signal_synth::ecg_condition_qwave);

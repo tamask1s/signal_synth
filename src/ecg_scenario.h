@@ -196,7 +196,12 @@ namespace signal_synth
         ecg_assert_t_lead_count = 34,
         ecg_assert_t_polarity_dispersion = 35,
         ecg_assert_t_duration = 36,
-        ecg_assertion_code_count = 37
+        ecg_assert_frontal_axis = 37,
+        ecg_assert_lateral_qrs_polarity = 38,
+        ecg_assert_inferior_qrs_polarity = 39,
+        ecg_assert_delta_wave = 40,
+        ecg_assert_complete_bbb_exclusion = 41,
+        ecg_assertion_code_count = 42
     };
 
     enum ecg_phenotype_assertion_status

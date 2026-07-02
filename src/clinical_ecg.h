@@ -62,7 +62,18 @@ namespace signal_synth
     {
         clinical_iv_normal = 0,
         clinical_iv_lbbb = 1,
-        clinical_iv_rbbb = 2
+        clinical_iv_rbbb = 2,
+        clinical_iv_incomplete_lbbb = 3,
+        clinical_iv_incomplete_rbbb = 4,
+        clinical_iv_left_anterior_fascicular = 5,
+        clinical_iv_left_posterior_fascicular = 6,
+        clinical_iv_nonspecific_delay = 7
+    };
+
+    enum clinical_preexcitation
+    {
+        clinical_preexcitation_none = 0,
+        clinical_preexcitation_wpw = 1
     };
 
     enum clinical_ventricular_origin
@@ -152,6 +163,7 @@ namespace signal_synth
         clinical_rhythm rhythm;
         clinical_av_conduction av_conduction;
         clinical_intraventricular_conduction intraventricular_conduction;
+        clinical_preexcitation preexcitation;
         double heart_rate_bpm;
         double atrial_rate_bpm;
         double ventricular_escape_rate_bpm;

@@ -200,7 +200,7 @@ int main()
     for (unsigned int index = 0; index < sizeof(stt_conditions) / sizeof(stt_conditions[0]); ++index)
         support_levels = support_levels && signal_synth::find_ecg_condition(stt_conditions[index])->support == signal_synth::ecg_support_parameterized;
     ok &= check(support_levels, "all_ischemia_stt_conditions_are_parameterized");
-    ok &= check(signal_synth::ecg_scenario_engine_version() == 8, "current_waveform_semantics_increment_engine_version");
+    ok &= check(signal_synth::ecg_scenario_engine_version() == 9, "current_waveform_semantics_increment_engine_version");
 
     bool default_phenotypes = true;
     bool mild_phenotypes = true;

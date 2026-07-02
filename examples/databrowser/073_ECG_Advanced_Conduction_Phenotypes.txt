@@ -1,0 +1,41 @@
+// Advanced conduction engineering QA phenotypes.
+// ECG annotations are emitted as extra channels (annotation_output = 2).
+
+#define SAMPLING_RATE 500
+#define NUMBER_OF_SAMPLES 6000
+#define OUTPUT_BASE ecg_advanced_conduction_phenotypes
+
+DataDelete();
+
+GenerateECGQAScenario(lafb_ecg, lafb_sources, lafb_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["LAFB"], "heart_rate_bpm":70, "seed":6401}, 2);
+GenerateECGQAScenario(irbbb_ecg, irbbb_sources, irbbb_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["IRBBB"], "heart_rate_bpm":70, "seed":6402}, 2);
+GenerateECGQAScenario(ivcd_ecg, ivcd_sources, ivcd_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["IVCD"], "heart_rate_bpm":70, "seed":6403}, 2);
+GenerateECGQAScenario(lpfb_ecg, lpfb_sources, lpfb_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["LPFB"], "heart_rate_bpm":70, "seed":6404}, 2);
+GenerateECGQAScenario(wpw_ecg, wpw_sources, wpw_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["WPW"], "heart_rate_bpm":70, "seed":6405}, 2);
+GenerateECGQAScenario(ilbbb_ecg, ilbbb_sources, ilbbb_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["ILBBB"], "heart_rate_bpm":70, "seed":6406}, 2);
+
+SaveVarToFile(lafb_ecg, CatStrings(OUTPUT_BASE, _lafb, .bin), 100, 8);
+SaveVarToFile(irbbb_ecg, CatStrings(OUTPUT_BASE, _irbbb, .bin), 100, 8);
+SaveVarToFile(ivcd_ecg, CatStrings(OUTPUT_BASE, _ivcd, .bin), 100, 8);
+SaveVarToFile(lpfb_ecg, CatStrings(OUTPUT_BASE, _lpfb, .bin), 100, 8);
+SaveVarToFile(wpw_ecg, CatStrings(OUTPUT_BASE, _wpw, .bin), 100, 8);
+SaveVarToFile(ilbbb_ecg, CatStrings(OUTPUT_BASE, _ilbbb, .bin), 100, 8);
+SaveVarToFile(lafb_assertions, CatStrings(OUTPUT_BASE, _lafb_assertions, .bin), 100, 8);
+SaveVarToFile(irbbb_assertions, CatStrings(OUTPUT_BASE, _irbbb_assertions, .bin), 100, 8);
+SaveVarToFile(ivcd_assertions, CatStrings(OUTPUT_BASE, _ivcd_assertions, .bin), 100, 8);
+SaveVarToFile(lpfb_assertions, CatStrings(OUTPUT_BASE, _lpfb_assertions, .bin), 100, 8);
+SaveVarToFile(wpw_assertions, CatStrings(OUTPUT_BASE, _wpw_assertions, .bin), 100, 8);
+SaveVarToFile(ilbbb_assertions, CatStrings(OUTPUT_BASE, _ilbbb_assertions, .bin), 100, 8);
+
+DisplayData(lafb_ecg, fit_width,, A2, 001);
+DisplayData(lafb_assertions, fit_width,, A2, 001);
+DisplayData(irbbb_ecg, fit_width,, A2, 001);
+DisplayData(irbbb_assertions, fit_width,, A2, 001);
+DisplayData(ivcd_ecg, fit_width,, A2, 001);
+DisplayData(ivcd_assertions, fit_width,, A2, 001);
+DisplayData(lpfb_ecg, fit_width,, A2, 001);
+DisplayData(lpfb_assertions, fit_width,, A2, 001);
+DisplayData(wpw_ecg, fit_width,, A2, 001);
+DisplayData(wpw_assertions, fit_width,, A2, 001);
+DisplayData(ilbbb_ecg, fit_width,, A2, 001);
+DisplayData(ilbbb_assertions, fit_width,, A2, 001);

@@ -93,6 +93,15 @@ T-wave discordance. Complete LBBB suppresses the lateral initial q, keeps
 delayed activation negative in V1 and positive in I/V5/V6, and reverses the
 ordinary repolarization vector to produce secondary QRS-T discordance.
 
+The intraventricular conduction enum also supports incomplete LBBB,
+incomplete RBBB, left anterior fascicular block, left posterior fascicular
+block, and nonspecific intraventricular delay. These modes change smooth source
+orientation/timing before projection; leads are still projected only from the
+summed VCG. `clinical_preexcitation_wpw` is a separate rhythm configuration
+state, not a BBB mode. It shortens PR through the timing configuration, widens
+QRS, and renders a smooth early delta component on the existing septal source.
+The public source count remains seven.
+
 ## Fiducials
 
 Construction fiducials have `lead_index == -1` and record the exact configured

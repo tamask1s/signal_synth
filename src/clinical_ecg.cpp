@@ -164,9 +164,10 @@ namespace signal_synth
             const int rhythm = enum_value(config.rhythm.rhythm);
             const int av_conduction = enum_value(config.rhythm.av_conduction);
             const int intraventricular_conduction = enum_value(config.rhythm.intraventricular_conduction);
+            const int preexcitation = enum_value(config.rhythm.preexcitation);
             const int premature_origin = enum_value(config.scenario.premature_origin);
             const int qt_correction = enum_value(config.timing.qt_correction);
-            if (rhythm < clinical_rhythm_sinus || rhythm > clinical_rhythm_paced || av_conduction < clinical_av_normal || av_conduction > clinical_av_complete_block || intraventricular_conduction < clinical_iv_normal || intraventricular_conduction > clinical_iv_rbbb || premature_origin < clinical_origin_pac || premature_origin > clinical_origin_paced || qt_correction < clinical_qt_fixed || qt_correction > clinical_qt_hodges)
+            if (rhythm < clinical_rhythm_sinus || rhythm > clinical_rhythm_paced || av_conduction < clinical_av_normal || av_conduction > clinical_av_complete_block || intraventricular_conduction < clinical_iv_normal || intraventricular_conduction > clinical_iv_nonspecific_delay || preexcitation < clinical_preexcitation_none || preexcitation > clinical_preexcitation_wpw || premature_origin < clinical_origin_pac || premature_origin > clinical_origin_paced || qt_correction < clinical_qt_fixed || qt_correction > clinical_qt_hodges)
                 return false;
             const double timing_values[] = {config.timing.p_duration_ms, config.timing.pr_interval_ms, config.timing.qrs_duration_ms, config.timing.qrs_q_fraction, config.timing.qrs_r_fraction, config.timing.qrs_s_fraction, config.timing.t_duration_ms, config.timing.t_peak_fraction, config.timing.qt_interval_ms, config.timing.qtc_ms};
             const double morphology_values[] = {config.morphology.p_amplitude_mv, config.morphology.q_amplitude_mv, config.morphology.r_amplitude_mv, config.morphology.s_amplitude_mv, config.morphology.t_amplitude_mv, config.morphology.st_j_amplitude_mv, config.morphology.st_slope_mv_per_second, config.morphology.p_axis_degrees, config.morphology.qrs_axis_degrees, config.morphology.t_axis_degrees, config.morphology.p_elevation_degrees, config.morphology.qrs_elevation_degrees, config.morphology.t_elevation_degrees, config.morphology.presence_threshold_mv};
@@ -218,11 +219,29 @@ namespace signal_synth
                 duration = std::max(duration, 0.140);
             if (config.rhythm.intraventricular_conduction == clinical_iv_rbbb)
                 duration = std::max(duration, 0.130);
+            if (config.rhythm.intraventricular_conduction == clinical_iv_incomplete_lbbb)
+                duration = std::max(duration, 0.112);
+            if (config.rhythm.intraventricular_conduction == clinical_iv_incomplete_rbbb)
+                duration = std::max(duration, 0.100);
+            if (config.rhythm.intraventricular_conduction == clinical_iv_left_anterior_fascicular || config.rhythm.intraventricular_conduction == clinical_iv_left_posterior_fascicular)
+                duration = std::max(duration, 0.100);
+            if (config.rhythm.intraventricular_conduction == clinical_iv_nonspecific_delay)
+                duration = std::max(duration, 0.122);
+            if (config.rhythm.preexcitation == clinical_preexcitation_wpw)
+                duration = std::max(duration, 0.120);
             if (origin == clinical_origin_pvc || origin == clinical_origin_ventricular_escape || origin == clinical_origin_vt)
                 duration = std::max(duration, 0.150);
             if (origin == clinical_origin_paced)
                 duration = std::max(duration, 0.140);
             return duration;
+        }
+
+        double adjusted_pr_interval(const clinical_ecg_config& config)
+        {
+            double interval = config.timing.pr_interval_ms * 0.001;
+            if (config.rhythm.preexcitation == clinical_preexcitation_wpw && config.rhythm.av_conduction == clinical_av_normal)
+                interval = std::min(interval, 0.110);
+            return interval;
         }
 
         clinical_beat_annotation make_beat(const clinical_ecg_config& config, unsigned long long beat_index, double r_peak_time, double rr_seconds, long long linked_atrial_index, double pr_seconds, clinical_ventricular_origin origin)
@@ -309,7 +328,7 @@ namespace signal_synth
                     break;
                 const double qrs_duration = adjusted_qrs_duration(config, origin);
                 const double qrs_onset = next_r - config.timing.qrs_r_fraction * qrs_duration;
-                double pr = config.timing.pr_interval_ms * 0.001;
+                double pr = adjusted_pr_interval(config);
                 bool p_visible = config.rhythm.rhythm == clinical_rhythm_sinus;
                 if (config.rhythm.rhythm == clinical_rhythm_supraventricular_tachycardia)
                     p_visible = false;
@@ -566,6 +585,7 @@ namespace signal_synth
                 double r_amplitude = config.morphology.r_amplitude_mv;
                 double s_amplitude = config.morphology.s_amplitude_mv;
                 double t_amplitude = config.morphology.t_amplitude_mv;
+                bool render_delta = false;
                 if (beat.intraventricular_conduction == clinical_iv_lbbb)
                 {
                     septal_axis += 180.0;
@@ -576,10 +596,65 @@ namespace signal_synth
                     s_amplitude = std::fabs(s_amplitude) * 0.80;
                     t_amplitude *= -1.0;
                 }
+                else if (beat.intraventricular_conduction == clinical_iv_incomplete_lbbb)
+                {
+                    septal_axis += 170.0;
+                    ventricular_axis -= 25.0;
+                    terminal_axis -= 45.0;
+                    q_amplitude = 0.0;
+                    r_amplitude *= 1.00;
+                    s_amplitude = std::fabs(s_amplitude) * 0.55;
+                    t_amplitude *= -0.65;
+                }
                 else if (beat.intraventricular_conduction == clinical_iv_rbbb)
                 {
                     terminal_axis -= 45.0;
                     s_amplitude *= 1.8;
+                }
+                else if (beat.intraventricular_conduction == clinical_iv_incomplete_rbbb)
+                {
+                    terminal_axis -= 45.0;
+                    s_amplitude *= 1.35;
+                    t_amplitude *= 0.75;
+                }
+                else if (beat.intraventricular_conduction == clinical_iv_left_anterior_fascicular)
+                {
+                    septal_axis = 40.0;
+                    ventricular_axis = -60.0;
+                    terminal_axis = -70.0;
+                    q_amplitude *= 0.70;
+                    r_amplitude *= 0.95;
+                    s_amplitude = std::fabs(s_amplitude) * 0.85;
+                }
+                else if (beat.intraventricular_conduction == clinical_iv_left_posterior_fascicular)
+                {
+                    septal_axis = 40.0;
+                    ventricular_axis = 120.0;
+                    terminal_axis = 130.0;
+                    q_amplitude *= 0.70;
+                    r_amplitude *= 0.95;
+                    s_amplitude = std::fabs(s_amplitude) * 0.85;
+                }
+                else if (beat.intraventricular_conduction == clinical_iv_nonspecific_delay)
+                {
+                    septal_axis -= 10.0;
+                    ventricular_axis += 15.0;
+                    terminal_axis += 35.0;
+                    q_amplitude *= 0.80;
+                    r_amplitude *= 0.95;
+                    s_amplitude *= 1.10;
+                    t_amplitude *= 0.85;
+                }
+                if (config.rhythm.preexcitation == clinical_preexcitation_wpw && beat.origin == clinical_origin_conducted)
+                {
+                    render_delta = true;
+                    q_amplitude = 0.0;
+                    septal_axis = config.morphology.qrs_axis_degrees - 15.0;
+                    ventricular_axis = config.morphology.qrs_axis_degrees + 10.0;
+                    terminal_axis = config.morphology.qrs_axis_degrees + 35.0;
+                    r_amplitude *= 0.95;
+                    s_amplitude *= 0.90;
+                    t_amplitude = -std::fabs(t_amplitude) * 0.90;
                 }
                 if (beat.origin == clinical_origin_pvc || beat.origin == clinical_origin_ventricular_escape || beat.origin == clinical_origin_vt || beat.origin == clinical_origin_paced)
                 {
@@ -591,6 +666,8 @@ namespace signal_synth
                     s_amplitude *= 1.8;
                     t_amplitude *= -0.8;
                 }
+                if (render_delta)
+                    render_compact_wave(sources[clinical_source_septal], output.sampling_rate_hz, beat.qrs_onset_time_seconds, beat.q_peak_time_seconds, beat.r_peak_time_seconds, source_vector(config, clinical_source_septal, 0.26, septal_axis, config.morphology.qrs_elevation_degrees));
                 render_compact_wave(sources[clinical_source_septal], output.sampling_rate_hz, beat.qrs_onset_time_seconds, beat.q_peak_time_seconds, beat.r_peak_time_seconds, source_vector(config, clinical_source_septal, q_amplitude, septal_axis, config.morphology.qrs_elevation_degrees));
                 render_compact_wave(sources[clinical_source_ventricular], output.sampling_rate_hz, beat.q_peak_time_seconds, beat.r_peak_time_seconds, beat.s_peak_time_seconds, source_vector(config, clinical_source_ventricular, r_amplitude, ventricular_axis, config.morphology.qrs_elevation_degrees));
                 render_compact_wave(sources[clinical_source_terminal], output.sampling_rate_hz, beat.r_peak_time_seconds, beat.s_peak_time_seconds, beat.qrs_offset_time_seconds, source_vector(config, clinical_source_terminal, s_amplitude, terminal_axis, config.morphology.qrs_elevation_degrees));
@@ -802,7 +879,7 @@ namespace signal_synth
     }
 
     clinical_rhythm_config::clinical_rhythm_config()
-        : rhythm(clinical_rhythm_sinus), av_conduction(clinical_av_normal), intraventricular_conduction(clinical_iv_normal), heart_rate_bpm(60.0), atrial_rate_bpm(75.0), ventricular_escape_rate_bpm(35.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.25), maximum_rr_seconds(3.0), first_degree_pr_ms(240.0), mobitz_cycle_length(4), wenckebach_pr_increment_ms(40.0), flutter_conduction_ratio(2), seed(0x434c494e4943414cULL)
+        : rhythm(clinical_rhythm_sinus), av_conduction(clinical_av_normal), intraventricular_conduction(clinical_iv_normal), preexcitation(clinical_preexcitation_none), heart_rate_bpm(60.0), atrial_rate_bpm(75.0), ventricular_escape_rate_bpm(35.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.25), maximum_rr_seconds(3.0), first_degree_pr_ms(240.0), mobitz_cycle_length(4), wenckebach_pr_increment_ms(40.0), flutter_conduction_ratio(2), seed(0x434c494e4943414cULL)
     {
     }
 

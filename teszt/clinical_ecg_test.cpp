@@ -370,6 +370,19 @@ int main()
     signal_synth::clinical_ecg_generator(rbbb_config).generate(3000, rbbb);
     ok &= check(lbbb.beats()[0].qrs_duration_seconds >= 0.140 && rbbb.beats()[0].qrs_duration_seconds >= 0.130, "bundle_branch_block_qrs_width");
 
+    signal_synth::clinical_ecg_config advanced_conduction_config = config;
+    advanced_conduction_config.rhythm.intraventricular_conduction = signal_synth::clinical_iv_incomplete_rbbb;
+    signal_synth::clinical_ecg_record incomplete_rbbb;
+    signal_synth::clinical_ecg_generator(advanced_conduction_config).generate(3000, incomplete_rbbb);
+    advanced_conduction_config.rhythm.intraventricular_conduction = signal_synth::clinical_iv_nonspecific_delay;
+    signal_synth::clinical_ecg_record nonspecific_delay;
+    signal_synth::clinical_ecg_generator(advanced_conduction_config).generate(3000, nonspecific_delay);
+    signal_synth::clinical_ecg_config wpw_config = config;
+    wpw_config.rhythm.preexcitation = signal_synth::clinical_preexcitation_wpw;
+    signal_synth::clinical_ecg_record wpw;
+    signal_synth::clinical_ecg_generator(wpw_config).generate(3000, wpw);
+    ok &= check(incomplete_rbbb.beats()[0].qrs_duration_seconds >= 0.100 && incomplete_rbbb.beats()[0].qrs_duration_seconds < 0.120 && nonspecific_delay.beats()[0].qrs_duration_seconds >= 0.122 && wpw.beats()[0].pr_interval_seconds < 0.120 && wpw.beats()[0].qrs_duration_seconds >= 0.120 && wpw.source_count() == signal_synth::clinical_source_count, "advanced_conduction_low_level_contracts");
+
     signal_synth::clinical_ecg_config paced_config = config;
     paced_config.rhythm.rhythm = signal_synth::clinical_rhythm_paced;
     signal_synth::clinical_ecg_record paced;

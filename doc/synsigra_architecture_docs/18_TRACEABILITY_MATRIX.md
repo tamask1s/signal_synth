@@ -2,7 +2,7 @@
 
 **Document ID:** SYN-TRACE-001
 
-**Version:** 0.6
+**Version:** 0.7
 
 **Status:** Living demonstration record
 
@@ -46,6 +46,7 @@ The authoritative implementation/result details remain in the linked issues.
 | `TRC-ECG12-005` | `REQ-GEN-001..003`, `REQ-ECG-001..003`, `REQ-ECG-006..007`, `REQ-GT-001`, `REQ-VER-003` | Ischemia, ST-T, and repolarization increment | `src/ecg_scenario.*` | `TEST-ECG-REPOLARIZATION-001`, `TEST-ECG-SCENARIO-001`, `TEST-ECG-JSON-001` | [signal_synth#20](https://github.com/tamask1s/signal_synth/issues/20) |
 | `TRC-ECG12-006` | `REQ-GEN-001..003`, `REQ-ECG-001..003`, `REQ-ECG-006..007`, `REQ-GT-001`, `REQ-NFR-001..005`, `REQ-VER-003` | Continuous ST-T rendering correction | `src/clinical_ecg.cpp`, `src/ecg_scenario.cpp` | `TEST-ECG-PHANTOM-001`, `TEST-ECG-REPOLARIZATION-001` | [signal_synth#21](https://github.com/tamask1s/signal_synth/issues/21) |
 | `TRC-ECG12-007` | `REQ-GEN-001..003`, `REQ-ECG-001..003`, `REQ-ECG-006..007`, `REQ-GT-001`, `REQ-NFR-001..005`, `REQ-VER-003` | Catalog-wide morphology quality correction | `src/clinical_ecg.cpp`, `src/ecg_scenario.cpp` | `TEST-ECG-MORPH-QUALITY-001`, `TEST-ECG-PHANTOM-001`, `TEST-ECG-SCENARIO-001` | [signal_synth#23](https://github.com/tamask1s/signal_synth/issues/23) |
+| `TRC-ECG12-008` | `REQ-GEN-001..003`, `REQ-ECG-001..003`, `REQ-ECG-006..007`, `REQ-GT-001`, `REQ-NFR-001..005`, `REQ-VER-003` | Advanced conduction phenotype pack | `src/clinical_ecg.cpp`, `src/clinical_ecg.h`, `src/ecg_scenario.cpp`, `src/ecg_scenario.h` | `TEST-ECG-CONDUCTION-001`, `TEST-ECG-MORPH-QUALITY-001`, `TEST-ECG-PHANTOM-001`, `TEST-ECG-SCENARIO-001` | [signal_synth#24](https://github.com/tamask1s/signal_synth/issues/24) |
 | `TRC-API-002` | `REQ-API-001..003`, `REQ-NFR-003`, `REQ-NFR-008`, `REQ-VER-001` | DataBrowser fixed-label safety correction | SVN `SignalProc_RSPT.cpp` | Standalone guard-buffer test and manual DataBrowser integration; automated app-build gap | [signal_synth#22](https://github.com/tamask1s/signal_synth/issues/22) |
 | `TRC-DSP-001` | Supporting `REQ-NFR-003`, `REQ-NFR-008` | Shared DSP ownership | RSPT FIR design API | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#1](https://github.com/tamask1s/rspt_module/issues/1) |
 | `TRC-DSP-002` | Supporting `REQ-NFR-008` | IIR coefficient contract | RSPT IIR/filter consumers | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#2](https://github.com/tamask1s/rspt_module/issues/2) |
@@ -62,6 +63,7 @@ The authoritative implementation/result details remain in the linked issues.
 | `TEST-ECG-INFARCTION-001` | `teszt/ecg_infarction_test.cpp` | Territorial Q/ST evidence, posterior proxy, severity and composition |
 | `TEST-ECG-REPOLARIZATION-001` | `teszt/ecg_repolarization_test.cpp` | Territorial ischemia, ST/T evidence, broad proxies, severity and composition |
 | `TEST-ECG-MORPH-QUALITY-001` | `teszt/ecg_morphology_quality_test.cpp` | Catalog-wide generation, waveform integrity, bundle-branch lead morphology, and flutter continuity |
+| `TEST-ECG-CONDUCTION-001` | `teszt/ecg_conduction_test.cpp` | Advanced conduction support, sampled phenotype assertions, severity, conflicts, and reproducibility |
 | `TEST-ECG-JSON-001` | `teszt/ecg_scenario_json_test.cpp` | Strict parsing, canonicalization, SHA-256, transactional rejection |
 | `TEST-ECG-EXPORT-001` | `teszt/ecg_export_test.cpp` | Render transactionality, artifact formats, metrics, deterministic report |
 | `TEST-PPG-001` | `teszt/ppg_model_test.cpp` | ECG beat linkage, PPG timing, measured peaks, multi-rate determinism |

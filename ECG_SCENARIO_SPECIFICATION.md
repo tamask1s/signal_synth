@@ -28,11 +28,11 @@ mislabelled signal.
 Native conditions are `NORM`, `1AVB`, `2AVB`, `3AVB`, `PVC`, `PAC`, `SR`,
 `AFIB`, `PACE`, `AFLT`, and `SVTAC`.
 
-Parameterized conditions are `LNGQT`, `CRBBB`, `CLBBB`, `LPR`, `PRC(S)`,
-`STACH`, `SARRH`, `SBRAD`, `BIGU`, `TRIGU`, `QWAVE`, `LVOLT`, `HVOLT`,
-`LVH`, `RVH`, `SEHYP`, `VCLVH`, `LAO/LAE`, and `RAO/RAE`. A report warning
-identifies every accepted parameterized condition. `native_only` policy
-rejects them.
+Parameterized conditions are `LNGQT`, `LAFB`, `IRBBB`, `IVCD`, `CRBBB`,
+`CLBBB`, `LPFB`, `WPW`, `ILBBB`, `LPR`, `PRC(S)`, `STACH`, `SARRH`,
+`SBRAD`, `BIGU`, `TRIGU`, `QWAVE`, `LVOLT`, `HVOLT`, `LVH`, `RVH`,
+`SEHYP`, `VCLVH`, `LAO/LAE`, and `RAO/RAE`. A report warning identifies
+every accepted parameterized condition. `native_only` policy rejects them.
 
 The territorial infarction/injury pack additionally parameterizes `IMI`,
 `ASMI`, `ILMI`, `AMI`, `ALMI`, `LMI`, `IPLMI`, `IPMI`, `PMI`, `INJAS`,
@@ -47,14 +47,24 @@ or `SBRAD` respectively. Flutter ventricular rate is compiled into a matching
 atrial rate and integer conduction ratio. RR variability is rejected for
 flutter and AV-block timelines until those timelines implement it.
 
-Variable severity is currently implemented only for `LNGQT`, `1AVB`, `LPR`,
-`PAC`, `PVC`, `STACH`, `SARRH`, `SBRAD`, `QWAVE`, `LVOLT`, `HVOLT`, `LVH`,
-`RVH`, `SEHYP`, `VCLVH`, `LAO/LAE`, and `RAO/RAE`. A non-default severity on
-any other condition is rejected so that metadata cannot claim an effect that
-was not rendered.
+Variable severity is currently implemented only for `LNGQT`, `LAFB`, `IRBBB`,
+`IVCD`, `LPFB`, `WPW`, `ILBBB`, `1AVB`, `LPR`, `PAC`, `PVC`, `STACH`,
+`SARRH`, `SBRAD`, `QWAVE`, `LVOLT`, `HVOLT`, `LVH`, `RVH`, `SEHYP`,
+`VCLVH`, `LAO/LAE`, and `RAO/RAE`. A non-default severity on any other
+condition is rejected so that metadata cannot claim an effect that was not
+rendered.
 
 The same variable-severity contract applies to all 14 territorial
 infarction/injury conditions.
+
+The advanced conduction pack parameterizes `LAFB`, `LPFB`, `IRBBB`, `ILBBB`,
+`IVCD`, and `WPW`. Incomplete BBB uses independent sub-complete-BBB QRS
+duration ranges. Fascicular blocks use frontal-axis and sampled terminal-force
+contracts. `IVCD` widens QRS while explicitly failing the complete RBBB/LBBB
+contracts. `WPW` is not encoded as a BBB; it uses a separate pre-excitation
+state, short PR, widened QRS, a smooth delta component on the existing septal
+source, and secondary T-wave behavior. The public clinical source count remains
+seven in this increment.
 
 `QWAVE` requires an explicit inferior, anterior, or lateral territory. Its
 septal source orientation and duration are changed before normal 12-lead
@@ -87,7 +97,7 @@ explicit and inferred conditions. Current implications include:
 - PAC or PVC implies `PRC(S)`;
 - sinus rate/arrhythmia and AV-block statements imply `SR`;
 - `NORM` implies `SR`;
-- complete LBBB or RBBB implies `ABQRS`.
+- complete or incomplete BBB, fascicular block, IVCD, or WPW implies `ABQRS`.
 - Q-wave and low/high-voltage morphology implies `ABQRS`.
 - ventricular or septal hypertrophy morphology implies `ABQRS`.
 - infarction morphology implies `ABQRS`;
@@ -133,7 +143,7 @@ generation fingerprint remains an ECG-engine identity.
 
 ## Phenotype assertions
 
-Scenario engine version 8 evaluates requested supported conditions against the
+Scenario engine version 9 evaluates requested supported conditions against the
 generated record. Assertions use beat and atrial-event annotations, exact
 fiducials, multi-source VCG data, and measured 12-lead morphology rather than
 treating the requested label as proof that a phenotype was rendered.
@@ -149,6 +159,8 @@ range, unit, label, and pass/fail status.
 
 The assertion set also covers territorial infarction Q evidence, posterior
 reciprocal R-wave proxy evidence, and territorial injury ST-J evidence.
+For advanced conduction it additionally covers frontal QRS axis,
+lateral/inferior QRS polarity, delta-wave evidence, and complete-BBB exclusion.
 
 `success()` reports validation and waveform-generation success.
 `phenotype_passed()` independently reports whether every evaluated phenotype
