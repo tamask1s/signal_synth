@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-016
 
-**Version:** 0.1
+**Version:** 0.2
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Platform / Verification
 
@@ -13,6 +13,10 @@
 **Proposed traceability ID:** `TRC-PACK-001`
 
 **Implementation issue:** [signal_synth#27](https://github.com/tamask1s/signal_synth/issues/27)
+
+**Implementation commit:** `56509c38779e937b0fc16b414047a0b812defc39`
+
+**Verified CI run:** [Verification 28613327848](https://github.com/tamask1s/signal_synth/actions/runs/28613327848)
 
 ## 1. Decision
 
@@ -138,6 +142,20 @@ root summary file creation.
 Existing package-smoke coverage must compile the public `ecg_pack.h` header
 from an installed package.
 
+Verified on 2026-07-02 with:
+
+- release build and local CTest: 17/17 passed;
+- sanitizer build and local CTest: 16/16 passed with
+  `ASAN_OPTIONS=detect_leaks=0`, `LSAN_OPTIONS=detect_leaks=0`, and
+  `TEST-BUILD-001` excluded;
+- manual `combined_worst_case_v1` pack render smoke output;
+- GitHub Actions `Verification` run `28613327848`: Ubuntu C++11 and Windows
+  C++11 jobs passed;
+- DataBrowser/SVN working-copy synchronization checked by byte-compare for
+  copied `ecg_pack.cpp` and `ecg_pack.h`; `SignalProc_RSPT.cbp` was updated to
+  include them. `svn status` could not be executed because the local `svn`
+  client is not installed.
+
 ## 8. Exit Criteria
 
 1. Pack manifests have strict validation and deterministic fingerprints.
@@ -162,3 +180,4 @@ from an installed package.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-02 | Proposed and implemented scenario pack and batch QA package v1 |
+| 0.2 | 2026-07-02 | Verified local release/sanitizer tests, CI, and DataBrowser source synchronization |
