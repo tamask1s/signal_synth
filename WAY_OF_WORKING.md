@@ -11,15 +11,17 @@ This file is the short checklist to check before and after every change.
    acceptance criteria, and known limitations in the issue or linked document.
 3. Keep implementation scoped to the issue. If the work changes shape, update
    the issue and architecture record before claiming it is verified.
-4. Every traceable commit must include the full GitHub issue link in the commit
-   body, using this exact form:
+4. Every traceable commit must include the full GitHub issue link on the first
+   commit-message line, so GitHub commit summaries show a directly clickable
+   link. Use this form:
 
    ```text
-   [issue https://github.com/tamask1s/signal_synth/issues/123]
+   type(scope): concise change summary [issue https://github.com/tamask1s/signal_synth/issues/123]
    ```
 
-5. Use one issue line per traceable work item. Multiple issue lines are allowed
-   only when one commit genuinely belongs to multiple approved issues.
+5. Use one primary issue link on the first line. Additional issue lines are
+   allowed in the body only when one commit genuinely belongs to multiple
+   approved issues.
 6. Do not rely on short forms such as `#123`; cross-repository and exported
    evidence should remain unambiguous.
 7. Run the relevant local tests before commit. For broad changes, run release
@@ -36,12 +38,10 @@ This file is the short checklist to check before and after every change.
 ## Commit Message Template
 
 ```text
-type(scope): concise change summary
-
-[issue https://github.com/tamask1s/signal_synth/issues/123]
+type(scope): concise change summary [issue https://github.com/tamask1s/signal_synth/issues/123]
 ```
 
-Additional explanatory paragraphs may be added between the subject and the
-issue line when they help future audit or review. The issue link is mandatory
-for implementation, verification, documentation, synchronization, and follow-up
-fix commits that belong to a traceable work item.
+Additional explanatory paragraphs may be added after the first line when they
+help future audit or review. The first-line issue link is mandatory for
+implementation, verification, documentation, synchronization, and follow-up fix
+commits that belong to a traceable work item.

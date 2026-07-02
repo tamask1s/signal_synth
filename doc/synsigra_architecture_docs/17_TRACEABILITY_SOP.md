@@ -62,24 +62,23 @@ integration evidence, and unsupported claims.
 
 ## 4. Commit format
 
-Use an imperative or descriptive subject. Add one issue link per traceable
-work item in the commit body. The full URL form is mandatory:
+Use an imperative or descriptive subject. Add the primary issue link on the
+first commit-message line so GitHub commit summaries show a directly clickable
+link. The full URL form is mandatory:
 
 ```text
-feat(ecg): add deterministic scenario fingerprint
-
-[issue https://github.com/tamask1s/signal_synth/issues/123]
+feat(ecg): add deterministic scenario fingerprint [issue https://github.com/tamask1s/signal_synth/issues/123]
 ```
 
-Multiple issue lines are allowed when a commit genuinely implements multiple
-approved work items. Avoid ambiguous forms such as only `#123` in repositories
-that participate in cross-repository traceability.
+Additional issue lines in the body are allowed when a commit genuinely
+implements multiple approved work items. Avoid ambiguous forms such as only
+`#123` in repositories that participate in cross-repository traceability.
 
 Before pushing, inspect the commit range with `git log --format=fuller` or an
 equivalent command and verify that every traceable commit contains the required
-`[issue ...]` line. If a pushed history is rewritten to correct missing issue
-links, force-push intentionally and update any issue comments or evidence
-records that mention the replaced hashes.
+first-line `[issue ...]` link. If a pushed history is rewritten to correct
+missing or misplaced issue links, force-push intentionally and update any issue
+comments or evidence records that mention the replaced hashes.
 
 ## 5. Test and evidence IDs
 
