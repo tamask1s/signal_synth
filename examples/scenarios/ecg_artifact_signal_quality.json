@@ -5,7 +5,7 @@
   "description": "Deterministic acquisition artifact stress scenario with clean physiological ground truth.",
   "author": "Synsigra",
   "tags": ["artifact", "signal_quality", "ecg", "ppg"],
-  "duration_seconds": 12,
+  "duration_seconds": 30,
   "sample_rate_hz": 500,
   "seed": 9100,
   "ecg": {
@@ -35,11 +35,11 @@
     "dicrotic_amplitude_ratio": 0.15
   },
   "artifacts": [
-    {"type": "ecg_baseline_wander", "start_seconds": 1.0, "duration_seconds": 5.0, "severity": 0.55, "seed": 9101, "channels": ["all_ecg"]},
-    {"type": "ecg_powerline", "start_seconds": 0.0, "duration_seconds": 12.0, "severity": 0.35, "seed": 9102, "channels": ["II", "V1", "V5"]},
-    {"type": "ecg_emg_noise", "start_seconds": 5.8, "duration_seconds": 2.2, "severity": 0.65, "seed": 9103, "channels": ["I", "II", "V2", "V5"]},
-    {"type": "ecg_dropout", "start_seconds": 7.4, "duration_seconds": 0.9, "severity": 0.90, "seed": 9104, "channels": ["V2", "V3"]},
-    {"type": "ecg_saturation", "start_seconds": 9.2, "duration_seconds": 1.0, "severity": 0.75, "seed": 9105, "channels": ["II", "V5"]},
-    {"type": "ppg_dropout", "start_seconds": 4.2, "duration_seconds": 1.1, "severity": 0.85, "seed": 9106, "channels": ["ppg_green"]}
+    {"type": "ecg_baseline_wander", "start_seconds": 1.0, "duration_seconds": 24.0, "severity": 0.55, "seed": 9101, "channels": ["all_ecg"]},
+    {"type": "ecg_powerline", "start_seconds": 0.0, "duration_seconds": 30.0, "severity": 0.35, "seed": 9102, "channels": ["II", "V1", "V5"]},
+    {"type": "ecg_emg_noise", "start_seconds": 12.0, "duration_seconds": 4.0, "severity": 0.65, "seed": 9103, "channels": ["I", "II", "V2", "V5"]},
+    {"type": "ecg_dropout", "start_seconds": 18.0, "duration_seconds": 1.2, "severity": 0.90, "seed": 9104, "channels": ["V2", "V3"]},
+    {"type": "ecg_saturation", "start_seconds": 23.0, "duration_seconds": 1.2, "severity": 0.75, "seed": 9105, "channels": ["II", "V5"]},
+    {"type": "ppg_dropout", "start_seconds": 8.0, "duration_seconds": 1.4, "severity": 0.85, "seed": 9106, "channels": ["ppg_green"]}
   ]
 }

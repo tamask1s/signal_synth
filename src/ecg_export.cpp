@@ -669,7 +669,10 @@ namespace signal_synth
         }
         if (!ecg_scenario_engine().generate(document.ecg, document.sample_count(), fresh.record, fresh.scenario_report))
         {
-            fresh_result.messages.push_back("ECG scenario generation failed");
+            if (fresh.scenario_report.issue_count())
+                fresh_result.messages.push_back(std::string("ECG scenario generation failed: ") + fresh.scenario_report.issue_message(0));
+            else
+                fresh_result.messages.push_back("ECG scenario generation failed");
             result = fresh_result;
             return false;
         }
