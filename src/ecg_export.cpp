@@ -115,6 +115,12 @@ namespace
         return "unknown";
     }
 
+    const char* clinical_lead_name(unsigned int lead)
+    {
+        static const char* names[signal_synth::clinical_lead_count] = {"I","II","III","aVR","aVL","aVF","V1","V2","V3","V4","V5","V6"};
+        return lead < signal_synth::clinical_lead_count ? names[lead] : "";
+    }
+
     const char* assertion_status_name(signal_synth::ecg_phenotype_assertion_status value)
     {
         switch (value)
@@ -194,6 +200,36 @@ namespace
             metrics.mean_ppg_peak_delay_seconds = peak_delay / peak_count;
     }
 
+    void add_artifact_metrics(const signal_synth::signal_quality_waveforms& waveforms, signal_synth::ecg_ground_truth_metrics& metrics)
+    {
+        metrics.artifact_count = static_cast<unsigned int>(waveforms.artifacts.size());
+        for (std::size_t i = 0; i < waveforms.artifacts.size(); ++i)
+        {
+            const signal_synth::signal_quality_artifact_interval& artifact = waveforms.artifacts[i];
+            const double duration = artifact.end_seconds - artifact.start_seconds;
+            metrics.total_artifact_seconds += duration;
+            for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead)
+                if (artifact.ecg_leads[lead])
+                    metrics.ecg_artifact_seconds[lead] += duration;
+            if (artifact.ppg)
+                metrics.ppg_artifact_seconds += duration;
+        }
+    }
+
+    const double* rendered_ecg_lead(const signal_synth::ecg_render_bundle& render, unsigned int lead)
+    {
+        if (lead < render.signal_quality.ecg_leads.size() && render.signal_quality.ecg_leads[lead].size() == render.record.sample_count())
+            return render.signal_quality.ecg_leads[lead].empty() ? 0 : &render.signal_quality.ecg_leads[lead][0];
+        return render.record.lead_data(lead);
+    }
+
+    const double* rendered_ppg(const signal_synth::ecg_render_bundle& render)
+    {
+        if (render.signal_quality.ppg.size() == render.ppg.sample_count())
+            return render.signal_quality.ppg.empty() ? 0 : &render.signal_quality.ppg[0];
+        return render.ppg.samples();
+    }
+
     std::string waveform_csv(const signal_synth::ecg_render_bundle& render)
     {
         std::ostringstream output;
@@ -209,12 +245,35 @@ namespace
         {
             output << sample << ',' << static_cast<double>(sample) / render.record.sampling_rate_hz();
             for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
-                output << ',' << normalized_zero(render.record.lead_data(lead)[sample]);
+                output << ',' << normalized_zero(rendered_ecg_lead(render, lead)[sample]);
             if (render.ppg.sample_count())
-                output << ',' << normalized_zero(render.ppg.samples()[sample]);
+                output << ',' << normalized_zero(rendered_ppg(render)[sample]);
             output << '\n';
         }
         return output.str();
+    }
+
+    void write_artifact_channels(std::ostringstream& output, const signal_synth::signal_quality_artifact_interval& artifact)
+    {
+        output << '[';
+        bool first = true;
+        for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead)
+        {
+            if (artifact.ecg_leads[lead])
+            {
+                if (!first)
+                    output << ',';
+                output << json_string(clinical_lead_name(lead));
+                first = false;
+            }
+        }
+        if (artifact.ppg)
+        {
+            if (!first)
+                output << ',';
+            output << "\"ppg_green\"";
+        }
+        output << ']';
     }
 
     std::string annotations_json(const signal_synth::ecg_render_bundle& render)
@@ -313,7 +372,24 @@ namespace
             }
             output << ']';
         }
-        output << ",\"artifact_intervals\":[]}";
+        output << ",\"artifact_intervals\":[";
+        for (std::size_t i = 0; i < render.signal_quality.artifacts.size(); ++i)
+        {
+            if (i)
+                output << ',';
+            const signal_synth::signal_quality_artifact_interval& artifact = render.signal_quality.artifacts[i];
+            output << "{\"type\":" << json_string(signal_synth::signal_quality_artifact_type_name(artifact.type))
+                   << ",\"start_seconds\":" << artifact.start_seconds
+                   << ",\"end_seconds\":" << artifact.end_seconds
+                   << ",\"start_sample_index\":" << artifact.start_sample_index
+                   << ",\"end_sample_index\":" << artifact.end_sample_index
+                   << ",\"severity\":" << artifact.severity
+                   << ",\"seed\":" << artifact.seed
+                   << ",\"channels\":";
+            write_artifact_channels(output, artifact);
+            output << '}';
+        }
+        output << "]}";
         return output.str();
     }
 
@@ -333,6 +409,16 @@ namespace
                << ",\"sdnn_seconds\":" << metrics.sdnn_seconds
                << ",\"rmssd_seconds\":" << metrics.rmssd_seconds
                << ",\"pnn50_percent\":" << metrics.pnn50_percent
+               << "},\"artifacts\":{\"count\":" << metrics.artifact_count
+               << ",\"total_artifact_seconds\":" << metrics.total_artifact_seconds
+               << ",\"ecg_channel_seconds\":{";
+        for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead)
+        {
+            if (lead)
+                output << ',';
+            output << json_string(clinical_lead_name(lead)) << ':' << metrics.ecg_artifact_seconds[lead];
+        }
+        output << "},\"ppg_seconds\":" << metrics.ppg_artifact_seconds
                << "},\"phenotype_passed\":" << boolean(render.scenario_report.phenotype_passed())
                << ",\"assertions\":[";
         for (unsigned int i = 0; i < render.scenario_report.assertion_count(); ++i)
@@ -405,16 +491,16 @@ namespace
         return output.str();
     }
 
-    std::string svg_preview(const signal_synth::clinical_ecg_record& record)
+    std::string svg_preview(const signal_synth::ecg_render_bundle& render)
     {
-        const double* samples = record.lead_data(signal_synth::clinical_lead_ii);
-        if (!samples || !record.sample_count())
+        const double* samples = rendered_ecg_lead(render, signal_synth::clinical_lead_ii);
+        if (!samples || !render.record.sample_count())
             return "";
-        const unsigned int point_count = std::min(1000u, record.sample_count());
+        const unsigned int point_count = std::min(1000u, render.record.sample_count());
         double minimum = samples[0], maximum = samples[0];
         for (unsigned int i = 0; i < point_count; ++i)
         {
-            const unsigned int sample = point_count == 1 ? 0 : static_cast<unsigned int>((static_cast<unsigned long long>(i) * (record.sample_count() - 1)) / (point_count - 1));
+            const unsigned int sample = point_count == 1 ? 0 : static_cast<unsigned int>((static_cast<unsigned long long>(i) * (render.record.sample_count() - 1)) / (point_count - 1));
             minimum = std::min(minimum, samples[sample]);
             maximum = std::max(maximum, samples[sample]);
         }
@@ -425,7 +511,7 @@ namespace
                << "<svg viewBox=\"0 0 1000 240\" role=\"img\" aria-label=\"Lead II waveform preview\"><rect width=\"1000\" height=\"240\" fill=\"#fff\"/><path d=\"M0 120H1000\" stroke=\"#d1d5db\"/><polyline fill=\"none\" stroke=\"#b42318\" stroke-width=\"1.5\" points=\"";
         for (unsigned int i = 0; i < point_count; ++i)
         {
-            const unsigned int sample = point_count == 1 ? 0 : static_cast<unsigned int>((static_cast<unsigned long long>(i) * (record.sample_count() - 1)) / (point_count - 1));
+            const unsigned int sample = point_count == 1 ? 0 : static_cast<unsigned int>((static_cast<unsigned long long>(i) * (render.record.sample_count() - 1)) / (point_count - 1));
             const double x = point_count == 1 ? 0.0 : 1000.0 * i / (point_count - 1);
             const double y = 220.0 - 200.0 * (samples[sample] - minimum) / span;
             if (i)
@@ -436,16 +522,16 @@ namespace
         return output.str();
     }
 
-    std::string ppg_svg_preview(const signal_synth::ppg_record& record)
+    std::string ppg_svg_preview(const signal_synth::ecg_render_bundle& render)
     {
-        const double* samples = record.samples();
-        if (!samples || !record.sample_count())
+        const double* samples = rendered_ppg(render);
+        if (!samples || !render.ppg.sample_count())
             return "";
-        const unsigned int point_count = std::min(1000u, record.sample_count());
+        const unsigned int point_count = std::min(1000u, render.ppg.sample_count());
         double minimum = samples[0], maximum = samples[0];
         for (unsigned int i = 0; i < point_count; ++i)
         {
-            const unsigned int sample = point_count == 1 ? 0 : static_cast<unsigned int>((static_cast<unsigned long long>(i) * (record.sample_count() - 1)) / (point_count - 1));
+            const unsigned int sample = point_count == 1 ? 0 : static_cast<unsigned int>((static_cast<unsigned long long>(i) * (render.ppg.sample_count() - 1)) / (point_count - 1));
             minimum = std::min(minimum, samples[sample]);
             maximum = std::max(maximum, samples[sample]);
         }
@@ -456,7 +542,7 @@ namespace
                << "<svg viewBox=\"0 0 1000 240\" role=\"img\" aria-label=\"PPG waveform preview\"><rect width=\"1000\" height=\"240\" fill=\"#fff\"/><path d=\"M0 220H1000\" stroke=\"#d1d5db\"/><polyline fill=\"none\" stroke=\"#067647\" stroke-width=\"1.5\" points=\"";
         for (unsigned int i = 0; i < point_count; ++i)
         {
-            const unsigned int sample = point_count == 1 ? 0 : static_cast<unsigned int>((static_cast<unsigned long long>(i) * (record.sample_count() - 1)) / (point_count - 1));
+            const unsigned int sample = point_count == 1 ? 0 : static_cast<unsigned int>((static_cast<unsigned long long>(i) * (render.ppg.sample_count() - 1)) / (point_count - 1));
             const double x = point_count == 1 ? 0.0 : 1000.0 * i / (point_count - 1);
             const double y = 220.0 - 200.0 * (samples[sample] - minimum) / span;
             if (i)
@@ -489,15 +575,17 @@ namespace
                << "</td></tr><tr><th>Render identity</th><td>" << html_text(render.render_identity)
                << "</td></tr><tr><th>ECG run fingerprint</th><td>" << render.scenario_report.run_fingerprint()
                << "</td></tr><tr><th>Generator</th><td>" << signal_synth::signal_synth_generator_version()
-               << "</td></tr></table><h2>Lead II Preview</h2>" << svg_preview(render.record)
-               << (render.ppg.sample_count() ? "<h2>PPG Preview</h2>" + ppg_svg_preview(render.ppg) : "")
+               << "</td></tr></table><h2>Lead II Preview</h2>" << svg_preview(render)
+               << (render.ppg.sample_count() ? "<h2>PPG Preview</h2>" + ppg_svg_preview(render) : "")
                << "<h2>Ground Truth Summary</h2><table><tr><th>Beats</th><td>" << render.metrics.beat_count
                << "</td></tr><tr><th>Mean HR</th><td>" << render.metrics.mean_heart_rate_bpm
                << " bpm</td></tr><tr><th>Mean RR</th><td>" << render.metrics.mean_rr_seconds
                << " s</td></tr><tr><th>SDNN</th><td>" << render.metrics.sdnn_seconds
                << " s</td></tr><tr><th>RMSSD</th><td>" << render.metrics.rmssd_seconds
                << " s</td></tr><tr><th>pNN50</th><td>" << render.metrics.pnn50_percent
-               << " %</td></tr></table><h2>Phenotype Assertions</h2><table><tr><th>Condition</th><th>Assertion</th><th>Status</th><th>Measured</th><th>Range</th><th>Unit</th></tr>";
+               << " %</td></tr><tr><th>Artifact intervals</th><td>" << render.metrics.artifact_count
+               << "</td></tr><tr><th>Total artifact seconds</th><td>" << render.metrics.total_artifact_seconds
+               << " s</td></tr></table><h2>Phenotype Assertions</h2><table><tr><th>Condition</th><th>Assertion</th><th>Status</th><th>Measured</th><th>Range</th><th>Unit</th></tr>";
         for (unsigned int i = 0; i < render.scenario_report.assertion_count(); ++i)
         {
             const signal_synth::ecg_condition_info* condition = signal_synth::find_ecg_condition(render.scenario_report.assertion_condition(i));
@@ -508,11 +596,25 @@ namespace
                    << "</td><td>" << render.scenario_report.assertion_minimum(i) << " to " << render.scenario_report.assertion_maximum(i)
                    << "</td><td>" << html_text(render.scenario_report.assertion_unit(i)) << "</td></tr>";
         }
+        output << "</table><h2>Artifact Intervals</h2><table><tr><th>Type</th><th>Start</th><th>End</th><th>Severity</th><th>Channels</th></tr>";
+        for (std::size_t i = 0; i < render.signal_quality.artifacts.size(); ++i)
+        {
+            const signal_synth::signal_quality_artifact_interval& artifact = render.signal_quality.artifacts[i];
+            std::ostringstream channels;
+            write_artifact_channels(channels, artifact);
+            output << "<tr><td>" << signal_synth::signal_quality_artifact_type_name(artifact.type)
+                   << "</td><td>" << artifact.start_seconds
+                   << "</td><td>" << artifact.end_seconds
+                   << "</td><td>" << artifact.severity
+                   << "</td><td>" << html_text(channels.str()) << "</td></tr>";
+        }
+        if (render.signal_quality.artifacts.empty())
+            output << "<tr><td colspan=\"5\">No acquisition artifacts requested.</td></tr>";
         output << "</table><h2>Warnings and Limitations</h2><ul>";
         for (unsigned int i = 0; i < render.scenario_report.issue_count(); ++i)
             output << "<li>" << html_text(render.scenario_report.issue_message(i)) << "</li>";
         output << "<li>The compact cardiac phantom is not population-fitted clinical evidence.</li>"
-               << "<li>No acquisition artifacts are present unless explicitly added by a future acquisition layer.</li></ul>"
+               << (render.signal_quality.artifacts.empty() ? "<li>No acquisition artifacts are present in this scenario.</li>" : "<li>Acquisition artifacts corrupt waveform samples but do not change construction ground truth.</li>") << "</ul>"
                << "<h2>Artifacts</h2><p>scenario.json, metadata.json, waveform.csv, annotations.json, "
                << "ground_truth_metrics.json, warnings.json, report.html, README.txt</p></body></html>";
         return output.str();
@@ -531,8 +633,10 @@ namespace
 namespace signal_synth
 {
     ecg_ground_truth_metrics::ecg_ground_truth_metrics()
-        : beat_count(0), atrial_event_count(0), fiducial_count(0), episode_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), ppg_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0)
+        : beat_count(0), atrial_event_count(0), fiducial_count(0), episode_count(0), artifact_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), ppg_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0), total_artifact_seconds(0.0), ppg_artifact_seconds(0.0)
     {
+        for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
+            ecg_artifact_seconds[lead] = 0.0;
     }
 
     const ecg_text_artifact* ecg_export_bundle::find(const std::string& name) const
@@ -588,6 +692,13 @@ namespace signal_synth
             return false;
         }
         add_ppg_metrics(fresh.ppg, fresh.metrics);
+        if (!apply_signal_quality_artifacts(document.signal_quality, fresh.record, fresh.ppg, fresh.signal_quality))
+        {
+            fresh_result.messages.push_back("signal quality artifact application failed");
+            result = fresh_result;
+            return false;
+        }
+        add_artifact_metrics(fresh.signal_quality, fresh.metrics);
         fresh_result.success = true;
         output = fresh;
         result = fresh_result;

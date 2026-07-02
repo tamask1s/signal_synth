@@ -578,6 +578,44 @@ namespace
         return "";
     }
 
+    bool artifact_type_from_name(const std::string& name, signal_synth::signal_quality_artifact_type& output)
+    {
+        if (name == "ecg_baseline_wander")
+            output = signal_synth::signal_quality_ecg_baseline_wander;
+        else if (name == "ecg_powerline")
+            output = signal_synth::signal_quality_ecg_powerline;
+        else if (name == "ecg_emg_noise")
+            output = signal_synth::signal_quality_ecg_emg_noise;
+        else if (name == "ecg_dropout")
+            output = signal_synth::signal_quality_ecg_dropout;
+        else if (name == "ecg_saturation")
+            output = signal_synth::signal_quality_ecg_saturation;
+        else if (name == "ppg_dropout")
+            output = signal_synth::signal_quality_ppg_dropout;
+        else
+            return false;
+        return true;
+    }
+
+    bool artifact_is_ecg(signal_synth::signal_quality_artifact_type type)
+    {
+        return type != signal_synth::signal_quality_ppg_dropout;
+    }
+
+    const char* clinical_lead_json_name(unsigned int lead)
+    {
+        static const char* names[signal_synth::clinical_lead_count] = {"I","II","III","aVR","aVL","aVF","V1","V2","V3","V4","V5","V6"};
+        return lead < signal_synth::clinical_lead_count ? names[lead] : "";
+    }
+
+    int clinical_lead_from_json_name(const std::string& name)
+    {
+        for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead)
+            if (name == clinical_lead_json_name(lead))
+                return static_cast<int>(lead);
+        return -1;
+    }
+
     const char* fidelity_name(signal_synth::ecg_scenario_fidelity_policy value)
     {
         switch (value)
@@ -665,8 +703,12 @@ namespace
             add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema versions 1 and 2 are supported");
         if (document.schema_version == 1 && !default_ppg_config(document.ppg))
             add_message(result, signal_synth::ecg_json_semantic, "$.ppg", "schema version 1 cannot represent PPG configuration");
+        if (document.schema_version == 1 && !document.signal_quality.artifacts.empty())
+            add_message(result, signal_synth::ecg_json_semantic, "$.artifacts", "schema version 1 cannot represent acquisition artifacts");
         if (document.schema_version == 2 && !signal_synth::ppg_generator(document.ppg).valid())
             add_message(result, signal_synth::ecg_json_range, "$.ppg", "invalid PPG configuration");
+        if (!signal_synth::validate_signal_quality_config(document.signal_quality, document.duration_seconds, document.ecg.sampling_rate_hz(), document.ppg.enabled))
+            add_message(result, signal_synth::ecg_json_range, "$.artifacts", "invalid artifact configuration");
         if (!safe_identifier(document.scenario_id))
             add_message(result, signal_synth::ecg_json_range, "$.scenario_id", "scenario_id must contain 1 to 128 ASCII letters, digits, dots, underscores, or hyphens");
         if (!safe_text(document.name, 1, 256))
@@ -753,6 +795,41 @@ namespace
                    << ",\"dicrotic_amplitude_ratio\":" << format_double(document.ppg.dicrotic_amplitude_ratio)
                    << '}';
         }
+        if (!document.signal_quality.artifacts.empty())
+        {
+            output << ",\"artifacts\":[";
+            for (std::size_t i = 0; i < document.signal_quality.artifacts.size(); ++i)
+            {
+                if (i)
+                    output << ',';
+                const signal_synth::signal_quality_artifact_config& artifact = document.signal_quality.artifacts[i];
+                output << "{\"type\":" << escape_json(signal_synth::signal_quality_artifact_type_name(artifact.type))
+                       << ",\"start_seconds\":" << format_double(artifact.start_seconds)
+                       << ",\"duration_seconds\":" << format_double(artifact.duration_seconds)
+                       << ",\"severity\":" << format_double(artifact.severity)
+                       << ",\"seed\":" << artifact.seed
+                       << ",\"channels\":[";
+                bool first_channel = true;
+                for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead)
+                {
+                    if (artifact.ecg_leads[lead])
+                    {
+                        if (!first_channel)
+                            output << ',';
+                        output << escape_json(clinical_lead_json_name(lead));
+                        first_channel = false;
+                    }
+                }
+                if (artifact.ppg)
+                {
+                    if (!first_channel)
+                        output << ',';
+                    output << "\"ppg_green\"";
+                }
+                output << "]}";
+            }
+            output << ']';
+        }
         output << '}';
         return output.str();
     }
@@ -833,7 +910,7 @@ namespace signal_synth
             return false;
         }
 
-        const char* top_fields[] = {"schema_version","scenario_id","name","description","author","tags","duration_seconds","sample_rate_hz","seed","ecg","ppg"};
+        const char* top_fields[] = {"schema_version","scenario_id","name","description","author","tags","duration_seconds","sample_rate_hz","seed","ecg","ppg","artifacts"};
         if (!allowed_fields(root, top_fields, sizeof(top_fields) / sizeof(top_fields[0]), "$", fresh_result))
         {
             result = fresh_result;
@@ -1048,6 +1125,110 @@ namespace signal_synth
                 if (dicrotic_amplitude) document.ppg.dicrotic_amplitude_ratio = dicrotic_amplitude->number;
                 if (!ppg_generator(document.ppg).valid())
                     add_message(fresh_result, ecg_json_range, "$.ppg", "invalid PPG configuration");
+            }
+        }
+
+        const json_value* artifacts = member(root, "artifacts");
+        if (document.schema_version == 1 && artifacts)
+            add_message(fresh_result, ecg_json_unknown_field, "$.artifacts", "artifacts require schema version 2");
+        if (document.schema_version == 2 && artifacts)
+        {
+            if (artifacts->type != json_value::array_kind)
+                add_message(fresh_result, ecg_json_type, "$.artifacts", "field has the wrong JSON type");
+            else
+            {
+                for (std::size_t i = 0; i < artifacts->array.size(); ++i)
+                {
+                    const std::string path = "$.artifacts[" + std::to_string(i) + "]";
+                    const json_value& item = artifacts->array[i];
+                    if (item.type != json_value::object_kind)
+                    {
+                        add_message(fresh_result, ecg_json_type, path, "artifact must be an object");
+                        continue;
+                    }
+                    const char* artifact_fields[] = {"type","start_seconds","duration_seconds","severity","seed","channels"};
+                    if (!allowed_fields(item, artifact_fields, sizeof(artifact_fields) / sizeof(artifact_fields[0]), path, fresh_result))
+                        continue;
+                    const json_value* type = required(item, "type", json_value::string_kind, path, fresh_result);
+                    const json_value* start = required(item, "start_seconds", json_value::number_kind, path, fresh_result);
+                    const json_value* duration_value = required(item, "duration_seconds", json_value::number_kind, path, fresh_result);
+                    const json_value* severity = required(item, "severity", json_value::number_kind, path, fresh_result);
+                    const json_value* artifact_seed = required(item, "seed", json_value::number_kind, path, fresh_result);
+                    const json_value* channels = required(item, "channels", json_value::array_kind, path, fresh_result);
+                    if (!type || !start || !duration_value || !severity || !artifact_seed || !channels)
+                        continue;
+
+                    signal_quality_artifact_config artifact;
+                    if (!artifact_type_from_name(type->string, artifact.type))
+                    {
+                        add_message(fresh_result, ecg_json_range, path + ".type", "unknown artifact type");
+                        continue;
+                    }
+                    artifact.start_seconds = start->number;
+                    artifact.duration_seconds = duration_value->number;
+                    artifact.severity = severity->number;
+                    if (!integral_number(*artifact_seed, std::numeric_limits<unsigned long long>::max(), integer))
+                    {
+                        add_message(fresh_result, ecg_json_range, path + ".seed", "seed must be an unsigned 64-bit decimal integer");
+                        continue;
+                    }
+                    artifact.seed = integer;
+
+                    std::set<std::string> seen_channels;
+                    for (std::size_t channel_index = 0; channel_index < channels->array.size(); ++channel_index)
+                    {
+                        const std::string channel_path = path + ".channels[" + std::to_string(channel_index) + "]";
+                        const json_value& channel = channels->array[channel_index];
+                        if (channel.type != json_value::string_kind)
+                        {
+                            add_message(fresh_result, ecg_json_type, channel_path, "channel must be a string");
+                            continue;
+                        }
+                        if (!seen_channels.insert(channel.string).second)
+                        {
+                            add_message(fresh_result, ecg_json_duplicate_tag, channel_path, "duplicate artifact channel");
+                            continue;
+                        }
+                        if (artifact_is_ecg(artifact.type))
+                        {
+                            if (channel.string == "all" || channel.string == "all_ecg")
+                            {
+                                if (artifact.affects_ecg())
+                                {
+                                    add_message(fresh_result, ecg_json_duplicate_tag, channel_path, "duplicate artifact channel");
+                                    continue;
+                                }
+                                for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
+                                    artifact.ecg_leads[lead] = true;
+                            }
+                            else
+                            {
+                                const int lead = clinical_lead_from_json_name(channel.string);
+                                if (lead < 0)
+                                    add_message(fresh_result, ecg_json_range, channel_path, "unknown ECG artifact channel");
+                                else if (artifact.ecg_leads[lead])
+                                    add_message(fresh_result, ecg_json_duplicate_tag, channel_path, "duplicate artifact channel");
+                                else
+                                    artifact.ecg_leads[lead] = true;
+                            }
+                        }
+                        else
+                        {
+                            if (channel.string == "all" || channel.string == "ppg_green")
+                            {
+                                if (artifact.ppg)
+                                {
+                                    add_message(fresh_result, ecg_json_duplicate_tag, channel_path, "duplicate artifact channel");
+                                    continue;
+                                }
+                                artifact.ppg = true;
+                            }
+                            else
+                                add_message(fresh_result, ecg_json_range, channel_path, "unknown PPG artifact channel");
+                        }
+                    }
+                    document.signal_quality.artifacts.push_back(artifact);
+                }
             }
         }
 

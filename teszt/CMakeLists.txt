@@ -39,6 +39,7 @@ signal_synth_add_test(ecg_episode_test ecg_episode_test.cpp TEST-ECG-EPISODE-001
 signal_synth_add_test(ecg_scenario_json_test ecg_scenario_json_test.cpp TEST-ECG-JSON-001)
 signal_synth_add_test(ecg_export_test ecg_export_test.cpp TEST-ECG-EXPORT-001)
 signal_synth_add_test(ppg_model_test ppg_model_test.cpp TEST-PPG-001)
+signal_synth_add_test(signal_quality_test signal_quality_test.cpp TEST-SIGNAL-QUALITY-001)
 
 add_test(
     NAME TEST-BUILD-001

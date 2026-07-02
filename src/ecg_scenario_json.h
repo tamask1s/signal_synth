@@ -2,6 +2,7 @@
 
 #include "ecg_scenario.h"
 #include "ppg_model.h"
+#include "signal_quality.h"
 
 #include <string>
 #include <vector>
@@ -45,6 +46,7 @@ namespace signal_synth
         double duration_seconds;
         ecg_qa_scenario ecg;
         ppg_config ppg;
+        signal_quality_config signal_quality;
 
         unsigned int sample_count() const;
     };

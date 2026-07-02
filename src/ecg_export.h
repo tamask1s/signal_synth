@@ -4,6 +4,7 @@
 #include "ecg_morphology.h"
 #include "ecg_scenario_json.h"
 #include "ppg_model.h"
+#include "signal_quality.h"
 
 #include <string>
 #include <vector>
@@ -18,6 +19,7 @@ namespace signal_synth
         unsigned int atrial_event_count;
         unsigned int fiducial_count;
         unsigned int episode_count;
+        unsigned int artifact_count;
         unsigned int rr_clipping_count;
         double mean_rr_seconds;
         double mean_heart_rate_bpm;
@@ -27,6 +29,9 @@ namespace signal_synth
         unsigned int ppg_pulse_count;
         double mean_ppg_onset_delay_seconds;
         double mean_ppg_peak_delay_seconds;
+        double total_artifact_seconds;
+        double ecg_artifact_seconds[clinical_lead_count];
+        double ppg_artifact_seconds;
     };
 
     struct ecg_render_bundle
@@ -38,6 +43,7 @@ namespace signal_synth
         ecg_scenario_report scenario_report;
         ecg_morphology_report morphology;
         ppg_record ppg;
+        signal_quality_waveforms signal_quality;
         ecg_ground_truth_metrics metrics;
     };
 

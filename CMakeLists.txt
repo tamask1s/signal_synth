@@ -12,7 +12,8 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/ecg_morphology.h
     src/ecg_scenario.h
     src/ecg_scenario_json.h
-    src/ecg_export.h)
+    src/ecg_export.h
+    src/signal_quality.h)
 list(APPEND SIGNAL_SYNTH_PUBLIC_HEADERS src/ppg_model.h)
 
 add_library(
@@ -24,7 +25,8 @@ add_library(
     src/ecg_morphology.cpp
     src/ecg_scenario.cpp
     src/ecg_scenario_json.cpp
-    src/ecg_export.cpp)
+    src/ecg_export.cpp
+    src/signal_quality.cpp)
 target_sources(signal_synth PRIVATE src/ppg_model.cpp)
 
 add_library(signal_synth::signal_synth ALIAS signal_synth)
