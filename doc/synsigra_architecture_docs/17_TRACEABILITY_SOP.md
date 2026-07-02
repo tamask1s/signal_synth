@@ -2,7 +2,7 @@
 
 **Document ID:** SYN-SOP-TRACE-001
 
-**Version:** 0.1
+**Version:** 0.2
 
 **Status:** Demonstration procedure
 
@@ -24,6 +24,10 @@ conformity-assessment suitability. Synsigra remains a non-medical engineering
 testbench under its current intended use.
 
 ## 2. Required workflow
+
+The short day-to-day checklist is also available at repository root in
+`WAY_OF_WORKING.md`. If the two documents diverge, this SOP is authoritative
+and `WAY_OF_WORKING.md` must be corrected.
 
 1. Create an issue before implementation.
 2. Assign a stable traceability ID such as `TRC-ECG-001`.
@@ -59,7 +63,7 @@ integration evidence, and unsupported claims.
 ## 4. Commit format
 
 Use an imperative or descriptive subject. Add one issue link per traceable
-work item in the commit body:
+work item in the commit body. The full URL form is mandatory:
 
 ```text
 feat(ecg): add deterministic scenario fingerprint
@@ -70,6 +74,12 @@ feat(ecg): add deterministic scenario fingerprint
 Multiple issue lines are allowed when a commit genuinely implements multiple
 approved work items. Avoid ambiguous forms such as only `#123` in repositories
 that participate in cross-repository traceability.
+
+Before pushing, inspect the commit range with `git log --format=fuller` or an
+equivalent command and verify that every traceable commit contains the required
+`[issue ...]` line. If a pushed history is rewritten to correct missing issue
+links, force-push intentionally and update any issue comments or evidence
+records that mention the replaced hashes.
 
 ## 5. Test and evidence IDs
 
