@@ -14,7 +14,7 @@
 
 **Implementation issue:** [signal_synth#25](https://github.com/tamask1s/signal_synth/issues/25)
 
-**Implementation commit:** `b298ca711b420644b99351893259a225e2b784b3`
+**Implementation commit:** `32a55d5e4a97fb1131a05632b4c46e1207376857`
 
 **Verified CI run:** [Verification 28596859164](https://github.com/tamask1s/signal_synth/actions/runs/28596859164)
 
