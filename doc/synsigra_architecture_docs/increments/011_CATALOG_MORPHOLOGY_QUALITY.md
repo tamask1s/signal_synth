@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-011
 
-**Version:** 0.2
+**Version:** 0.3
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Biosignal Algorithms / Verification
 
@@ -198,3 +198,29 @@ No external source code, patient waveform, or learned parameter set is copied.
 |---|---|---|
 | 0.1 | 2026-07-02 | Accepted design from the complete supported-phenotype morphology audit |
 | 0.2 | 2026-07-02 | Implemented catalog quality gate and CRBBB, CLBBB, and AFLT waveform corrections |
+| 0.3 | 2026-07-02 | Recorded release, sanitizer, visual-atlas, synchronization, and cross-platform CI evidence |
+
+## 14. Verification record
+
+- implementation commit:
+  [`682859e`](https://github.com/tamask1s/signal_synth/commit/682859e7a3acb30d87ce0dc9e3676f99a3c6fef7);
+- `CI-VER-001`:
+  [GitHub Actions run 28579593949](https://github.com/tamask1s/signal_synth/actions/runs/28579593949),
+  successful on Ubuntu and Windows C++11;
+- local release verification: 13/13 CTest suites passed, including package
+  smoke and CLI integration;
+- local ASan/UBSan verification: 12/12 applicable suites passed with package
+  smoke excluded and LeakSanitizer disabled because the execution environment
+  runs under `ptrace`;
+- `TEST-ECG-MORPH-QUALITY-001` passed all 66 supported condition variants and
+  compositions plus the sampled CRBBB, CLBBB, and AFLT lead contracts;
+- regenerated 12-lead beat atlases and ten-second rhythm strips confirmed the
+  corrected terminal forces, secondary T discordance, and continuous flutter
+  activity without introducing new visible discontinuities;
+- `clinical_ecg.cpp`, `ecg_scenario.cpp`, and `ecg_scenario.h` were
+  synchronized to the SVN-managed DataBrowser working copy and verified
+  byte-identical.
+
+The Windows DataBrowser application was not compiled in this environment.
+The local machine has no SVN client, so SVN status/commit verification remains
+external integration evidence.
