@@ -133,7 +133,7 @@ generation fingerprint remains an ECG-engine identity.
 
 ## Phenotype assertions
 
-Scenario engine version 5 evaluates requested supported conditions against the
+Scenario engine version 8 evaluates requested supported conditions against the
 generated record. Assertions use beat and atrial-event annotations, exact
 fiducials, multi-source VCG data, and measured 12-lead morphology rather than
 treating the requested label as proof that a phenotype was rendered.
@@ -141,7 +141,7 @@ treating the requested label as proof that a phenotype was rendered.
 The assertion set covers rhythm class, mean heart rate, RR variability, P-wave
 presence, atrial-to-ventricular ratio, ectopic origin/cadence/coupling, PR
 interval, dropped atrial events, Mobitz pattern, ventricular escape, QRS width,
-bundle-branch terminal-source polarity, QTc, pacing evidence, territorial Q
+bundle-branch terminal V1 polarity, QTc, pacing evidence, territorial Q
 amplitude/duration/lead count, low/high QRS voltage, ventricular/septal voltage
 phenotypes, V1 R/S ratio, P duration, and inferior P amplitude. Each report
 entry contains the owning condition, assertion code, measured value, accepted

@@ -425,8 +425,8 @@ namespace signal_synth
                 clinical_atrial_event atrial = {};
                 atrial.atrial_index = atrial_index;
                 atrial.onset_time_seconds = onset;
-                atrial.peak_time_seconds = onset + 0.030;
-                atrial.offset_time_seconds = onset + 0.060;
+                atrial.peak_time_seconds = onset + 0.73 * atrial_period;
+                atrial.offset_time_seconds = onset + atrial_period;
                 atrial.visible = true;
                 atrial.conducted = conducted;
                 atrial.linked_ventricular_index = conducted ? static_cast<long long>(output.beats.size()) : -1;
@@ -554,7 +554,7 @@ namespace signal_synth
                     continue;
                 double amplitude = config.morphology.p_amplitude_mv;
                 if (config.rhythm.rhythm == clinical_rhythm_atrial_flutter)
-                    amplitude *= 0.6;
+                    amplitude *= -0.8;
                 render_compact_wave(sources[clinical_source_atrial], output.sampling_rate_hz, atrial.onset_time_seconds, atrial.peak_time_seconds, atrial.offset_time_seconds, source_vector(config, clinical_source_atrial, amplitude, config.morphology.p_axis_degrees, config.morphology.p_elevation_degrees));
             }
             for (const clinical_beat_annotation& beat : output.beats)
@@ -571,13 +571,14 @@ namespace signal_synth
                     septal_axis += 180.0;
                     ventricular_axis -= 35.0;
                     terminal_axis -= 55.0;
-                    q_amplitude = std::fabs(q_amplitude) * 0.25;
+                    q_amplitude = 0.0;
                     r_amplitude *= 1.05;
-                    s_amplitude *= 0.65;
+                    s_amplitude = std::fabs(s_amplitude) * 0.80;
+                    t_amplitude *= -1.0;
                 }
                 else if (beat.intraventricular_conduction == clinical_iv_rbbb)
                 {
-                    terminal_axis += 95.0;
+                    terminal_axis -= 45.0;
                     s_amplitude *= 1.8;
                 }
                 if (beat.origin == clinical_origin_pvc || beat.origin == clinical_origin_ventricular_escape || beat.origin == clinical_origin_vt || beat.origin == clinical_origin_paced)

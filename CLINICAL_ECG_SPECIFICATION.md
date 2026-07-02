@@ -34,6 +34,12 @@ the sinus/atrial timeline. Non-sinus rhythm plus an AV-block mode, and
 non-sinus rhythm plus a periodic sinus scenario, are rejected instead of being
 silently ignored.
 
+Typical atrial flutter uses adjacent asymmetric F waves spanning the complete
+atrial cycle. The slow deflection occupies 73% of the cycle, the return 27%,
+and adjacent offset/onset times coincide. The default source polarity produces
+continuous predominantly negative flutter activity in the inferior leads,
+without a finite isoelectric interval.
+
 ## Timing
 
 PR is measured from P onset to QRS onset. Q, R, and S construction times are
@@ -81,6 +87,12 @@ projection; deliberately changing a derived limb-lead gain therefore models a
 calibration difference and no longer preserves the ideal algebraic identity.
 The chest-lead model is not a geometric torso or electrode simulation.
 
+Complete RBBB delays terminal activation toward a positive V1 terminal force
+and negative I/V6 terminal forces while retaining right-precordial secondary
+T-wave discordance. Complete LBBB suppresses the lateral initial q, keeps
+delayed activation negative in V1 and positive in I/V5/V6, and reverses the
+ordinary repolarization vector to produce secondary QRS-T discordance.
+
 ## Fiducials
 
 Construction fiducials have `lead_index == -1` and record the exact configured
@@ -116,7 +128,7 @@ survive projection.
 The engine provides known-by-construction test inputs and annotations for
 detector, storage, visualization, and processing validation. Current limitations
 include no population-fitted parameter distribution, no torso volume conductor,
-no ischemia/infarct territory model, no respiratory axis motion, no
+no mechanistic ischemia/infarct electrophysiology, no respiratory axis motion, no
 electromechanical coupling, and no calibrated acquisition artifact layer. The
 seven components are engineering source abstractions, not anatomically resolved
 dipoles. These limitations preclude clinical-representation claims.

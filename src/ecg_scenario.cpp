@@ -16,7 +16,7 @@ namespace signal_synth
     namespace
     {
         const unsigned int SCENARIO_SCHEMA_VERSION = 2;
-        const unsigned int SCENARIO_ENGINE_VERSION = 7;
+        const unsigned int SCENARIO_ENGINE_VERSION = 8;
         const unsigned long long DEFAULT_SEED = 0x5343454e4152494fULL;
         const ecg_condition_code NO_CONDITION = ecg_condition_count;
 
@@ -1224,11 +1224,11 @@ namespace signal_synth
             return std::sqrt(variance / record.beat_count());
         }
 
-        double terminal_source_polarity(const clinical_ecg_record& record)
+        double terminal_v1_polarity(const clinical_ecg_record& record)
         {
             const clinical_beat_annotation* beats = record.beats();
-            const double* terminal_x = record.source_data(clinical_source_terminal, clinical_axis_x);
-            if (!beats || !terminal_x || record.beat_count() == 0)
+            const double* v1 = record.lead_data(clinical_lead_v1);
+            if (!beats || !v1 || record.beat_count() == 0)
                 return 0.0;
             double sum = 0.0;
             unsigned int count = 0;
@@ -1237,7 +1237,7 @@ namespace signal_synth
                 const unsigned long long sample = static_cast<unsigned long long>(std::llround(beats[index].s_peak_time_seconds * record.sampling_rate_hz()));
                 if (sample < record.sample_count())
                 {
-                    sum += terminal_x[sample];
+                    sum += v1[sample];
                     ++count;
                 }
             }
@@ -1718,11 +1718,11 @@ namespace signal_synth
                     break;
                 case ecg_condition_crbbb:
                     add_assertion(report, requested.code, ecg_assert_qrs_duration, mean_annotation_value(record, ecg_assert_qrs_duration), 0.13, 0.5, "wide QRS", "s");
-                    add_assertion(report, requested.code, ecg_assert_terminal_source_polarity, terminal_source_polarity(record), 0.000001, 10.0, "rightward terminal source", "mV");
+                    add_assertion(report, requested.code, ecg_assert_terminal_v1_polarity, terminal_v1_polarity(record), 0.000001, 10.0, "positive terminal V1 force", "mV");
                     break;
                 case ecg_condition_clbbb:
                     add_assertion(report, requested.code, ecg_assert_qrs_duration, mean_annotation_value(record, ecg_assert_qrs_duration), 0.14, 0.5, "wide QRS", "s");
-                    add_assertion(report, requested.code, ecg_assert_terminal_source_polarity, terminal_source_polarity(record), -10.0, -0.000001, "leftward terminal source", "mV");
+                    add_assertion(report, requested.code, ecg_assert_terminal_v1_polarity, terminal_v1_polarity(record), -10.0, -0.000001, "negative terminal V1 force", "mV");
                     break;
                 case ecg_condition_lngqt:
                     add_assertion(report, requested.code, ecg_assert_qtc_interval, mean_annotation_value(record, ecg_assert_qtc_interval), 0.44, 2.0, "prolonged QTc", "s");
