@@ -45,6 +45,18 @@ Implementation increment designs:
   terminal-QRS, ST, and T source transitions.
 - `increments/010_DATABROWSER_FIXED_LABEL_SAFETY.md` corrects fixed-label
   buffer overflow in the Windows DataBrowser adapter.
+- `increments/011_CATALOG_MORPHOLOGY_QUALITY.md` records the catalog-wide ECG
+  morphology quality correction.
+- `increments/012_ADVANCED_CONDUCTION_PHENOTYPES.md` defines advanced
+  conduction phenotype coverage.
+- `increments/013_EPISODE_TIMELINE_SVARR_PSVT.md` defines reproducible
+  PSVT/SVARR episode timelines.
+- `increments/014_DATABROWSER_ZAX_GCC49_COMPATIBILITY.md` records the
+  DataBrowser ZAX/GCC 4.9 adapter compatibility correction.
+- `increments/015_ACQUISITION_ARTIFACT_SIGNAL_QUALITY_PACK.md` defines the
+  acquisition artifact and signal-quality pack.
+- `increments/016_SCENARIO_PACK_BATCH_QA.md` defines scenario-pack manifests,
+  batch CLI rendering, and curated QA packs.
 
 Traceability demonstration:
 

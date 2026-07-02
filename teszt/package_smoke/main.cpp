@@ -4,9 +4,12 @@
 #include <signal_synth/ecg_morphology.h>
 #include <signal_synth/ecg_scenario.h>
 #include <signal_synth/ecg_scenario_json.h>
+#include <signal_synth/ecg_pack.h>
 #include <signal_synth/signal_synth.h>
 #include <signal_synth/ppg_model.h>
 #include <signal_synth/signal_quality.h>
+
+#include <string>
 
 int main()
 {
@@ -20,6 +23,8 @@ int main()
     signal_synth::ecg_scenario_engine engine;
     signal_synth::ecg_scenario_document document;
     signal_synth::ecg_scenario_json_result json_result;
+    signal_synth::ecg_pack_manifest pack;
+    signal_synth::ecg_pack_json_result pack_result;
     signal_synth::ppg_config ppg;
     signal_synth::signal_quality_artifact_config artifact;
 
@@ -33,6 +38,18 @@ int main()
         return 4;
     if (!signal_synth::write_ecg_scenario_json(document, json_result))
         return 5;
+    pack.pack_id = "smoke_pack";
+    pack.name = "Smoke Pack";
+    pack.version = "1";
+    pack.description = "Package smoke pack";
+    pack.targets.push_back("smoke");
+    signal_synth::ecg_pack_scenario pack_scenario;
+    pack_scenario.id = "clean";
+    pack_scenario.path = "ecg_clean.json";
+    pack_scenario.targets.push_back("smoke");
+    pack.scenarios.push_back(pack_scenario);
+    if (!signal_synth::write_ecg_pack_json(pack, pack_result))
+        return 9;
     if (std::string(signal_synth::signal_synth_generator_version()).empty())
         return 6;
     if (ppg.pulse_delay_ms <= 0.0)

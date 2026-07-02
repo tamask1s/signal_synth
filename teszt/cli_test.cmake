@@ -1,4 +1,4 @@
-if(NOT DEFINED SIGNAL_SYNTH_CLI OR NOT DEFINED SIGNAL_SYNTH_EXAMPLE OR NOT DEFINED SIGNAL_SYNTH_PPG_EXAMPLE OR NOT DEFINED SIGNAL_SYNTH_CLI_WORK_DIR)
+if(NOT DEFINED SIGNAL_SYNTH_CLI OR NOT DEFINED SIGNAL_SYNTH_EXAMPLE OR NOT DEFINED SIGNAL_SYNTH_PPG_EXAMPLE OR NOT DEFINED SIGNAL_SYNTH_PACK_EXAMPLE OR NOT DEFINED SIGNAL_SYNTH_CLI_WORK_DIR)
     message(FATAL_ERROR "CLI test paths are not configured")
 endif()
 
@@ -55,6 +55,17 @@ endif()
 file(STRINGS "${ppg_render_dir}/waveform.csv" ppg_csv_header LIMIT_COUNT 1)
 if(NOT ppg_csv_header MATCHES "ppg_green_au$")
     message(FATAL_ERROR "CLI ECG/PPG export has no PPG channel")
+endif()
+
+execute_process(COMMAND "${SIGNAL_SYNTH_CLI}" pack validate "${SIGNAL_SYNTH_PACK_EXAMPLE}" RESULT_VARIABLE pack_validate_result OUTPUT_VARIABLE pack_validate_output ERROR_VARIABLE pack_validate_error)
+if(NOT pack_validate_result EQUAL 0 OR NOT pack_validate_error STREQUAL "" OR NOT pack_validate_output MATCHES "^status=valid")
+    message(FATAL_ERROR "Pack validation failed: ${pack_validate_error}")
+endif()
+
+set(pack_render_dir "${SIGNAL_SYNTH_CLI_WORK_DIR}/pack_render")
+execute_process(COMMAND "${SIGNAL_SYNTH_CLI}" pack render "${SIGNAL_SYNTH_PACK_EXAMPLE}" --out "${pack_render_dir}" RESULT_VARIABLE pack_render_result OUTPUT_VARIABLE pack_render_output ERROR_VARIABLE pack_render_error)
+if(NOT pack_render_result EQUAL 0 OR NOT pack_render_error STREQUAL "" OR NOT pack_render_output MATCHES "^status=pack-rendered" OR NOT EXISTS "${pack_render_dir}/summary.json" OR NOT EXISTS "${pack_render_dir}/summary.csv" OR NOT EXISTS "${pack_render_dir}/index.html")
+    message(FATAL_ERROR "Pack render failed: ${pack_render_error}")
 endif()
 
 set(large_file "${SIGNAL_SYNTH_CLI_WORK_DIR}/large.json")

@@ -1,0 +1,110 @@
+#include "../src/ecg_export.h"
+#include "../src/ecg_pack.h"
+#include "../src/ecg_scenario_json.h"
+
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
+
+namespace
+{
+    bool check(bool condition, const char* name)
+    {
+        if (!condition)
+            std::cerr << "FAIL: " << name << '\n';
+        return condition;
+    }
+
+    std::string read_file(const std::string& path)
+    {
+        std::ifstream file(path.c_str(), std::ios::in | std::ios::binary);
+        std::stringstream buffer;
+        buffer << file.rdbuf();
+        return buffer.str();
+    }
+
+    std::string dirname(const std::string& path)
+    {
+        const std::string::size_type slash = path.find_last_of("/\\");
+        return slash == std::string::npos ? "." : path.substr(0, slash);
+    }
+
+    std::string join(const std::string& left, const std::string& right)
+    {
+        if (left.empty() || left == ".")
+            return right;
+        return left + "/" + right;
+    }
+}
+
+int main()
+{
+    bool ok = true;
+    signal_synth::ecg_pack_manifest typed;
+    typed.pack_id = "typed_pack";
+    typed.name = "Typed Pack";
+    typed.version = "1";
+    typed.description = "Typed pack manifest";
+    typed.targets.push_back("r_peak");
+    signal_synth::ecg_pack_scenario scenario;
+    scenario.id = "clean";
+    scenario.path = "../scenarios/ecg_clean.json";
+    scenario.targets.push_back("r_peak");
+    typed.scenarios.push_back(scenario);
+
+    signal_synth::ecg_pack_json_result typed_result;
+    signal_synth::ecg_pack_manifest roundtrip;
+    signal_synth::ecg_pack_json_result roundtrip_result;
+    ok &= check(signal_synth::write_ecg_pack_json(typed, typed_result) && typed_result.pack_fingerprint.find("sha256:") == 0, "typed_pack_write");
+    ok &= check(signal_synth::parse_ecg_pack_json(typed_result.canonical_json, roundtrip, roundtrip_result) && roundtrip.pack_id == typed.pack_id && roundtrip_result.pack_fingerprint == typed_result.pack_fingerprint, "typed_pack_roundtrip");
+
+    signal_synth::ecg_pack_manifest duplicate = typed;
+    duplicate.scenarios.push_back(scenario);
+    signal_synth::ecg_pack_json_result duplicate_result;
+    ok &= check(!signal_synth::write_ecg_pack_json(duplicate, duplicate_result) && !duplicate_result.messages.empty() && duplicate_result.messages[0].code == signal_synth::ecg_pack_json_duplicate_id, "duplicate_scenario_id_rejected");
+
+    const char* packs[] = {
+        "../examples/packs/r_peak_stress_v1.json",
+        "../examples/packs/hrv_v1.json",
+        "../examples/packs/ppg_alignment_v1.json",
+        "../examples/packs/signal_quality_v1.json",
+        "../examples/packs/combined_worst_case_v1.json"
+    };
+    unsigned int total_pack_scenarios = 0;
+    unsigned int rendered_scenarios = 0;
+    unsigned int artifact_scenarios = 0;
+    unsigned int ppg_scenarios = 0;
+    for (unsigned int pack_index = 0; pack_index < sizeof(packs) / sizeof(packs[0]); ++pack_index)
+    {
+        std::string pack_path = packs[pack_index];
+        if (read_file(pack_path).empty())
+            pack_path = std::string("../../") + std::string(packs[pack_index]).substr(3);
+        const std::string pack_json = read_file(pack_path);
+        signal_synth::ecg_pack_manifest pack;
+        signal_synth::ecg_pack_json_result pack_result;
+        ok &= check(!pack_json.empty() && signal_synth::parse_ecg_pack_json(pack_json, pack, pack_result) && pack.scenarios.size() == 4, "curated_pack_parses");
+        total_pack_scenarios += static_cast<unsigned int>(pack.scenarios.size());
+        for (std::size_t scenario_index = 0; scenario_index < pack.scenarios.size(); ++scenario_index)
+        {
+            const std::string scenario_path = join(dirname(pack_path), pack.scenarios[scenario_index].path);
+            signal_synth::ecg_scenario_document document;
+            signal_synth::ecg_scenario_json_result scenario_result;
+            signal_synth::ecg_render_bundle render;
+            signal_synth::ecg_export_result export_result;
+            const std::string scenario_json = read_file(scenario_path);
+            ok &= check(!scenario_json.empty() && signal_synth::parse_ecg_scenario_json(scenario_json, document, scenario_result) && signal_synth::render_ecg_document(document, render, export_result), "curated_pack_scenario_renders");
+            if (render.record.sample_count())
+                ++rendered_scenarios;
+            if (render.metrics.artifact_count)
+                ++artifact_scenarios;
+            if (render.metrics.ppg_pulse_count)
+                ++ppg_scenarios;
+        }
+    }
+    ok &= check(total_pack_scenarios >= 20 && rendered_scenarios == total_pack_scenarios, "curated_pack_has_20_rendered_scenarios");
+    ok &= check(artifact_scenarios >= 5 && ppg_scenarios >= 5, "curated_pack_covers_artifacts_and_ppg");
+
+    return ok ? 0 : 1;
+}

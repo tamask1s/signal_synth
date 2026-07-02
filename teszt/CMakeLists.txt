@@ -40,6 +40,7 @@ signal_synth_add_test(ecg_scenario_json_test ecg_scenario_json_test.cpp TEST-ECG
 signal_synth_add_test(ecg_export_test ecg_export_test.cpp TEST-ECG-EXPORT-001)
 signal_synth_add_test(ppg_model_test ppg_model_test.cpp TEST-PPG-001)
 signal_synth_add_test(signal_quality_test signal_quality_test.cpp TEST-SIGNAL-QUALITY-001)
+signal_synth_add_test(ecg_pack_test ecg_pack_test.cpp TEST-ECG-PACK-001)
 
 add_test(
     NAME TEST-BUILD-001
@@ -60,6 +61,7 @@ if(TARGET signal_synth_cli)
             -DSIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>
             -DSIGNAL_SYNTH_EXAMPLE=${CMAKE_CURRENT_SOURCE_DIR}/../examples/scenarios/ecg_clean.json
             -DSIGNAL_SYNTH_PPG_EXAMPLE=${CMAKE_CURRENT_SOURCE_DIR}/../examples/scenarios/ecg_ppg_clean.json
+            -DSIGNAL_SYNTH_PACK_EXAMPLE=${CMAKE_CURRENT_SOURCE_DIR}/../examples/packs/r_peak_stress_v1.json
             -DSIGNAL_SYNTH_CLI_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/cli_test_work
             -P ${CMAKE_CURRENT_SOURCE_DIR}/cli_test.cmake)
 endif()
