@@ -65,6 +65,12 @@ int main()
     signal_synth::ecg_pack_json_result duplicate_result;
     ok &= check(!signal_synth::write_ecg_pack_json(duplicate, duplicate_result) && !duplicate_result.messages.empty() && duplicate_result.messages[0].code == signal_synth::ecg_pack_json_duplicate_id, "duplicate_scenario_id_rejected");
 
+    signal_synth::ecg_pack_manifest invalid_target = typed;
+    invalid_target.targets.push_back("");
+    invalid_target.scenarios[0].targets.push_back("r_peak");
+    signal_synth::ecg_pack_json_result invalid_target_result;
+    ok &= check(!signal_synth::write_ecg_pack_json(invalid_target, invalid_target_result) && !invalid_target_result.messages.empty(), "invalid_or_duplicate_targets_rejected");
+
     const char* packs[] = {
         "../examples/packs/r_peak_stress_v1.json",
         "../examples/packs/hrv_v1.json",
@@ -105,6 +111,16 @@ int main()
     }
     ok &= check(total_pack_scenarios >= 20 && rendered_scenarios == total_pack_scenarios, "curated_pack_has_20_rendered_scenarios");
     ok &= check(artifact_scenarios >= 5 && ppg_scenarios >= 5, "curated_pack_covers_artifacts_and_ppg");
+
+    std::ifstream script("../examples/databrowser/076_ECG_Scenario_Pack_Batch_QA.txt");
+    if (!script.good())
+    {
+        script.clear();
+        script.open("../../examples/databrowser/076_ECG_Scenario_Pack_Batch_QA.txt");
+    }
+    std::stringstream script_stream;
+    script_stream << script.rdbuf();
+    ok &= check(script.good() && script_stream.str().find("GenerateECGScenarioJSON") != std::string::npos && script_stream.str().find("pack_combined_quality") != std::string::npos, "databrowser_pack_preview_script_present");
 
     return ok ? 0 : 1;
 }

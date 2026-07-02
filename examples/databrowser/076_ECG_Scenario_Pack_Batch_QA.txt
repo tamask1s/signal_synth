@@ -1,0 +1,214 @@
+// Scenario pack and batch-QA preview.
+// The CLI renders complete packs to directories; this script visualizes representative pack cases in DataBrowser.
+// annotation_output: 1 markers, 2 annotation channels, 3 none.
+
+#define OUTPUT_BASE ecg_scenario_pack_batch_qa
+
+DataDelete();
+
+GenerateECGScenarioJSON(pack_rpeak_clean, {
+  "schema_version": 2,
+  "scenario_id": "rpeak_clean_70",
+  "name": "R-peak clean baseline 70 bpm",
+  "description": "Clean deterministic ECG baseline for R-peak detector sanity checks.",
+  "author": "Synsigra",
+  "tags": ["pack", "r_peak", "clean"],
+  "duration_seconds": 20,
+  "sample_rate_hz": 500,
+  "seed": 2001,
+  "ecg": {
+    "heart_rate_bpm": 70,
+    "rr_variability_seconds": 0,
+    "ectopic_every_n_beats": 0,
+    "second_degree_av_pattern": "unspecified",
+    "q_wave_territory": "unspecified",
+    "episode_type": "none",
+    "episode_start_seconds": 2,
+    "episode_duration_seconds": 4,
+    "episode_rate_bpm": 170,
+    "fidelity_policy": "allow_parameterized",
+    "conditions": [{"code": "NORM", "severity": 1}]
+  },
+  "ppg": {
+    "enabled": false,
+    "pulse_delay_ms": 180,
+    "rise_time_ms": 120,
+    "decay_time_ms": 300,
+    "amplitude_au": 1,
+    "baseline_au": 0,
+    "dicrotic_delay_ms": 180,
+    "dicrotic_width_ms": 80,
+    "dicrotic_amplitude_ratio": 0.15
+  }
+}, 2);
+
+GenerateECGScenarioJSON(pack_hrv_high, {
+  "schema_version": 2,
+  "scenario_id": "hrv_high_variability",
+  "name": "HRV high variability",
+  "description": "Higher deterministic RR variability for HRV stress metrics.",
+  "author": "Synsigra",
+  "tags": ["pack", "hrv"],
+  "duration_seconds": 40,
+  "sample_rate_hz": 500,
+  "seed": 2102,
+  "ecg": {
+    "heart_rate_bpm": 72,
+    "rr_variability_seconds": 0.06,
+    "ectopic_every_n_beats": 0,
+    "second_degree_av_pattern": "unspecified",
+    "q_wave_territory": "unspecified",
+    "episode_type": "none",
+    "episode_start_seconds": 2,
+    "episode_duration_seconds": 4,
+    "episode_rate_bpm": 170,
+    "fidelity_policy": "allow_parameterized",
+    "conditions": [{"code": "NORM", "severity": 1}]
+  },
+  "ppg": {
+    "enabled": false,
+    "pulse_delay_ms": 180,
+    "rise_time_ms": 120,
+    "decay_time_ms": 300,
+    "amplitude_au": 1,
+    "baseline_au": 0,
+    "dicrotic_delay_ms": 180,
+    "dicrotic_width_ms": 80,
+    "dicrotic_amplitude_ratio": 0.15
+  }
+}, 2);
+
+GenerateECGScenarioJSON(pack_ppg_long_delay, {
+  "schema_version": 2,
+  "scenario_id": "ppg_delay_260",
+  "name": "PPG long delay 260 ms",
+  "description": "Linked ECG and PPG with longer pulse transit delay.",
+  "author": "Synsigra",
+  "tags": ["pack", "ppg", "delay"],
+  "duration_seconds": 20,
+  "sample_rate_hz": 500,
+  "seed": 2202,
+  "ecg": {
+    "heart_rate_bpm": 70,
+    "rr_variability_seconds": 0.015,
+    "ectopic_every_n_beats": 0,
+    "second_degree_av_pattern": "unspecified",
+    "q_wave_territory": "unspecified",
+    "episode_type": "none",
+    "episode_start_seconds": 2,
+    "episode_duration_seconds": 4,
+    "episode_rate_bpm": 170,
+    "fidelity_policy": "allow_parameterized",
+    "conditions": [{"code": "NORM", "severity": 1}]
+  },
+  "ppg": {
+    "enabled": true,
+    "pulse_delay_ms": 260,
+    "rise_time_ms": 130,
+    "decay_time_ms": 330,
+    "amplitude_au": 1,
+    "baseline_au": 0,
+    "dicrotic_delay_ms": 200,
+    "dicrotic_width_ms": 80,
+    "dicrotic_amplitude_ratio": 0.15
+  }
+}, 2);
+
+GenerateECGScenarioJSON(pack_sq_dropout_saturation, {
+  "schema_version": 2,
+  "scenario_id": "sq_dropout_saturation",
+  "name": "Signal quality dropout and saturation",
+  "description": "ECG channel dropout and saturation intervals for signal-quality algorithms.",
+  "author": "Synsigra",
+  "tags": ["pack", "signal_quality", "artifact"],
+  "duration_seconds": 30,
+  "sample_rate_hz": 500,
+  "seed": 2302,
+  "ecg": {
+    "heart_rate_bpm": 72,
+    "rr_variability_seconds": 0.01,
+    "ectopic_every_n_beats": 0,
+    "second_degree_av_pattern": "unspecified",
+    "q_wave_territory": "unspecified",
+    "episode_type": "none",
+    "episode_start_seconds": 2,
+    "episode_duration_seconds": 4,
+    "episode_rate_bpm": 170,
+    "fidelity_policy": "allow_parameterized",
+    "conditions": [{"code": "NORM", "severity": 1}]
+  },
+  "ppg": {
+    "enabled": false,
+    "pulse_delay_ms": 180,
+    "rise_time_ms": 120,
+    "decay_time_ms": 300,
+    "amplitude_au": 1,
+    "baseline_au": 0,
+    "dicrotic_delay_ms": 180,
+    "dicrotic_width_ms": 80,
+    "dicrotic_amplitude_ratio": 0.15
+  },
+  "artifacts": [
+    {"type": "ecg_dropout", "start_seconds": 8, "duration_seconds": 1.5, "severity": 0.9, "seed": 23021, "channels": ["V2", "V3"]},
+    {"type": "ecg_saturation", "start_seconds": 18, "duration_seconds": 1.3, "severity": 0.8, "seed": 23022, "channels": ["II", "V5"]}
+  ]
+}, 2);
+
+GenerateECGScenarioJSON(pack_combined_quality, {
+  "schema_version": 2,
+  "scenario_id": "combined_ecg_ppg_quality",
+  "name": "Combined ECG PPG quality stress",
+  "description": "Combined ECG artifacts and PPG dropout for multimodal wearable QA.",
+  "author": "Synsigra",
+  "tags": ["pack", "combined", "ppg", "signal_quality"],
+  "duration_seconds": 30,
+  "sample_rate_hz": 500,
+  "seed": 2401,
+  "ecg": {
+    "heart_rate_bpm": 76,
+    "rr_variability_seconds": 0.035,
+    "ectopic_every_n_beats": 0,
+    "second_degree_av_pattern": "unspecified",
+    "q_wave_territory": "unspecified",
+    "episode_type": "none",
+    "episode_start_seconds": 2,
+    "episode_duration_seconds": 4,
+    "episode_rate_bpm": 170,
+    "fidelity_policy": "allow_parameterized",
+    "conditions": [{"code": "NORM", "severity": 1}]
+  },
+  "ppg": {
+    "enabled": true,
+    "pulse_delay_ms": 220,
+    "rise_time_ms": 130,
+    "decay_time_ms": 330,
+    "amplitude_au": 1,
+    "baseline_au": 0,
+    "dicrotic_delay_ms": 200,
+    "dicrotic_width_ms": 85,
+    "dicrotic_amplitude_ratio": 0.12
+  },
+  "artifacts": [
+    {"type": "ecg_baseline_wander", "start_seconds": 2, "duration_seconds": 20, "severity": 0.45, "seed": 24011, "channels": ["all_ecg"]},
+    {"type": "ecg_emg_noise", "start_seconds": 12, "duration_seconds": 4, "severity": 0.6, "seed": 24012, "channels": ["I", "II", "V2", "V5"]},
+    {"type": "ppg_dropout", "start_seconds": 9, "duration_seconds": 1.6, "severity": 0.85, "seed": 24013, "channels": ["ppg_green"]}
+  ]
+}, 2);
+
+SaveVarToFile(pack_rpeak_clean, CatStrings(OUTPUT_BASE, _rpeak_clean, .bin), 100, 8);
+SaveVarToFile(pack_hrv_high, CatStrings(OUTPUT_BASE, _hrv_high, .bin), 100, 8);
+SaveVarToFile(pack_ppg_long_delay, CatStrings(OUTPUT_BASE, _ppg_long_delay, .bin), 100, 8);
+SaveVarToFile(pack_sq_dropout_saturation, CatStrings(OUTPUT_BASE, _sq_dropout_saturation, .bin), 100, 8);
+SaveVarToFile(pack_combined_quality, CatStrings(OUTPUT_BASE, _combined_quality, .bin), 100, 8);
+
+DisplayData(pack_rpeak_clean, fit_width,, A2, 001);
+DisplayData(pack_hrv_high, fit_width,, A2, 001);
+DisplayData(pack_ppg_long_delay, fit_width,, A2, 001);
+DisplayData(pack_sq_dropout_saturation, fit_width,, A2, 001);
+DisplayData(pack_combined_quality, fit_width,, A2, 001);
+
+SavePic(pack_rpeak_clean, CatStrings(OUTPUT_BASE, _rpeak_clean, .gif));
+SavePic(pack_hrv_high, CatStrings(OUTPUT_BASE, _hrv_high, .gif));
+SavePic(pack_ppg_long_delay, CatStrings(OUTPUT_BASE, _ppg_long_delay, .gif));
+SavePic(pack_sq_dropout_saturation, CatStrings(OUTPUT_BASE, _sq_dropout_saturation, .gif));
+SavePic(pack_combined_quality, CatStrings(OUTPUT_BASE, _combined_quality, .gif));

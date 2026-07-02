@@ -262,6 +262,24 @@ namespace
         return true;
     }
 
+    void validate_target_list(signal_synth::ecg_pack_json_result& result, const std::string& path, const std::vector<std::string>& targets)
+    {
+        if (targets.empty())
+        {
+            add_message(result, signal_synth::ecg_pack_json_range, path, "at least one target is required");
+            return;
+        }
+        std::set<std::string> unique_targets;
+        for (std::size_t i = 0; i < targets.size(); ++i)
+        {
+            const std::string item_path = path + "[" + json_index(i) + "]";
+            if (!safe_id(targets[i]))
+                add_message(result, signal_synth::ecg_pack_json_range, item_path, "target must be a safe identifier");
+            else if (!unique_targets.insert(targets[i]).second)
+                add_message(result, signal_synth::ecg_pack_json_duplicate_id, item_path, "duplicate target");
+        }
+    }
+
     bool allowed_fields(const json_value& object, const char* const* names, std::size_t count, const std::string& path, signal_synth::ecg_pack_json_result& result)
     {
         bool ok = true;
@@ -440,8 +458,7 @@ namespace signal_synth
             add_message(fresh, ecg_pack_json_range, "$.name", "name must contain 1 to 256 characters");
         if (manifest.version.empty() || manifest.version.size() > 64)
             add_message(fresh, ecg_pack_json_range, "$.version", "version must contain 1 to 64 characters");
-        if (manifest.targets.empty())
-            add_message(fresh, ecg_pack_json_range, "$.targets", "at least one pack target is required");
+        validate_target_list(fresh, "$.targets", manifest.targets);
         if (manifest.scenarios.empty())
             add_message(fresh, ecg_pack_json_range, "$.scenarios", "at least one scenario is required");
         std::set<std::string> ids;
@@ -455,8 +472,7 @@ namespace signal_synth
                 add_message(fresh, ecg_pack_json_duplicate_id, path + ".id", "duplicate scenario id");
             if (scenario.path.empty())
                 add_message(fresh, ecg_pack_json_range, path + ".path", "scenario path is required");
-            if (scenario.targets.empty())
-                add_message(fresh, ecg_pack_json_range, path + ".targets", "at least one scenario target is required");
+            validate_target_list(fresh, path + ".targets", scenario.targets);
         }
         if (!fresh.messages.empty())
         {

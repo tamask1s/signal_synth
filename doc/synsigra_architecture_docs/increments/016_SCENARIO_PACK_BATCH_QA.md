@@ -2,7 +2,7 @@
 
 **Document ID:** SYN-ARCH-INC-016
 
-**Version:** 0.2
+**Version:** 0.3
 
 **Status:** Verified
 
@@ -116,8 +116,14 @@ must not be marketed as diagnostic coverage.
 ## 6. DataBrowser and SVN Integration
 
 This increment is primarily CLI/library-facing. It does not require a new
-DataBrowser API because existing DataBrowser scripts visualize individual
-scenario features.
+DataBrowser batch API because the Windows adapter function model creates named
+DataBrowser variables, while pack render creates a directory of multiple
+scenario exports and root summary files.
+
+Add DataBrowser preview script `076_ECG_Scenario_Pack_Batch_QA.txt`. The script
+uses the existing `GenerateECGScenarioJSON` API to visualize representative v1
+pack cases for R-peak, HRV, PPG alignment, signal quality, and combined
+ECG/PPG quality stress.
 
 The portable pack source files may be copied into the SVN ecosystem for source
 parity, but existing `SignalProc_RSPT.cpp` does not need to call the pack API
@@ -181,3 +187,4 @@ Verified on 2026-07-02 with:
 |---|---|---|
 | 0.1 | 2026-07-02 | Proposed and implemented scenario pack and batch QA package v1 |
 | 0.2 | 2026-07-02 | Verified local release/sanitizer tests, CI, and DataBrowser source synchronization |
+| 0.3 | 2026-07-02 | Added DataBrowser pack-preview script and stricter target validation |
