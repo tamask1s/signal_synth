@@ -104,6 +104,17 @@ namespace
         return "unknown";
     }
 
+    const char* episode_kind_name(signal_synth::clinical_episode_kind value)
+    {
+        switch (value)
+        {
+        case signal_synth::clinical_episode_none: return "none";
+        case signal_synth::clinical_episode_psvt: return "psvt";
+        case signal_synth::clinical_episode_svarr: return "svarr";
+        }
+        return "unknown";
+    }
+
     const char* assertion_status_name(signal_synth::ecg_phenotype_assertion_status value)
     {
         switch (value)
@@ -121,6 +132,7 @@ namespace
         metrics.beat_count = record.beat_count();
         metrics.atrial_event_count = record.atrial_event_count();
         metrics.fiducial_count = record.fiducial_count();
+        metrics.episode_count = record.episode_count();
         if (!record.beat_count())
             return metrics;
 
@@ -264,6 +276,21 @@ namespace
                    << ",\"amplitude_mv\":" << fiducial.amplitude_mv
                    << ",\"present\":" << boolean(fiducial.present) << '}';
         }
+        output << "],\"episodes\":[";
+        for (unsigned int i = 0; i < render.record.episode_count(); ++i)
+        {
+            if (i)
+                output << ',';
+            const signal_synth::clinical_episode_annotation& episode = render.record.episodes()[i];
+            output << "{\"kind\":" << json_string(episode_kind_name(episode.kind))
+                   << ",\"start_seconds\":" << episode.start_time_seconds
+                   << ",\"end_seconds\":" << episode.end_time_seconds
+                   << ",\"first_beat_index\":" << episode.first_beat_index
+                   << ",\"last_beat_index\":" << episode.last_beat_index
+                   << ",\"start_sample_index\":" << episode.start_sample_index
+                   << ",\"end_sample_index\":" << episode.end_sample_index
+                   << ",\"present\":" << boolean(episode.present) << '}';
+        }
         output << ']';
         if (render.document.schema_version >= 2)
         {
@@ -299,6 +326,7 @@ namespace
         output << "{\"schema_version\":1,\"beats\":{\"count\":" << metrics.beat_count
                << ",\"atrial_event_count\":" << metrics.atrial_event_count
                << ",\"fiducial_count\":" << metrics.fiducial_count
+               << ",\"episode_count\":" << metrics.episode_count
                << ",\"rr_clipping_count\":" << metrics.rr_clipping_count
                << "},\"hrv\":{\"mean_rr_seconds\":" << metrics.mean_rr_seconds
                << ",\"mean_heart_rate_bpm\":" << metrics.mean_heart_rate_bpm
@@ -503,7 +531,7 @@ namespace
 namespace signal_synth
 {
     ecg_ground_truth_metrics::ecg_ground_truth_metrics()
-        : beat_count(0), atrial_event_count(0), fiducial_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), ppg_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0)
+        : beat_count(0), atrial_event_count(0), fiducial_count(0), episode_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), ppg_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0)
     {
     }
 

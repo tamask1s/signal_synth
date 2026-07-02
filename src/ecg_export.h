@@ -17,6 +17,7 @@ namespace signal_synth
         unsigned int beat_count;
         unsigned int atrial_event_count;
         unsigned int fiducial_count;
+        unsigned int episode_count;
         unsigned int rr_clipping_count;
         double mean_rr_seconds;
         double mean_heart_rate_bpm;

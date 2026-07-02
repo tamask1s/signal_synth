@@ -26,13 +26,14 @@ mislabelled signal.
 ## Current support
 
 Native conditions are `NORM`, `1AVB`, `2AVB`, `3AVB`, `PVC`, `PAC`, `SR`,
-`AFIB`, `PACE`, `AFLT`, and `SVTAC`.
+`AFIB`, `PACE`, `AFLT`, `SVTAC`, and `PSVT`.
 
 Parameterized conditions are `LNGQT`, `LAFB`, `IRBBB`, `IVCD`, `CRBBB`,
 `CLBBB`, `LPFB`, `WPW`, `ILBBB`, `LPR`, `PRC(S)`, `STACH`, `SARRH`,
 `SBRAD`, `BIGU`, `TRIGU`, `QWAVE`, `LVOLT`, `HVOLT`, `LVH`, `RVH`,
-`SEHYP`, `VCLVH`, `LAO/LAE`, and `RAO/RAE`. A report warning identifies
-every accepted parameterized condition. `native_only` policy rejects them.
+`SEHYP`, `VCLVH`, `LAO/LAE`, `RAO/RAE`, and `SVARR`. A report warning
+identifies every accepted parameterized condition. `native_only` policy
+rejects them.
 
 The territorial infarction/injury pack additionally parameterizes `IMI`,
 `ASMI`, `ILMI`, `AMI`, `ALMI`, `LMI`, `IPLMI`, `IPMI`, `PMI`, `INJAS`,
@@ -40,7 +41,9 @@ The territorial infarction/injury pack additionally parameterizes `IMI`,
 
 `PRC(S)` requires a PAC or PVC origin. `BIGU` and `TRIGU` also require one
 ectopic origin and set cadence to two and three beats respectively. `2AVB`
-requires an explicit Mobitz I or Mobitz II pattern.
+requires an explicit Mobitz I or Mobitz II pattern. `PSVT` and `SVARR` use
+episode timeline fields. `SVARR` is a documented canonical supraventricular
+arrhythmia stress phenotype in this increment, not a complete family model.
 
 An explicitly requested sinus rate above 100 or below 60 bpm requires `STACH`
 or `SBRAD` respectively. Flutter ventricular rate is compiled into a matching
@@ -56,6 +59,13 @@ rendered.
 
 The same variable-severity contract applies to all 14 territorial
 infarction/injury conditions.
+
+The episode timeline pack renders `PSVT` as a sinus baseline with an exact
+narrow-complex SVT interval. Direct `SVARR` requests render a canonical
+supraventricular-arrhythmia episode interval. Episode parameters include start
+time, duration, and episode heart rate. The first pack rejects composition
+with other complex rhythm, conduction, hypertrophy, infarction, and ST-T
+phenotypes until dedicated composition contracts exist.
 
 The advanced conduction pack parameterizes `LAFB`, `LPFB`, `IRBBB`, `ILBBB`,
 `IVCD`, and `WPW`. Incomplete BBB uses independent sub-complete-BBB QRS
@@ -95,6 +105,8 @@ Conditions are stored in canonical code order. The report contains both
 explicit and inferred conditions. Current implications include:
 
 - PAC or PVC implies `PRC(S)`;
+- `PSVT` implies `SVARR`;
+- direct canonical `SVARR` implies `PSVT`;
 - sinus rate/arrhythmia and AV-block statements imply `SR`;
 - `NORM` implies `SR`;
 - complete or incomplete BBB, fascicular block, IVCD, or WPW implies `ABQRS`.
@@ -116,6 +128,7 @@ Each scenario has a deterministic 64-bit FNV-1a fingerprint over:
 - sample rate and random seed;
 - heart rate and RR variability;
 - ectopy cadence and Mobitz subtype;
+- episode type, start time, duration, and episode heart rate;
 - fidelity policy;
 - sorted condition codes and quantized severities.
 
@@ -143,7 +156,7 @@ generation fingerprint remains an ECG-engine identity.
 
 ## Phenotype assertions
 
-Scenario engine version 9 evaluates requested supported conditions against the
+Scenario engine version 10 evaluates requested supported conditions against the
 generated record. Assertions use beat and atrial-event annotations, exact
 fiducials, multi-source VCG data, and measured 12-lead morphology rather than
 treating the requested label as proof that a phenotype was rendered.
@@ -161,6 +174,10 @@ The assertion set also covers territorial infarction Q evidence, posterior
 reciprocal R-wave proxy evidence, and territorial injury ST-J evidence.
 For advanced conduction it additionally covers frontal QRS axis,
 lateral/inferior QRS polarity, delta-wave evidence, and complete-BBB exclusion.
+For episode rhythm conditions it additionally covers exact episode interval
+presence, sinus baseline outside the interval, SVT rhythm inside the interval,
+episode heart rate, narrow QRS duration, and P-wave suppression inside the
+episode.
 
 `success()` reports validation and waveform-generation success.
 `phenotype_passed()` independently reports whether every evaluated phenotype

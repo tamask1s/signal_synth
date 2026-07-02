@@ -567,6 +567,17 @@ namespace
         return "";
     }
 
+    const char* episode_type_name(signal_synth::ecg_episode_type value)
+    {
+        switch (value)
+        {
+        case signal_synth::ecg_episode_none: return "none";
+        case signal_synth::ecg_episode_psvt: return "psvt";
+        case signal_synth::ecg_episode_svarr: return "svarr";
+        }
+        return "";
+    }
+
     const char* fidelity_name(signal_synth::ecg_scenario_fidelity_policy value)
     {
         switch (value)
@@ -714,6 +725,10 @@ namespace
                << ",\"ectopic_every_n_beats\":" << document.ecg.ectopic_every_n_beats()
                << ",\"second_degree_av_pattern\":" << escape_json(av_pattern_name(document.ecg.second_degree_av_pattern()))
                << ",\"q_wave_territory\":" << escape_json(q_territory_name(document.ecg.q_wave_territory()))
+               << ",\"episode_type\":" << escape_json(episode_type_name(document.ecg.episode_type()))
+               << ",\"episode_start_seconds\":" << format_double(document.ecg.episode_start_seconds())
+               << ",\"episode_duration_seconds\":" << format_double(document.ecg.episode_duration_seconds())
+               << ",\"episode_rate_bpm\":" << format_double(document.ecg.episode_rate_bpm())
                << ",\"fidelity_policy\":" << escape_json(fidelity_name(document.ecg.fidelity_policy()))
                << ",\"conditions\":[";
         for (unsigned int i = 0; i < document.ecg.condition_count(); ++i)
@@ -873,13 +888,17 @@ namespace signal_synth
         if (!integral_number(*seed, std::numeric_limits<unsigned long long>::max(), integer) || !document.ecg.set_seed(integer))
             add_message(fresh_result, ecg_json_range, "$.seed", "seed must be an unsigned 64-bit decimal integer");
 
-        const char* ecg_fields[] = {"heart_rate_bpm","rr_variability_seconds","ectopic_every_n_beats","second_degree_av_pattern","q_wave_territory","fidelity_policy","conditions"};
+        const char* ecg_fields[] = {"heart_rate_bpm","rr_variability_seconds","ectopic_every_n_beats","second_degree_av_pattern","q_wave_territory","episode_type","episode_start_seconds","episode_duration_seconds","episode_rate_bpm","fidelity_policy","conditions"};
         allowed_fields(*ecg, ecg_fields, sizeof(ecg_fields) / sizeof(ecg_fields[0]), "$.ecg", fresh_result);
         const json_value* heart_rate = required(*ecg, "heart_rate_bpm", json_value::number_kind, "$.ecg", fresh_result);
         const json_value* rr_variability = required(*ecg, "rr_variability_seconds", json_value::number_kind, "$.ecg", fresh_result);
         const json_value* ectopic = required(*ecg, "ectopic_every_n_beats", json_value::number_kind, "$.ecg", fresh_result);
         const json_value* av_pattern = required(*ecg, "second_degree_av_pattern", json_value::string_kind, "$.ecg", fresh_result);
         const json_value* territory = required(*ecg, "q_wave_territory", json_value::string_kind, "$.ecg", fresh_result);
+        const json_value* episode_type = member(*ecg, "episode_type");
+        const json_value* episode_start = member(*ecg, "episode_start_seconds");
+        const json_value* episode_duration = member(*ecg, "episode_duration_seconds");
+        const json_value* episode_rate = member(*ecg, "episode_rate_bpm");
         const json_value* fidelity = required(*ecg, "fidelity_policy", json_value::string_kind, "$.ecg", fresh_result);
         const json_value* conditions = required(*ecg, "conditions", json_value::array_kind, "$.ecg", fresh_result);
 
@@ -913,6 +932,43 @@ namespace signal_synth
             else if (territory->string != "unspecified")
                 add_message(fresh_result, ecg_json_range, "$.ecg.q_wave_territory", "unknown Q-wave territory");
             document.ecg.set_q_wave_territory(value);
+        }
+        if (episode_type)
+        {
+            if (episode_type->type != json_value::string_kind)
+                add_message(fresh_result, ecg_json_type, "$.ecg.episode_type", "field has the wrong JSON type");
+            else
+            {
+                ecg_episode_type value = ecg_episode_none;
+                if (episode_type->string == "psvt")
+                    value = ecg_episode_psvt;
+                else if (episode_type->string == "svarr")
+                    value = ecg_episode_svarr;
+                else if (episode_type->string != "none")
+                    add_message(fresh_result, ecg_json_range, "$.ecg.episode_type", "unknown episode type");
+                document.ecg.set_episode_type(value);
+            }
+        }
+        if (episode_start)
+        {
+            if (episode_start->type != json_value::number_kind)
+                add_message(fresh_result, ecg_json_type, "$.ecg.episode_start_seconds", "field has the wrong JSON type");
+            else if (!document.ecg.set_episode_start_seconds(episode_start->number))
+                add_message(fresh_result, ecg_json_range, "$.ecg.episode_start_seconds", "invalid episode start");
+        }
+        if (episode_duration)
+        {
+            if (episode_duration->type != json_value::number_kind)
+                add_message(fresh_result, ecg_json_type, "$.ecg.episode_duration_seconds", "field has the wrong JSON type");
+            else if (!document.ecg.set_episode_duration_seconds(episode_duration->number))
+                add_message(fresh_result, ecg_json_range, "$.ecg.episode_duration_seconds", "invalid episode duration");
+        }
+        if (episode_rate)
+        {
+            if (episode_rate->type != json_value::number_kind)
+                add_message(fresh_result, ecg_json_type, "$.ecg.episode_rate_bpm", "field has the wrong JSON type");
+            else if (!document.ecg.set_episode_rate_bpm(episode_rate->number))
+                add_message(fresh_result, ecg_json_range, "$.ecg.episode_rate_bpm", "invalid episode rate");
         }
         if (fidelity)
         {

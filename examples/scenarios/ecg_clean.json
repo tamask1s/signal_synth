@@ -14,6 +14,10 @@
     "ectopic_every_n_beats": 0,
     "second_degree_av_pattern": "unspecified",
     "q_wave_territory": "unspecified",
+    "episode_type": "none",
+    "episode_start_seconds": 2,
+    "episode_duration_seconds": 4,
+    "episode_rate_bpm": 170,
     "fidelity_policy": "allow_parameterized",
     "conditions": [
       {"code": "NORM", "severity": 1}

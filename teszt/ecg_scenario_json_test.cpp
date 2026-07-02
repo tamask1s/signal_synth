@@ -43,13 +43,15 @@ int main()
         "\"sample_rate_hz\":500,\"seed\":12345,\"ecg\":{\"heart_rate_bpm\":70,"
         "\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":0,"
         "\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\","
+        "\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,"
+        "\"episode_rate_bpm\":170,"
         "\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]}}";
 
     signal_synth::ecg_scenario_document document;
     signal_synth::ecg_scenario_json_result parsed;
     ok &= check(signal_synth::parse_ecg_scenario_json(input, document, parsed), "parse_valid_document");
     ok &= check(parsed.success && parsed.canonical_json == canonical && document.sample_count() == 5000, "canonicalization_and_sample_count");
-    ok &= check(parsed.document_fingerprint == "sha256:24c704e559da1d32b07b0ea951d4a264b7dd0e35ef0342b6a5cf2bfd58544e07", "sha256_known_answer");
+    ok &= check(parsed.document_fingerprint == "sha256:6c898f8b51c1c4d1a04ff469fe09212767c308e801b5cf5677f72c785946fdd8", "sha256_known_answer");
     ok &= check(parsed.generation_fingerprint == document.ecg.fingerprint(), "generation_fingerprint_is_explicit");
 
     signal_synth::ecg_scenario_document roundtrip;
@@ -88,7 +90,7 @@ int main()
         "[{\"severity\":1,\"code\":\"NORM\"},{\"severity\":1,\"code\":\"NORM\"}]");
     ok &= check(rejects_without_mutation(duplicate_condition, signal_synth::ecg_json_duplicate_condition), "reject_duplicate_condition");
 
-    const std::string unsupported = std::string(input).replace(input.find("\"NORM\""), 6, "\"PSVT\"");
+    const std::string unsupported = std::string(input).replace(input.find("\"NORM\""), 6, "\"ABQRS\"");
     ok &= check(rejects_without_mutation(unsupported, signal_synth::ecg_json_semantic), "reject_unsupported_condition");
 
     signal_synth::ecg_scenario_document territorial;

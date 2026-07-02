@@ -138,6 +138,13 @@ namespace signal_synth
         ecg_q_wave_lateral = 3
     };
 
+    enum ecg_episode_type
+    {
+        ecg_episode_none = 0,
+        ecg_episode_psvt = 1,
+        ecg_episode_svarr = 2
+    };
+
     enum ecg_scenario_issue_severity
     {
         ecg_issue_warning = 0,
@@ -201,7 +208,8 @@ namespace signal_synth
         ecg_assert_inferior_qrs_polarity = 39,
         ecg_assert_delta_wave = 40,
         ecg_assert_complete_bbb_exclusion = 41,
-        ecg_assertion_code_count = 42
+        ecg_assert_episode_coverage = 42,
+        ecg_assertion_code_count = 43
     };
 
     enum ecg_phenotype_assertion_status
@@ -243,6 +251,14 @@ namespace signal_synth
         ecg_second_degree_av_pattern second_degree_av_pattern() const;
         bool set_q_wave_territory(ecg_q_wave_territory value);
         ecg_q_wave_territory q_wave_territory() const;
+        bool set_episode_type(ecg_episode_type value);
+        ecg_episode_type episode_type() const;
+        bool set_episode_start_seconds(double value);
+        double episode_start_seconds() const;
+        bool set_episode_duration_seconds(double value);
+        double episode_duration_seconds() const;
+        bool set_episode_rate_bpm(double value);
+        double episode_rate_bpm() const;
         bool set_fidelity_policy(ecg_scenario_fidelity_policy value);
         ecg_scenario_fidelity_policy fidelity_policy() const;
         unsigned int schema_version() const;

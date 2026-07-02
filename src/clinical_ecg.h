@@ -76,6 +76,13 @@ namespace signal_synth
         clinical_preexcitation_wpw = 1
     };
 
+    enum clinical_episode_kind
+    {
+        clinical_episode_none = 0,
+        clinical_episode_psvt = 1,
+        clinical_episode_svarr = 2
+    };
+
     enum clinical_ventricular_origin
     {
         clinical_origin_conducted = 0,
@@ -187,6 +194,10 @@ namespace signal_synth
         double compensatory_pause_ratio;
         unsigned int sinus_pause_every_n_beats;
         double sinus_pause_ratio;
+        clinical_episode_kind episode_kind;
+        double episode_start_seconds;
+        double episode_duration_seconds;
+        double episode_rate_bpm;
     };
 
     struct clinical_lead_config
@@ -273,6 +284,18 @@ namespace signal_synth
         bool present;
     };
 
+    struct clinical_episode_annotation
+    {
+        clinical_episode_kind kind;
+        double start_time_seconds;
+        double end_time_seconds;
+        unsigned long long first_beat_index;
+        unsigned long long last_beat_index;
+        unsigned long long start_sample_index;
+        unsigned long long end_sample_index;
+        bool present;
+    };
+
     class clinical_ecg_record
     {
     public:
@@ -296,6 +319,8 @@ namespace signal_synth
         const clinical_beat_annotation* beats() const;
         unsigned int fiducial_count() const;
         const clinical_fiducial_annotation* fiducials() const;
+        unsigned int episode_count() const;
+        const clinical_episode_annotation* episodes() const;
 
     private:
         struct implementation;

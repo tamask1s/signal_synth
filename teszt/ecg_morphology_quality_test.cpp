@@ -251,10 +251,10 @@ int main()
     }
 
     bool ok = true;
-    ok &= check(cases.size() == 72 && catalog_ok, "all_72_supported_condition_variants_pass_waveform_quality_gate");
+    ok &= check(cases.size() == 74 && catalog_ok, "all_74_supported_condition_variants_pass_waveform_quality_gate");
     ok &= check(rbbb_ok, "complete_rbbb_has_canonical_terminal_forces_and_secondary_t_discordance");
     ok &= check(lbbb_ok, "complete_lbbb_has_canonical_lateral_forces_and_secondary_t_discordance");
     ok &= check(flutter_ok, "typical_flutter_has_continuous_inferior_negative_f_waves");
-    ok &= check(signal_synth::ecg_scenario_engine_version() == 9, "morphology_correction_increments_engine_identity");
+    ok &= check(signal_synth::ecg_scenario_engine_version() == 10, "morphology_correction_increments_engine_identity");
     return ok ? 0 : 1;
 }

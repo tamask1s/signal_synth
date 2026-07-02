@@ -26,7 +26,7 @@ namespace
 
     bool same_record(const signal_synth::clinical_ecg_record& left, const signal_synth::clinical_ecg_record& right)
     {
-        if (left.sampling_rate_hz() != right.sampling_rate_hz() || left.sample_count() != right.sample_count() || left.lead_count() != right.lead_count() || left.source_count() != right.source_count() || left.atrial_event_count() != right.atrial_event_count() || left.beat_count() != right.beat_count() || left.fiducial_count() != right.fiducial_count())
+        if (left.sampling_rate_hz() != right.sampling_rate_hz() || left.sample_count() != right.sample_count() || left.lead_count() != right.lead_count() || left.source_count() != right.source_count() || left.atrial_event_count() != right.atrial_event_count() || left.beat_count() != right.beat_count() || left.fiducial_count() != right.fiducial_count() || left.episode_count() != right.episode_count())
             return false;
         for (unsigned int lead = 0; lead < left.lead_count(); ++lead)
             for (unsigned int sample = 0; sample < left.sample_count(); ++sample)
@@ -55,6 +55,11 @@ namespace
         const signal_synth::clinical_fiducial_annotation* right_fiducials = right.fiducials();
         for (unsigned int i = 0; i < left.fiducial_count(); ++i)
             if (left_fiducials[i].beat_index != right_fiducials[i].beat_index || left_fiducials[i].atrial_index != right_fiducials[i].atrial_index || left_fiducials[i].lead_index != right_fiducials[i].lead_index || left_fiducials[i].kind != right_fiducials[i].kind || left_fiducials[i].source != right_fiducials[i].source || left_fiducials[i].sample_index != right_fiducials[i].sample_index || left_fiducials[i].time_seconds != right_fiducials[i].time_seconds || left_fiducials[i].amplitude_mv != right_fiducials[i].amplitude_mv || left_fiducials[i].present != right_fiducials[i].present)
+                return false;
+        const signal_synth::clinical_episode_annotation* left_episodes = left.episodes();
+        const signal_synth::clinical_episode_annotation* right_episodes = right.episodes();
+        for (unsigned int i = 0; i < left.episode_count(); ++i)
+            if (left_episodes[i].kind != right_episodes[i].kind || left_episodes[i].start_time_seconds != right_episodes[i].start_time_seconds || left_episodes[i].end_time_seconds != right_episodes[i].end_time_seconds || left_episodes[i].first_beat_index != right_episodes[i].first_beat_index || left_episodes[i].last_beat_index != right_episodes[i].last_beat_index || left_episodes[i].start_sample_index != right_episodes[i].start_sample_index || left_episodes[i].end_sample_index != right_episodes[i].end_sample_index || left_episodes[i].present != right_episodes[i].present)
                 return false;
         return true;
     }

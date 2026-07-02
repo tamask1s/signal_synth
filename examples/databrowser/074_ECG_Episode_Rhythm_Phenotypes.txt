@@ -1,0 +1,23 @@
+// Episode rhythm engineering QA phenotypes.
+// ECG annotations are emitted as extra channels (annotation_output = 2).
+
+#define SAMPLING_RATE 500
+#define NUMBER_OF_SAMPLES 6000
+#define OUTPUT_BASE ecg_episode_rhythm_phenotypes
+
+DataDelete();
+
+GenerateECGQAScenario(psvt_ecg, psvt_sources, psvt_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["PSVT"], "heart_rate_bpm":70, "episode_start_seconds":2.0, "episode_duration_seconds":6.0, "episode_rate_bpm":180, "seed":6501}, 2);
+GenerateECGQAScenario(svarr_ecg, svarr_sources, svarr_assertions, NUMBER_OF_SAMPLES, SAMPLING_RATE, {"conditions":["SVARR"], "heart_rate_bpm":72, "episode_type":2, "episode_start_seconds":1.5, "episode_duration_seconds":6.0, "episode_rate_bpm":165, "seed":6502}, 2);
+
+SaveVarToFile(psvt_ecg, CatStrings(OUTPUT_BASE, _psvt, .bin), 100, 8);
+SaveVarToFile(svarr_ecg, CatStrings(OUTPUT_BASE, _svarr, .bin), 100, 8);
+SaveVarToFile(psvt_assertions, CatStrings(OUTPUT_BASE, _psvt_assertions, .bin), 100, 8);
+SaveVarToFile(svarr_assertions, CatStrings(OUTPUT_BASE, _svarr_assertions, .bin), 100, 8);
+
+DisplayData(psvt_ecg, fit_width,, A2, 001);
+DisplayData(psvt_assertions, fit_width,, A2, 001);
+DisplayData(svarr_ecg, fit_width,, A2, 001);
+DisplayData(svarr_assertions, fit_width,, A2, 001);
+SavePic(psvt_ecg, CatStrings(OUTPUT_BASE, _psvt, .gif));
+SavePic(svarr_ecg, CatStrings(OUTPUT_BASE, _svarr, .gif));
