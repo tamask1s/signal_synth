@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-012
 
-**Version:** 0.2
+**Version:** 0.3
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Biosignal Algorithms / Verification
 
@@ -164,6 +164,34 @@ API. Annotation mode remains selectable through that API's existing
    verification pass.
 6. Git and SVN working copies are synchronized and recorded.
 
+## 10.1 Verification evidence
+
+Implementation commit:
+`79ef201033da70f4c1c85e9b6fba21750a8f62d5`.
+
+Automated local evidence:
+
+- Release CTest: 14/14 passed, including `TEST-ECG-CONDUCTION-001`.
+- ASan/UBSan CTest: 13/13 passed with `ASAN_OPTIONS=detect_leaks=0` and
+  `TEST-BUILD-001` excluded.
+
+CI evidence:
+
+- GitHub Actions `CI-VER-001`, run
+  <https://github.com/tamask1s/signal_synth/actions/runs/28590301188>,
+  passed on Ubuntu and Windows C++11.
+
+DataBrowser/SVN sync evidence:
+
+- `src/clinical_ecg.h`, `src/clinical_ecg.cpp`, `src/ecg_scenario.h`, and
+  `src/ecg_scenario.cpp` were copied byte-for-byte to the SVN DataBrowser
+  `SignalProcessors` working copy and verified with `cmp`.
+- `examples/databrowser/073_ECG_Advanced_Conduction_Phenotypes.txt` was
+  copied byte-for-byte to the SVN DataBrowser `SigForge/Scripts` working copy
+  and verified with `cmp`.
+- SVN command-line status is not available in this Linux environment because
+  `svn` is not installed.
+
 ## 11. Source basis to review before acceptance
 
 - AHA/ACCF/HRS recommendations, Part III, for intraventricular conduction
@@ -191,3 +219,4 @@ No external waveform data or implementation code will be copied.
 |---|---|---|
 | 0.1 | 2026-07-02 | Proposed dependency-ordered advanced conduction pack |
 | 0.2 | 2026-07-02 | Accepted implementation issue, fixed WPW source-count decision, and moved to implementation |
+| 0.3 | 2026-07-02 | Recorded implementation, verification, CI, and DataBrowser sync evidence |
