@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-013
 
-**Version:** 0.1
+**Version:** 0.2
 
-**Status:** Proposed
+**Status:** Verified
 
 **Owner role:** Biosignal Algorithms / Verification
 
@@ -13,6 +13,10 @@
 **Proposed traceability ID:** `TRC-ECG12-009`
 
 **Implementation issue:** [signal_synth#25](https://github.com/tamask1s/signal_synth/issues/25)
+
+**Implementation commit:** `b298ca711b420644b99351893259a225e2b784b3`
+
+**Verified CI run:** [Verification 28596859164](https://github.com/tamask1s/signal_synth/actions/runs/28596859164)
 
 ## 1. Decision
 
@@ -148,6 +152,18 @@ Create `TEST-ECG-EPISODE-001` covering:
 Extend catalog-wide scenario support tests so `PSVT` and `SVARR` are no longer
 treated as unsupported, while `ABQRS` remains catalog-only.
 
+Verified on 2026-07-02 with:
+
+- release build and local CTest: 15/15 passed;
+- sanitizer build and local CTest: 14/14 passed with
+  `ASAN_OPTIONS=detect_leaks=0` and `TEST-BUILD-001` excluded because
+  LeakSanitizer cannot run under this environment's ptrace constraints;
+- GitHub Actions `Verification` run `28596859164`: Ubuntu C++11 and Windows
+  C++11 jobs passed;
+- DataBrowser/SVN working-copy synchronization checked by byte-compare for the
+  copied portable source files, `SignalProc_RSPT.cpp`, and script
+  `074_ECG_Episode_Rhythm_Phenotypes.txt`.
+
 ## 9. Exit criteria
 
 1. `PSVT` and `SVARR` generate deterministic clean ECG records with exact
@@ -163,3 +179,4 @@ treated as unsupported, while `ABQRS` remains catalog-only.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-02 | Proposed episode-timeline pack for PSVT and SVARR |
+| 0.2 | 2026-07-02 | Verified implementation, CI, tests, and SVN synchronization |
