@@ -437,6 +437,13 @@ namespace
         result.messages.push_back(item);
     }
 
+    std::string json_index(std::size_t index)
+    {
+        std::ostringstream output;
+        output << index;
+        return output.str();
+    }
+
     bool allowed_fields(const json_value& object, const char* const* names, std::size_t count, const std::string& path, signal_synth::ecg_scenario_json_result& result)
     {
         for (std::size_t i = 0; i < object.object.size(); ++i)
@@ -1062,7 +1069,7 @@ namespace signal_synth
         {
             for (std::size_t i = 0; i < conditions->array.size(); ++i)
             {
-                const std::string path = "$.ecg.conditions[" + std::to_string(i) + "]";
+                const std::string path = "$.ecg.conditions[" + json_index(i) + "]";
                 const json_value& item = conditions->array[i];
                 if (item.type != json_value::object_kind)
                 {
@@ -1139,7 +1146,7 @@ namespace signal_synth
             {
                 for (std::size_t i = 0; i < artifacts->array.size(); ++i)
                 {
-                    const std::string path = "$.artifacts[" + std::to_string(i) + "]";
+                    const std::string path = "$.artifacts[" + json_index(i) + "]";
                     const json_value& item = artifacts->array[i];
                     if (item.type != json_value::object_kind)
                     {
@@ -1177,7 +1184,7 @@ namespace signal_synth
                     std::set<std::string> seen_channels;
                     for (std::size_t channel_index = 0; channel_index < channels->array.size(); ++channel_index)
                     {
-                        const std::string channel_path = path + ".channels[" + std::to_string(channel_index) + "]";
+                        const std::string channel_path = path + ".channels[" + json_index(channel_index) + "]";
                         const json_value& channel = channels->array[channel_index];
                         if (channel.type != json_value::string_kind)
                         {
