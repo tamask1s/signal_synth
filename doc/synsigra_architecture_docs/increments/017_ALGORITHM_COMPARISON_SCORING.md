@@ -4,7 +4,7 @@
 
 **Version:** 0.1
 
-**Status:** Implemented, local verification passed, CI pending
+**Status:** Verified
 
 **Owner role:** Platform / Verification
 
@@ -13,6 +13,10 @@
 **Proposed traceability ID:** `TRC-CMP-001`
 
 **Implementation issue:** [signal_synth#31](https://github.com/tamask1s/signal_synth/issues/31)
+
+**Implementation commit:** `d39f18d8131d4d860144801249c542c65f4694bb`
+
+**Verified CI run:** [Verification 28674991914](https://github.com/tamask1s/signal_synth/actions/runs/28674991914)
 
 ## 1. Decision
 
@@ -155,7 +159,7 @@ Extend `TEST-CLI-001` to:
 - run the CLI compare command;
 - verify output files and perfect F1 summary.
 
-Local verification on 2026-07-03:
+Verified on 2026-07-03 with:
 
 - release build and local CTest: 18/18 passed;
 - sanitizer build and local CTest: 17/17 passed with
@@ -168,6 +172,8 @@ Local verification on 2026-07-03:
   copied `ecg_compare.cpp` and `ecg_compare.h`; `SignalProc_RSPT.cbp` was
   updated to include them. `svn status` could not be executed because the
   local `svn` client is not installed.
+- GitHub Actions `Verification` run `28674991914`: Ubuntu C++11 and Windows
+  C++11 jobs passed.
 
 ## 8. Exit Criteria
 
