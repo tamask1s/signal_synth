@@ -15,10 +15,13 @@ Build in this order:
 3. CLI;
 4. exports and report;
 5. PPG;
-6. API/backend;
-7. SaaS UI;
-8. customer comparison;
-9. hardware.
+6. scenario packs;
+7. customer algorithm comparison;
+8. API/backend;
+9. SaaS UI;
+10. signal-quality and pack scoring depth;
+11. enterprise/on-prem;
+12. hardware.
 
 ## 2. Milestone 0: Repository cleanup
 
@@ -96,7 +99,25 @@ Exit criteria:
 - all have expected metrics;
 - batch render passes.
 
-## 6. Milestone 4: Backend API
+## 6. Milestone 4: Customer algorithm comparison
+
+Tasks:
+
+- import R-peak detections;
+- import PPG peak detections;
+- compare detections to ground truth;
+- compute sensitivity/PPV/F1/timing error;
+- split clean vs artifact intervals;
+- include comparison in report.
+
+Exit criteria:
+
+- CSV detections upload works;
+- comparison metrics render;
+- artifact-specific summary generated;
+- CLI and core API comparison tests pass.
+
+## 7. Milestone 5: Backend API
 
 Tasks:
 
@@ -104,16 +125,17 @@ Tasks:
 - call CLI or library;
 - validate scenario;
 - run render job;
+- run comparison job;
 - store output locally;
 - return report/download links.
 
 Exit criteria:
 
-- local API can render scenario;
+- local API can render and compare a scenario;
 - frontend can call API;
 - errors are structured.
 
-## 7. Milestone 5: Web UI
+## 8. Milestone 6: Web UI
 
 Tasks:
 
@@ -121,6 +143,7 @@ Tasks:
 - waveform preview;
 - event/artifact panels;
 - report viewer;
+- comparison-result viewer;
 - export download.
 
 Exit criteria:
@@ -128,21 +151,6 @@ Exit criteria:
 - non-developer can create clean ECG+PPG scenario;
 - preview works;
 - export package downloads.
-
-## 8. Milestone 6: Customer algorithm comparison
-
-Tasks:
-
-- import R-peak detections;
-- compare to ground truth;
-- compute sensitivity/PPV/timing error;
-- include comparison in report.
-
-Exit criteria:
-
-- CSV detections upload works;
-- comparison metrics render;
-- artifact-specific summary generated.
 
 ## 9. Milestone 7: SaaS hardening
 

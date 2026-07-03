@@ -1,8 +1,11 @@
 #include "ecg_scenario_json.h"
 #include "ecg_export.h"
 #include "ecg_pack.h"
+#include "ecg_compare.h"
 
 #include <algorithm>
+#include <cerrno>
+#include <cstdlib>
 #include <cstdio>
 #include <fstream>
 #include <iostream>
@@ -53,6 +56,7 @@ namespace
     {
         std::cerr << "usage: signal-synth <validate|fingerprint> <scenario.json|->\n"
                   << "       signal-synth render <scenario.json|-> --out <new-directory>\n"
+                  << "       signal-synth compare <rpeaks|ppg-peaks> <scenario.json|-> <detections.csv> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack render <pack.json> --out <new-directory>\n";
     }
@@ -318,6 +322,121 @@ namespace
                       << " path=" << message.path << " message=" << message.message << '\n';
         }
     }
+
+    std::string trim_ascii(const std::string& value)
+    {
+        std::string::size_type first = 0;
+        while (first < value.size() && (value[first] == ' ' || value[first] == '\t' || value[first] == '\r'))
+            ++first;
+        std::string::size_type last = value.size();
+        while (last > first && (value[last - 1] == ' ' || value[last - 1] == '\t' || value[last - 1] == '\r'))
+            --last;
+        return value.substr(first, last - first);
+    }
+
+    std::vector<std::string> split_simple_csv_line(const std::string& line)
+    {
+        std::vector<std::string> cells;
+        std::string cell;
+        for (std::size_t i = 0; i < line.size(); ++i)
+        {
+            if (line[i] == ',')
+            {
+                cells.push_back(trim_ascii(cell));
+                cell.clear();
+            }
+            else
+                cell.push_back(line[i]);
+        }
+        cells.push_back(trim_ascii(cell));
+        return cells;
+    }
+
+    bool parse_double_cell(const std::string& text, double& value)
+    {
+        errno = 0;
+        char* end = 0;
+        const double parsed = std::strtod(text.c_str(), &end);
+        if (end == text.c_str() || errno == ERANGE)
+            return false;
+        while (end && (*end == ' ' || *end == '\t' || *end == '\r'))
+            ++end;
+        if (end && *end != '\0')
+            return false;
+        value = parsed;
+        return true;
+    }
+
+    bool parse_detection_csv(const std::string& csv, std::vector<signal_synth::ecg_detected_event>& output, std::string& message)
+    {
+        output.clear();
+        std::istringstream input(csv);
+        std::string line;
+        if (!std::getline(input, line))
+        {
+            message = "detection CSV is empty";
+            return false;
+        }
+        const std::vector<std::string> header = split_simple_csv_line(line);
+        int time_column = -1;
+        int label_column = -1;
+        for (std::size_t i = 0; i < header.size(); ++i)
+        {
+            if (header[i] == "time_seconds")
+                time_column = static_cast<int>(i);
+            if (header[i] == "label")
+                label_column = static_cast<int>(i);
+        }
+        if (time_column < 0)
+        {
+            message = "detection CSV must contain a time_seconds column";
+            return false;
+        }
+        unsigned int row = 1;
+        while (std::getline(input, line))
+        {
+            ++row;
+            if (trim_ascii(line).empty())
+                continue;
+            const std::vector<std::string> cells = split_simple_csv_line(line);
+            if (static_cast<std::size_t>(time_column) >= cells.size())
+            {
+                std::ostringstream error;
+                error << "detection CSV row " << row << " has no time_seconds value";
+                message = error.str();
+                return false;
+            }
+            double time_seconds = 0.0;
+            if (!parse_double_cell(cells[static_cast<std::size_t>(time_column)], time_seconds))
+            {
+                std::ostringstream error;
+                error << "detection CSV row " << row << " has invalid time_seconds";
+                message = error.str();
+                return false;
+            }
+            signal_synth::ecg_detected_event event;
+            event.time_seconds = time_seconds;
+            if (label_column >= 0 && static_cast<std::size_t>(label_column) < cells.size())
+                event.label = cells[static_cast<std::size_t>(label_column)];
+            output.push_back(event);
+        }
+        return true;
+    }
+
+    bool parse_compare_target(const std::string& value, signal_synth::ecg_compare_target& target)
+    {
+        if (value == "rpeaks" || value == "r-peak" || value == "r_peak")
+        {
+            target = signal_synth::ecg_compare_r_peak;
+            return true;
+        }
+        if (value == "ppg-peaks" || value == "ppg_peak" || value == "ppg-systolic-peak")
+        {
+            target = signal_synth::ecg_compare_ppg_systolic_peak;
+            return true;
+        }
+        return false;
+    }
 }
 
 int main(int argc, char** argv)
@@ -330,6 +449,112 @@ int main(int argc, char** argv)
         return 2;
     }
     const std::string command(argv[1]);
+    if (command == "compare")
+    {
+        if (!((argc == 7 || argc == 9) && std::string(argv[5]) == "--out" && (argc == 7 || std::string(argv[7]) == "--tolerance-ms")))
+        {
+            print_usage();
+            return 2;
+        }
+        try
+        {
+            signal_synth::ecg_compare_target target;
+            if (!parse_compare_target(argv[2], target))
+            {
+                std::cerr << "error=COMPARE_TARGET_FAILED path=$ message=target must be rpeaks or ppg-peaks\n";
+                return 2;
+            }
+            if (std::string(argv[3]) == "-" && std::string(argv[4]) == "-")
+            {
+                std::cerr << "error=INPUT_READ_FAILED path=- message=scenario and detections cannot both be read from stdin\n";
+                return 3;
+            }
+            std::string scenario_json;
+            if (!read_input(argv[3], scenario_json))
+            {
+                std::cerr << "error=INPUT_READ_FAILED path=" << argv[3] << " message=unable to read scenario input or input exceeds 16 MiB\n";
+                return 3;
+            }
+            std::string detection_csv;
+            if (!read_input(argv[4], detection_csv))
+            {
+                std::cerr << "error=INPUT_READ_FAILED path=" << argv[4] << " message=unable to read detection input or input exceeds 16 MiB\n";
+                return 3;
+            }
+            signal_synth::ecg_scenario_document document;
+            signal_synth::ecg_scenario_json_result scenario_result;
+            if (!signal_synth::parse_ecg_scenario_json(scenario_json, document, scenario_result))
+            {
+                print_errors(scenario_result);
+                return 4;
+            }
+            std::vector<signal_synth::ecg_detected_event> detections;
+            std::string detection_message;
+            if (!parse_detection_csv(detection_csv, detections, detection_message))
+            {
+                std::cerr << "error=DETECTION_CSV_FAILED path=" << argv[4] << " message=" << detection_message << '\n';
+                return 4;
+            }
+            signal_synth::ecg_render_bundle render;
+            signal_synth::ecg_export_result export_result;
+            if (!signal_synth::render_ecg_document(document, render, export_result))
+            {
+                std::cerr << "error=RENDER_FAILED path=$ message=" << (export_result.messages.empty() ? "render failed" : export_result.messages[0]) << '\n';
+                return 4;
+            }
+            signal_synth::ecg_compare_options options;
+            options.target = target;
+            if (argc == 9)
+            {
+                double tolerance_ms = 0.0;
+                if (!parse_double_cell(argv[8], tolerance_ms) || tolerance_ms <= 0.0)
+                {
+                    std::cerr << "error=COMPARE_OPTIONS_FAILED path=$ message=--tolerance-ms must be positive\n";
+                    return 2;
+                }
+                options.tolerance_seconds = tolerance_ms / 1000.0;
+            }
+            signal_synth::ecg_compare_result compare_result;
+            if (!signal_synth::compare_detections_to_render(render, detections, options, compare_result))
+            {
+                std::cerr << "error=COMPARE_FAILED path=$ message=" << (compare_result.messages.empty() ? "comparison failed" : compare_result.messages[0]) << '\n';
+                return 4;
+            }
+            const std::string output_directory(argv[6]);
+            if (!create_directory(output_directory))
+            {
+                std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=output directory must be new and writable\n";
+                return 3;
+            }
+            if (!write_text_file(join_path(output_directory, "comparison.json"), signal_synth::ecg_compare_result_json(render, compare_result))
+                || !write_text_file(join_path(output_directory, "comparison.csv"), signal_synth::ecg_compare_result_csv(compare_result))
+                || !write_text_file(join_path(output_directory, "comparison_report.html"), signal_synth::ecg_compare_report_html(render, compare_result)))
+            {
+                std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=unable to write comparison output files\n";
+                return 3;
+            }
+            std::cout << "status=compared\n"
+                      << "output_directory=" << output_directory << '\n'
+                      << "target=" << compare_result.target_name << '\n'
+                      << "tolerance_seconds=" << compare_result.tolerance_seconds << '\n'
+                      << "ground_truth_count=" << compare_result.total.ground_truth_count << '\n'
+                      << "detection_count=" << compare_result.total.detection_count << '\n'
+                      << "true_positive_count=" << compare_result.total.true_positive_count << '\n'
+                      << "false_positive_count=" << compare_result.total.false_positive_count << '\n'
+                      << "false_negative_count=" << compare_result.total.false_negative_count << '\n'
+                      << "f1_score=" << compare_result.total.f1_score << '\n';
+            return 0;
+        }
+        catch (const std::bad_alloc&)
+        {
+            std::cerr << "error=INTERNAL_ERROR path=$ message=memory allocation failed\n";
+        }
+        catch (...)
+        {
+            std::cerr << "error=INTERNAL_ERROR path=$ message=unexpected failure\n";
+        }
+        return 5;
+    }
     const bool pack_command = command == "pack";
     if (pack_command)
     {

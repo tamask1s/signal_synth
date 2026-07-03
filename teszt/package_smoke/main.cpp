@@ -1,6 +1,7 @@
 #include <signal_synth/clinical_ecg.h>
 #include <signal_synth/ecg_model.h>
 #include <signal_synth/ecg_export.h>
+#include <signal_synth/ecg_compare.h>
 #include <signal_synth/ecg_morphology.h>
 #include <signal_synth/ecg_scenario.h>
 #include <signal_synth/ecg_scenario_json.h>
@@ -25,6 +26,8 @@ int main()
     signal_synth::ecg_scenario_json_result json_result;
     signal_synth::ecg_pack_manifest pack;
     signal_synth::ecg_pack_json_result pack_result;
+    signal_synth::ecg_compare_options compare_options;
+    signal_synth::ecg_compare_result compare_result;
     signal_synth::ppg_config ppg;
     signal_synth::signal_quality_artifact_config artifact;
 
@@ -50,6 +53,8 @@ int main()
     pack.scenarios.push_back(pack_scenario);
     if (!signal_synth::write_ecg_pack_json(pack, pack_result))
         return 9;
+    if (compare_options.target != signal_synth::ecg_compare_r_peak || signal_synth::ecg_compare_default_tolerance_seconds(compare_options.target) <= 0.0 || compare_result.success)
+        return 10;
     if (std::string(signal_synth::signal_synth_generator_version()).empty())
         return 6;
     if (ppg.pulse_delay_ms <= 0.0)

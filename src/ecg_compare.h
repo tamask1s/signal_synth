@@ -1,0 +1,93 @@
+#pragma once
+
+#include <string>
+#include <vector>
+
+namespace signal_synth
+{
+    struct ecg_render_bundle;
+
+    enum ecg_compare_target
+    {
+        ecg_compare_r_peak = 0,
+        ecg_compare_ppg_systolic_peak = 1
+    };
+
+    struct ecg_detected_event
+    {
+        ecg_detected_event();
+
+        double time_seconds;
+        std::string label;
+    };
+
+    struct ecg_compare_options
+    {
+        ecg_compare_options();
+
+        ecg_compare_target target;
+        double tolerance_seconds;
+    };
+
+    struct ecg_compare_bin_metrics
+    {
+        ecg_compare_bin_metrics();
+
+        unsigned int ground_truth_count;
+        unsigned int detection_count;
+        unsigned int true_positive_count;
+        unsigned int false_positive_count;
+        unsigned int false_negative_count;
+        double sensitivity;
+        double positive_predictive_value;
+        double f1_score;
+        double mean_absolute_error_seconds;
+        double median_absolute_error_seconds;
+        double rms_error_seconds;
+        double max_absolute_error_seconds;
+    };
+
+    struct ecg_compare_match
+    {
+        ecg_compare_match();
+
+        unsigned int ground_truth_index;
+        unsigned int detection_index;
+        double ground_truth_time_seconds;
+        double detection_time_seconds;
+        double error_seconds;
+        bool in_artifact_interval;
+    };
+
+    struct ecg_compare_unmatched_event
+    {
+        ecg_compare_unmatched_event();
+
+        unsigned int index;
+        double time_seconds;
+        bool in_artifact_interval;
+    };
+
+    struct ecg_compare_result
+    {
+        ecg_compare_result();
+
+        bool success;
+        std::string target_name;
+        double tolerance_seconds;
+        ecg_compare_bin_metrics total;
+        ecg_compare_bin_metrics clean;
+        ecg_compare_bin_metrics artifact;
+        std::vector<ecg_compare_match> matches;
+        std::vector<ecg_compare_unmatched_event> false_positives;
+        std::vector<ecg_compare_unmatched_event> false_negatives;
+        std::vector<std::string> messages;
+    };
+
+    double ecg_compare_default_tolerance_seconds(ecg_compare_target target);
+    const char* ecg_compare_target_name(ecg_compare_target target);
+    bool compare_detections_to_render(const ecg_render_bundle& render, const std::vector<ecg_detected_event>& detections, const ecg_compare_options& options, ecg_compare_result& result);
+    std::string ecg_compare_result_json(const ecg_render_bundle& render, const ecg_compare_result& result);
+    std::string ecg_compare_result_csv(const ecg_compare_result& result);
+    std::string ecg_compare_report_html(const ecg_render_bundle& render, const ecg_compare_result& result);
+}

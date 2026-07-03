@@ -57,6 +57,8 @@ Implementation increment designs:
   acquisition artifact and signal-quality pack.
 - `increments/016_SCENARIO_PACK_BATCH_QA.md` defines scenario-pack manifests,
   batch CLI rendering, and curated QA packs.
+- `increments/017_ALGORITHM_COMPARISON_SCORING.md` defines event-detector
+  comparison against synthetic ECG/PPG ground truth.
 
 Traceability demonstration:
 
@@ -72,6 +74,6 @@ Primary immediate implementation targets:
 - normalize repository structure;
 - keep core library UI/SaaS independent;
 - implement scenario JSON validation and fingerprinting;
-- add CLI validate/render/report;
-- add deterministic examples and golden tests;
-- make PPG a first-class next module.
+- keep comparison/scoring ahead of hosted backend work;
+- add deterministic examples, pack scoring, and customer-facing QA reports;
+- make PPG and signal-quality QA first-class scoring targets.
