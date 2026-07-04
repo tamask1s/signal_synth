@@ -4,7 +4,7 @@
 
 **Version:** 0.1
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Platform / SDK
 
@@ -13,6 +13,10 @@
 **Proposed traceability ID:** `TRC-FACADE-001`
 
 **Implementation issue:** [signal_synth#33](https://github.com/tamask1s/signal_synth/issues/33)
+
+**Implementation commit:** `c11ada2daa2bc1ee9a85bd848ab9eb107f156363`
+
+**Verified CI run:** [Verification 28705853662](https://github.com/tamask1s/signal_synth/actions/runs/28705853662)
 
 ## 1. Decision
 
@@ -107,6 +111,15 @@ Add `TEST-FACADE-001`:
 - verifies malformed scenario JSON returns structured messages.
 
 Extend `TEST-BUILD-001` package smoke to include the installed facade header.
+
+Verified on 2026-07-04 with:
+
+- release build and local CTest: 19/19 passed;
+- sanitizer build and local CTest: 18/18 passed with
+  `ASAN_OPTIONS=detect_leaks=0`, `LSAN_OPTIONS=detect_leaks=0`, and
+  `TEST-BUILD-001` excluded;
+- GitHub Actions `Verification` run `28705853662`: Ubuntu C++11 and Windows
+  C++11 jobs passed.
 
 ## 8. DataBrowser/SVN Impact
 
