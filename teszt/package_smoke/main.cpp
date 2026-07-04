@@ -8,6 +8,7 @@
 #include <signal_synth/ecg_scenario.h>
 #include <signal_synth/ecg_scenario_json.h>
 #include <signal_synth/ecg_pack.h>
+#include <signal_synth/ecg_pack_score.h>
 #include <signal_synth/signal_synth.h>
 #include <signal_synth/ppg_model.h>
 #include <signal_synth/signal_quality.h>
@@ -33,6 +34,7 @@ int main()
     signal_synth::ecg_scenario_json_result json_result;
     signal_synth::ecg_pack_manifest pack;
     signal_synth::ecg_pack_json_result pack_result;
+    signal_synth::ecg_pack_score_summary pack_score_summary;
     signal_synth::ecg_compare_options compare_options;
     signal_synth::ecg_compare_result compare_result;
     signal_synth::ppg_config ppg;
@@ -66,6 +68,8 @@ int main()
     pack.scenarios.push_back(pack_scenario);
     if (!signal_synth::write_ecg_pack_json(pack, pack_result))
         return 9;
+    if (pack_score_summary.success || std::string(signal_synth::ecg_pack_score_summary_csv(pack_score_summary)).empty())
+        return 14;
     if (compare_options.target != signal_synth::ecg_compare_r_peak || signal_synth::ecg_compare_default_tolerance_seconds(compare_options.target) <= 0.0 || compare_result.success)
         return 10;
     if (std::string(signal_synth::signal_synth_generator_version()).empty())

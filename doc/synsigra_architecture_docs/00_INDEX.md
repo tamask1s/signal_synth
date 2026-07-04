@@ -82,6 +82,8 @@ Implementation increment designs:
   package manifest contract.
 - `increments/020_DETECTION_OUTPUT_CONTRACTS.md` defines versioned CSV/JSON
   user detection output contracts.
+- `increments/021_PACK_LEVEL_SCORING_AGGREGATION.md` defines pack-level local
+  Algorithm QA scoring aggregation.
 
 Traceability demonstration:
 

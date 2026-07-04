@@ -18,7 +18,8 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/synsigra_api.h
     src/challenge_package.h
     src/signal_quality.h
-    src/ecg_pack.h)
+    src/ecg_pack.h
+    src/ecg_pack_score.h)
 list(APPEND SIGNAL_SYNTH_PUBLIC_HEADERS src/ppg_model.h)
 
 add_library(
@@ -36,7 +37,8 @@ add_library(
     src/synsigra_api.cpp
     src/challenge_package.cpp
     src/signal_quality.cpp
-    src/ecg_pack.cpp)
+    src/ecg_pack.cpp
+    src/ecg_pack_score.cpp)
 target_sources(signal_synth PRIVATE src/ppg_model.cpp)
 
 add_library(signal_synth::signal_synth ALIAS signal_synth)

@@ -1,6 +1,7 @@
 #include "ecg_scenario_json.h"
 #include "ecg_export.h"
 #include "ecg_pack.h"
+#include "ecg_pack_score.h"
 #include "ecg_compare.h"
 #include "detection_io.h"
 
@@ -53,13 +54,20 @@ namespace
         return file && read_stream(file, output);
     }
 
+    bool file_exists(const std::string& path)
+    {
+        std::ifstream file(path.c_str(), std::ios::in | std::ios::binary);
+        return file.good();
+    }
+
     void print_usage()
     {
         std::cerr << "usage: signal-synth <validate|fingerprint> <scenario.json|->\n"
                   << "       signal-synth render <scenario.json|-> --out <new-directory>\n"
                   << "       signal-synth compare <rpeaks|ppg-peaks> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth pack validate <pack.json>\n"
-                  << "       signal-synth pack render <pack.json> --out <new-directory>\n";
+                  << "       signal-synth pack render <pack.json> --out <new-directory>\n"
+                  << "       signal-synth pack score <pack.json> <detections-directory> --out <new-directory>\n";
     }
 
     void print_errors(const signal_synth::ecg_scenario_json_result& result)
@@ -364,6 +372,27 @@ namespace
         }
         return false;
     }
+
+    bool select_pack_score_target(const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_scenario& scenario, signal_synth::ecg_compare_target& target, std::string& target_name)
+    {
+        for (std::size_t i = 0; i < scenario.targets.size(); ++i)
+        {
+            if (signal_synth::detection_compare_target_from_name(scenario.targets[i], target))
+            {
+                target_name = signal_synth::ecg_compare_target_name(target);
+                return true;
+            }
+        }
+        for (std::size_t i = 0; i < manifest.targets.size(); ++i)
+        {
+            if (signal_synth::detection_compare_target_from_name(manifest.targets[i], target))
+            {
+                target_name = signal_synth::ecg_compare_target_name(target);
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 int main(int argc, char** argv)
@@ -514,7 +543,8 @@ int main(int argc, char** argv)
         }
         const std::string pack_action(argv[2]);
         const bool pack_render = pack_action == "render";
-        if ((pack_render && (argc != 6 || std::string(argv[4]) != "--out")) || (!pack_render && (argc != 4 || pack_action != "validate")))
+        const bool pack_score = pack_action == "score";
+        if ((pack_render && (argc != 6 || std::string(argv[4]) != "--out")) || (pack_score && (argc != 7 || std::string(argv[5]) != "--out")) || (!pack_render && !pack_score && (argc != 4 || pack_action != "validate")))
         {
             print_usage();
             return 2;
@@ -536,10 +566,130 @@ int main(int argc, char** argv)
             }
             if (!pack_render)
             {
-                std::cout << "status=valid\n"
+                if (!pack_score)
+                {
+                    std::cout << "status=valid\n"
+                              << "pack_id=" << manifest.pack_id << '\n'
+                              << "version=" << manifest.version << '\n'
+                              << "scenario_count=" << manifest.scenarios.size() << '\n'
+                              << "pack_fingerprint=" << pack_result.pack_fingerprint << '\n';
+                    return 0;
+                }
+                const std::string base_directory = std::string(argv[3]) == "-" ? "." : directory_name(argv[3]);
+                const std::string detection_directory(argv[4]);
+                std::vector<signal_synth::ecg_pack_score_case> cases;
+                for (std::size_t i = 0; i < manifest.scenarios.size(); ++i)
+                {
+                    const signal_synth::ecg_pack_scenario& pack_scenario = manifest.scenarios[i];
+                    signal_synth::ecg_compare_target target;
+                    std::string target_name;
+                    if (!select_pack_score_target(manifest, pack_scenario, target, target_name))
+                    {
+                        std::cerr << "error=COMPARE_TARGET_FAILED path=" << pack_scenario.id << " message=pack scenario has no supported scoring target\n";
+                        return 4;
+                    }
+                    const std::string scenario_path = join_path(base_directory, pack_scenario.path);
+                    std::string scenario_json;
+                    if (!read_input(scenario_path, scenario_json))
+                    {
+                        std::cerr << "error=INPUT_READ_FAILED path=" << scenario_path << " message=unable to read pack scenario\n";
+                        return 3;
+                    }
+                    signal_synth::ecg_scenario_document document;
+                    signal_synth::ecg_scenario_json_result scenario_result;
+                    if (!signal_synth::parse_ecg_scenario_json(scenario_json, document, scenario_result))
+                    {
+                        print_errors(scenario_result);
+                        return 4;
+                    }
+                    signal_synth::ecg_render_bundle render;
+                    signal_synth::ecg_export_result export_result;
+                    if (!signal_synth::render_ecg_document(document, render, export_result))
+                    {
+                        std::cerr << "error=RENDER_FAILED path=" << pack_scenario.path << " message=" << (export_result.messages.empty() ? "render failed" : export_result.messages[0]) << '\n';
+                        return 4;
+                    }
+                    std::string detection_path = join_path(detection_directory, pack_scenario.id + ".json");
+                    if (!file_exists(detection_path))
+                        detection_path = join_path(detection_directory, pack_scenario.id + ".csv");
+                    std::string detection_input;
+                    if (!read_input(detection_path, detection_input))
+                    {
+                        std::cerr << "error=INPUT_READ_FAILED path=" << detection_path << " message=unable to read detection input for pack scenario\n";
+                        return 3;
+                    }
+                    signal_synth::detection_io_document detection_document;
+                    signal_synth::detection_io_result detection_result;
+                    const bool parsed_detection = starts_with_json_object(detection_input)
+                        ? signal_synth::parse_detection_json_v1(detection_input, detection_document, detection_result)
+                        : signal_synth::parse_detection_csv_v2(detection_input, target_name, detection_document, detection_result);
+                    if (!parsed_detection)
+                    {
+                        for (std::size_t message_index = 0; message_index < detection_result.messages.size(); ++message_index)
+                        {
+                            const signal_synth::detection_io_message& message = detection_result.messages[message_index];
+                            std::cerr << "error=" << signal_synth::detection_io_message_code_name(message.code)
+                                      << " path=" << message.path << " message=" << message.message << '\n';
+                        }
+                        if (detection_result.messages.empty())
+                            std::cerr << "error=DETECTION_IO_FAILED path=$ message=detection import failed\n";
+                        return 4;
+                    }
+                    if (!detection_document.has_compare_target || detection_document.compare_target != target)
+                    {
+                        std::cerr << "error=" << signal_synth::detection_io_message_code_name(signal_synth::detection_io_target_mismatch)
+                                  << " path=$.target message=detection target does not match pack scenario target\n";
+                        return 4;
+                    }
+                    std::vector<signal_synth::ecg_detected_event> detections;
+                    if (!signal_synth::detection_events_for_compare(detection_document, detections, detection_result))
+                    {
+                        std::cerr << "error=DETECTION_IO_FAILED path=$ message=detection import failed\n";
+                        return 4;
+                    }
+                    signal_synth::ecg_compare_options options;
+                    options.target = target;
+                    signal_synth::ecg_compare_result compare_result;
+                    if (!signal_synth::compare_detections_to_render(render, detections, options, compare_result))
+                    {
+                        std::cerr << "error=COMPARE_FAILED path=" << pack_scenario.id << " message=" << (compare_result.messages.empty() ? "comparison failed" : compare_result.messages[0]) << '\n';
+                        return 4;
+                    }
+                    signal_synth::ecg_pack_score_case score_case;
+                    score_case.case_id = pack_scenario.id;
+                    score_case.scenario_id = document.scenario_id;
+                    score_case.scenario_path = pack_scenario.path;
+                    score_case.document_fingerprint = scenario_result.document_fingerprint;
+                    score_case.render_identity = render.render_identity;
+                    score_case.detection_input_id = detection_path;
+                    score_case.detection_algorithm_name = detection_document.algorithm.name;
+                    score_case.detection_algorithm_version = detection_document.algorithm.version;
+                    score_case.comparison = compare_result;
+                    cases.push_back(score_case);
+                }
+                signal_synth::ecg_pack_score_summary summary;
+                if (!signal_synth::build_ecg_pack_score_summary(manifest, pack_result.pack_fingerprint, cases, summary))
+                {
+                    std::cerr << "error=PACK_SCORE_FAILED path=$ message=" << (summary.messages.empty() ? "pack score failed" : summary.messages[0]) << '\n';
+                    return 4;
+                }
+                const std::string output_directory(argv[6]);
+                if (!create_directory(output_directory))
+                {
+                    std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=output directory must be new and writable\n";
+                    return 3;
+                }
+                if (!write_text_file(join_path(output_directory, "pack_score_summary.json"), signal_synth::ecg_pack_score_summary_json(summary))
+                    || !write_text_file(join_path(output_directory, "pack_score_summary.csv"), signal_synth::ecg_pack_score_summary_csv(summary))
+                    || !write_text_file(join_path(output_directory, "pack_score_report.html"), signal_synth::ecg_pack_score_report_html(summary)))
+                {
+                    std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=unable to write pack score output files\n";
+                    return 3;
+                }
+                std::cout << "status=pack-scored\n"
+                          << "output_directory=" << output_directory << '\n'
                           << "pack_id=" << manifest.pack_id << '\n'
-                          << "version=" << manifest.version << '\n'
-                          << "scenario_count=" << manifest.scenarios.size() << '\n'
+                          << "scenario_count=" << cases.size() << '\n'
                           << "pack_fingerprint=" << pack_result.pack_fingerprint << '\n';
                 return 0;
             }
