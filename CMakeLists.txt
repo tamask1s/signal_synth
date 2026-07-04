@@ -17,6 +17,7 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/ecg_edf_bdf_export.h
     src/hrv_metrics.h
     src/hrv_scoring.h
+    src/ecg_beat_classification.h
     src/ecg_compare.h
     src/detection_io.h
     src/synsigra_api.h
@@ -40,6 +41,7 @@ add_library(
     src/ecg_edf_bdf_export.cpp
     src/hrv_metrics.cpp
     src/hrv_scoring.cpp
+    src/ecg_beat_classification.cpp
     src/ecg_compare.cpp
     src/detection_io.cpp
     src/synsigra_api.cpp

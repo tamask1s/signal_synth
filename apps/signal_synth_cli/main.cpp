@@ -3,6 +3,7 @@
 #include "ecg_pack.h"
 #include "ecg_pack_score.h"
 #include "ecg_compare.h"
+#include "ecg_beat_classification.h"
 #include "detection_io.h"
 #include "hrv_scoring.h"
 
@@ -65,7 +66,7 @@ namespace
     {
         std::cerr << "usage: signal-synth <validate|fingerprint> <scenario.json|->\n"
                   << "       signal-synth render <scenario.json|-> --out <new-directory>\n"
-                  << "       signal-synth compare <rpeaks|ppg-peaks> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
+                  << "       signal-synth compare <rpeaks|ppg-peaks|beat-classes> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack render <pack.json> --out <new-directory>\n"
@@ -372,6 +373,11 @@ namespace
             target = signal_synth::ecg_compare_ppg_systolic_peak;
             return true;
         }
+        if (value == "beat-classes" || value == "beat_classification" || value == "ecg_beat_classification")
+        {
+            target = signal_synth::ecg_compare_beat_classification;
+            return true;
+        }
         return false;
     }
 
@@ -379,7 +385,7 @@ namespace
     {
         for (std::size_t i = 0; i < scenario.targets.size(); ++i)
         {
-            if (signal_synth::detection_compare_target_from_name(scenario.targets[i], target))
+            if (signal_synth::detection_compare_target_from_name(scenario.targets[i], target) && target != signal_synth::ecg_compare_beat_classification)
             {
                 target_name = signal_synth::ecg_compare_target_name(target);
                 return true;
@@ -387,7 +393,7 @@ namespace
         }
         for (std::size_t i = 0; i < manifest.targets.size(); ++i)
         {
-            if (signal_synth::detection_compare_target_from_name(manifest.targets[i], target))
+            if (signal_synth::detection_compare_target_from_name(manifest.targets[i], target) && target != signal_synth::ecg_compare_beat_classification)
             {
                 target_name = signal_synth::ecg_compare_target_name(target);
                 return true;
@@ -505,7 +511,7 @@ int main(int argc, char** argv)
             signal_synth::ecg_compare_target target;
             if (!parse_compare_target(argv[2], target))
             {
-                std::cerr << "error=COMPARE_TARGET_FAILED path=$ message=target must be rpeaks or ppg-peaks\n";
+                std::cerr << "error=COMPARE_TARGET_FAILED path=$ message=target must be rpeaks, ppg-peaks, or beat-classes\n";
                 return 2;
             }
             if (std::string(argv[3]) == "-" && std::string(argv[4]) == "-")
@@ -555,12 +561,6 @@ int main(int argc, char** argv)
                           << " path=$.target message=detection target does not match compare command target\n";
                 return 4;
             }
-            std::vector<signal_synth::ecg_detected_event> detections;
-            if (!signal_synth::detection_events_for_compare(detection_document, detections, detection_result))
-            {
-                std::cerr << "error=DETECTION_IO_FAILED path=$ message=detection import failed\n";
-                return 4;
-            }
             signal_synth::ecg_render_bundle render;
             signal_synth::ecg_export_result export_result;
             if (!signal_synth::render_ecg_document(document, render, export_result))
@@ -568,8 +568,7 @@ int main(int argc, char** argv)
                 std::cerr << "error=RENDER_FAILED path=$ message=" << (export_result.messages.empty() ? "render failed" : export_result.messages[0]) << '\n';
                 return 4;
             }
-            signal_synth::ecg_compare_options options;
-            options.target = target;
+            double requested_tolerance_seconds = signal_synth::ecg_compare_default_tolerance_seconds(target);
             if (argc == 9)
             {
                 double tolerance_ms = 0.0;
@@ -578,15 +577,57 @@ int main(int argc, char** argv)
                     std::cerr << "error=COMPARE_OPTIONS_FAILED path=$ message=--tolerance-ms must be positive\n";
                     return 2;
                 }
-                options.tolerance_seconds = tolerance_ms / 1000.0;
+                requested_tolerance_seconds = tolerance_ms / 1000.0;
             }
+            const std::string output_directory(argv[6]);
+            if (target == signal_synth::ecg_compare_beat_classification)
+            {
+                signal_synth::ecg_beat_classification_options options;
+                options.tolerance_seconds = requested_tolerance_seconds;
+                signal_synth::ecg_beat_classification_result classification_result;
+                if (!signal_synth::score_ecg_beat_classification(render, detection_document, options, classification_result))
+                {
+                    std::cerr << "error=COMPARE_FAILED path=$ message=" << (classification_result.messages.empty() ? "classification comparison failed" : classification_result.messages[0]) << '\n';
+                    return 4;
+                }
+                if (!create_directory(output_directory))
+                {
+                    std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=output directory must be new and writable\n";
+                    return 3;
+                }
+                if (!write_text_file(join_path(output_directory, "comparison.json"), signal_synth::ecg_beat_classification_result_json(render, classification_result))
+                    || !write_text_file(join_path(output_directory, "comparison.csv"), signal_synth::ecg_beat_classification_result_csv(classification_result))
+                    || !write_text_file(join_path(output_directory, "comparison_report.html"), signal_synth::ecg_beat_classification_report_html(render, classification_result)))
+                {
+                    std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=unable to write comparison output files\n";
+                    return 3;
+                }
+                std::cout << "status=compared\n"
+                          << "output_directory=" << output_directory << '\n'
+                          << "target=ecg_beat_classification\n"
+                          << "tolerance_seconds=" << classification_result.tolerance_seconds << '\n'
+                          << "ground_truth_count=" << classification_result.scored_ground_truth_count << '\n'
+                          << "prediction_count=" << classification_result.scored_prediction_count << '\n'
+                          << "correct_count=" << classification_result.correct_count << '\n'
+                          << "accuracy=" << classification_result.accuracy << '\n'
+                          << "f1_score=" << classification_result.micro_f1_score << '\n';
+                return 0;
+            }
+            std::vector<signal_synth::ecg_detected_event> detections;
+            if (!signal_synth::detection_events_for_compare(detection_document, detections, detection_result))
+            {
+                std::cerr << "error=DETECTION_IO_FAILED path=$ message=detection import failed\n";
+                return 4;
+            }
+            signal_synth::ecg_compare_options options;
+            options.target = target;
+            options.tolerance_seconds = requested_tolerance_seconds;
             signal_synth::ecg_compare_result compare_result;
             if (!signal_synth::compare_detections_to_render(render, detections, options, compare_result))
             {
                 std::cerr << "error=COMPARE_FAILED path=$ message=" << (compare_result.messages.empty() ? "comparison failed" : compare_result.messages[0]) << '\n';
                 return 4;
             }
-            const std::string output_directory(argv[6]);
             if (!create_directory(output_directory))
             {
                 std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=output directory must be new and writable\n";

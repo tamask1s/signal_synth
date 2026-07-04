@@ -1,10 +1,12 @@
 #include "ecg_edf_bdf_export.h"
+#include "ecg_beat_classification.h"
 
 #include <cmath>
 #include <iomanip>
 #include <limits>
 #include <locale>
 #include <sstream>
+#include <string>
 
 namespace
 {
@@ -170,7 +172,10 @@ namespace
         {
             const signal_synth::clinical_beat_annotation& beat = render.record.beats()[i];
             if (beat.qrs_present)
-                append_tal(output, beat.r_peak_time_seconds, "r_peak");
+            {
+                const std::string label = std::string("beat:") + signal_synth::ecg_beat_class_name(signal_synth::ecg_beat_class_from_origin(beat.origin));
+                append_tal(output, beat.r_peak_time_seconds, label.c_str());
+            }
         }
         for (unsigned int i = 0; i < render.ppg.annotation_count(); ++i)
         {

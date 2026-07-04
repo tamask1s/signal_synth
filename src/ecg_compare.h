@@ -10,7 +10,8 @@ namespace signal_synth
     enum ecg_compare_target
     {
         ecg_compare_r_peak = 0,
-        ecg_compare_ppg_systolic_peak = 1
+        ecg_compare_ppg_systolic_peak = 1,
+        ecg_compare_beat_classification = 2
     };
 
     struct ecg_detected_event

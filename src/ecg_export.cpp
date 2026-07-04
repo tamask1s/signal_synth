@@ -1,4 +1,5 @@
 #include "ecg_export.h"
+#include "ecg_beat_classification.h"
 #include "ecg_edf_bdf_export.h"
 #include "ecg_wfdb_export.h"
 
@@ -366,6 +367,7 @@ namespace
             output << "{\"beat_index\":" << beat.beat_index
                    << ",\"linked_atrial_index\":" << beat.linked_atrial_index
                    << ",\"origin\":" << json_string(origin_name(beat.origin))
+                   << ",\"beat_class\":" << json_string(signal_synth::ecg_beat_class_name(signal_synth::ecg_beat_class_from_origin(beat.origin)))
                    << ",\"rr_seconds\":" << beat.rr_interval_seconds
                    << ",\"pr_seconds\":" << beat.pr_interval_seconds
                    << ",\"qrs_seconds\":" << beat.qrs_duration_seconds

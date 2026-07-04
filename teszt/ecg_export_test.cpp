@@ -85,7 +85,7 @@ int main()
     const signal_synth::ecg_text_artifact* bdf = bundle.find("synsigra.bdf");
     const signal_synth::ecg_text_artifact* edf_bdf_metadata = bundle.find("edf_bdf_metadata.json");
     ok &= check(csv && csv->content.find("sample_index,time_seconds,I_mv,II_mv,III_mv,aVR_mv,aVL_mv,aVF_mv,V1_mv,V2_mv,V3_mv,V4_mv,V5_mv,V6_mv\n") == 0 && line_count(csv->content) == render.record.sample_count() + 1, "csv_contract");
-    ok &= check(annotations && annotations->content.find("\"rr_tachogram\":[") != std::string::npos && annotations->content.find("\"artifact_intervals\":[]") != std::string::npos && annotations->content.find("\"r_peak\"") != std::string::npos, "annotation_contract");
+    ok &= check(annotations && annotations->content.find("\"rr_tachogram\":[") != std::string::npos && annotations->content.find("\"artifact_intervals\":[]") != std::string::npos && annotations->content.find("\"beat_class\":\"normal\"") != std::string::npos && annotations->content.find("\"r_peak\"") != std::string::npos, "annotation_contract");
     ok &= check(tachogram && tachogram->content.find("beat_index,beat_time_seconds,rr_seconds,clipped,ectopic,artifact_overlap,excluded\n") == 0 && line_count(tachogram->content) == render.record.beat_count() + 1, "rr_tachogram_contract");
     ok &= check(hrv_metrics && hrv_metrics->content.find("\"definition_version\":\"synsigra_hrv_metrics_v1\"") != std::string::npos && hrv_metrics->content.find("\"tachogram\":[") != std::string::npos, "hrv_metrics_contract");
     ok &= check(metrics && metrics->content.find("\"sd1_seconds\":") != std::string::npos && metrics->content.find("\"lf_hf_ratio\":") != std::string::npos && metrics->content.find("\"assertions\":[") != std::string::npos, "metrics_contract");

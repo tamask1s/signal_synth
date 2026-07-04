@@ -103,6 +103,14 @@ def ppg_detections(annotations):
     ]
 
 
+def beat_classifications(annotations):
+    return [
+        {"time_seconds": item["r_peak_seconds"], "label": item["beat_class"]}
+        for item in annotations["beats"]
+        if item.get("qrs_present", False)
+    ]
+
+
 def write_detections(path, target, events):
     write_json(path, {
         "schema_version": 1,
@@ -152,13 +160,17 @@ def main():
     os.makedirs(detections_dir)
     rpeak_path = os.path.join(detections_dir, "clean_ecg.json")
     ppg_path = os.path.join(detections_dir, "ppg_clean.json")
+    beat_class_path = os.path.join(detections_dir, "clean_ecg_beat_classes.json")
     write_detections(rpeak_path, "r_peak", rpeak_detections(challenge.case("clean_ecg").annotations()))
     write_detections(ppg_path, "ppg_systolic_peak", ppg_detections(challenge.case("ppg_clean").annotations()))
+    write_detections(beat_class_path, "ecg_beat_classification", beat_classifications(challenge.case("clean_ecg").annotations()))
 
     rpeak_detections_doc = ss.load_detections(rpeak_path, target="r_peak")
     ppg_detections_doc = ss.load_detections(ppg_path, target="ppg_systolic_peak")
+    beat_class_doc = ss.load_detections(beat_class_path, target="ecg_beat_classification")
     assert len(rpeak_detections_doc) > 0
     assert len(ppg_detections_doc) > 0
+    assert len(beat_class_doc) == len(rpeak_detections_doc)
 
     rpeak_report = ss.compare_rpeaks(challenge.case("clean_ecg"), rpeak_detections_doc, cli_path=cli)
     assert rpeak_report.json["comparison"]["metrics"]["total"]["f1_score"] == 1
@@ -170,6 +182,11 @@ def main():
 
     ppg_report = ss.compare_ppg_peaks(challenge.case("ppg_clean"), ppg_detections_doc, cli_path=cli)
     assert ppg_report.json["comparison"]["metrics"]["total"]["f1_score"] == 1
+
+    beat_class_report = ss.compare_beat_classes(challenge.case("clean_ecg"), beat_class_doc, cli_path=cli)
+    assert beat_class_report.json["summary"]["accuracy"] == 1
+    assert beat_class_report.json["summary"]["micro_f1_score"] == 1
+    assert "ECG Beat Classification QA Report" in beat_class_report.html
 
     hrv_annotations = challenge.case("clean_ecg").annotations()
     accepted_rr = [item for item in hrv_annotations["rr_tachogram"] if not item["excluded"]]

@@ -54,6 +54,9 @@ int main()
     document.schema_version = 2;
     document.scenario_id = "wfdb_export_test";
     document.ppg.enabled = true;
+    document.ecg.clear_conditions();
+    document.ecg.add_condition(signal_synth::ecg_condition_pvc, 0.7);
+    document.ecg.set_ectopic_every_n_beats(3);
 
     signal_synth::ecg_render_bundle render;
     signal_synth::ecg_export_result result;
@@ -79,7 +82,17 @@ int main()
         ok &= check(read_i16_le(signal->content, 24) == expected_adc(render.ppg.samples()[0], 10000), "first_ppg_adc");
     }
     ok &= check(annotations && annotations->content.size() >= 2u && annotations->content[annotations->content.size() - 2] == 0 && annotations->content[annotations->content.size() - 1] == 0, "annotation_eof");
-    ok &= check(metadata && metadata->content.find("\"record_name\":\"wfdbtest01\"") != std::string::npos && metadata->content.find("\"native_wfdb_annotation\":\"r_peak\"") != std::string::npos, "metadata");
+    ok &= check(metadata && metadata->content.find("\"record_name\":\"wfdbtest01\"") != std::string::npos && metadata->content.find("\"native_wfdb_annotation\":\"r_peak_with_beat_class\"") != std::string::npos, "metadata");
+    bool has_normal = false;
+    bool has_pvc = false;
+    if (annotations)
+        for (std::size_t offset = 0; offset + 1u < annotations->content.size(); offset += 2u)
+        {
+            const unsigned int type = static_cast<unsigned char>(annotations->content[offset + 1u]) >> 2;
+            has_normal = has_normal || type == 1u;
+            has_pvc = has_pvc || type == 5u;
+        }
+    ok &= check(has_normal && has_pvc, "wfdb_standard_beat_classes");
 
     signal_synth::ecg_render_bundle incomplete;
     signal_synth::wfdb_export_bundle preserved = bundle;

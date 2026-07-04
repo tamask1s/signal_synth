@@ -6,7 +6,7 @@ scoring semantics remain in the C++ command-line tool.
 
 from .challenge import ChallengeCase, ChallengePackage, WaveformTable, load_challenge
 from .detections import DetectionDocument, DetectionEvent, load_detections
-from .scoring import ScoreReport, compare_ppg_peaks, compare_rpeaks, score_hrv, score_pack
+from .scoring import ScoreReport, compare_beat_classes, compare_ppg_peaks, compare_rpeaks, score_hrv, score_pack
 
 __all__ = [
     "ChallengeCase",
@@ -15,6 +15,7 @@ __all__ = [
     "DetectionEvent",
     "ScoreReport",
     "WaveformTable",
+    "compare_beat_classes",
     "compare_ppg_peaks",
     "compare_rpeaks",
     "load_challenge",

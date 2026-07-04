@@ -256,6 +256,8 @@ namespace signal_synth
 
     double ecg_compare_default_tolerance_seconds(ecg_compare_target target)
     {
+        if (target == ecg_compare_beat_classification)
+            return 0.075;
         return target == ecg_compare_ppg_systolic_peak ? 0.080 : 0.050;
     }
 
@@ -265,6 +267,7 @@ namespace signal_synth
         {
         case ecg_compare_r_peak: return "r_peak";
         case ecg_compare_ppg_systolic_peak: return "ppg_systolic_peak";
+        case ecg_compare_beat_classification: return "ecg_beat_classification";
         }
         return "unknown";
     }

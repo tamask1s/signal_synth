@@ -1,4 +1,5 @@
 #include "ecg_wfdb_export.h"
+#include "ecg_beat_classification.h"
 
 #include <algorithm>
 #include <cmath>
@@ -12,6 +13,12 @@ namespace
     const int ecg_gain_adc_per_mv = 1000;
     const int ppg_gain_adc_per_au = 10000;
     const int wfdb_ann_normal = 1;
+    const int wfdb_ann_pvc = 5;
+    const int wfdb_ann_pac = 8;
+    const int wfdb_ann_ventricular_escape = 10;
+    const int wfdb_ann_junctional_escape = 11;
+    const int wfdb_ann_paced = 12;
+    const int wfdb_ann_unknown = 13;
 
     std::string json_string(const std::string& value)
     {
@@ -116,6 +123,21 @@ namespace
         return sample < 0.0 ? 0u : static_cast<unsigned int>(sample);
     }
 
+    int wfdb_beat_annotation(signal_synth::clinical_ventricular_origin origin)
+    {
+        switch (origin)
+        {
+        case signal_synth::clinical_origin_conducted: return wfdb_ann_normal;
+        case signal_synth::clinical_origin_pac: return wfdb_ann_pac;
+        case signal_synth::clinical_origin_pvc: return wfdb_ann_pvc;
+        case signal_synth::clinical_origin_junctional_escape: return wfdb_ann_junctional_escape;
+        case signal_synth::clinical_origin_ventricular_escape: return wfdb_ann_ventricular_escape;
+        case signal_synth::clinical_origin_paced: return wfdb_ann_paced;
+        case signal_synth::clinical_origin_vt:
+        default: return wfdb_ann_unknown;
+        }
+    }
+
     void add_artifact(signal_synth::wfdb_export_bundle& bundle, const char* name, const char* media_type, const std::string& content)
     {
         signal_synth::wfdb_export_artifact artifact;
@@ -201,7 +223,7 @@ namespace
             unsigned int interval = r_peak_sample - previous_sample;
             append_time_gap(output, interval / 1023u * 1023u);
             interval %= 1023u;
-            append_annotation_word(output, interval, wfdb_ann_normal);
+            append_annotation_word(output, interval, wfdb_beat_annotation(beat.origin));
             previous_sample = r_peak_sample;
         }
         append_annotation_word(output, 0u, 0);
@@ -231,7 +253,7 @@ namespace
         }
         if (render.ppg.sample_count())
             output << ",{\"name\":\"ppg_green\",\"unit\":\"normalized_unit\",\"gain_adc_per_unit\":" << ppg_gain_adc_per_au << ",\"adc_zero\":0}";
-        output << "],\"annotation_strategy\":{\"native_wfdb_annotation\":\"r_peak\",\"native_file\":" << json_string(record_name + ".atr")
+        output << "],\"annotation_strategy\":{\"native_wfdb_annotation\":\"r_peak_with_beat_class\",\"native_file\":" << json_string(record_name + ".atr")
                << ",\"full_ground_truth\":\"annotations.json\"},"
                << "\"intended_use\":\"synthetic engineering algorithm testing and QA\","
                << "\"not_for\":\"diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment\"}";

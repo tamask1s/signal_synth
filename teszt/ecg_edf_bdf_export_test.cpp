@@ -70,6 +70,9 @@ int main()
     document.schema_version = 2;
     document.scenario_id = "edf_bdf_export_test";
     document.ppg.enabled = true;
+    document.ecg.clear_conditions();
+    document.ecg.add_condition(signal_synth::ecg_condition_pvc, 0.7);
+    document.ecg.set_ectopic_every_n_beats(3);
 
     signal_synth::ecg_render_bundle render;
     signal_synth::ecg_export_result result;
@@ -103,8 +106,8 @@ int main()
         ok &= check(read_i24_le(bdf->content, bdf_header_bytes + render.record.sample_count() * 3u) == expected_adc(render.record.lead_data(1)[0], 100000, -8388608, 8388607), "bdf_first_ii");
         ok &= check(read_i24_le(bdf->content, bdf_header_bytes + render.record.sample_count() * 12u * 3u) == expected_adc(render.ppg.samples()[0], 1000000, -8388608, 8388607), "bdf_first_ppg");
     }
-    ok &= check(edf && edf->content.find("r_peak") != std::string::npos && edf->content.find("ppg_systolic_peak") != std::string::npos, "edf_annotations");
-    ok &= check(bdf && bdf->content.find("r_peak") != std::string::npos && bdf->content.find("ppg_systolic_peak") != std::string::npos, "bdf_annotations");
+    ok &= check(edf && edf->content.find("beat:normal") != std::string::npos && edf->content.find("beat:ventricular_ectopic") != std::string::npos && edf->content.find("ppg_systolic_peak") != std::string::npos, "edf_annotations");
+    ok &= check(bdf && bdf->content.find("beat:normal") != std::string::npos && bdf->content.find("beat:ventricular_ectopic") != std::string::npos && bdf->content.find("ppg_systolic_peak") != std::string::npos, "bdf_annotations");
     ok &= check(metadata && metadata->content.find("\"formats\":[\"edf_plus\",\"bdf_plus\"]") != std::string::npos && metadata->content.find("\"full_ground_truth\":\"annotations.json\"") != std::string::npos, "metadata");
 
     signal_synth::ecg_render_bundle incomplete;

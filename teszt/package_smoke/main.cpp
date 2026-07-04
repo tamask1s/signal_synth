@@ -7,6 +7,7 @@
 #include <signal_synth/ecg_edf_bdf_export.h>
 #include <signal_synth/hrv_metrics.h>
 #include <signal_synth/hrv_scoring.h>
+#include <signal_synth/ecg_beat_classification.h>
 #include <signal_synth/ecg_compare.h>
 #include <signal_synth/ecg_morphology.h>
 #include <signal_synth/ecg_scenario.h>
@@ -49,6 +50,7 @@ int main()
     signal_synth::edf_bdf_export_bundle edf_bdf_bundle;
     signal_synth::hrv_analysis_result hrv_analysis;
     signal_synth::hrv_score_result hrv_score;
+    signal_synth::ecg_beat_classification_result beat_classification;
 
     if (legacy.amplitude_r <= 0.0 || !signal_synth::ecg_model(model).valid() || !signal_synth::clinical_ecg_generator(clinical).valid())
         return 1;
@@ -94,5 +96,7 @@ int main()
         return 16;
     if (hrv_score.success || std::string(signal_synth::hrv_metric_name(signal_synth::hrv_metric_sdnn_seconds)).empty())
         return 17;
+    if (beat_classification.success || std::string(signal_synth::ecg_beat_class_name(signal_synth::ecg_beat_normal)) != "normal")
+        return 18;
     return 0;
 }
