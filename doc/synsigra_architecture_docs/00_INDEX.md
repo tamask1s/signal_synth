@@ -80,6 +80,8 @@ Implementation increment designs:
   validation, render/export, and comparison.
 - `increments/019_CHALLENGE_PACKAGE_MANIFEST.md` defines the offline challenge
   package manifest contract.
+- `increments/020_DETECTION_OUTPUT_CONTRACTS.md` defines versioned CSV/JSON
+  user detection output contracts.
 
 Traceability demonstration:
 

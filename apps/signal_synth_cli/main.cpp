@@ -2,6 +2,7 @@
 #include "ecg_export.h"
 #include "ecg_pack.h"
 #include "ecg_compare.h"
+#include "detection_io.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -56,7 +57,7 @@ namespace
     {
         std::cerr << "usage: signal-synth <validate|fingerprint> <scenario.json|->\n"
                   << "       signal-synth render <scenario.json|-> --out <new-directory>\n"
-                  << "       signal-synth compare <rpeaks|ppg-peaks> <scenario.json|-> <detections.csv> --out <new-directory> [--tolerance-ms <ms>]\n"
+                  << "       signal-synth compare <rpeaks|ppg-peaks> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack render <pack.json> --out <new-directory>\n";
     }
@@ -323,35 +324,6 @@ namespace
         }
     }
 
-    std::string trim_ascii(const std::string& value)
-    {
-        std::string::size_type first = 0;
-        while (first < value.size() && (value[first] == ' ' || value[first] == '\t' || value[first] == '\r'))
-            ++first;
-        std::string::size_type last = value.size();
-        while (last > first && (value[last - 1] == ' ' || value[last - 1] == '\t' || value[last - 1] == '\r'))
-            --last;
-        return value.substr(first, last - first);
-    }
-
-    std::vector<std::string> split_simple_csv_line(const std::string& line)
-    {
-        std::vector<std::string> cells;
-        std::string cell;
-        for (std::size_t i = 0; i < line.size(); ++i)
-        {
-            if (line[i] == ',')
-            {
-                cells.push_back(trim_ascii(cell));
-                cell.clear();
-            }
-            else
-                cell.push_back(line[i]);
-        }
-        cells.push_back(trim_ascii(cell));
-        return cells;
-    }
-
     bool parse_double_cell(const std::string& text, double& value)
     {
         errno = 0;
@@ -367,60 +339,15 @@ namespace
         return true;
     }
 
-    bool parse_detection_csv(const std::string& csv, std::vector<signal_synth::ecg_detected_event>& output, std::string& message)
+    bool starts_with_json_object(const std::string& text)
     {
-        output.clear();
-        std::istringstream input(csv);
-        std::string line;
-        if (!std::getline(input, line))
+        for (std::size_t i = 0; i < text.size(); ++i)
         {
-            message = "detection CSV is empty";
-            return false;
-        }
-        const std::vector<std::string> header = split_simple_csv_line(line);
-        int time_column = -1;
-        int label_column = -1;
-        for (std::size_t i = 0; i < header.size(); ++i)
-        {
-            if (header[i] == "time_seconds")
-                time_column = static_cast<int>(i);
-            if (header[i] == "label")
-                label_column = static_cast<int>(i);
-        }
-        if (time_column < 0)
-        {
-            message = "detection CSV must contain a time_seconds column";
-            return false;
-        }
-        unsigned int row = 1;
-        while (std::getline(input, line))
-        {
-            ++row;
-            if (trim_ascii(line).empty())
+            if (text[i] == ' ' || text[i] == '\t' || text[i] == '\r' || text[i] == '\n')
                 continue;
-            const std::vector<std::string> cells = split_simple_csv_line(line);
-            if (static_cast<std::size_t>(time_column) >= cells.size())
-            {
-                std::ostringstream error;
-                error << "detection CSV row " << row << " has no time_seconds value";
-                message = error.str();
-                return false;
-            }
-            double time_seconds = 0.0;
-            if (!parse_double_cell(cells[static_cast<std::size_t>(time_column)], time_seconds))
-            {
-                std::ostringstream error;
-                error << "detection CSV row " << row << " has invalid time_seconds";
-                message = error.str();
-                return false;
-            }
-            signal_synth::ecg_detected_event event;
-            event.time_seconds = time_seconds;
-            if (label_column >= 0 && static_cast<std::size_t>(label_column) < cells.size())
-                event.label = cells[static_cast<std::size_t>(label_column)];
-            output.push_back(event);
+            return text[i] == '{';
         }
-        return true;
+        return false;
     }
 
     bool parse_compare_target(const std::string& value, signal_synth::ecg_compare_target& target)
@@ -475,8 +402,8 @@ int main(int argc, char** argv)
                 std::cerr << "error=INPUT_READ_FAILED path=" << argv[3] << " message=unable to read scenario input or input exceeds 16 MiB\n";
                 return 3;
             }
-            std::string detection_csv;
-            if (!read_input(argv[4], detection_csv))
+            std::string detection_input;
+            if (!read_input(argv[4], detection_input))
             {
                 std::cerr << "error=INPUT_READ_FAILED path=" << argv[4] << " message=unable to read detection input or input exceeds 16 MiB\n";
                 return 3;
@@ -488,11 +415,33 @@ int main(int argc, char** argv)
                 print_errors(scenario_result);
                 return 4;
             }
-            std::vector<signal_synth::ecg_detected_event> detections;
-            std::string detection_message;
-            if (!parse_detection_csv(detection_csv, detections, detection_message))
+            signal_synth::detection_io_document detection_document;
+            signal_synth::detection_io_result detection_result;
+            const bool parsed_detection = starts_with_json_object(detection_input)
+                ? signal_synth::parse_detection_json_v1(detection_input, detection_document, detection_result)
+                : signal_synth::parse_detection_csv_v2(detection_input, signal_synth::ecg_compare_target_name(target), detection_document, detection_result);
+            if (!parsed_detection)
             {
-                std::cerr << "error=DETECTION_CSV_FAILED path=" << argv[4] << " message=" << detection_message << '\n';
+                for (std::size_t i = 0; i < detection_result.messages.size(); ++i)
+                {
+                    const signal_synth::detection_io_message& message = detection_result.messages[i];
+                    std::cerr << "error=" << signal_synth::detection_io_message_code_name(message.code)
+                              << " path=" << message.path << " message=" << message.message << '\n';
+                }
+                if (detection_result.messages.empty())
+                    std::cerr << "error=DETECTION_IO_FAILED path=$ message=detection import failed\n";
+                return 4;
+            }
+            if (!detection_document.has_compare_target || detection_document.compare_target != target)
+            {
+                std::cerr << "error=" << signal_synth::detection_io_message_code_name(signal_synth::detection_io_target_mismatch)
+                          << " path=$.target message=detection target does not match compare command target\n";
+                return 4;
+            }
+            std::vector<signal_synth::ecg_detected_event> detections;
+            if (!signal_synth::detection_events_for_compare(detection_document, detections, detection_result))
+            {
+                std::cerr << "error=DETECTION_IO_FAILED path=$ message=detection import failed\n";
                 return 4;
             }
             signal_synth::ecg_render_bundle render;

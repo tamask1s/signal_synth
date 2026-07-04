@@ -19,6 +19,8 @@ namespace signal_synth
 
         double time_seconds;
         std::string label;
+        unsigned int original_index;
+        bool has_original_index;
     };
 
     struct ecg_compare_options

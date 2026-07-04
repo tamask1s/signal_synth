@@ -228,7 +228,7 @@ namespace
 
 namespace signal_synth
 {
-    ecg_detected_event::ecg_detected_event() : time_seconds(0.0), label()
+    ecg_detected_event::ecg_detected_event() : time_seconds(0.0), label(), original_index(0), has_original_index(false)
     {
     }
 
@@ -310,7 +310,7 @@ namespace signal_synth
         for (std::size_t i = 0; i < detections.size(); ++i)
         {
             detection_event event;
-            event.original_index = static_cast<unsigned int>(i);
+            event.original_index = detections[i].has_original_index ? detections[i].original_index : static_cast<unsigned int>(i);
             event.time_seconds = detections[i].time_seconds;
             event.in_artifact_interval = in_artifact_interval(render, options.target, event.time_seconds);
             sorted_detections.push_back(event);

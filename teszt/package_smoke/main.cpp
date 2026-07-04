@@ -1,5 +1,6 @@
 #include <signal_synth/clinical_ecg.h>
 #include <signal_synth/challenge_package.h>
+#include <signal_synth/detection_io.h>
 #include <signal_synth/ecg_model.h>
 #include <signal_synth/ecg_export.h>
 #include <signal_synth/ecg_compare.h>
@@ -21,6 +22,8 @@ int main()
     signal_synth::clinical_ecg_config clinical;
     signal_synth::challenge_package_manifest challenge_package;
     signal_synth::challenge_package_file challenge_file;
+    signal_synth::detection_io_document detection_document;
+    signal_synth::detection_io_event detection_event;
     signal_synth::clinical_ecg_record record;
     signal_synth::ecg_morphology_report morphology;
     signal_synth::ecg_qa_scenario scenario;
@@ -41,6 +44,8 @@ int main()
         return 1;
     if (challenge_package.schema_version != 1 || challenge_file.role != signal_synth::challenge_file_other)
         return 12;
+    if (detection_document.schema_version != 1 || detection_event.has_confidence)
+        return 13;
     if (signal_synth::ecg_condition_catalog_size() != signal_synth::ecg_condition_count)
         return 2;
     if (!scenario.add_condition(signal_synth::ecg_condition_norm) || !engine.validate(scenario, report))
