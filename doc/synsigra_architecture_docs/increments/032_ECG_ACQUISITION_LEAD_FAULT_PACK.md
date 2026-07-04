@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-032
 
-**Version:** 0.9
+**Version:** 1.0
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Core generation / Algorithm QA
 
@@ -14,9 +14,9 @@
 
 **Implementation issue:** [signal_synth#47](https://github.com/tamask1s/signal_synth/issues/47)
 
-**Implementation commit:** Pending
+**Implementation commit:** `d20d9eb4ba640f6aeeb4da70fcffd8d25c0c4076`
 
-**CI verification:** Pending
+**CI verification:** [GitHub Actions run 28718686207](https://github.com/tamask1s/signal_synth/actions/runs/28718686207)
 
 ## 1. Decision
 
@@ -91,9 +91,10 @@ Verified locally on 2026-07-04:
 - `env ASAN_OPTIONS=detect_leaks=0 ctest -E TEST-BUILD-001 --output-on-failure`
   in `build-sanitize`: 28/28 passed.
 
-Pending before `Verified`:
+Verified in CI on 2026-07-04:
 
-- GitHub Actions Linux and Windows CI.
+- Ubuntu C++11 configure/build/test: passed;
+- Windows C++11 configure/build/test: passed.
 
 ## 5. DataBrowser/SVN Impact
 
@@ -117,3 +118,4 @@ DataBrowser script is added or changed.
 |---|---|---|
 | 0.1 | 2026-07-04 | Accepted acquisition and lead-fault extension design |
 | 0.9 | 2026-07-04 | Implemented C++ artifact types, JSON support, curated pack, and local verification |
+| 1.0 | 2026-07-04 | Completed Linux and Windows CI verification |
