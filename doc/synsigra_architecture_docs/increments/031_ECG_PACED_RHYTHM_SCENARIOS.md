@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-031
 
-**Version:** 0.9
+**Version:** 1.0
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Core generation / Algorithm QA
 
@@ -14,9 +14,9 @@
 
 **Implementation issue:** [signal_synth#46](https://github.com/tamask1s/signal_synth/issues/46)
 
-**Implementation commit:** Pending
+**Implementation commit:** `068c7a1684de2ff44980cd8dd2996d62a9264674`
 
-**CI verification:** Pending
+**CI verification:** [GitHub Actions run 28718245367](https://github.com/tamask1s/signal_synth/actions/runs/28718245367)
 
 ## 1. Decision
 
@@ -133,11 +133,14 @@ Verified locally on 2026-07-04:
 
 - `cmake --build build-release`: passed;
 - `ctest --output-on-failure` in `build-release`: 29/29 passed.
+- `cmake --build build-sanitize`: passed;
+- `env ASAN_OPTIONS=detect_leaks=0 ctest -E TEST-BUILD-001 --output-on-failure`
+  in `build-sanitize`: 28/28 passed.
 
-Pending before `Verified`:
+Verified in CI on 2026-07-04:
 
-- sanitizer build/test;
-- GitHub Actions Linux and Windows CI.
+- Ubuntu C++11 configure/build/test: passed;
+- Windows C++11 configure/build/test: passed.
 
 ## 8. Risks and Limitations
 
@@ -155,3 +158,4 @@ Pending before `Verified`:
 |---|---|---|
 | 0.1 | 2026-07-04 | Accepted paced rhythm scenario architecture |
 | 0.9 | 2026-07-04 | Implemented C++ model, JSON, export, and verification updates |
+| 1.0 | 2026-07-04 | Completed local sanitizer and Linux/Windows CI verification |
