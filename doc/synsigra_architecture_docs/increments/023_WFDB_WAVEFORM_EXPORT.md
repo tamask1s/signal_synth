@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-023
 
-**Version:** 0.1
+**Version:** 1.0
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Platform / SDK
 
@@ -13,6 +13,10 @@
 **Traceability ID:** `TRC-FMT-WFDB-001`
 
 **Implementation issue:** [signal_synth#36](https://github.com/tamask1s/signal_synth/issues/36)
+
+**Implementation commit:** `fa611ab76eb3ca1f62bbd4cb1b2906c415a9e758`
+
+**CI verification:** [GitHub Actions run 28709300378](https://github.com/tamask1s/signal_synth/actions/runs/28709300378)
 
 ## 1. Decision
 
@@ -104,6 +108,22 @@ The local environment does not currently provide WFDB command-line tooling
 such as `rdsamp` or `rdann`, so external-tool read verification remains a
 portable CI/environment gap for a later conformance job.
 
+Verified locally on 2026-07-04:
+
+- `cmake --build build-release`: passed;
+- `cmake --build build-sanitize`: passed;
+- `ctest --output-on-failure` in `build-release`: 24/24 passed;
+- `ASAN_OPTIONS=detect_leaks=0 ctest -E TEST-BUILD-001 --output-on-failure`
+  in `build-sanitize`: 23/23 passed;
+- `git diff --check`: passed;
+- local WFDB tools `rdsamp` and `rdann`: not installed, external conformance
+  read remains a tracked gap.
+
+Verified in CI on 2026-07-04:
+
+- Ubuntu C++11 configure/build/test: passed;
+- Windows C++11 configure/build/test: passed.
+
 ## 6. Non-Goals
 
 - No EDF+/BDF+ writer; that is issue #37.
@@ -127,3 +147,4 @@ portable CI/environment gap for a later conformance job.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-04 | Added WFDB waveform export design |
+| 1.0 | 2026-07-04 | Verified implementation and CI results |
