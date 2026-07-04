@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-022
 
-**Version:** 0.1
+**Version:** 1.0
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Platform / SDK
 
@@ -13,6 +13,10 @@
 **Proposed traceability ID:** `TRC-PY-001`
 
 **Implementation issue:** [signal_synth#35](https://github.com/tamask1s/signal_synth/issues/35)
+
+**Implementation commit:** `540c647e9d838c98c4cd871c330fb63284dca425`
+
+**CI verification:** [GitHub Actions run 28708607195](https://github.com/tamask1s/signal_synth/actions/runs/28708607195)
 
 ## 1. Decision
 
@@ -94,6 +98,20 @@ Add `TEST-PYTHON-SCORING-001`:
 - verifies Python R-peak scoring output matches direct CLI output;
 - verifies report artifact copy-out.
 
+Verified locally on 2026-07-04:
+
+- `ctest --output-on-failure` in `build-release`: 23/23 passed;
+- `ASAN_OPTIONS=detect_leaks=0 ctest -E TEST-BUILD-001 --output-on-failure`
+  in `build-sanitize`: 22/22 passed;
+- `python3 -m compileall -q python teszt/python_scoring_test.py examples/python/score_challenge.py`: passed;
+- `python3 -m pip install --no-build-isolation --no-deps --target /tmp/synsigra_pkg_install_test .`: passed;
+- `git diff --check`: passed.
+
+Verified in CI on 2026-07-04:
+
+- Ubuntu C++11 configure/build/test: passed;
+- Windows C++11 configure/build/test: passed.
+
 ## 7. Non-Goals
 
 - No hosted SaaS service.
@@ -116,3 +134,4 @@ Add `TEST-PYTHON-SCORING-001`:
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-04 | Added first local Python scoring package design |
+| 1.0 | 2026-07-04 | Verified implementation and CI results |
