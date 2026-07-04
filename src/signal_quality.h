@@ -14,7 +14,16 @@ namespace signal_synth
         signal_quality_ecg_emg_noise = 2,
         signal_quality_ecg_dropout = 3,
         signal_quality_ecg_saturation = 4,
-        signal_quality_ppg_dropout = 5
+        signal_quality_ppg_dropout = 5,
+        signal_quality_ecg_lead_reversal = 6,
+        signal_quality_ecg_lead_swap = 7,
+        signal_quality_ecg_electrode_misplacement = 8,
+        signal_quality_ecg_gain_mismatch = 9,
+        signal_quality_ecg_offset_drift = 10,
+        signal_quality_ecg_clock_drift = 11,
+        signal_quality_ecg_dropped_samples = 12,
+        signal_quality_ecg_quantization = 13,
+        signal_quality_ecg_adc_clipping = 14
     };
 
     const char* signal_quality_artifact_type_name(signal_quality_artifact_type type);

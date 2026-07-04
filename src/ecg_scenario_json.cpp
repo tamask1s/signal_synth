@@ -621,6 +621,24 @@ namespace
             output = signal_synth::signal_quality_ecg_saturation;
         else if (name == "ppg_dropout")
             output = signal_synth::signal_quality_ppg_dropout;
+        else if (name == "ecg_lead_reversal")
+            output = signal_synth::signal_quality_ecg_lead_reversal;
+        else if (name == "ecg_lead_swap")
+            output = signal_synth::signal_quality_ecg_lead_swap;
+        else if (name == "ecg_electrode_misplacement")
+            output = signal_synth::signal_quality_ecg_electrode_misplacement;
+        else if (name == "ecg_gain_mismatch")
+            output = signal_synth::signal_quality_ecg_gain_mismatch;
+        else if (name == "ecg_offset_drift")
+            output = signal_synth::signal_quality_ecg_offset_drift;
+        else if (name == "ecg_clock_drift")
+            output = signal_synth::signal_quality_ecg_clock_drift;
+        else if (name == "ecg_dropped_samples")
+            output = signal_synth::signal_quality_ecg_dropped_samples;
+        else if (name == "ecg_quantization")
+            output = signal_synth::signal_quality_ecg_quantization;
+        else if (name == "ecg_adc_clipping")
+            output = signal_synth::signal_quality_ecg_adc_clipping;
         else
             return false;
         return true;

@@ -29,6 +29,15 @@ namespace
         case signal_synth::signal_quality_ecg_dropout:
         case signal_synth::signal_quality_ecg_saturation:
         case signal_synth::signal_quality_ppg_dropout:
+        case signal_synth::signal_quality_ecg_lead_reversal:
+        case signal_synth::signal_quality_ecg_lead_swap:
+        case signal_synth::signal_quality_ecg_electrode_misplacement:
+        case signal_synth::signal_quality_ecg_gain_mismatch:
+        case signal_synth::signal_quality_ecg_offset_drift:
+        case signal_synth::signal_quality_ecg_clock_drift:
+        case signal_synth::signal_quality_ecg_dropped_samples:
+        case signal_synth::signal_quality_ecg_quantization:
+        case signal_synth::signal_quality_ecg_adc_clipping:
             return true;
         }
         return false;
@@ -87,7 +96,45 @@ namespace
         return std::max(-threshold, std::min(threshold, value));
     }
 
-    void apply_ecg_artifact(std::vector<double>& samples, const signal_synth::signal_quality_artifact_config& config, unsigned int lead, unsigned int sampling_rate_hz, unsigned long long first, unsigned long long past)
+    unsigned int selected_lead_count(const signal_synth::signal_quality_artifact_config& config)
+    {
+        unsigned int count = 0;
+        for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead)
+            if (config.ecg_leads[lead])
+                ++count;
+        return count;
+    }
+
+    int selected_lead_at(const signal_synth::signal_quality_artifact_config& config, unsigned int ordinal)
+    {
+        for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead)
+            if (config.ecg_leads[lead] && ordinal-- == 0)
+                return static_cast<int>(lead);
+        return -1;
+    }
+
+    void apply_lead_swap(std::vector<std::vector<double> >& ecg_leads, const signal_synth::signal_quality_artifact_config& config, unsigned long long first, unsigned long long past)
+    {
+        const int first_lead = selected_lead_at(config, 0);
+        const int second_lead = selected_lead_at(config, 1);
+        if (first_lead < 0 || second_lead < 0)
+            return;
+        for (unsigned long long sample = first; sample < past; ++sample)
+            std::swap(ecg_leads[static_cast<unsigned int>(first_lead)][static_cast<std::size_t>(sample)], ecg_leads[static_cast<unsigned int>(second_lead)][static_cast<std::size_t>(sample)]);
+    }
+
+    unsigned int misplacement_neighbor(unsigned int lead, unsigned long long seed)
+    {
+        unsigned int offset = static_cast<unsigned int>(seed % (signal_synth::clinical_lead_count - 1u)) + 1u;
+        return (lead + offset) % signal_synth::clinical_lead_count;
+    }
+
+    double quantized(double value, double step)
+    {
+        return step > 0.0 ? std::floor(value / step + (value >= 0.0 ? 0.5 : -0.5)) * step : value;
+    }
+
+    void apply_ecg_artifact(std::vector<double>& samples, const std::vector<std::vector<double> >& reference_leads, const signal_synth::signal_quality_artifact_config& config, unsigned int lead, unsigned int sampling_rate_hz, unsigned long long first, unsigned long long past)
     {
         const double phase = two_pi * unit_from_seed(config.seed ^ (0x9e3779b97f4a7c15ULL + lead));
         const double baseline_frequency = 0.18 + 0.28 * unit_from_seed(config.seed ^ 0x6a09e667f3bcc909ULL);
@@ -119,6 +166,56 @@ namespace
                 const double threshold = 2.2 - 1.85 * config.severity;
                 const double saturated = clipped(samples[index], threshold);
                 samples[index] = samples[index] * (1.0 - weight) + saturated * weight;
+            }
+            else if (config.type == signal_synth::signal_quality_ecg_lead_reversal)
+                samples[index] = -samples[index];
+            else if (config.type == signal_synth::signal_quality_ecg_electrode_misplacement)
+            {
+                const unsigned int neighbor = misplacement_neighbor(lead, config.seed);
+                const double blend = std::min(0.85, 0.15 + 0.70 * config.severity) * weight;
+                samples[index] = reference_leads[lead][index] * (1.0 - blend) + reference_leads[neighbor][index] * blend;
+            }
+            else if (config.type == signal_synth::signal_quality_ecg_gain_mismatch)
+            {
+                const double direction = unit_from_seed(config.seed ^ (0x510e527fade682d1ULL + lead)) < 0.5 ? -1.0 : 1.0;
+                const double gain = 1.0 + direction * config.severity * 0.35 * weight;
+                samples[index] = reference_leads[lead][index] * gain;
+            }
+            else if (config.type == signal_synth::signal_quality_ecg_offset_drift)
+            {
+                const double span = past <= first + 1 ? 1.0 : static_cast<double>(sample - first) / static_cast<double>(past - first - 1u);
+                const double polarity = unit_from_seed(config.seed ^ (0x1f83d9abfb41bd6bULL + lead)) < 0.5 ? -1.0 : 1.0;
+                samples[index] += weight * polarity * config.severity * 0.45 * (2.0 * span - 1.0);
+            }
+            else if (config.type == signal_synth::signal_quality_ecg_clock_drift)
+            {
+                const double drift = (2.0 * unit_from_seed(config.seed ^ (0xa54ff53a5f1d36f1ULL + lead)) - 1.0) * config.severity * 0.040;
+                const double source_offset = static_cast<double>(sample - first) * (1.0 + drift);
+                long long source_index = static_cast<long long>(first) + static_cast<long long>(std::llround(source_offset));
+                if (source_index < static_cast<long long>(first))
+                    source_index = static_cast<long long>(first);
+                if (source_index >= static_cast<long long>(past))
+                    source_index = static_cast<long long>(past - 1u);
+                samples[index] = reference_leads[lead][static_cast<std::size_t>(source_index)];
+            }
+            else if (config.type == signal_synth::signal_quality_ecg_dropped_samples)
+            {
+                long long raw_period = std::llround(18.0 - 16.0 * config.severity);
+                if (raw_period < 2)
+                    raw_period = 2;
+                const unsigned long long period = static_cast<unsigned long long>(raw_period);
+                if (((sample - first) + (config.seed % period) + lead) % period == 0 && sample > first)
+                    samples[index] = samples[static_cast<std::size_t>(sample - 1u)];
+            }
+            else if (config.type == signal_synth::signal_quality_ecg_quantization)
+            {
+                const double step = 0.002 + config.severity * 0.048;
+                samples[index] = quantized(samples[index], step);
+            }
+            else if (config.type == signal_synth::signal_quality_ecg_adc_clipping)
+            {
+                const double threshold = 1.8 - 1.45 * config.severity;
+                samples[index] = clipped(samples[index], threshold);
             }
         }
     }
@@ -157,6 +254,15 @@ namespace signal_synth
         case signal_quality_ecg_dropout: return "ecg_dropout";
         case signal_quality_ecg_saturation: return "ecg_saturation";
         case signal_quality_ppg_dropout: return "ppg_dropout";
+        case signal_quality_ecg_lead_reversal: return "ecg_lead_reversal";
+        case signal_quality_ecg_lead_swap: return "ecg_lead_swap";
+        case signal_quality_ecg_electrode_misplacement: return "ecg_electrode_misplacement";
+        case signal_quality_ecg_gain_mismatch: return "ecg_gain_mismatch";
+        case signal_quality_ecg_offset_drift: return "ecg_offset_drift";
+        case signal_quality_ecg_clock_drift: return "ecg_clock_drift";
+        case signal_quality_ecg_dropped_samples: return "ecg_dropped_samples";
+        case signal_quality_ecg_quantization: return "ecg_quantization";
+        case signal_quality_ecg_adc_clipping: return "ecg_adc_clipping";
         }
         return "unknown";
     }
@@ -208,6 +314,8 @@ namespace signal_synth
             {
                 if (!artifact.affects_ecg() || artifact.affects_ppg())
                     return false;
+                if (artifact.type == signal_quality_ecg_lead_swap && selected_lead_count(artifact) != 2u)
+                    return false;
             }
             else if (!artifact.affects_ppg() || artifact.affects_ecg() || !ppg_enabled)
                 return false;
@@ -249,9 +357,15 @@ namespace signal_synth
 
                 if (is_ecg_type(artifact.type))
                 {
-                    for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
-                        if (artifact.ecg_leads[lead])
-                            apply_ecg_artifact(fresh.ecg_leads[lead], artifact, lead, ecg.sampling_rate_hz(), first, past);
+                    if (artifact.type == signal_quality_ecg_lead_swap)
+                        apply_lead_swap(fresh.ecg_leads, artifact, first, past);
+                    else
+                    {
+                        const std::vector<std::vector<double> > reference_leads = fresh.ecg_leads;
+                        for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
+                            if (artifact.ecg_leads[lead])
+                                apply_ecg_artifact(fresh.ecg_leads[lead], reference_leads, artifact, lead, ecg.sampling_rate_hz(), first, past);
+                    }
                 }
                 else
                     apply_ppg_artifact(fresh.ppg, artifact, first, past);

@@ -105,6 +105,8 @@ Implementation increment designs:
   and artifact-overlap rhythm truth invariance.
 - `increments/031_ECG_PACED_RHYTHM_SCENARIOS.md` defines paced ECG modes,
   capture/non-capture event truth, and pacing annotation export.
+- `increments/032_ECG_ACQUISITION_LEAD_FAULT_PACK.md` defines deterministic
+  ECG acquisition faults and lead-fault waveform transforms.
 
 Traceability demonstration:
 
