@@ -14,6 +14,10 @@
 
 **Implementation issue:** [signal_synth#43](https://github.com/tamask1s/signal_synth/issues/43)
 
+**Implementation commit:** `a05bdd8aef312c10420558cb3eea8455d0f33e82`
+
+**CI verification:** [GitHub Actions run 28712211912](https://github.com/tamask1s/signal_synth/actions/runs/28712211912)
+
 ## 1. Decision
 
 Create `hrv_v1`, a deterministic HRV benchmark pack with nine renderable
@@ -144,6 +148,11 @@ Verified locally on 2026-07-04:
   in `build-sanitize`: 27/27 passed;
 - reference HRV user output: 6/6 metrics passed;
 - `git diff --check`: passed.
+
+Verified in CI on 2026-07-04:
+
+- Ubuntu C++11 configure/build/test: passed;
+- Windows C++11 configure/build/test: passed.
 
 ## 7. Compatibility and Integration
 
