@@ -141,40 +141,28 @@ namespace
         metrics.atrial_event_count = record.atrial_event_count();
         metrics.fiducial_count = record.fiducial_count();
         metrics.episode_count = record.episode_count();
-        if (!record.beat_count())
-            return metrics;
-
-        const signal_synth::clinical_beat_annotation* beats = record.beats();
-        double sum = 0.0;
-        for (unsigned int i = 0; i < record.beat_count(); ++i)
-        {
-            sum += beats[i].rr_interval_seconds;
-            metrics.rr_clipping_count += beats[i].rr_was_clipped ? 1u : 0u;
-        }
-        metrics.mean_rr_seconds = sum / record.beat_count();
-        metrics.mean_heart_rate_bpm = 60.0 / metrics.mean_rr_seconds;
-
-        double variance = 0.0;
-        double squared_differences = 0.0;
-        unsigned int nn50 = 0;
-        for (unsigned int i = 0; i < record.beat_count(); ++i)
-        {
-            const double difference = beats[i].rr_interval_seconds - metrics.mean_rr_seconds;
-            variance += difference * difference;
-            if (i)
-            {
-                const double successive = beats[i].rr_interval_seconds - beats[i - 1].rr_interval_seconds;
-                squared_differences += successive * successive;
-                nn50 += std::fabs(successive) > 0.05 ? 1u : 0u;
-            }
-        }
-        metrics.sdnn_seconds = normalized_zero(std::sqrt(variance / record.beat_count()));
-        if (record.beat_count() > 1)
-        {
-            metrics.rmssd_seconds = normalized_zero(std::sqrt(squared_differences / (record.beat_count() - 1)));
-            metrics.pnn50_percent = 100.0 * nn50 / (record.beat_count() - 1);
-        }
         return metrics;
+    }
+
+    void add_hrv_metrics(const signal_synth::hrv_analysis_result& hrv, signal_synth::ecg_ground_truth_metrics& metrics)
+    {
+        metrics.rr_clipping_count = hrv.metrics.clipped_interval_count;
+        metrics.mean_rr_seconds = hrv.metrics.mean_rr_seconds;
+        metrics.mean_heart_rate_bpm = hrv.metrics.mean_heart_rate_bpm;
+        metrics.sdnn_seconds = hrv.metrics.sdnn_seconds;
+        metrics.rmssd_seconds = hrv.metrics.rmssd_seconds;
+        metrics.pnn50_percent = hrv.metrics.pnn50_percent;
+        metrics.hrv_accepted_interval_count = hrv.metrics.accepted_interval_count;
+        metrics.hrv_excluded_interval_count = hrv.metrics.excluded_interval_count;
+        metrics.hrv_ectopic_interval_count = hrv.metrics.ectopic_interval_count;
+        metrics.hrv_artifact_overlap_interval_count = hrv.metrics.artifact_overlap_interval_count;
+        metrics.sd1_seconds = hrv.metrics.sd1_seconds;
+        metrics.sd2_seconds = hrv.metrics.sd2_seconds;
+        metrics.sd1_sd2_ratio = hrv.metrics.sd1_sd2_ratio;
+        metrics.lf_power_seconds2 = hrv.metrics.lf_power_seconds2;
+        metrics.hf_power_seconds2 = hrv.metrics.hf_power_seconds2;
+        metrics.lf_hf_ratio = hrv.metrics.lf_hf_ratio;
+        metrics.total_power_seconds2 = hrv.metrics.total_power_seconds2;
     }
 
     void add_ppg_metrics(const signal_synth::ppg_record& ppg, signal_synth::ecg_ground_truth_metrics& metrics)
@@ -278,6 +266,89 @@ namespace
         output << ']';
     }
 
+    void write_rr_tachogram_json(std::ostringstream& output, const signal_synth::hrv_analysis_result& hrv)
+    {
+        output << '[';
+        for (std::size_t i = 0; i < hrv.intervals.size(); ++i)
+        {
+            if (i)
+                output << ',';
+            const signal_synth::hrv_rr_interval& interval = hrv.intervals[i];
+            output << "{\"beat_index\":" << interval.beat_index
+                   << ",\"beat_time_seconds\":" << interval.beat_time_seconds
+                   << ",\"rr_seconds\":" << interval.rr_seconds
+                   << ",\"clipped\":" << boolean(interval.clipped)
+                   << ",\"ectopic\":" << boolean(interval.ectopic)
+                   << ",\"artifact_overlap\":" << boolean(interval.artifact_overlap)
+                   << ",\"excluded\":" << boolean(interval.excluded) << '}';
+        }
+        output << ']';
+    }
+
+    std::string rr_tachogram_csv(const signal_synth::ecg_render_bundle& render)
+    {
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << std::setprecision(std::numeric_limits<double>::max_digits10);
+        output << "beat_index,beat_time_seconds,rr_seconds,clipped,ectopic,artifact_overlap,excluded\n";
+        for (std::size_t i = 0; i < render.hrv.intervals.size(); ++i)
+        {
+            const signal_synth::hrv_rr_interval& interval = render.hrv.intervals[i];
+            output << interval.beat_index << ',' << interval.beat_time_seconds << ',' << interval.rr_seconds
+                   << ',' << (interval.clipped ? 1 : 0)
+                   << ',' << (interval.ectopic ? 1 : 0)
+                   << ',' << (interval.artifact_overlap ? 1 : 0)
+                   << ',' << (interval.excluded ? 1 : 0) << '\n';
+        }
+        return output.str();
+    }
+
+    std::string hrv_metrics_json(const signal_synth::ecg_render_bundle& render)
+    {
+        const signal_synth::hrv_analysis_result& hrv = render.hrv;
+        const signal_synth::hrv_metric_summary& metrics = hrv.metrics;
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << std::setprecision(std::numeric_limits<double>::max_digits10);
+        output << "{\"schema_version\":1"
+               << ",\"definition_version\":" << json_string(hrv.metric_definition_version)
+               << ",\"units\":{\"time\":\"seconds\",\"power\":\"seconds_squared\",\"frequency\":\"hertz\"}"
+               << ",\"exclusion_policy\":" << json_string(hrv.exclusion_policy)
+               << ",\"spectral_method\":" << json_string(hrv.spectral_method)
+               << ",\"analysis_window\":{\"start_seconds\":";
+        if (hrv.intervals.empty())
+            output << "0,\"end_seconds\":0,\"duration_seconds\":0";
+        else
+            output << hrv.intervals.front().beat_time_seconds
+                   << ",\"end_seconds\":" << hrv.intervals.back().beat_time_seconds
+                   << ",\"duration_seconds\":" << hrv.intervals.back().beat_time_seconds - hrv.intervals.front().beat_time_seconds;
+        output << ",\"interpolation_rate_hz\":" << hrv.interpolation_rate_hz
+               << ",\"lf_band_hz\":[" << hrv.lf_low_hz << ',' << hrv.lf_high_hz << ']'
+               << ",\"hf_band_hz\":[" << hrv.hf_low_hz << ',' << hrv.hf_high_hz << "]}"
+               << ",\"counts\":{\"intervals\":" << metrics.interval_count
+               << ",\"accepted\":" << metrics.accepted_interval_count
+               << ",\"excluded\":" << metrics.excluded_interval_count
+               << ",\"clipped\":" << metrics.clipped_interval_count
+               << ",\"ectopic\":" << metrics.ectopic_interval_count
+               << ",\"artifact_overlap\":" << metrics.artifact_overlap_interval_count << '}'
+               << ",\"time_domain\":{\"mean_rr_seconds\":" << metrics.mean_rr_seconds
+               << ",\"mean_heart_rate_bpm\":" << metrics.mean_heart_rate_bpm
+               << ",\"sdnn_seconds\":" << metrics.sdnn_seconds
+               << ",\"rmssd_seconds\":" << metrics.rmssd_seconds
+               << ",\"pnn50_percent\":" << metrics.pnn50_percent
+               << ",\"sd1_seconds\":" << metrics.sd1_seconds
+               << ",\"sd2_seconds\":" << metrics.sd2_seconds
+               << ",\"sd1_sd2_ratio\":" << metrics.sd1_sd2_ratio << '}'
+               << ",\"frequency_domain\":{\"lf_power_seconds2\":" << metrics.lf_power_seconds2
+               << ",\"hf_power_seconds2\":" << metrics.hf_power_seconds2
+               << ",\"lf_hf_ratio\":" << metrics.lf_hf_ratio
+               << ",\"total_power_seconds2\":" << metrics.total_power_seconds2 << '}'
+               << ",\"tachogram\":";
+        write_rr_tachogram_json(output, hrv);
+        output << '}';
+        return output.str();
+    }
+
     std::string annotations_json(const signal_synth::ecg_render_bundle& render)
     {
         std::ostringstream output;
@@ -374,6 +445,8 @@ namespace
             }
             output << ']';
         }
+        output << ",\"rr_tachogram\":";
+        write_rr_tachogram_json(output, render.hrv);
         output << ",\"artifact_intervals\":[";
         for (std::size_t i = 0; i < render.signal_quality.artifacts.size(); ++i)
         {
@@ -406,11 +479,26 @@ namespace
                << ",\"fiducial_count\":" << metrics.fiducial_count
                << ",\"episode_count\":" << metrics.episode_count
                << ",\"rr_clipping_count\":" << metrics.rr_clipping_count
-               << "},\"hrv\":{\"mean_rr_seconds\":" << metrics.mean_rr_seconds
+               << "},\"hrv\":{\"definition_version\":" << json_string(render.hrv.metric_definition_version)
+               << ",\"exclusion_policy\":" << json_string(render.hrv.exclusion_policy)
+               << ",\"spectral_method\":" << json_string(render.hrv.spectral_method)
+               << ",\"interval_count\":" << render.hrv.metrics.interval_count
+               << ",\"accepted_interval_count\":" << metrics.hrv_accepted_interval_count
+               << ",\"excluded_interval_count\":" << metrics.hrv_excluded_interval_count
+               << ",\"ectopic_interval_count\":" << metrics.hrv_ectopic_interval_count
+               << ",\"artifact_overlap_interval_count\":" << metrics.hrv_artifact_overlap_interval_count
+               << ",\"mean_rr_seconds\":" << metrics.mean_rr_seconds
                << ",\"mean_heart_rate_bpm\":" << metrics.mean_heart_rate_bpm
                << ",\"sdnn_seconds\":" << metrics.sdnn_seconds
                << ",\"rmssd_seconds\":" << metrics.rmssd_seconds
                << ",\"pnn50_percent\":" << metrics.pnn50_percent
+               << ",\"sd1_seconds\":" << metrics.sd1_seconds
+               << ",\"sd2_seconds\":" << metrics.sd2_seconds
+               << ",\"sd1_sd2_ratio\":" << metrics.sd1_sd2_ratio
+               << ",\"lf_power_seconds2\":" << metrics.lf_power_seconds2
+               << ",\"hf_power_seconds2\":" << metrics.hf_power_seconds2
+               << ",\"lf_hf_ratio\":" << metrics.lf_hf_ratio
+               << ",\"total_power_seconds2\":" << metrics.total_power_seconds2
                << "},\"artifacts\":{\"count\":" << metrics.artifact_count
                << ",\"total_artifact_seconds\":" << metrics.total_artifact_seconds
                << ",\"ecg_channel_seconds\":{";
@@ -585,7 +673,10 @@ namespace
                << " s</td></tr><tr><th>SDNN</th><td>" << render.metrics.sdnn_seconds
                << " s</td></tr><tr><th>RMSSD</th><td>" << render.metrics.rmssd_seconds
                << " s</td></tr><tr><th>pNN50</th><td>" << render.metrics.pnn50_percent
-               << " %</td></tr><tr><th>Artifact intervals</th><td>" << render.metrics.artifact_count
+               << " %</td></tr><tr><th>SD1 / SD2</th><td>" << render.metrics.sd1_seconds << " s / " << render.metrics.sd2_seconds
+               << " s</td></tr><tr><th>LF/HF</th><td>" << render.metrics.lf_hf_ratio
+               << "</td></tr><tr><th>HRV accepted / excluded intervals</th><td>" << render.metrics.hrv_accepted_interval_count << " / " << render.metrics.hrv_excluded_interval_count
+               << "</td></tr><tr><th>Artifact intervals</th><td>" << render.metrics.artifact_count
                << "</td></tr><tr><th>Total artifact seconds</th><td>" << render.metrics.total_artifact_seconds
                << " s</td></tr></table><h2>Phenotype Assertions</h2><table><tr><th>Condition</th><th>Assertion</th><th>Status</th><th>Measured</th><th>Range</th><th>Unit</th></tr>";
         for (unsigned int i = 0; i < render.scenario_report.assertion_count(); ++i)
@@ -618,7 +709,7 @@ namespace
         output << "<li>The compact cardiac phantom is not population-fitted clinical evidence.</li>"
                << (render.signal_quality.artifacts.empty() ? "<li>No acquisition artifacts are present in this scenario.</li>" : "<li>Acquisition artifacts corrupt waveform samples but do not change construction ground truth.</li>") << "</ul>"
                << "<h2>Artifacts</h2><p>scenario.json, metadata.json, waveform.csv, annotations.json, "
-               << "ground_truth_metrics.json, warnings.json, report.html, README.txt, synsigra.hea, synsigra.dat, synsigra.atr, wfdb_metadata.json, synsigra.edf, synsigra.bdf, edf_bdf_metadata.json</p></body></html>";
+               << "rr_tachogram.csv, hrv_metrics.json, ground_truth_metrics.json, warnings.json, report.html, README.txt, synsigra.hea, synsigra.dat, synsigra.atr, wfdb_metadata.json, synsigra.edf, synsigra.bdf, edf_bdf_metadata.json</p></body></html>";
         return output.str();
     }
 
@@ -635,7 +726,7 @@ namespace
 namespace signal_synth
 {
     ecg_ground_truth_metrics::ecg_ground_truth_metrics()
-        : beat_count(0), atrial_event_count(0), fiducial_count(0), episode_count(0), artifact_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), ppg_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0), total_artifact_seconds(0.0), ppg_artifact_seconds(0.0)
+        : beat_count(0), atrial_event_count(0), fiducial_count(0), episode_count(0), artifact_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), hrv_accepted_interval_count(0), hrv_excluded_interval_count(0), hrv_ectopic_interval_count(0), hrv_artifact_overlap_interval_count(0), sd1_seconds(0.0), sd2_seconds(0.0), sd1_sd2_ratio(0.0), lf_power_seconds2(0.0), hf_power_seconds2(0.0), lf_hf_ratio(0.0), total_power_seconds2(0.0), ppg_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0), total_artifact_seconds(0.0), ppg_artifact_seconds(0.0)
     {
         for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
             ecg_artifact_seconds[lead] = 0.0;
@@ -689,13 +780,13 @@ namespace signal_synth
             result = fresh_result;
             return false;
         }
-        fresh.metrics = calculate_metrics(fresh.record);
         if (!ppg_generator(document.ppg).generate(fresh.record, fresh.ppg))
         {
             fresh_result.messages.push_back("PPG generation failed");
             result = fresh_result;
             return false;
         }
+        fresh.metrics = calculate_metrics(fresh.record);
         add_ppg_metrics(fresh.ppg, fresh.metrics);
         if (!apply_signal_quality_artifacts(document.signal_quality, fresh.record, fresh.ppg, fresh.signal_quality))
         {
@@ -703,6 +794,13 @@ namespace signal_synth
             result = fresh_result;
             return false;
         }
+        if (!analyze_hrv_from_ecg(fresh.record, &fresh.signal_quality, fresh.hrv))
+        {
+            fresh_result.messages.push_back("HRV analysis failed");
+            result = fresh_result;
+            return false;
+        }
+        add_hrv_metrics(fresh.hrv, fresh.metrics);
         add_artifact_metrics(fresh.signal_quality, fresh.metrics);
         fresh_result.success = true;
         output = fresh;
@@ -724,6 +822,8 @@ namespace signal_synth
         add_artifact(fresh, "metadata.json", "application/json", metadata_json(render));
         add_artifact(fresh, "waveform.csv", "text/csv", waveform_csv(render));
         add_artifact(fresh, "annotations.json", "application/json", annotations_json(render));
+        add_artifact(fresh, "rr_tachogram.csv", "text/csv", rr_tachogram_csv(render));
+        add_artifact(fresh, "hrv_metrics.json", "application/json", hrv_metrics_json(render));
         add_artifact(fresh, "ground_truth_metrics.json", "application/json", metrics_json(render));
         add_artifact(fresh, "warnings.json", "application/json", warnings_json(render));
         add_artifact(fresh, "report.html", "text/html", report_html(render));

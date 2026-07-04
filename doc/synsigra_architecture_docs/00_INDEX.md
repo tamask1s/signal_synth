@@ -92,6 +92,8 @@ Implementation increment designs:
   waveform export artifacts.
 - `increments/025_HRV_SCENARIO_SCHEMA.md` defines the product-facing HRV
   scenario schema and first-layer ECG timeline mapping.
+- `increments/026_HRV_METRICS_AND_TACHOGRAM_EXPORT.md` defines reusable HRV
+  metrics and RR tachogram ground-truth export.
 
 Traceability demonstration:
 

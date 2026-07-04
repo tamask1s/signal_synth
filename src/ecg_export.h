@@ -3,6 +3,7 @@
 #include "clinical_ecg.h"
 #include "ecg_morphology.h"
 #include "ecg_scenario_json.h"
+#include "hrv_metrics.h"
 #include "ppg_model.h"
 #include "signal_quality.h"
 
@@ -26,6 +27,17 @@ namespace signal_synth
         double sdnn_seconds;
         double rmssd_seconds;
         double pnn50_percent;
+        unsigned int hrv_accepted_interval_count;
+        unsigned int hrv_excluded_interval_count;
+        unsigned int hrv_ectopic_interval_count;
+        unsigned int hrv_artifact_overlap_interval_count;
+        double sd1_seconds;
+        double sd2_seconds;
+        double sd1_sd2_ratio;
+        double lf_power_seconds2;
+        double hf_power_seconds2;
+        double lf_hf_ratio;
+        double total_power_seconds2;
         unsigned int ppg_pulse_count;
         double mean_ppg_onset_delay_seconds;
         double mean_ppg_peak_delay_seconds;
@@ -44,6 +56,7 @@ namespace signal_synth
         ecg_morphology_report morphology;
         ppg_record ppg;
         signal_quality_waveforms signal_quality;
+        hrv_analysis_result hrv;
         ecg_ground_truth_metrics metrics;
     };
 

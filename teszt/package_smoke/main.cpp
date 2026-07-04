@@ -5,6 +5,7 @@
 #include <signal_synth/ecg_export.h>
 #include <signal_synth/ecg_wfdb_export.h>
 #include <signal_synth/ecg_edf_bdf_export.h>
+#include <signal_synth/hrv_metrics.h>
 #include <signal_synth/ecg_compare.h>
 #include <signal_synth/ecg_morphology.h>
 #include <signal_synth/ecg_scenario.h>
@@ -45,6 +46,7 @@ int main()
     signal_synth::synsigra_compare_options facade_compare_options;
     signal_synth::wfdb_export_bundle wfdb_bundle;
     signal_synth::edf_bdf_export_bundle edf_bdf_bundle;
+    signal_synth::hrv_analysis_result hrv_analysis;
 
     if (legacy.amplitude_r <= 0.0 || !signal_synth::ecg_model(model).valid() || !signal_synth::clinical_ecg_generator(clinical).valid())
         return 1;
@@ -86,5 +88,7 @@ int main()
         return 11;
     if (!wfdb_bundle.artifacts.empty() || !edf_bdf_bundle.artifacts.empty())
         return 15;
+    if (hrv_analysis.metric_definition_version.empty() || hrv_analysis.interpolation_rate_hz <= 0.0)
+        return 16;
     return 0;
 }

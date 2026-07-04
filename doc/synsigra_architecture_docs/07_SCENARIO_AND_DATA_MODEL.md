@@ -244,7 +244,10 @@ scenario_id/
   metadata.json
   waveform.csv
   annotations.json
+  rr_tachogram.csv
+  hrv_metrics.json
   ground_truth_metrics.json
+  warnings.json
   report.html
   README.txt
 ```
@@ -252,9 +255,6 @@ scenario_id/
 Optional later:
 
 ```text
-  waveform.dat
-  waveform.hea
-  waveform.edf
   report.pdf
 ```
 

@@ -65,13 +65,15 @@ int main()
 
     signal_synth::ecg_export_bundle bundle;
     ok &= check(signal_synth::build_ecg_export_bundle(render, bundle, result) && result.success, "build_export_bundle");
-    const char* expected[] = {"scenario.json","metadata.json","waveform.csv","annotations.json","ground_truth_metrics.json","warnings.json","report.html","README.txt","synsigra.hea","synsigra.dat","synsigra.atr","wfdb_metadata.json","synsigra.edf","synsigra.bdf","edf_bdf_metadata.json"};
-    ok &= check(bundle.artifacts.size() == 15, "artifact_count");
-    for (unsigned int i = 0; i < 15; ++i)
+    const char* expected[] = {"scenario.json","metadata.json","waveform.csv","annotations.json","rr_tachogram.csv","hrv_metrics.json","ground_truth_metrics.json","warnings.json","report.html","README.txt","synsigra.hea","synsigra.dat","synsigra.atr","wfdb_metadata.json","synsigra.edf","synsigra.bdf","edf_bdf_metadata.json"};
+    ok &= check(bundle.artifacts.size() == 17, "artifact_count");
+    for (unsigned int i = 0; i < 17; ++i)
         ok &= check(bundle.artifacts[i].name == expected[i] && !bundle.artifacts[i].content.empty(), "artifact_order_and_content");
 
     const signal_synth::ecg_text_artifact* csv = bundle.find("waveform.csv");
     const signal_synth::ecg_text_artifact* annotations = bundle.find("annotations.json");
+    const signal_synth::ecg_text_artifact* tachogram = bundle.find("rr_tachogram.csv");
+    const signal_synth::ecg_text_artifact* hrv_metrics = bundle.find("hrv_metrics.json");
     const signal_synth::ecg_text_artifact* metrics = bundle.find("ground_truth_metrics.json");
     const signal_synth::ecg_text_artifact* report = bundle.find("report.html");
     const signal_synth::ecg_text_artifact* metadata = bundle.find("metadata.json");
@@ -83,8 +85,10 @@ int main()
     const signal_synth::ecg_text_artifact* bdf = bundle.find("synsigra.bdf");
     const signal_synth::ecg_text_artifact* edf_bdf_metadata = bundle.find("edf_bdf_metadata.json");
     ok &= check(csv && csv->content.find("sample_index,time_seconds,I_mv,II_mv,III_mv,aVR_mv,aVL_mv,aVF_mv,V1_mv,V2_mv,V3_mv,V4_mv,V5_mv,V6_mv\n") == 0 && line_count(csv->content) == render.record.sample_count() + 1, "csv_contract");
-    ok &= check(annotations && annotations->content.find("\"artifact_intervals\":[]") != std::string::npos && annotations->content.find("\"r_peak\"") != std::string::npos, "annotation_contract");
-    ok &= check(metrics && metrics->content.find("\"sdnn_seconds\":") != std::string::npos && metrics->content.find("\"assertions\":[") != std::string::npos, "metrics_contract");
+    ok &= check(annotations && annotations->content.find("\"rr_tachogram\":[") != std::string::npos && annotations->content.find("\"artifact_intervals\":[]") != std::string::npos && annotations->content.find("\"r_peak\"") != std::string::npos, "annotation_contract");
+    ok &= check(tachogram && tachogram->content.find("beat_index,beat_time_seconds,rr_seconds,clipped,ectopic,artifact_overlap,excluded\n") == 0 && line_count(tachogram->content) == render.record.beat_count() + 1, "rr_tachogram_contract");
+    ok &= check(hrv_metrics && hrv_metrics->content.find("\"definition_version\":\"synsigra_hrv_metrics_v1\"") != std::string::npos && hrv_metrics->content.find("\"tachogram\":[") != std::string::npos, "hrv_metrics_contract");
+    ok &= check(metrics && metrics->content.find("\"sd1_seconds\":") != std::string::npos && metrics->content.find("\"lf_hf_ratio\":") != std::string::npos && metrics->content.find("\"assertions\":[") != std::string::npos, "metrics_contract");
     ok &= check(metadata && metadata->content.find("\"channels\":[{\"name\":\"I\",\"unit\":\"mV\"}") != std::string::npos && metadata->content.find("{\"name\":\"V6\",\"unit\":\"mV\"}]") != std::string::npos, "channel_metadata_contract");
     ok &= check(report && report->content.find("&lt;Export &amp; Report&gt;") != std::string::npos && report->content.find("<polyline") != std::string::npos, "html_escape_and_actual_plot");
     ok &= check(report && report->content.find("not a clinical validation certificate") != std::string::npos && report->content.find("clinically validated") == std::string::npos, "controlled_report_claims");
@@ -108,7 +112,7 @@ int main()
 
     signal_synth::ecg_render_bundle incomplete;
     signal_synth::ecg_export_bundle preserved_export = bundle;
-    ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 15, "failed_export_is_transactional");
+    ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 17, "failed_export_is_transactional");
     ok &= check(std::string(signal_synth::signal_synth_generator_version()) == "0.1.0-dev", "runtime_generator_version");
 
     signal_synth::ecg_scenario_document multimodal = document;

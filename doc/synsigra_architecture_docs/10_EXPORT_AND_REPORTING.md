@@ -19,9 +19,16 @@ synsigra_export_<scenario_id>_<fingerprint>/
   metadata.json
   waveform.csv
   annotations.json
+  rr_tachogram.csv
+  hrv_metrics.json
   ground_truth_metrics.json
   warnings.json
   report.html
+  synsigra.hea
+  synsigra.dat
+  synsigra.atr
+  synsigra.edf
+  synsigra.bdf
 ```
 
 Later:
@@ -239,12 +246,19 @@ The implemented local schema-v1 ECG package contains:
 - canonical `scenario.json`;
 - `metadata.json` with document, generation, and run identities;
 - 12-lead `waveform.csv` in mV;
-- `annotations.json` with beats, atrial events, and construction/measured
-  fiducials;
-- `ground_truth_metrics.json` with HRV metrics and phenotype assertions;
+- `annotations.json` with beats, atrial events, construction/measured
+  fiducials, RR tachogram ground truth, and artifact intervals;
+- `rr_tachogram.csv` with beat time, RR, clipping, ectopic, artifact-overlap,
+  and exclusion flags;
+- `hrv_metrics.json` with metric definitions, units, exclusion policy, SD1,
+  SD2, LF, HF, LF/HF, and tachogram data;
+- `ground_truth_metrics.json` with HRV summary metrics and phenotype
+  assertions;
 - `warnings.json`;
 - self-contained `report.html` with an actual Lead II SVG preview;
-- controlled-use `README.txt`.
+- controlled-use `README.txt`;
+- WFDB `synsigra.hea`, `synsigra.dat`, and `synsigra.atr`;
+- EDF+/BDF+ `synsigra.edf`, `synsigra.bdf`, and sidecar metadata.
 
 The artifact bytes intentionally omit wall-clock time so local regeneration is
 deterministic. A future SaaS audit record may add export time, customer,
