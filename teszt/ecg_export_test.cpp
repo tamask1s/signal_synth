@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 namespace
@@ -30,6 +31,13 @@ namespace
                 return false;
         return true;
     }
+
+    std::string wfdb_record_line(const std::string& record_name, unsigned int channel_count, const signal_synth::clinical_ecg_record& record)
+    {
+        std::ostringstream output;
+        output << record_name << ' ' << channel_count << ' ' << record.sampling_rate_hz() << ' ' << record.sample_count() << '\n';
+        return output.str();
+    }
 }
 
 int main()
@@ -57,9 +65,9 @@ int main()
 
     signal_synth::ecg_export_bundle bundle;
     ok &= check(signal_synth::build_ecg_export_bundle(render, bundle, result) && result.success, "build_export_bundle");
-    const char* expected[] = {"scenario.json","metadata.json","waveform.csv","annotations.json","ground_truth_metrics.json","warnings.json","report.html","README.txt"};
-    ok &= check(bundle.artifacts.size() == 8, "artifact_count");
-    for (unsigned int i = 0; i < 8; ++i)
+    const char* expected[] = {"scenario.json","metadata.json","waveform.csv","annotations.json","ground_truth_metrics.json","warnings.json","report.html","README.txt","synsigra.hea","synsigra.dat","synsigra.atr","wfdb_metadata.json"};
+    ok &= check(bundle.artifacts.size() == 12, "artifact_count");
+    for (unsigned int i = 0; i < 12; ++i)
         ok &= check(bundle.artifacts[i].name == expected[i] && !bundle.artifacts[i].content.empty(), "artifact_order_and_content");
 
     const signal_synth::ecg_text_artifact* csv = bundle.find("waveform.csv");
@@ -67,6 +75,10 @@ int main()
     const signal_synth::ecg_text_artifact* metrics = bundle.find("ground_truth_metrics.json");
     const signal_synth::ecg_text_artifact* report = bundle.find("report.html");
     const signal_synth::ecg_text_artifact* metadata = bundle.find("metadata.json");
+    const signal_synth::ecg_text_artifact* wfdb_header = bundle.find("synsigra.hea");
+    const signal_synth::ecg_text_artifact* wfdb_signal = bundle.find("synsigra.dat");
+    const signal_synth::ecg_text_artifact* wfdb_annotations = bundle.find("synsigra.atr");
+    const signal_synth::ecg_text_artifact* wfdb_metadata = bundle.find("wfdb_metadata.json");
     ok &= check(csv && csv->content.find("sample_index,time_seconds,I_mv,II_mv,III_mv,aVR_mv,aVL_mv,aVF_mv,V1_mv,V2_mv,V3_mv,V4_mv,V5_mv,V6_mv\n") == 0 && line_count(csv->content) == render.record.sample_count() + 1, "csv_contract");
     ok &= check(annotations && annotations->content.find("\"artifact_intervals\":[]") != std::string::npos && annotations->content.find("\"r_peak\"") != std::string::npos, "annotation_contract");
     ok &= check(metrics && metrics->content.find("\"sdnn_seconds\":") != std::string::npos && metrics->content.find("\"assertions\":[") != std::string::npos, "metrics_contract");
@@ -74,6 +86,10 @@ int main()
     ok &= check(report && report->content.find("&lt;Export &amp; Report&gt;") != std::string::npos && report->content.find("<polyline") != std::string::npos, "html_escape_and_actual_plot");
     ok &= check(report && report->content.find("not a clinical validation certificate") != std::string::npos && report->content.find("clinically validated") == std::string::npos, "controlled_report_claims");
     ok &= check(csv && csv->content.find("ppg_green_au") == std::string::npos && annotations && annotations->content.find("\"ppg_fiducials\"") == std::string::npos, "schema_v1_export_remains_ecg_only");
+    ok &= check(wfdb_header && wfdb_header->content.find(wfdb_record_line("synsigra", 12, render.record)) == 0 && wfdb_header->content.find("synsigra.dat 16 1000(0)/mV 16 0") != std::string::npos, "wfdb_header_contract");
+    ok &= check(wfdb_signal && wfdb_signal->media_type == "application/octet-stream" && wfdb_signal->content.size() == render.record.sample_count() * render.record.lead_count() * 2u, "wfdb_signal_size");
+    ok &= check(wfdb_annotations && wfdb_annotations->content.size() >= render.record.beat_count() * 2u + 2u, "wfdb_annotation_size");
+    ok &= check(wfdb_metadata && wfdb_metadata->content.find("\"format\":\"wfdb\"") != std::string::npos && wfdb_metadata->content.find("\"full_ground_truth\":\"annotations.json\"") != std::string::npos, "wfdb_metadata_contract");
 
     signal_synth::ecg_render_bundle repeated_render;
     signal_synth::ecg_export_bundle repeated_bundle;
@@ -86,7 +102,7 @@ int main()
 
     signal_synth::ecg_render_bundle incomplete;
     signal_synth::ecg_export_bundle preserved_export = bundle;
-    ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 8, "failed_export_is_transactional");
+    ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 12, "failed_export_is_transactional");
     ok &= check(std::string(signal_synth::signal_synth_generator_version()) == "0.1.0-dev", "runtime_generator_version");
 
     signal_synth::ecg_scenario_document multimodal = document;
@@ -103,10 +119,14 @@ int main()
     const signal_synth::ecg_text_artifact* multimodal_annotations = multimodal_bundle.find("annotations.json");
     const signal_synth::ecg_text_artifact* multimodal_metrics = multimodal_bundle.find("ground_truth_metrics.json");
     const signal_synth::ecg_text_artifact* multimodal_report = multimodal_bundle.find("report.html");
+    const signal_synth::ecg_text_artifact* multimodal_wfdb_header = multimodal_bundle.find("synsigra.hea");
+    const signal_synth::ecg_text_artifact* multimodal_wfdb_signal = multimodal_bundle.find("synsigra.dat");
     ok &= check(multimodal_csv && multimodal_csv->content.find(",ppg_green_au\n") != std::string::npos, "ppg_csv_channel");
     ok &= check(multimodal_annotations && multimodal_annotations->content.find("\"ppg_fiducials\":[{") != std::string::npos, "ppg_annotation_export");
     ok &= check(multimodal_metrics && multimodal_metrics->content.find("\"ppg\":{\"pulse_count\":") != std::string::npos, "ppg_metric_export");
     ok &= check(multimodal_report && multimodal_report->content.find("<h2>PPG Preview</h2><svg") != std::string::npos, "ppg_report_preview");
+    ok &= check(multimodal_wfdb_header && multimodal_wfdb_header->content.find(wfdb_record_line("synsigra", 13, multimodal_render.record)) == 0 && multimodal_wfdb_header->content.find("10000(0)/NU 16 0") != std::string::npos, "ppg_wfdb_header");
+    ok &= check(multimodal_wfdb_signal && multimodal_wfdb_signal->content.size() == multimodal_render.record.sample_count() * 13u * 2u, "ppg_wfdb_signal_size");
 
     return ok ? 0 : 1;
 }

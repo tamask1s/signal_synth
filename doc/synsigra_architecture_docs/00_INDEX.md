@@ -86,6 +86,8 @@ Implementation increment designs:
   Algorithm QA scoring aggregation.
 - `increments/022_LOCAL_PYTHON_SCORING_PACKAGE.md` defines the first local
   Python challenge loading and scoring SDK layer.
+- `increments/023_WFDB_WAVEFORM_EXPORT.md` defines deterministic WFDB waveform
+  export artifacts.
 
 Traceability demonstration:
 
