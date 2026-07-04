@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-030
 
-**Version:** 0.9
+**Version:** 1.0
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Core generation / Algorithm QA
 
@@ -14,9 +14,9 @@
 
 **Implementation issue:** [signal_synth#45](https://github.com/tamask1s/signal_synth/issues/45)
 
-**Implementation commit:** pending
+**Implementation commit:** `06bec3223981be6447d2d89f1a3bd96eb219e2a9`
 
-**CI verification:** pending
+**CI verification:** [GitHub Actions run 28716848687](https://github.com/tamask1s/signal_synth/actions/runs/28716848687)
 
 ## 1. Decision
 
@@ -102,6 +102,11 @@ Verified locally on 2026-07-04:
 - `env ASAN_OPTIONS=detect_leaks=0 ctest -E TEST-BUILD-001 --output-on-failure`
   in `build-sanitize`: 28/28 passed.
 
+Verified in CI on 2026-07-04:
+
+- Ubuntu C++11 configure/build/test: passed;
+- Windows C++11 configure/build/test: passed.
+
 ## 6. Risks and Limitations
 
 - AFib remains an engineering QA model, not a clinical electrophysiology
@@ -117,3 +122,4 @@ Verified locally on 2026-07-04:
 |---|---|---|
 | 0.1 | 2026-07-04 | Accepted rhythm engine v2 architecture |
 | 0.9 | 2026-07-04 | Implemented C++ model, JSON, export, and verification updates |
+| 1.0 | 2026-07-04 | Completed Linux and Windows CI verification |
