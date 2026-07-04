@@ -8,6 +8,16 @@ Scope: Suggested engineering sequence for signal_synth / Synsigra.
 
 Do not build the full SaaS before the core library can produce deterministic scenario packages and reports.
 
+The first B2B model is offline-first:
+
+1. Synsigra generates a challenge scenario or pack.
+2. The user receives waveform data and ground truth.
+3. The user runs their own algorithm locally.
+4. The local Synsigra Python package scores user output against ground truth.
+
+Hosted SaaS implementation comes after the challenge package, standard export,
+Python scoring, and foundation feature contracts are stable.
+
 Build in this order:
 
 1. deterministic core;
@@ -17,11 +27,13 @@ Build in this order:
 5. PPG;
 6. scenario packs;
 7. customer algorithm comparison;
-8. API/backend;
-9. SaaS UI;
-10. signal-quality and pack scoring depth;
-11. enterprise/on-prem;
-12. hardware.
+8. standard formats and local Python scoring package;
+9. HRV, ECG, and PPG foundation feature completion;
+10. API/backend;
+11. SaaS UI;
+12. signal-quality and pack scoring depth;
+13. enterprise/on-prem;
+14. hardware.
 
 ## 2. Milestone 0: Repository cleanup
 
@@ -118,6 +130,14 @@ Exit criteria:
 - CLI and core API comparison tests pass.
 
 ## 7. Milestone 5: Backend API
+
+Before this milestone, complete the focused SRS items under `srs/`:
+
+- offline challenge and Python scoring package;
+- WFDB and EDF+/BDF+ export;
+- CSV/JSON detection input contracts;
+- HRV benchmark/scoring;
+- ECG and PPG foundation feature gaps.
 
 Tasks:
 

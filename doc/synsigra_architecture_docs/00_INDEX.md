@@ -21,6 +21,23 @@ Recommended read order:
 17. `17_TRACEABILITY_SOP.md`
 18. `18_TRACEABILITY_MATRIX.md`
 
+Focused SRS documents:
+
+- `srs/README.md` explains the focused SRS set and the offline-first B2B
+  challenge model.
+- `srs/001_OFFLINE_CHALLENGE_AND_PYTHON_SCORING_SRS.md` defines challenge
+  packages, the local Python scoring workflow, and report boundaries.
+- `srs/002_FORMATS_AND_IO_CONTRACTS_SRS.md` defines WFDB, EDF+/BDF+,
+  ground-truth, and CSV/JSON detection contracts.
+- `srs/003_HRV_FOUNDATION_AND_SCORING_SRS.md` defines HRV scenario, metric,
+  ground-truth, and scoring requirements.
+- `srs/004_ECG_FOUNDATION_FEATURES_SRS.md` defines ECG foundation feature gaps
+  required before SaaS buildout.
+- `srs/005_PPG_FOUNDATION_FEATURES_SRS.md` defines PPG foundation feature gaps
+  required before wearable QA/SaaS buildout.
+- `srs/006_IMPLEMENTATION_ISSUE_MAP.md` maps focused SRS requirement groups
+  to GitHub implementation issues and recommended order.
+
 Implementation increment designs:
 
 - `increments/README.md` defines the required architecture-record content and
@@ -71,9 +88,10 @@ Traceability demonstration:
 
 Primary immediate implementation targets:
 
-- normalize repository structure;
 - keep core library UI/SaaS independent;
-- implement scenario JSON validation and fingerprinting;
-- keep comparison/scoring ahead of hosted backend work;
-- add deterministic examples, pack scoring, and customer-facing QA reports;
-- make PPG and signal-quality QA first-class scoring targets.
+- stabilize challenge package, standard export, and local Python scoring
+  contracts before hosted SaaS service work;
+- implement WFDB and EDF+/BDF+ exports;
+- add CSV/JSON user detection contracts;
+- implement HRV foundation and scoring;
+- close ECG and PPG foundation feature gaps required for robust algorithm QA.
