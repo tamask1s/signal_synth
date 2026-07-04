@@ -4,7 +4,7 @@
 
 **Version:** 0.1
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Platform / SDK
 
@@ -13,6 +13,10 @@
 **Proposed traceability ID:** `TRC-PACK-SCORE-001`
 
 **Implementation issue:** [signal_synth#39](https://github.com/tamask1s/signal_synth/issues/39)
+
+**Implementation commit:** `cfc7538cf59e6655ede38f5696552afdcc1e0788`
+
+**Verification run:** [GitHub Actions run 28707528276](https://github.com/tamask1s/signal_synth/actions/runs/28707528276)
 
 ## 1. Decision
 
@@ -99,6 +103,13 @@ derived from rendered pack annotations.
 
 Extend `TEST-BUILD-001` package smoke to include the installed public header.
 
+Verified on 2026-07-04:
+
+- local release CTest: `22/22` passed;
+- local sanitizer CTest with leak detection disabled due local ptrace limitation:
+  `21/21` passed, excluding `TEST-BUILD-001`;
+- GitHub Actions run `28707528276`: Ubuntu C++11 and Windows C++11 passed.
+
 ## 7. Non-Goals
 
 - No hosted SaaS dashboard.
@@ -120,3 +131,4 @@ Extend `TEST-BUILD-001` package smoke to include the installed public header.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-04 | Added pack-level scoring aggregation design |
+| 0.2 | 2026-07-04 | Recorded verification evidence |
