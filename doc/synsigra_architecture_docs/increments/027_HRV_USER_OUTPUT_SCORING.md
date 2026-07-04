@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-027
 
-**Version:** 0.1
+**Version:** 1.0
 
-**Status:** Implemented, verification pending
+**Status:** Verified
 
 **Owner role:** Platform / SDK
 
@@ -14,9 +14,9 @@
 
 **Implementation issue:** [signal_synth#42](https://github.com/tamask1s/signal_synth/issues/42)
 
-**Implementation commit:** Pending
+**Implementation commit:** `fbc4e420239a778fbe58c88b855f3e4088f19ec1`
 
-**CI verification:** Pending
+**CI verification:** [GitHub Actions run 28711739786](https://github.com/tamask1s/signal_synth/actions/runs/28711739786)
 
 ## 1. Decision
 
@@ -137,6 +137,20 @@ Extend:
 - `TEST-PYTHON-SCORING-001` with dictionary input and complete RR scoring;
 - `TEST-BUILD-001` with installed public header/API visibility.
 
+Verified locally on 2026-07-04:
+
+- `cmake --build build-release`: passed;
+- `cmake --build build-sanitize`: passed;
+- `ctest --output-on-failure` in `build-release`: 27/27 passed;
+- `ASAN_OPTIONS=detect_leaks=0 ctest -E TEST-BUILD-001 --output-on-failure`
+  in `build-sanitize`: 26/26 passed;
+- `git diff --check`: passed.
+
+Verified in CI on 2026-07-04:
+
+- Ubuntu C++11 configure/build/test: passed;
+- Windows C++11 configure/build/test: passed.
+
 ## 7. Non-Goals
 
 - No hosted SaaS scoring service.
@@ -157,3 +171,4 @@ Extend:
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-04 | Added HRV user-output scoring design |
+| 1.0 | 2026-07-04 | Verified implementation and CI results |
