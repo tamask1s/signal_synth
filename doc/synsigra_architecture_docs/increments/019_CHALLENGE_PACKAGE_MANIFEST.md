@@ -4,7 +4,7 @@
 
 **Version:** 0.1
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Platform / SDK
 
@@ -13,6 +13,10 @@
 **Proposed traceability ID:** `TRC-CHAL-001`
 
 **Implementation issue:** [signal_synth#34](https://github.com/tamask1s/signal_synth/issues/34)
+
+**Implementation commit:** `1cde663ae9cd2ab32745e1f760542d54be9be810`
+
+**Verification run:** [GitHub Actions run 28706357846](https://github.com/tamask1s/signal_synth/actions/runs/28706357846)
 
 ## 1. Decision
 
@@ -102,10 +106,18 @@ Add `TEST-CHALLENGE-PACKAGE-001`:
 - missing case file reference rejection;
 - malformed checksum rejection;
 - unknown field rejection;
-- duplicate JSON key rejection.
+- duplicate JSON key rejection;
+- invalid JSON number rejection.
 
 Extend `TEST-BUILD-001` package smoke to include the installed challenge
 package header.
+
+Verified on 2026-07-04:
+
+- local release CTest: `20/20` passed;
+- local sanitizer CTest with leak detection disabled due local ptrace limitation:
+  `19/19` passed, excluding `TEST-BUILD-001`;
+- GitHub Actions run `28706357846`: Ubuntu C++11 and Windows C++11 passed.
 
 ## 7. DataBrowser/SVN Impact
 
@@ -113,6 +125,11 @@ The manifest module is shared core source. It should be copied to the
 DataBrowser/SVN working copy and listed in the CodeBlocks project file for
 source parity, although the current Windows adapter does not need to call it
 yet.
+
+The implementation was copied to the DataBrowser/SVN working copy and verified
+byte-for-byte for `challenge_package.cpp` and `challenge_package.h`.
+`SignalProc_RSPT.cbp` lists both files. The local environment did not provide
+an `svn` client, so repository-level SVN status was not checked.
 
 ## 8. Risks and Limitations
 
@@ -126,3 +143,4 @@ yet.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-04 | Added first challenge package manifest contract |
+| 0.2 | 2026-07-04 | Recorded verification evidence |
