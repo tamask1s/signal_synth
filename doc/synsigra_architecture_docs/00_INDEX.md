@@ -78,6 +78,8 @@ Implementation increment designs:
   comparison against synthetic ECG/PPG ground truth.
 - `increments/018_STABLE_CPP_FACADE.md` defines the stable C++ facade for
   validation, render/export, and comparison.
+- `increments/019_CHALLENGE_PACKAGE_MANIFEST.md` defines the offline challenge
+  package manifest contract.
 
 Traceability demonstration:
 

@@ -1,4 +1,5 @@
 #include <signal_synth/clinical_ecg.h>
+#include <signal_synth/challenge_package.h>
 #include <signal_synth/ecg_model.h>
 #include <signal_synth/ecg_export.h>
 #include <signal_synth/ecg_compare.h>
@@ -18,6 +19,8 @@ int main()
     signal_synth::qrs_params legacy;
     signal_synth::ecg_model_config model;
     signal_synth::clinical_ecg_config clinical;
+    signal_synth::challenge_package_manifest challenge_package;
+    signal_synth::challenge_package_file challenge_file;
     signal_synth::clinical_ecg_record record;
     signal_synth::ecg_morphology_report morphology;
     signal_synth::ecg_qa_scenario scenario;
@@ -36,6 +39,8 @@ int main()
 
     if (legacy.amplitude_r <= 0.0 || !signal_synth::ecg_model(model).valid() || !signal_synth::clinical_ecg_generator(clinical).valid())
         return 1;
+    if (challenge_package.schema_version != 1 || challenge_file.role != signal_synth::challenge_file_other)
+        return 12;
     if (signal_synth::ecg_condition_catalog_size() != signal_synth::ecg_condition_count)
         return 2;
     if (!scenario.add_condition(signal_synth::ecg_condition_norm) || !engine.validate(scenario, report))
