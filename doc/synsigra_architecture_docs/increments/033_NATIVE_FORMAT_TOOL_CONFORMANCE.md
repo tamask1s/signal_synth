@@ -2,7 +2,7 @@
 
 **Document ID:** SYN-ARCH-INC-033
 
-**Version:** 0.9
+**Version:** 1.0
 
 **Status:** Implementing
 
@@ -14,9 +14,9 @@
 
 **Implementation issues:** [signal_synth#55](https://github.com/tamask1s/signal_synth/issues/55), [signal_synth#56](https://github.com/tamask1s/signal_synth/issues/56)
 
-**Implementation commit:** Pending
+**Implementation commit:** `ce23701`
 
-**CI verification:** Pending
+**CI verification:** GitHub Actions run `28719275239` passed on Linux and Windows
 
 ## 1. Decision
 
@@ -80,9 +80,16 @@ Verified locally on 2026-07-04:
 - `env ASAN_OPTIONS=detect_leaks=0 ctest -E TEST-BUILD-001 --output-on-failure`
   in `build-sanitize`: 30/30 passed.
 
+Verified in CI on 2026-07-04:
+
+- GitHub Actions run `28719275239`: passed on Linux and Windows;
+- `TEST-EDF-BDF-NATIVE-001` is covered where `pyedflib` is available in the
+  verification environment;
+- `TEST-WFDB-NATIVE-001` remains a documented skip when `rdsamp`/`rdann` are
+  absent.
+
 Pending before `Verified`:
 
-- GitHub Actions Linux and Windows CI;
 - #55 remains externally tool-dependent unless a CI image or local job provides
   `rdsamp`/`rdann`.
 
@@ -102,3 +109,4 @@ now uses:
 |---|---|---|
 | 0.1 | 2026-07-04 | Accepted native format conformance design |
 | 0.9 | 2026-07-04 | Added optional native tests and fixed EDF/BDF native-reader compatibility |
+| 1.0 | 2026-07-04 | Recorded CI evidence; EDF/BDF native conformance is verified and WFDB external-reader execution remains pending |
