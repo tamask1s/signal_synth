@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-026
 
-**Version:** 0.1
+**Version:** 1.0
 
-**Status:** Implemented, verification pending
+**Status:** Verified
 
 **Owner role:** Platform / SDK
 
@@ -14,9 +14,9 @@
 
 **Implementation issue:** [signal_synth#41](https://github.com/tamask1s/signal_synth/issues/41)
 
-**Implementation commit:** Pending
+**Implementation commit:** `74b5575ab903c3e9d01be0026a356637cd0cebe9`
 
-**CI verification:** Pending
+**CI verification:** [GitHub Actions run 28710996667](https://github.com/tamask1s/signal_synth/actions/runs/28710996667)
 
 ## 1. Decision
 
@@ -126,6 +126,20 @@ Extend existing tests:
 - `TEST-FACADE-001` verifies the stable facade exposes the new artifacts;
 - `TEST-BUILD-001` verifies installed public header visibility.
 
+Verified locally on 2026-07-04:
+
+- `cmake --build build-release`: passed;
+- `cmake --build build-sanitize`: passed;
+- `ctest --output-on-failure` in `build-release`: 26/26 passed;
+- `ASAN_OPTIONS=detect_leaks=0 ctest -E TEST-BUILD-001 --output-on-failure`
+  in `build-sanitize`: 25/25 passed;
+- `git diff --check`: passed.
+
+Verified in CI on 2026-07-04:
+
+- Ubuntu C++11 configure/build/test: passed;
+- Windows C++11 configure/build/test: passed.
+
 ## 6. Non-Goals
 
 - No user HRV scoring or benchmark report.
@@ -148,3 +162,4 @@ Extend existing tests:
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-04 | Added HRV metrics and RR tachogram export design |
+| 1.0 | 2026-07-04 | Verified implementation and CI results |
