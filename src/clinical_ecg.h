@@ -177,6 +177,14 @@ namespace signal_synth
         double rr_variability_seconds;
         double minimum_rr_seconds;
         double maximum_rr_seconds;
+        bool hrv_modulation_enabled;
+        double hrv_lf_hf_ratio;
+        double hrv_lf_center_hz;
+        double hrv_lf_bandwidth_hz;
+        double hrv_hf_center_hz;
+        double hrv_hf_bandwidth_hz;
+        double hrv_respiratory_frequency_hz;
+        double hrv_respiratory_amplitude_seconds;
         double first_degree_pr_ms;
         unsigned int mobitz_cycle_length;
         double wenckebach_pr_increment_ms;

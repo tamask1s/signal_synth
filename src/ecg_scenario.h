@@ -249,6 +249,7 @@ namespace signal_synth
         double minimum_rr_seconds() const;
         bool set_maximum_rr_seconds(double value);
         double maximum_rr_seconds() const;
+        bool set_hrv_modulation(double lf_hf_ratio, double lf_center_hz, double lf_bandwidth_hz, double hf_center_hz, double hf_bandwidth_hz, double respiratory_frequency_hz, double respiratory_amplitude_seconds);
         bool set_ectopic_every_n_beats(unsigned int value);
         unsigned int ectopic_every_n_beats() const;
         bool set_second_degree_av_pattern(ecg_second_degree_av_pattern value);

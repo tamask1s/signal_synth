@@ -78,6 +78,7 @@ int main()
         "../examples/packs/signal_quality_v1.json",
         "../examples/packs/combined_worst_case_v1.json"
     };
+    const unsigned int expected_scenario_counts[] = {4, 9, 4, 4, 4};
     unsigned int total_pack_scenarios = 0;
     unsigned int rendered_scenarios = 0;
     unsigned int artifact_scenarios = 0;
@@ -90,7 +91,7 @@ int main()
         const std::string pack_json = read_file(pack_path);
         signal_synth::ecg_pack_manifest pack;
         signal_synth::ecg_pack_json_result pack_result;
-        ok &= check(!pack_json.empty() && signal_synth::parse_ecg_pack_json(pack_json, pack, pack_result) && pack.scenarios.size() == 4, "curated_pack_parses");
+        ok &= check(!pack_json.empty() && signal_synth::parse_ecg_pack_json(pack_json, pack, pack_result) && pack.scenarios.size() == expected_scenario_counts[pack_index], "curated_pack_parses");
         total_pack_scenarios += static_cast<unsigned int>(pack.scenarios.size());
         for (std::size_t scenario_index = 0; scenario_index < pack.scenarios.size(); ++scenario_index)
         {
@@ -109,7 +110,7 @@ int main()
                 ++ppg_scenarios;
         }
     }
-    ok &= check(total_pack_scenarios >= 20 && rendered_scenarios == total_pack_scenarios, "curated_pack_has_20_rendered_scenarios");
+    ok &= check(total_pack_scenarios >= 25 && rendered_scenarios == total_pack_scenarios, "curated_pack_has_25_rendered_scenarios");
     ok &= check(artifact_scenarios >= 5 && ppg_scenarios >= 5, "curated_pack_covers_artifacts_and_ppg");
 
     std::ifstream script("../examples/databrowser/076_ECG_Scenario_Pack_Batch_QA.txt");

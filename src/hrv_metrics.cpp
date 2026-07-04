@@ -215,7 +215,7 @@ namespace signal_synth
     }
 
     hrv_analysis_result::hrv_analysis_result()
-        : metric_definition_version("synsigra_hrv_metrics_v1"), exclusion_policy("exclude clipped, ectopic, missing-QRS, nonpositive, and ECG-artifact-overlapped RR intervals"), spectral_method("linear interpolation to 4 Hz, mean removal, Hann window, direct deterministic periodogram, LF 0.04-0.15 Hz, HF 0.15-0.40 Hz"), interpolation_rate_hz(4.0), lf_low_hz(0.04), lf_high_hz(0.15), hf_low_hz(0.15), hf_high_hz(0.40)
+        : metric_definition_version("synsigra_hrv_metrics_v1"), exclusion_policy("exclude clipped, ectopic or ectopic-adjacent, missing-QRS, nonpositive, and ECG-artifact-overlapped RR intervals"), spectral_method("linear interpolation to 4 Hz, mean removal, Hann window, direct deterministic periodogram, LF 0.04-0.15 Hz, HF 0.15-0.40 Hz"), interpolation_rate_hz(4.0), lf_low_hz(0.04), lf_high_hz(0.15), hf_low_hz(0.15), hf_high_hz(0.40)
     {
     }
 
@@ -236,7 +236,7 @@ namespace signal_synth
                 interval.beat_time_seconds = beat.r_peak_time_seconds;
                 interval.rr_seconds = beat.rr_interval_seconds;
                 interval.clipped = beat.rr_was_clipped;
-                interval.ectopic = beat.origin != clinical_origin_conducted;
+                interval.ectopic = beat.origin != clinical_origin_conducted || (i > 0u && beats[i - 1u].origin != clinical_origin_conducted);
                 const double interval_start = i ? beats[i - 1u].r_peak_time_seconds : std::max(0.0, beat.r_peak_time_seconds - beat.rr_interval_seconds);
                 interval.artifact_overlap = artifact_overlaps_rr(signal_quality, interval_start, beat.r_peak_time_seconds);
                 interval.excluded = !beat.qrs_present || !finite_positive(beat.rr_interval_seconds) || interval.clipped || interval.ectopic || interval.artifact_overlap;

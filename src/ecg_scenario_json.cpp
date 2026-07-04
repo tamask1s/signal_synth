@@ -744,6 +744,8 @@ namespace
             return false;
         if (!std::isfinite(config.respiratory_amplitude_seconds) || config.respiratory_amplitude_seconds < 0.0 || config.respiratory_amplitude_seconds > 2.0)
             return false;
+        if (config.respiratory_amplitude_seconds > std::sqrt(2.0) * config.target_sdnn_seconds)
+            return false;
         if (!std::isfinite(config.minimum_rr_seconds) || !std::isfinite(config.maximum_rr_seconds) || config.minimum_rr_seconds <= 0.0 || config.maximum_rr_seconds <= config.minimum_rr_seconds)
             return false;
         const double mean_rr_seconds = 60.0 / config.target_mean_hr_bpm;
@@ -1191,6 +1193,8 @@ namespace signal_synth
                         add_message(fresh_result, ecg_json_range, "$.hrv.minimum_rr_seconds", "invalid minimum RR");
                     if (!document.ecg.set_maximum_rr_seconds(document.hrv.maximum_rr_seconds))
                         add_message(fresh_result, ecg_json_range, "$.hrv.maximum_rr_seconds", "invalid maximum RR");
+                    if (!document.ecg.set_hrv_modulation(document.hrv.lf_hf_ratio, document.hrv.lf_center_hz, document.hrv.lf_bandwidth_hz, document.hrv.hf_center_hz, document.hrv.hf_bandwidth_hz, document.hrv.respiratory_frequency_hz, document.hrv.respiratory_amplitude_seconds))
+                        add_message(fresh_result, ecg_json_range, "$.hrv", "invalid HRV modulation parameters");
                     document.ecg.set_seed(document.hrv.seed);
                 }
             }

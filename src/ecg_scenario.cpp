@@ -418,6 +418,14 @@ namespace signal_synth
         double rr_variability_seconds;
         double minimum_rr_seconds;
         double maximum_rr_seconds;
+        bool hrv_modulation_enabled;
+        double hrv_lf_hf_ratio;
+        double hrv_lf_center_hz;
+        double hrv_lf_bandwidth_hz;
+        double hrv_hf_center_hz;
+        double hrv_hf_bandwidth_hz;
+        double hrv_respiratory_frequency_hz;
+        double hrv_respiratory_amplitude_seconds;
         unsigned int ectopic_every_n_beats;
         ecg_second_degree_av_pattern second_degree_pattern;
         ecg_q_wave_territory q_wave_territory;
@@ -428,7 +436,7 @@ namespace signal_synth
         ecg_scenario_fidelity_policy fidelity_policy;
 
         implementation()
-            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), fidelity_policy(ecg_fidelity_allow_parameterized)
+            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), fidelity_policy(ecg_fidelity_allow_parameterized)
         {
         }
     };
@@ -1006,6 +1014,14 @@ namespace signal_synth
             config.sampling_rate_hz = scenario.sampling_rate_hz;
             config.rhythm.seed = scenario.seed;
             config.rhythm.rr_variability_seconds = scenario.rr_variability_seconds;
+            config.rhythm.hrv_modulation_enabled = scenario.hrv_modulation_enabled;
+            config.rhythm.hrv_lf_hf_ratio = scenario.hrv_lf_hf_ratio;
+            config.rhythm.hrv_lf_center_hz = scenario.hrv_lf_center_hz;
+            config.rhythm.hrv_lf_bandwidth_hz = scenario.hrv_lf_bandwidth_hz;
+            config.rhythm.hrv_hf_center_hz = scenario.hrv_hf_center_hz;
+            config.rhythm.hrv_hf_bandwidth_hz = scenario.hrv_hf_bandwidth_hz;
+            config.rhythm.hrv_respiratory_frequency_hz = scenario.hrv_respiratory_frequency_hz;
+            config.rhythm.hrv_respiratory_amplitude_seconds = scenario.hrv_respiratory_amplitude_seconds;
             if (scenario.minimum_rr_seconds > 0.0)
                 config.rhythm.minimum_rr_seconds = scenario.minimum_rr_seconds;
             if (scenario.maximum_rr_seconds > 0.0)
@@ -2460,6 +2476,25 @@ namespace signal_synth
         return implementation_->maximum_rr_seconds;
     }
 
+    bool ecg_qa_scenario::set_hrv_modulation(double lf_hf_ratio, double lf_center_hz, double lf_bandwidth_hz, double hf_center_hz, double hf_bandwidth_hz, double respiratory_frequency_hz, double respiratory_amplitude_seconds)
+    {
+        const double values[] = {lf_hf_ratio, lf_center_hz, lf_bandwidth_hz, hf_center_hz, hf_bandwidth_hz, respiratory_frequency_hz, respiratory_amplitude_seconds};
+        for (unsigned int i = 0; i < sizeof(values) / sizeof(values[0]); ++i)
+            if (!std::isfinite(values[i]))
+                return false;
+        if (lf_hf_ratio < 0.0 || lf_hf_ratio > 100.0 || lf_center_hz <= 0.0 || lf_center_hz > 1.0 || lf_bandwidth_hz <= 0.0 || lf_bandwidth_hz > 1.0 || hf_center_hz <= 0.0 || hf_center_hz > 1.0 || hf_bandwidth_hz <= 0.0 || hf_bandwidth_hz > 1.0 || respiratory_frequency_hz <= 0.0 || respiratory_frequency_hz > 1.0 || respiratory_amplitude_seconds < 0.0 || respiratory_amplitude_seconds > 2.0)
+            return false;
+        implementation_->hrv_modulation_enabled = true;
+        implementation_->hrv_lf_hf_ratio = lf_hf_ratio;
+        implementation_->hrv_lf_center_hz = lf_center_hz;
+        implementation_->hrv_lf_bandwidth_hz = lf_bandwidth_hz;
+        implementation_->hrv_hf_center_hz = hf_center_hz;
+        implementation_->hrv_hf_bandwidth_hz = hf_bandwidth_hz;
+        implementation_->hrv_respiratory_frequency_hz = respiratory_frequency_hz;
+        implementation_->hrv_respiratory_amplitude_seconds = respiratory_amplitude_seconds;
+        return true;
+    }
+
     bool ecg_qa_scenario::set_ectopic_every_n_beats(unsigned int value)
     {
         implementation_->ectopic_every_n_beats = value;
@@ -2575,6 +2610,17 @@ namespace signal_synth
         hash_u64(hash, implementation_->seed);
         hash_u64(hash, quantize(implementation_->heart_rate_bpm, 1000.0));
         hash_u64(hash, quantize(implementation_->rr_variability_seconds, 1000000.0));
+        if (implementation_->hrv_modulation_enabled)
+        {
+            hash_u64(hash, 1);
+            hash_u64(hash, quantize(implementation_->hrv_lf_hf_ratio, 1000000.0));
+            hash_u64(hash, quantize(implementation_->hrv_lf_center_hz, 1000000.0));
+            hash_u64(hash, quantize(implementation_->hrv_lf_bandwidth_hz, 1000000.0));
+            hash_u64(hash, quantize(implementation_->hrv_hf_center_hz, 1000000.0));
+            hash_u64(hash, quantize(implementation_->hrv_hf_bandwidth_hz, 1000000.0));
+            hash_u64(hash, quantize(implementation_->hrv_respiratory_frequency_hz, 1000000.0));
+            hash_u64(hash, quantize(implementation_->hrv_respiratory_amplitude_seconds, 1000000.0));
+        }
         if (implementation_->minimum_rr_seconds > 0.0 || implementation_->maximum_rr_seconds > 0.0)
         {
             hash_u64(hash, quantize(implementation_->minimum_rr_seconds, 1000000.0));

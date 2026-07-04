@@ -42,6 +42,8 @@ signal_synth_add_test(ecg_wfdb_export_test ecg_wfdb_export_test.cpp TEST-WFDB-EX
 signal_synth_add_test(ecg_edf_bdf_export_test ecg_edf_bdf_export_test.cpp TEST-EDF-BDF-EXPORT-001)
 signal_synth_add_test(hrv_metrics_test hrv_metrics_test.cpp TEST-HRV-METRICS-001)
 signal_synth_add_test(hrv_scoring_test hrv_scoring_test.cpp TEST-HRV-SCORING-001)
+signal_synth_add_test(hrv_pack_test hrv_pack_test.cpp TEST-HRV-PACK-001)
+set_tests_properties(TEST-HRV-PACK-001 PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/..")
 signal_synth_add_test(ppg_model_test ppg_model_test.cpp TEST-PPG-001)
 signal_synth_add_test(signal_quality_test signal_quality_test.cpp TEST-SIGNAL-QUALITY-001)
 signal_synth_add_test(ecg_pack_test ecg_pack_test.cpp TEST-ECG-PACK-001)

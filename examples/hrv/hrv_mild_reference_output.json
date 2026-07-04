@@ -1,0 +1,1 @@
+{"schema_version":1,"algorithm":{"name":"reference_hrv_example","version":"1.0"},"metrics":{"mean_heart_rate_bpm":60.044417414,"sdnn_seconds":0.030005634,"rmssd_seconds":0.03285231,"sd1_seconds":0.023230083,"sd2_seconds":0.035511116,"lf_hf_ratio":1.419960031}}

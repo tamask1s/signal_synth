@@ -129,6 +129,36 @@ namespace signal_synth
             return std::sqrt(-2.0 * std::log(first)) * std::cos(TWO_PI * second);
         }
 
+        double hrv_band_component(unsigned long long seed, unsigned long long component_offset, double time_seconds, double center_hz, double bandwidth_hz, double variance_seconds2)
+        {
+            if (variance_seconds2 <= 0.0)
+                return 0.0;
+            const double amplitude = std::sqrt(2.0 * variance_seconds2 / 3.0);
+            double value = 0.0;
+            for (unsigned long long component = 0; component < 3; ++component)
+            {
+                const double offset = (static_cast<double>(component) - 1.0) * 0.25 * bandwidth_hz;
+                const double frequency = std::max(0.001, center_hz + offset);
+                const double phase = TWO_PI * deterministic_unit(seed, component_offset + component);
+                value += amplitude * std::sin(TWO_PI * frequency * time_seconds + phase);
+            }
+            return value;
+        }
+
+        double hrv_rr_modulation(const clinical_rhythm_config& rhythm, double time_seconds)
+        {
+            const double target_variance = rhythm.rr_variability_seconds * rhythm.rr_variability_seconds;
+            const double respiratory_variance = 0.5 * rhythm.hrv_respiratory_amplitude_seconds * rhythm.hrv_respiratory_amplitude_seconds;
+            const double spectral_variance = std::max(0.0, target_variance - respiratory_variance);
+            const double lf_fraction = rhythm.hrv_lf_hf_ratio / (1.0 + rhythm.hrv_lf_hf_ratio);
+            const double lf_variance = spectral_variance * lf_fraction;
+            const double hf_variance = spectral_variance - lf_variance;
+            const double respiratory_phase = TWO_PI * deterministic_unit(rhythm.seed, 106);
+            return hrv_band_component(rhythm.seed, 100, time_seconds, rhythm.hrv_lf_center_hz, rhythm.hrv_lf_bandwidth_hz, lf_variance)
+                + hrv_band_component(rhythm.seed, 103, time_seconds, rhythm.hrv_hf_center_hz, rhythm.hrv_hf_bandwidth_hz, hf_variance)
+                + rhythm.hrv_respiratory_amplitude_seconds * std::sin(TWO_PI * rhythm.hrv_respiratory_frequency_hz * time_seconds + respiratory_phase);
+        }
+
         template <typename enum_type>
         typename std::underlying_type<enum_type>::type enum_value(const enum_type& value)
         {
@@ -173,7 +203,7 @@ namespace signal_synth
                 return false;
             const double timing_values[] = {config.timing.p_duration_ms, config.timing.pr_interval_ms, config.timing.qrs_duration_ms, config.timing.qrs_q_fraction, config.timing.qrs_r_fraction, config.timing.qrs_s_fraction, config.timing.t_duration_ms, config.timing.t_peak_fraction, config.timing.qt_interval_ms, config.timing.qtc_ms};
             const double morphology_values[] = {config.morphology.p_amplitude_mv, config.morphology.q_amplitude_mv, config.morphology.r_amplitude_mv, config.morphology.s_amplitude_mv, config.morphology.t_amplitude_mv, config.morphology.st_j_amplitude_mv, config.morphology.st_slope_mv_per_second, config.morphology.p_axis_degrees, config.morphology.qrs_axis_degrees, config.morphology.t_axis_degrees, config.morphology.p_elevation_degrees, config.morphology.qrs_elevation_degrees, config.morphology.t_elevation_degrees, config.morphology.presence_threshold_mv};
-            const double rhythm_values[] = {config.rhythm.heart_rate_bpm, config.rhythm.atrial_rate_bpm, config.rhythm.ventricular_escape_rate_bpm, config.rhythm.rr_variability_seconds, config.rhythm.minimum_rr_seconds, config.rhythm.maximum_rr_seconds, config.rhythm.first_degree_pr_ms, config.rhythm.wenckebach_pr_increment_ms};
+            const double rhythm_values[] = {config.rhythm.heart_rate_bpm, config.rhythm.atrial_rate_bpm, config.rhythm.ventricular_escape_rate_bpm, config.rhythm.rr_variability_seconds, config.rhythm.minimum_rr_seconds, config.rhythm.maximum_rr_seconds, config.rhythm.hrv_lf_hf_ratio, config.rhythm.hrv_lf_center_hz, config.rhythm.hrv_lf_bandwidth_hz, config.rhythm.hrv_hf_center_hz, config.rhythm.hrv_hf_bandwidth_hz, config.rhythm.hrv_respiratory_frequency_hz, config.rhythm.hrv_respiratory_amplitude_seconds, config.rhythm.first_degree_pr_ms, config.rhythm.wenckebach_pr_increment_ms};
             const double scenario_values[] = {config.scenario.premature_coupling_ratio, config.scenario.compensatory_pause_ratio, config.scenario.sinus_pause_ratio, config.scenario.episode_start_seconds, config.scenario.episode_duration_seconds, config.scenario.episode_rate_bpm};
             for (double value : timing_values)
                 if (!finite(value))
@@ -204,6 +234,8 @@ namespace signal_synth
             if (config.rhythm.heart_rate_bpm < 10.0 || config.rhythm.heart_rate_bpm > 400.0 || config.rhythm.atrial_rate_bpm < 10.0 || config.rhythm.atrial_rate_bpm > 600.0 || config.rhythm.ventricular_escape_rate_bpm < 10.0 || config.rhythm.ventricular_escape_rate_bpm > 200.0)
                 return false;
             if (config.rhythm.rr_variability_seconds < 0.0 || config.rhythm.minimum_rr_seconds <= 0.0 || config.rhythm.maximum_rr_seconds <= config.rhythm.minimum_rr_seconds || config.rhythm.first_degree_pr_ms < config.timing.p_duration_ms || config.rhythm.wenckebach_pr_increment_ms < 0.0 || config.morphology.presence_threshold_mv < 0.0 || config.rhythm.mobitz_cycle_length < 2 || config.rhythm.flutter_conduction_ratio < 1)
+                return false;
+            if (config.rhythm.hrv_modulation_enabled && (config.rhythm.hrv_lf_hf_ratio < 0.0 || config.rhythm.hrv_lf_hf_ratio > 100.0 || config.rhythm.hrv_lf_center_hz <= 0.0 || config.rhythm.hrv_lf_center_hz > 1.0 || config.rhythm.hrv_lf_bandwidth_hz <= 0.0 || config.rhythm.hrv_lf_bandwidth_hz > 1.0 || config.rhythm.hrv_hf_center_hz <= 0.0 || config.rhythm.hrv_hf_center_hz > 1.0 || config.rhythm.hrv_hf_bandwidth_hz <= 0.0 || config.rhythm.hrv_hf_bandwidth_hz > 1.0 || config.rhythm.hrv_respiratory_frequency_hz <= 0.0 || config.rhythm.hrv_respiratory_frequency_hz > 1.0 || config.rhythm.hrv_respiratory_amplitude_seconds < 0.0 || config.rhythm.hrv_respiratory_amplitude_seconds > std::sqrt(2.0) * config.rhythm.rr_variability_seconds))
                 return false;
             if (config.scenario.premature_coupling_ratio <= 0.0 || config.scenario.premature_coupling_ratio >= 1.0 || config.scenario.compensatory_pause_ratio < 1.0 || config.scenario.sinus_pause_ratio <= 1.0)
                 return false;
@@ -305,7 +337,7 @@ namespace signal_synth
                     origin = clinical_origin_paced;
                 if (beat_index > 0)
                 {
-                    rr += config.rhythm.rr_variability_seconds * deterministic_normal(config.rhythm.seed, beat_index);
+                    rr += config.rhythm.hrv_modulation_enabled ? hrv_rr_modulation(config.rhythm, previous_r) : config.rhythm.rr_variability_seconds * deterministic_normal(config.rhythm.seed, beat_index);
                     if (previous_premature)
                     {
                         rr = nominal_rr * config.scenario.compensatory_pause_ratio;
@@ -961,7 +993,7 @@ namespace signal_synth
     }
 
     clinical_rhythm_config::clinical_rhythm_config()
-        : rhythm(clinical_rhythm_sinus), av_conduction(clinical_av_normal), intraventricular_conduction(clinical_iv_normal), preexcitation(clinical_preexcitation_none), heart_rate_bpm(60.0), atrial_rate_bpm(75.0), ventricular_escape_rate_bpm(35.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.25), maximum_rr_seconds(3.0), first_degree_pr_ms(240.0), mobitz_cycle_length(4), wenckebach_pr_increment_ms(40.0), flutter_conduction_ratio(2), seed(0x434c494e4943414cULL)
+        : rhythm(clinical_rhythm_sinus), av_conduction(clinical_av_normal), intraventricular_conduction(clinical_iv_normal), preexcitation(clinical_preexcitation_none), heart_rate_bpm(60.0), atrial_rate_bpm(75.0), ventricular_escape_rate_bpm(35.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.25), maximum_rr_seconds(3.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), first_degree_pr_ms(240.0), mobitz_cycle_length(4), wenckebach_pr_increment_ms(40.0), flutter_conduction_ratio(2), seed(0x434c494e4943414cULL)
     {
     }
 

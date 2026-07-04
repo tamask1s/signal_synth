@@ -96,6 +96,8 @@ Implementation increment designs:
   metrics and RR tachogram ground-truth export.
 - `increments/027_HRV_USER_OUTPUT_SCORING.md` defines local HRV user-output,
   RR matching, scoring, report, CLI, and Python contracts.
+- `increments/028_HRV_BENCHMARK_PACK.md` defines the deterministic five-minute
+  HRV benchmark pack, spectral RR modulation, exclusions, and expected metrics.
 
 Traceability demonstration:
 
