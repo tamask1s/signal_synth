@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-024
 
-**Version:** 0.1
+**Version:** 1.0
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Platform / SDK
 
@@ -13,6 +13,10 @@
 **Traceability ID:** `TRC-FMT-EDF-001`
 
 **Implementation issue:** [signal_synth#37](https://github.com/tamask1s/signal_synth/issues/37)
+
+**Implementation commit:** `ddc231ea147c0e8aa51de5e5569eb8136ff598e4`
+
+**CI verification:** [GitHub Actions run 28710050393](https://github.com/tamask1s/signal_synth/actions/runs/28710050393)
 
 ## 1. Decision
 
@@ -109,6 +113,22 @@ The local environment does not currently provide EDFBrowser or another native
 EDF/BDF command-line reader, so external-tool read verification remains a
 portable CI/environment follow-up.
 
+Verified locally on 2026-07-04:
+
+- `cmake --build build-release`: passed;
+- `cmake --build build-sanitize`: passed;
+- `ctest --output-on-failure` in `build-release`: 25/25 passed;
+- `ASAN_OPTIONS=detect_leaks=0 ctest -E TEST-BUILD-001 --output-on-failure`
+  in `build-sanitize`: 24/24 passed;
+- `git diff --check`: passed;
+- local EDF/BDF native reader tooling: not installed, external conformance read
+  remains a tracked gap.
+
+Verified in CI on 2026-07-04:
+
+- Ubuntu C++11 configure/build/test: passed;
+- Windows C++11 configure/build/test: passed.
+
 ## 6. Non-Goals
 
 - No DICOM export.
@@ -129,3 +149,4 @@ portable CI/environment follow-up.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-04 | Added EDF+/BDF+ waveform export design |
+| 1.0 | 2026-07-04 | Verified implementation and CI results |
