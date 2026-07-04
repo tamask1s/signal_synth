@@ -84,6 +84,8 @@ Implementation increment designs:
   user detection output contracts.
 - `increments/021_PACK_LEVEL_SCORING_AGGREGATION.md` defines pack-level local
   Algorithm QA scoring aggregation.
+- `increments/022_LOCAL_PYTHON_SCORING_PACKAGE.md` defines the first local
+  Python challenge loading and scoring SDK layer.
 
 Traceability demonstration:
 

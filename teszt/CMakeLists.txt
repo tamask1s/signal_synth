@@ -70,3 +70,14 @@ if(TARGET signal_synth_cli)
             -DSIGNAL_SYNTH_CLI_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/cli_test_work
             -P ${CMAKE_CURRENT_SOURCE_DIR}/cli_test.cmake)
 endif()
+
+find_program(SIGNAL_SYNTH_PYTHON_EXECUTABLE NAMES python3 python)
+if(TARGET signal_synth_cli AND SIGNAL_SYNTH_PYTHON_EXECUTABLE)
+    add_test(
+        NAME TEST-PYTHON-SCORING-001
+        COMMAND ${SIGNAL_SYNTH_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/python_scoring_test.py)
+    set_tests_properties(
+        TEST-PYTHON-SCORING-001
+        PROPERTIES
+            ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python;SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..;SIGNAL_SYNTH_PY_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/python_scoring_work")
+endif()
