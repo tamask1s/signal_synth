@@ -4,6 +4,7 @@
 #include "ecg_pack_score.h"
 #include "ecg_compare.h"
 #include "detection_io.h"
+#include "hrv_scoring.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -65,6 +66,7 @@ namespace
         std::cerr << "usage: signal-synth <validate|fingerprint> <scenario.json|->\n"
                   << "       signal-synth render <scenario.json|-> --out <new-directory>\n"
                   << "       signal-synth compare <rpeaks|ppg-peaks> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
+                  << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack render <pack.json> --out <new-directory>\n"
                   << "       signal-synth pack score <pack.json> <detections-directory> --out <new-directory>\n";
@@ -405,6 +407,92 @@ int main(int argc, char** argv)
         return 2;
     }
     const std::string command(argv[1]);
+    if (command == "hrv")
+    {
+        if (argc != 7 || std::string(argv[2]) != "score" || std::string(argv[5]) != "--out")
+        {
+            print_usage();
+            return 2;
+        }
+        try
+        {
+            if (std::string(argv[3]) == "-" && std::string(argv[4]) == "-")
+            {
+                std::cerr << "error=INPUT_READ_FAILED path=- message=scenario and HRV output cannot both be read from stdin\n";
+                return 3;
+            }
+            std::string scenario_json;
+            std::string user_json;
+            if (!read_input(argv[3], scenario_json))
+            {
+                std::cerr << "error=INPUT_READ_FAILED path=" << argv[3] << " message=unable to read scenario input or input exceeds 16 MiB\n";
+                return 3;
+            }
+            if (!read_input(argv[4], user_json))
+            {
+                std::cerr << "error=INPUT_READ_FAILED path=" << argv[4] << " message=unable to read HRV output or input exceeds 16 MiB\n";
+                return 3;
+            }
+            signal_synth::ecg_scenario_document document;
+            signal_synth::ecg_scenario_json_result scenario_result;
+            if (!signal_synth::parse_ecg_scenario_json(scenario_json, document, scenario_result))
+            {
+                print_errors(scenario_result);
+                return 4;
+            }
+            signal_synth::hrv_user_output user;
+            std::vector<std::string> user_messages;
+            if (!signal_synth::parse_hrv_user_output_json(user_json, user, user_messages))
+            {
+                for (std::size_t i = 0; i < user_messages.size(); ++i)
+                    std::cerr << "error=HRV_INPUT_FAILED path=$ message=" << user_messages[i] << '\n';
+                return 4;
+            }
+            signal_synth::ecg_render_bundle render;
+            signal_synth::ecg_export_result export_result;
+            if (!signal_synth::render_ecg_document(document, render, export_result))
+            {
+                std::cerr << "error=RENDER_FAILED path=$ message=" << (export_result.messages.empty() ? "render failed" : export_result.messages[0]) << '\n';
+                return 4;
+            }
+            signal_synth::hrv_score_result score;
+            if (!signal_synth::score_hrv_user_output(render, user, score))
+            {
+                std::cerr << "error=HRV_SCORE_FAILED path=$ message=" << (score.messages.empty() ? "HRV scoring failed" : score.messages[0]) << '\n';
+                return 4;
+            }
+            const std::string output_directory(argv[6]);
+            if (!create_directory(output_directory))
+            {
+                std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=output directory must be new and writable\n";
+                return 3;
+            }
+            if (!write_text_file(join_path(output_directory, "hrv_score.json"), signal_synth::hrv_score_result_json(score))
+                || !write_text_file(join_path(output_directory, "hrv_score.csv"), signal_synth::hrv_score_result_csv(score))
+                || !write_text_file(join_path(output_directory, "hrv_score_report.html"), signal_synth::hrv_score_report_html(score)))
+            {
+                std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=unable to write HRV scoring output files\n";
+                return 3;
+            }
+            std::cout << "status=hrv-scored\n"
+                      << "output_directory=" << output_directory << '\n'
+                      << "scenario_id=" << score.scenario_id << '\n'
+                      << "metric_count=" << score.metrics.size() << '\n'
+                      << "passed_metric_count=" << score.passed_metric_count << '\n'
+                      << "metric_pass_fraction=" << score.metric_pass_fraction << '\n'
+                      << "rr_matched_count=" << score.rr.matched_count << '\n';
+            return 0;
+        }
+        catch (const std::bad_alloc&)
+        {
+            std::cerr << "error=INTERNAL_ERROR path=$ message=memory allocation failed\n";
+        }
+        catch (...)
+        {
+            std::cerr << "error=INTERNAL_ERROR path=$ message=unexpected failure\n";
+        }
+        return 5;
+    }
     if (command == "compare")
     {
         if (!((argc == 7 || argc == 9) && std::string(argv[5]) == "--out" && (argc == 7 || std::string(argv[7]) == "--tolerance-ms")))

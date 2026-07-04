@@ -171,6 +171,22 @@ def main():
     ppg_report = ss.compare_ppg_peaks(challenge.case("ppg_clean"), ppg_detections_doc, cli_path=cli)
     assert ppg_report.json["comparison"]["metrics"]["total"]["f1_score"] == 1
 
+    hrv_annotations = challenge.case("clean_ecg").annotations()
+    accepted_rr = [item for item in hrv_annotations["rr_tachogram"] if not item["excluded"]]
+    mean_rr = sum(item["rr_seconds"] for item in accepted_rr) / len(accepted_rr)
+    hrv_report = ss.score_hrv(challenge.case("clean_ecg"), {
+        "schema_version": 1,
+        "algorithm": {"name": "python_hrv_test", "version": "1"},
+        "metrics": {"mean_rr_seconds": mean_rr},
+        "rr_intervals": [
+            {"beat_time_seconds": item["beat_time_seconds"], "rr_seconds": item["rr_seconds"]}
+            for item in accepted_rr
+        ],
+    }, cli_path=cli)
+    assert hrv_report.json["metric_pass_fraction"] == 1
+    assert hrv_report.json["rr"]["missing_count"] == 0
+    assert "HRV Algorithm QA Score" in hrv_report.html
+
     exported_dir = os.path.join(work_dir, "exported_report")
     rpeak_report.write(exported_dir)
     assert os.path.exists(os.path.join(exported_dir, "comparison_report.html"))

@@ -52,6 +52,33 @@ def compare_ppg_peaks(case, detections, out_dir=None, cli_path=None, tolerance_m
     return _compare("ppg-peaks", case, detections, out_dir, cli_path, tolerance_ms)
 
 
+def score_hrv(case, user_output, out_dir=None, cli_path=None):
+    tempdir = None
+    if out_dir is None or isinstance(user_output, dict):
+        tempdir = _TemporaryDirectory()
+    if out_dir is None:
+        out_dir = os.path.join(tempdir.name, "hrv_score")
+    if isinstance(user_output, dict):
+        user_output_path = os.path.join(tempdir.name, "hrv_output.json")
+        with open(user_output_path, "w") as handle:
+            json.dump(user_output, handle, sort_keys=True, separators=(",", ":"))
+    elif isinstance(user_output, str):
+        user_output_path = user_output
+    else:
+        if tempdir is not None:
+            tempdir.cleanup()
+        raise TypeError("user_output must be a JSON file path or dict")
+    summary = _run([_cli(cli_path), "hrv", "score", case.scenario_path, user_output_path, "--out", out_dir])
+    return ScoreReport(
+        out_dir,
+        summary,
+        _read_json(os.path.join(out_dir, "hrv_score.json")),
+        _read_text(os.path.join(out_dir, "hrv_score.csv")),
+        _read_text(os.path.join(out_dir, "hrv_score_report.html")),
+        tempdir,
+    )
+
+
 def score_pack(pack_json, detections_dir, out_dir=None, cli_path=None):
     tempdir = None
     if out_dir is None:

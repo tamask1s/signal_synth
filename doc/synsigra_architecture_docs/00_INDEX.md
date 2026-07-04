@@ -94,6 +94,8 @@ Implementation increment designs:
   scenario schema and first-layer ECG timeline mapping.
 - `increments/026_HRV_METRICS_AND_TACHOGRAM_EXPORT.md` defines reusable HRV
   metrics and RR tachogram ground-truth export.
+- `increments/027_HRV_USER_OUTPUT_SCORING.md` defines local HRV user-output,
+  RR matching, scoring, report, CLI, and Python contracts.
 
 Traceability demonstration:
 
