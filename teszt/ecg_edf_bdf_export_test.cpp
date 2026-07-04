@@ -92,6 +92,7 @@ int main()
     ok &= check(edf && trim_field(edf->content, 0, 8) == "0" && trim_field(edf->content, 192, 44) == "EDF+C" && uint_field(edf->content, 252, 4) == 14, "edf_header");
     ok &= check(bdf && static_cast<unsigned char>(bdf->content[0]) == 0xffu && trim_field(bdf->content, 1, 7) == "BIOSEMI" && trim_field(bdf->content, 192, 44) == "BDF+C" && uint_field(bdf->content, 252, 4) == 14, "bdf_header");
     ok &= check(edf_header_bytes == 256u + 14u * 256u && bdf_header_bytes == 256u + 14u * 256u, "header_bytes");
+    ok &= check(edf && bdf && uint_field(edf->content, 236, 8) == render.record.sample_count() / render.record.sampling_rate_hz() && trim_field(edf->content, 244, 8) == "1" && uint_field(bdf->content, 236, 8) == render.record.sample_count() / render.record.sampling_rate_hz() && trim_field(bdf->content, 244, 8) == "1", "native_reader_record_layout");
     ok &= check(edf && edf->content.find("EDF Annotations") != std::string::npos && bdf && bdf->content.find("BDF Annotations") != std::string::npos, "annotation_signal_label");
 
     if (edf && edf->content.size() > edf_header_bytes + render.record.sample_count() * 12u * 2u)

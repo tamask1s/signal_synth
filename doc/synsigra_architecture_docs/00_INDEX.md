@@ -20,6 +20,7 @@ Recommended read order:
 16. `16_REPO_REVIEW.md`
 17. `17_TRACEABILITY_SOP.md`
 18. `18_TRACEABILITY_MATRIX.md`
+19. `saas/001_SAAS_IMPLEMENTATION_HANDOFF.md`
 
 Focused SRS documents:
 
@@ -107,6 +108,8 @@ Implementation increment designs:
   capture/non-capture event truth, and pacing annotation export.
 - `increments/032_ECG_ACQUISITION_LEAD_FAULT_PACK.md` defines deterministic
   ECG acquisition faults and lead-fault waveform transforms.
+- `increments/033_NATIVE_FORMAT_TOOL_CONFORMANCE.md` defines optional native
+  WFDB and EDF/BDF reader conformance tests.
 
 Traceability demonstration:
 

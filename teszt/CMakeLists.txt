@@ -76,6 +76,15 @@ if(TARGET signal_synth_cli)
             -DSIGNAL_SYNTH_PACK_EXAMPLE=${CMAKE_CURRENT_SOURCE_DIR}/../examples/packs/r_peak_stress_v1.json
             -DSIGNAL_SYNTH_CLI_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/cli_test_work
             -P ${CMAKE_CURRENT_SOURCE_DIR}/cli_test.cmake)
+    add_test(
+        NAME TEST-WFDB-NATIVE-001
+        COMMAND
+            ${CMAKE_COMMAND}
+            -DSIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>
+            -DSIGNAL_SYNTH_ECG_EXAMPLE=${CMAKE_CURRENT_SOURCE_DIR}/../examples/scenarios/ecg_clean.json
+            -DSIGNAL_SYNTH_PPG_EXAMPLE=${CMAKE_CURRENT_SOURCE_DIR}/../examples/scenarios/ecg_ppg_clean.json
+            -DSIGNAL_SYNTH_WFDB_NATIVE_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/wfdb_native_work
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/wfdb_native_conformance.cmake)
 endif()
 
 find_program(SIGNAL_SYNTH_PYTHON_EXECUTABLE NAMES python3 python)
@@ -87,4 +96,13 @@ if(TARGET signal_synth_cli AND SIGNAL_SYNTH_PYTHON_EXECUTABLE)
         TEST-PYTHON-SCORING-001
         PROPERTIES
             ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python;SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..;SIGNAL_SYNTH_PY_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/python_scoring_work")
+    add_test(
+        NAME TEST-EDF-BDF-NATIVE-001
+        COMMAND
+            ${SIGNAL_SYNTH_PYTHON_EXECUTABLE}
+            ${CMAKE_CURRENT_SOURCE_DIR}/edf_bdf_native_conformance.py
+            --cli $<TARGET_FILE:signal_synth_cli>
+            --ecg-example ${CMAKE_CURRENT_SOURCE_DIR}/../examples/scenarios/ecg_clean.json
+            --ppg-example ${CMAKE_CURRENT_SOURCE_DIR}/../examples/scenarios/ecg_ppg_clean.json
+            --work-dir ${CMAKE_CURRENT_BINARY_DIR}/edf_bdf_native_work)
 endif()

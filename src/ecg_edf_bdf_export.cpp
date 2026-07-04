@@ -1,12 +1,14 @@
 #include "ecg_edf_bdf_export.h"
 #include "ecg_beat_classification.h"
 
+#include <algorithm>
 #include <cmath>
 #include <iomanip>
 #include <limits>
 #include <locale>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -19,6 +21,16 @@ namespace
     {
         standard_edf,
         standard_bdf
+    };
+
+    struct edf_record_layout
+    {
+        unsigned int data_record_count;
+        unsigned int waveform_samples_per_record;
+        unsigned int annotation_bytes_per_record;
+        unsigned int annotation_samples_per_record;
+        double data_record_duration_seconds;
+        std::vector<std::string> annotations;
     };
 
     std::string json_string(const std::string& value)
@@ -164,14 +176,19 @@ namespace
         output.push_back(0x00);
     }
 
-    std::string annotation_payload(const signal_synth::ecg_render_bundle& render)
+    std::string annotation_payload(const signal_synth::ecg_render_bundle& render, double record_start_seconds, double record_end_seconds)
     {
         std::string output;
-        append_tal(output, 0.0, "record_start");
+        output += tal_time(record_start_seconds);
+        output.push_back(0x14);
+        output.push_back(0x14);
+        output.push_back(0x00);
+        if (record_start_seconds == 0.0)
+            append_tal(output, 0.0, "record_start");
         for (unsigned int i = 0; i < render.record.beat_count(); ++i)
         {
             const signal_synth::clinical_beat_annotation& beat = render.record.beats()[i];
-            if (beat.qrs_present)
+            if (beat.qrs_present && beat.r_peak_time_seconds >= record_start_seconds && beat.r_peak_time_seconds < record_end_seconds)
             {
                 const std::string label = std::string("beat:") + signal_synth::ecg_beat_class_name(signal_synth::ecg_beat_class_from_origin(beat.origin));
                 append_tal(output, beat.r_peak_time_seconds, label.c_str());
@@ -180,7 +197,7 @@ namespace
         for (unsigned int i = 0; i < render.ppg.annotation_count(); ++i)
         {
             const signal_synth::ppg_annotation& annotation = render.ppg.annotations()[i];
-            if (annotation.kind == signal_synth::ppg_systolic_peak && annotation.source == signal_synth::ppg_fiducial_measurement)
+            if (annotation.kind == signal_synth::ppg_systolic_peak && annotation.source == signal_synth::ppg_fiducial_measurement && annotation.time_seconds >= record_start_seconds && annotation.time_seconds < record_end_seconds)
                 append_tal(output, annotation.time_seconds, "ppg_systolic_peak");
         }
         if (output.empty() || output[output.size() - 1] != 0)
@@ -209,13 +226,37 @@ namespace
         return fixed_field(output, 8);
     }
 
-    std::string header(const signal_synth::ecg_render_bundle& render, standard_kind kind, const std::string& record_name, unsigned int annotation_samples)
+    edf_record_layout make_layout(const signal_synth::ecg_render_bundle& render, unsigned int sample_bytes)
     {
+        edf_record_layout layout = {};
+        const unsigned int rate = render.record.sampling_rate_hz();
+        layout.waveform_samples_per_record = rate > 0 && render.record.sample_count() % rate == 0 ? rate : render.record.sample_count();
+        if (!layout.waveform_samples_per_record)
+            layout.waveform_samples_per_record = render.record.sample_count();
+        layout.data_record_count = layout.waveform_samples_per_record ? render.record.sample_count() / layout.waveform_samples_per_record : 0;
+        if (!layout.data_record_count)
+            layout.data_record_count = 1;
+        layout.data_record_duration_seconds = static_cast<double>(layout.waveform_samples_per_record) / render.record.sampling_rate_hz();
+        layout.annotation_bytes_per_record = 57u * sample_bytes;
+        layout.annotations.reserve(layout.data_record_count);
+        for (unsigned int record = 0; record < layout.data_record_count; ++record)
+        {
+            const double start = record * layout.data_record_duration_seconds;
+            const double end = start + layout.data_record_duration_seconds;
+            layout.annotations.push_back(annotation_payload(render, start, end));
+            layout.annotation_bytes_per_record = std::max(layout.annotation_bytes_per_record, padded_annotation_bytes(layout.annotations.back(), sample_bytes));
+        }
+        layout.annotation_samples_per_record = layout.annotation_bytes_per_record / sample_bytes;
+        return layout;
+    }
+
+    std::string header(const signal_synth::ecg_render_bundle& render, standard_kind kind, const std::string& record_name, const edf_record_layout& layout)
+    {
+        (void)record_name;
         const bool has_ppg = render.ppg.sample_count() != 0;
         const unsigned int waveform_signal_count = render.record.lead_count() + (has_ppg ? 1u : 0u);
         const unsigned int signal_count = waveform_signal_count + 1u;
         const unsigned int header_bytes = 256u + signal_count * 256u;
-        const double data_record_duration = static_cast<double>(render.record.sample_count()) / render.record.sampling_rate_hz();
         const char* annotation_label = kind == standard_edf ? "EDF Annotations" : "BDF Annotations";
 
         std::vector<std::string> labels;
@@ -239,7 +280,7 @@ namespace
             digital_minimum.push_back(kind == standard_edf ? "-32768" : "-8388608");
             digital_maximum.push_back(kind == standard_edf ? "32767" : "8388607");
             prefilters.push_back("none");
-            samples_per_record.push_back(integer(render.record.sample_count()));
+            samples_per_record.push_back(integer(layout.waveform_samples_per_record));
             signal_reserved.push_back("");
         }
         if (has_ppg)
@@ -252,7 +293,7 @@ namespace
             digital_minimum.push_back(kind == standard_edf ? "-32768" : "-8388608");
             digital_maximum.push_back(kind == standard_edf ? "32767" : "8388607");
             prefilters.push_back("none");
-            samples_per_record.push_back(integer(render.record.sample_count()));
+            samples_per_record.push_back(integer(layout.waveform_samples_per_record));
             signal_reserved.push_back("");
         }
         labels.push_back(annotation_label);
@@ -263,20 +304,20 @@ namespace
         digital_minimum.push_back(kind == standard_edf ? "-32768" : "-8388608");
         digital_maximum.push_back(kind == standard_edf ? "32767" : "8388607");
         prefilters.push_back("");
-        samples_per_record.push_back(integer(annotation_samples));
+        samples_per_record.push_back(integer(layout.annotation_samples_per_record));
         signal_reserved.push_back("");
 
         std::string output;
         output.reserve(header_bytes);
         output += format_version(kind);
-        output += fixed_field("Synsigra synthetic", 80);
-        output += fixed_field("Synsigra " + record_name, 80);
-        output += fixed_field("01.01.85", 8);
+        output += fixed_field("X X X X", 80);
+        output += fixed_field("Startdate 01-JAN-2025 X X X", 80);
+        output += fixed_field("01.01.25", 8);
         output += fixed_field("00.00.00", 8);
         output += fixed_field(integer(header_bytes), 8);
         output += fixed_field(kind == standard_edf ? "EDF+C" : "BDF+C", 44);
-        output += fixed_field("1", 8);
-        output += fixed_field(number(data_record_duration), 8);
+        output += fixed_field(integer(layout.data_record_count), 8);
+        output += fixed_field(number(layout.data_record_duration_seconds), 8);
         output += fixed_field(integer(signal_count), 4);
         for (std::size_t i = 0; i < labels.size(); ++i) output += fixed_field(labels[i], 16);
         for (std::size_t i = 0; i < transducers.size(); ++i) output += fixed_field(transducers[i], 80);
@@ -291,50 +332,52 @@ namespace
         return output;
     }
 
-    std::string data_record(const signal_synth::ecg_render_bundle& render, standard_kind kind, const std::string& annotations, unsigned int annotation_bytes)
+    std::string data_record(const signal_synth::ecg_render_bundle& render, standard_kind kind, const edf_record_layout& layout)
     {
         std::string output;
         const bool has_ppg = render.ppg.sample_count() != 0;
         const unsigned int waveform_signal_count = render.record.lead_count() + (has_ppg ? 1u : 0u);
         const unsigned int sample_bytes = kind == standard_edf ? 2u : 3u;
-        output.reserve((static_cast<std::size_t>(waveform_signal_count) * render.record.sample_count() + annotation_bytes / sample_bytes) * sample_bytes);
-        for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
-        {
-            const double* samples = rendered_ecg_lead(render, lead);
-            for (unsigned int sample = 0; sample < render.record.sample_count(); ++sample)
-            {
-                if (kind == standard_edf)
-                    append_i16_le(output, clamp_i16(samples[sample], edf_ecg_gain_adc_per_mv));
-                else
-                    append_i24_le(output, clamp_i24(samples[sample], bdf_ecg_gain_adc_per_mv));
-            }
-        }
+        const std::size_t bytes_per_record = static_cast<std::size_t>(waveform_signal_count) * layout.waveform_samples_per_record * sample_bytes + layout.annotation_bytes_per_record;
+        output.reserve(layout.data_record_count * bytes_per_record);
         const double* ppg = rendered_ppg(render);
-        if (ppg)
+        for (unsigned int record = 0; record < layout.data_record_count; ++record)
         {
-            for (unsigned int sample = 0; sample < render.record.sample_count(); ++sample)
+            const unsigned int first_sample = record * layout.waveform_samples_per_record;
+            const unsigned int past_sample = std::min(render.record.sample_count(), first_sample + layout.waveform_samples_per_record);
+            for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
             {
-                if (kind == standard_edf)
-                    append_i16_le(output, clamp_i16(ppg[sample], edf_ppg_gain_adc_per_au));
-                else
-                    append_i24_le(output, clamp_i24(ppg[sample], bdf_ppg_gain_adc_per_au));
+                const double* samples = rendered_ecg_lead(render, lead);
+                for (unsigned int sample = first_sample; sample < past_sample; ++sample)
+                {
+                    if (kind == standard_edf)
+                        append_i16_le(output, clamp_i16(samples[sample], edf_ecg_gain_adc_per_mv));
+                    else
+                        append_i24_le(output, clamp_i24(samples[sample], bdf_ecg_gain_adc_per_mv));
+                }
             }
+            if (ppg)
+            {
+                for (unsigned int sample = first_sample; sample < past_sample; ++sample)
+                {
+                    if (kind == standard_edf)
+                        append_i16_le(output, clamp_i16(ppg[sample], edf_ppg_gain_adc_per_au));
+                    else
+                        append_i24_le(output, clamp_i24(ppg[sample], bdf_ppg_gain_adc_per_au));
+                }
+            }
+            output += layout.annotations[record];
+            while (output.size() < (record + 1u) * bytes_per_record)
+                output.push_back(0);
         }
-        output += annotations;
-        while (output.size() % sample_bytes)
-            output.push_back(0);
-        while (output.size() < (static_cast<std::size_t>(waveform_signal_count) * render.record.sample_count() * sample_bytes + annotation_bytes))
-            output.push_back(0);
         return output;
     }
 
     std::string standard_file(const signal_synth::ecg_render_bundle& render, standard_kind kind, const std::string& record_name)
     {
-        const std::string annotations = annotation_payload(render);
         const unsigned int sample_bytes = kind == standard_edf ? 2u : 3u;
-        const unsigned int annotation_bytes = padded_annotation_bytes(annotations, sample_bytes);
-        const unsigned int annotation_samples = annotation_bytes / sample_bytes;
-        return header(render, kind, record_name, annotation_samples) + data_record(render, kind, annotations, annotation_bytes);
+        const edf_record_layout layout = make_layout(render, sample_bytes);
+        return header(render, kind, record_name, layout) + data_record(render, kind, layout);
     }
 
     std::string metadata_json(const signal_synth::ecg_render_bundle& render, const std::string& record_name)
