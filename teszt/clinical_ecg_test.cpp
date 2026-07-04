@@ -26,7 +26,7 @@ namespace
 
     bool same_record(const signal_synth::clinical_ecg_record& left, const signal_synth::clinical_ecg_record& right)
     {
-        if (left.sampling_rate_hz() != right.sampling_rate_hz() || left.sample_count() != right.sample_count() || left.lead_count() != right.lead_count() || left.source_count() != right.source_count() || left.atrial_event_count() != right.atrial_event_count() || left.beat_count() != right.beat_count() || left.fiducial_count() != right.fiducial_count() || left.episode_count() != right.episode_count())
+        if (left.sampling_rate_hz() != right.sampling_rate_hz() || left.sample_count() != right.sample_count() || left.lead_count() != right.lead_count() || left.source_count() != right.source_count() || left.atrial_event_count() != right.atrial_event_count() || left.beat_count() != right.beat_count() || left.fiducial_count() != right.fiducial_count() || left.pacing_event_count() != right.pacing_event_count() || left.episode_count() != right.episode_count())
             return false;
         for (unsigned int lead = 0; lead < left.lead_count(); ++lead)
             for (unsigned int sample = 0; sample < left.sample_count(); ++sample)
@@ -55,6 +55,11 @@ namespace
         const signal_synth::clinical_fiducial_annotation* right_fiducials = right.fiducials();
         for (unsigned int i = 0; i < left.fiducial_count(); ++i)
             if (left_fiducials[i].beat_index != right_fiducials[i].beat_index || left_fiducials[i].atrial_index != right_fiducials[i].atrial_index || left_fiducials[i].lead_index != right_fiducials[i].lead_index || left_fiducials[i].kind != right_fiducials[i].kind || left_fiducials[i].source != right_fiducials[i].source || left_fiducials[i].sample_index != right_fiducials[i].sample_index || left_fiducials[i].time_seconds != right_fiducials[i].time_seconds || left_fiducials[i].amplitude_mv != right_fiducials[i].amplitude_mv || left_fiducials[i].present != right_fiducials[i].present)
+                return false;
+        const signal_synth::clinical_pacing_event* left_pacing = left.pacing_events();
+        const signal_synth::clinical_pacing_event* right_pacing = right.pacing_events();
+        for (unsigned int i = 0; i < left.pacing_event_count(); ++i)
+            if (left_pacing[i].pacing_index != right_pacing[i].pacing_index || left_pacing[i].kind != right_pacing[i].kind || left_pacing[i].time_seconds != right_pacing[i].time_seconds || left_pacing[i].sample_index != right_pacing[i].sample_index || left_pacing[i].captured != right_pacing[i].captured || left_pacing[i].linked_atrial_index != right_pacing[i].linked_atrial_index || left_pacing[i].linked_ventricular_index != right_pacing[i].linked_ventricular_index)
                 return false;
         const signal_synth::clinical_episode_annotation* left_episodes = left.episodes();
         const signal_synth::clinical_episode_annotation* right_episodes = right.episodes();
@@ -195,6 +200,15 @@ namespace
             if (fiducial.kind == kind && fiducial.source == source && fiducial.present)
                 ++count;
         }
+        return count;
+    }
+
+    unsigned int count_pacing_events(const signal_synth::clinical_ecg_record& record, signal_synth::clinical_pacing_event_kind kind, bool captured)
+    {
+        unsigned int count = 0;
+        for (unsigned int i = 0; i < record.pacing_event_count(); ++i)
+            if (record.pacing_events()[i].kind == kind && record.pacing_events()[i].captured == captured)
+                ++count;
         return count;
     }
 
@@ -418,7 +432,22 @@ int main()
     paced_config.rhythm.rhythm = signal_synth::clinical_rhythm_paced;
     signal_synth::clinical_ecg_record paced;
     signal_synth::clinical_ecg_generator(paced_config).generate(3000, paced);
-    ok &= check(paced.beats()[0].origin == signal_synth::clinical_origin_paced && !paced.beats()[0].p_present && count_fiducials(paced, signal_synth::clinical_pacing_spike, signal_synth::clinical_fiducial_construction, -1) == paced.beat_count(), "paced_rhythm_and_spike_annotations");
+    ok &= check(paced.beats()[0].origin == signal_synth::clinical_origin_paced && !paced.beats()[0].p_present && paced.pacing_event_count() == paced.beat_count() && count_pacing_events(paced, signal_synth::clinical_pacing_event_ventricular, true) == paced.beat_count() && count_fiducials(paced, signal_synth::clinical_pacing_spike, signal_synth::clinical_fiducial_construction, -1) == paced.pacing_event_count(), "paced_rhythm_and_spike_annotations");
+    signal_synth::clinical_ecg_config atrial_paced_config = paced_config;
+    atrial_paced_config.rhythm.pacing_mode = signal_synth::clinical_pacing_atrial;
+    signal_synth::clinical_ecg_record atrial_paced;
+    signal_synth::clinical_ecg_generator(atrial_paced_config).generate(3000, atrial_paced);
+    ok &= check(atrial_paced.beats()[0].origin == signal_synth::clinical_origin_atrial_paced && atrial_paced.beats()[0].p_present && atrial_paced.pacing_event_count() == atrial_paced.beat_count() && count_pacing_events(atrial_paced, signal_synth::clinical_pacing_event_atrial, true) == atrial_paced.beat_count(), "atrial_paced_rhythm_annotations");
+    signal_synth::clinical_ecg_config dual_paced_config = paced_config;
+    dual_paced_config.rhythm.pacing_mode = signal_synth::clinical_pacing_dual_chamber;
+    signal_synth::clinical_ecg_record dual_paced;
+    signal_synth::clinical_ecg_generator(dual_paced_config).generate(3000, dual_paced);
+    ok &= check(dual_paced.beats()[0].origin == signal_synth::clinical_origin_paced && dual_paced.beats()[0].p_present && dual_paced.pacing_event_count() == 2 * dual_paced.beat_count() && count_pacing_events(dual_paced, signal_synth::clinical_pacing_event_atrial, true) == dual_paced.beat_count() && count_pacing_events(dual_paced, signal_synth::clinical_pacing_event_ventricular, true) == dual_paced.beat_count(), "dual_chamber_paced_rhythm_annotations");
+    signal_synth::clinical_ecg_config noncapture_paced_config = paced_config;
+    noncapture_paced_config.scenario.pacing_non_capture_every_n_beats = 3;
+    signal_synth::clinical_ecg_record noncapture_paced;
+    signal_synth::clinical_ecg_generator(noncapture_paced_config).generate(6000, noncapture_paced);
+    ok &= check(noncapture_paced.pacing_event_count() > noncapture_paced.beat_count() && count_pacing_events(noncapture_paced, signal_synth::clinical_pacing_event_ventricular, false) >= 1 && noncapture_paced.pacing_events()[2].linked_ventricular_index == -1, "paced_non_capture_truth_annotations");
 
     signal_synth::clinical_ecg_config svt_config = config;
     svt_config.rhythm.rhythm = signal_synth::clinical_rhythm_supraventricular_tachycardia;

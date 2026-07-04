@@ -152,6 +152,13 @@ namespace signal_synth
         ecg_flutter_cycle_2_3_4 = 2
     };
 
+    enum ecg_pacing_mode
+    {
+        ecg_pacing_ventricular = 0,
+        ecg_pacing_atrial = 1,
+        ecg_pacing_dual_chamber = 2
+    };
+
     enum ecg_scenario_issue_severity
     {
         ecg_issue_warning = 0,
@@ -273,6 +280,10 @@ namespace signal_synth
         double episode_rate_bpm() const;
         bool set_flutter_conduction_pattern(ecg_flutter_conduction_pattern value);
         ecg_flutter_conduction_pattern flutter_conduction_pattern() const;
+        bool set_pacing_mode(ecg_pacing_mode value);
+        ecg_pacing_mode pacing_mode() const;
+        bool set_pacing_non_capture_every_n_beats(unsigned int value);
+        unsigned int pacing_non_capture_every_n_beats() const;
         bool set_fidelity_policy(ecg_scenario_fidelity_policy value);
         ecg_scenario_fidelity_policy fidelity_policy() const;
         unsigned int schema_version() const;

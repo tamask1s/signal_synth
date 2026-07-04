@@ -255,6 +255,6 @@ int main()
     ok &= check(rbbb_ok, "complete_rbbb_has_canonical_terminal_forces_and_secondary_t_discordance");
     ok &= check(lbbb_ok, "complete_lbbb_has_canonical_lateral_forces_and_secondary_t_discordance");
     ok &= check(flutter_ok, "typical_flutter_has_continuous_inferior_negative_f_waves");
-    ok &= check(signal_synth::ecg_scenario_engine_version() == 11, "morphology_correction_increments_engine_identity");
+    ok &= check(signal_synth::ecg_scenario_engine_version() == 12, "morphology_correction_increments_engine_identity");
     return ok ? 0 : 1;
 }

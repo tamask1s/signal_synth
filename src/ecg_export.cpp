@@ -82,6 +82,17 @@ namespace
         case signal_synth::clinical_origin_ventricular_escape: return "ventricular_escape";
         case signal_synth::clinical_origin_paced: return "paced";
         case signal_synth::clinical_origin_vt: return "ventricular_tachycardia";
+        case signal_synth::clinical_origin_atrial_paced: return "atrial_paced";
+        }
+        return "unknown";
+    }
+
+    const char* pacing_event_name(signal_synth::clinical_pacing_event_kind value)
+    {
+        switch (value)
+        {
+        case signal_synth::clinical_pacing_event_atrial: return "atrial";
+        case signal_synth::clinical_pacing_event_ventricular: return "ventricular";
         }
         return "unknown";
     }
@@ -409,6 +420,20 @@ namespace
                    << ",\"time_seconds\":" << fiducial.time_seconds
                    << ",\"amplitude_mv\":" << fiducial.amplitude_mv
                    << ",\"present\":" << boolean(fiducial.present) << '}';
+        }
+        output << "],\"pacing_events\":[";
+        for (unsigned int i = 0; i < render.record.pacing_event_count(); ++i)
+        {
+            if (i)
+                output << ',';
+            const signal_synth::clinical_pacing_event& event = render.record.pacing_events()[i];
+            output << "{\"pacing_index\":" << event.pacing_index
+                   << ",\"kind\":" << json_string(pacing_event_name(event.kind))
+                   << ",\"time_seconds\":" << event.time_seconds
+                   << ",\"sample_index\":" << event.sample_index
+                   << ",\"captured\":" << boolean(event.captured)
+                   << ",\"linked_atrial_index\":" << event.linked_atrial_index
+                   << ",\"linked_ventricular_index\":" << event.linked_ventricular_index << '}';
         }
         output << "],\"episodes\":[";
         for (unsigned int i = 0; i < render.record.episode_count(); ++i)

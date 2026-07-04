@@ -596,6 +596,17 @@ namespace
         return "";
     }
 
+    const char* pacing_mode_name(signal_synth::ecg_pacing_mode value)
+    {
+        switch (value)
+        {
+        case signal_synth::ecg_pacing_ventricular: return "ventricular";
+        case signal_synth::ecg_pacing_atrial: return "atrial";
+        case signal_synth::ecg_pacing_dual_chamber: return "dual_chamber";
+        }
+        return "";
+    }
+
     bool artifact_type_from_name(const std::string& name, signal_synth::signal_quality_artifact_type& output)
     {
         if (name == "ecg_baseline_wander")
@@ -844,6 +855,8 @@ namespace
                << ",\"episode_duration_seconds\":" << format_double(document.ecg.episode_duration_seconds())
                << ",\"episode_rate_bpm\":" << format_double(document.ecg.episode_rate_bpm())
                << ",\"flutter_conduction_pattern\":" << escape_json(flutter_pattern_name(document.ecg.flutter_conduction_pattern()))
+               << ",\"pacing_mode\":" << escape_json(pacing_mode_name(document.ecg.pacing_mode()))
+               << ",\"pacing_non_capture_every_n_beats\":" << document.ecg.pacing_non_capture_every_n_beats()
                << ",\"fidelity_policy\":" << escape_json(fidelity_name(document.ecg.fidelity_policy()))
                << ",\"conditions\":[";
         for (unsigned int i = 0; i < document.ecg.condition_count(); ++i)
@@ -1060,7 +1073,7 @@ namespace signal_synth
         if (!integral_number(*seed, std::numeric_limits<unsigned long long>::max(), integer) || !document.ecg.set_seed(integer))
             add_message(fresh_result, ecg_json_range, "$.seed", "seed must be an unsigned 64-bit decimal integer");
 
-        const char* ecg_fields[] = {"heart_rate_bpm","rr_variability_seconds","ectopic_every_n_beats","second_degree_av_pattern","q_wave_territory","episode_type","episode_start_seconds","episode_duration_seconds","episode_rate_bpm","flutter_conduction_pattern","fidelity_policy","conditions"};
+        const char* ecg_fields[] = {"heart_rate_bpm","rr_variability_seconds","ectopic_every_n_beats","second_degree_av_pattern","q_wave_territory","episode_type","episode_start_seconds","episode_duration_seconds","episode_rate_bpm","flutter_conduction_pattern","pacing_mode","pacing_non_capture_every_n_beats","fidelity_policy","conditions"};
         allowed_fields(*ecg, ecg_fields, sizeof(ecg_fields) / sizeof(ecg_fields[0]), "$.ecg", fresh_result);
         const json_value* heart_rate = required(*ecg, "heart_rate_bpm", json_value::number_kind, "$.ecg", fresh_result);
         const json_value* rr_variability = required(*ecg, "rr_variability_seconds", json_value::number_kind, "$.ecg", fresh_result);
@@ -1072,6 +1085,8 @@ namespace signal_synth
         const json_value* episode_duration = member(*ecg, "episode_duration_seconds");
         const json_value* episode_rate = member(*ecg, "episode_rate_bpm");
         const json_value* flutter_pattern = member(*ecg, "flutter_conduction_pattern");
+        const json_value* pacing_mode = member(*ecg, "pacing_mode");
+        const json_value* pacing_non_capture = member(*ecg, "pacing_non_capture_every_n_beats");
         const json_value* fidelity = required(*ecg, "fidelity_policy", json_value::string_kind, "$.ecg", fresh_result);
         const json_value* conditions = required(*ecg, "conditions", json_value::array_kind, "$.ecg", fresh_result);
 
@@ -1158,6 +1173,29 @@ namespace signal_synth
                     add_message(fresh_result, ecg_json_range, "$.ecg.flutter_conduction_pattern", "unknown flutter conduction pattern");
                 document.ecg.set_flutter_conduction_pattern(value);
             }
+        }
+        if (pacing_mode)
+        {
+            if (pacing_mode->type != json_value::string_kind)
+                add_message(fresh_result, ecg_json_type, "$.ecg.pacing_mode", "field has the wrong JSON type");
+            else
+            {
+                ecg_pacing_mode value = ecg_pacing_ventricular;
+                if (pacing_mode->string == "atrial")
+                    value = ecg_pacing_atrial;
+                else if (pacing_mode->string == "dual_chamber")
+                    value = ecg_pacing_dual_chamber;
+                else if (pacing_mode->string != "ventricular")
+                    add_message(fresh_result, ecg_json_range, "$.ecg.pacing_mode", "unknown pacing mode");
+                document.ecg.set_pacing_mode(value);
+            }
+        }
+        if (pacing_non_capture)
+        {
+            if (pacing_non_capture->type != json_value::number_kind)
+                add_message(fresh_result, ecg_json_type, "$.ecg.pacing_non_capture_every_n_beats", "field has the wrong JSON type");
+            else if (!integral_number(*pacing_non_capture, std::numeric_limits<unsigned int>::max(), integer) || !document.ecg.set_pacing_non_capture_every_n_beats(static_cast<unsigned int>(integer)))
+                add_message(fresh_result, ecg_json_range, "$.ecg.pacing_non_capture_every_n_beats", "invalid pacing non-capture cadence");
         }
         if (fidelity)
         {

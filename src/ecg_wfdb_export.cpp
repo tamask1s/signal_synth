@@ -132,7 +132,8 @@ namespace
         case signal_synth::clinical_origin_pvc: return wfdb_ann_pvc;
         case signal_synth::clinical_origin_junctional_escape: return wfdb_ann_junctional_escape;
         case signal_synth::clinical_origin_ventricular_escape: return wfdb_ann_ventricular_escape;
-        case signal_synth::clinical_origin_paced: return wfdb_ann_paced;
+        case signal_synth::clinical_origin_paced:
+        case signal_synth::clinical_origin_atrial_paced: return wfdb_ann_paced;
         case signal_synth::clinical_origin_vt:
         default: return wfdb_ann_unknown;
         }

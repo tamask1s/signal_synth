@@ -16,7 +16,7 @@ namespace signal_synth
     namespace
     {
         const unsigned int SCENARIO_SCHEMA_VERSION = 2;
-        const unsigned int SCENARIO_ENGINE_VERSION = 11;
+        const unsigned int SCENARIO_ENGINE_VERSION = 12;
         const unsigned long long DEFAULT_SEED = 0x5343454e4152494fULL;
         const ecg_condition_code NO_CONDITION = ecg_condition_count;
 
@@ -97,6 +97,12 @@ namespace signal_synth
         {
             const int raw = enum_value(value);
             return raw >= ecg_flutter_fixed && raw <= ecg_flutter_cycle_2_3_4;
+        }
+
+        bool valid_pacing_mode(ecg_pacing_mode value)
+        {
+            const int raw = enum_value(value);
+            return raw >= ecg_pacing_ventricular && raw <= ecg_pacing_dual_chamber;
         }
 
         // Catalog order and statement names follow PTB-XL 1.0.3 scp_statements.csv (CC BY 4.0).
@@ -440,10 +446,12 @@ namespace signal_synth
         double episode_duration_seconds;
         double episode_rate_bpm;
         ecg_flutter_conduction_pattern flutter_conduction_pattern;
+        ecg_pacing_mode pacing_mode;
+        unsigned int pacing_non_capture_every_n_beats;
         ecg_scenario_fidelity_policy fidelity_policy;
 
         implementation()
-            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), flutter_conduction_pattern(ecg_flutter_fixed), fidelity_policy(ecg_fidelity_allow_parameterized)
+            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), flutter_conduction_pattern(ecg_flutter_fixed), pacing_mode(ecg_pacing_ventricular), pacing_non_capture_every_n_beats(0), fidelity_policy(ecg_fidelity_allow_parameterized)
         {
         }
     };
@@ -596,6 +604,7 @@ namespace signal_synth
             const ecg_condition_code episode_rhythms[] = {ecg_condition_svarr, ecg_condition_psvt};
             const bool episode_condition = has_condition(scenario.conditions, ecg_condition_svarr) || has_condition(scenario.conditions, ecg_condition_psvt);
             const bool flutter_condition = has_condition(scenario.conditions, ecg_condition_aflt);
+            const bool paced_condition = has_condition(scenario.conditions, ecg_condition_pace);
             for (unsigned int modifier = 0; modifier < sizeof(sinus_modifiers) / sizeof(sinus_modifiers[0]); ++modifier)
             {
                 for (unsigned int rhythm = 0; rhythm < sizeof(non_sinus_rhythms) / sizeof(non_sinus_rhythms[0]); ++rhythm)
@@ -674,6 +683,8 @@ namespace signal_synth
                 add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, NO_CONDITION, ecg_condition_svarr, "Episode parameters require PSVT or SVARR.");
             if (!flutter_condition && scenario.flutter_conduction_pattern != ecg_flutter_fixed)
                 add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, NO_CONDITION, ecg_condition_aflt, "flutter_conduction_pattern requires AFLT.");
+            if (!paced_condition && (scenario.pacing_mode != ecg_pacing_ventricular || scenario.pacing_non_capture_every_n_beats != 0))
+                add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, NO_CONDITION, ecg_condition_pace, "Pacing parameters require PACE.");
             if (episode_condition)
             {
                 if (scenario.episode_type == ecg_episode_svarr && has_condition(scenario.conditions, ecg_condition_psvt))
@@ -1073,7 +1084,11 @@ namespace signal_synth
                     config.rhythm.heart_rate_bpm = 160.0;
             }
             else if (has_condition(scenario.conditions, ecg_condition_pace))
+            {
                 config.rhythm.rhythm = clinical_rhythm_paced;
+                config.rhythm.pacing_mode = scenario.pacing_mode == ecg_pacing_atrial ? clinical_pacing_atrial : scenario.pacing_mode == ecg_pacing_dual_chamber ? clinical_pacing_dual_chamber : clinical_pacing_ventricular;
+                config.scenario.pacing_non_capture_every_n_beats = scenario.pacing_non_capture_every_n_beats;
+            }
             else
                 config.rhythm.rhythm = clinical_rhythm_sinus;
 
@@ -1542,11 +1557,11 @@ namespace signal_synth
 
         double pacing_evidence_count(const clinical_ecg_record& record)
         {
-            unsigned int spikes = 0;
-            const clinical_fiducial_annotation* fiducials = record.fiducials();
-            for (unsigned int index = 0; fiducials && index < record.fiducial_count(); ++index)
-                spikes += fiducials[index].kind == clinical_pacing_spike && fiducials[index].present ? 1U : 0U;
-            return std::min(static_cast<double>(origin_count(record, clinical_origin_paced)), static_cast<double>(spikes));
+            unsigned int captured = 0;
+            const clinical_pacing_event* events = record.pacing_events();
+            for (unsigned int index = 0; events && index < record.pacing_event_count(); ++index)
+                captured += events[index].captured && events[index].linked_ventricular_index >= 0 ? 1U : 0U;
+            return static_cast<double>(captured);
         }
 
         enum morphology_value
@@ -2608,6 +2623,32 @@ namespace signal_synth
         return implementation_->flutter_conduction_pattern;
     }
 
+    bool ecg_qa_scenario::set_pacing_mode(ecg_pacing_mode value)
+    {
+        if (!valid_pacing_mode(value))
+            return false;
+        implementation_->pacing_mode = value;
+        return true;
+    }
+
+    ecg_pacing_mode ecg_qa_scenario::pacing_mode() const
+    {
+        return implementation_->pacing_mode;
+    }
+
+    bool ecg_qa_scenario::set_pacing_non_capture_every_n_beats(unsigned int value)
+    {
+        if (value == 1)
+            return false;
+        implementation_->pacing_non_capture_every_n_beats = value;
+        return true;
+    }
+
+    unsigned int ecg_qa_scenario::pacing_non_capture_every_n_beats() const
+    {
+        return implementation_->pacing_non_capture_every_n_beats;
+    }
+
     bool ecg_qa_scenario::set_fidelity_policy(ecg_scenario_fidelity_policy value)
     {
         if (!valid_fidelity(value))
@@ -2658,6 +2699,8 @@ namespace signal_synth
         hash_u64(hash, quantize(implementation_->episode_duration_seconds, 1000000.0));
         hash_u64(hash, quantize(implementation_->episode_rate_bpm, 1000.0));
         hash_u64(hash, enum_value(implementation_->flutter_conduction_pattern));
+        hash_u64(hash, enum_value(implementation_->pacing_mode));
+        hash_u64(hash, implementation_->pacing_non_capture_every_n_beats);
         hash_u64(hash, enum_value(implementation_->fidelity_policy));
         for (const scenario_condition& condition : implementation_->conditions)
         {

@@ -98,7 +98,7 @@ int main()
     const signal_synth::ecg_text_artifact* bdf = bundle.find("synsigra.bdf");
     const signal_synth::ecg_text_artifact* edf_bdf_metadata = bundle.find("edf_bdf_metadata.json");
     ok &= check(csv && csv->content.find("sample_index,time_seconds,I_mv,II_mv,III_mv,aVR_mv,aVL_mv,aVF_mv,V1_mv,V2_mv,V3_mv,V4_mv,V5_mv,V6_mv\n") == 0 && line_count(csv->content) == render.record.sample_count() + 1, "csv_contract");
-    ok &= check(annotations && annotations->content.find("\"rr_tachogram\":[") != std::string::npos && annotations->content.find("\"artifact_intervals\":[]") != std::string::npos && annotations->content.find("\"beat_class\":\"normal\"") != std::string::npos && annotations->content.find("\"r_peak\"") != std::string::npos, "annotation_contract");
+    ok &= check(annotations && annotations->content.find("\"rr_tachogram\":[") != std::string::npos && annotations->content.find("\"artifact_intervals\":[]") != std::string::npos && annotations->content.find("\"pacing_events\":[]") != std::string::npos && annotations->content.find("\"beat_class\":\"normal\"") != std::string::npos && annotations->content.find("\"r_peak\"") != std::string::npos, "annotation_contract");
     ok &= check(tachogram && tachogram->content.find("beat_index,beat_time_seconds,rr_seconds,clipped,ectopic,artifact_overlap,excluded\n") == 0 && line_count(tachogram->content) == render.record.beat_count() + 1, "rr_tachogram_contract");
     ok &= check(hrv_metrics && hrv_metrics->content.find("\"definition_version\":\"synsigra_hrv_metrics_v1\"") != std::string::npos && hrv_metrics->content.find("\"tachogram\":[") != std::string::npos, "hrv_metrics_contract");
     ok &= check(metrics && metrics->content.find("\"sd1_seconds\":") != std::string::npos && metrics->content.find("\"lf_hf_ratio\":") != std::string::npos && metrics->content.find("\"assertions\":[") != std::string::npos, "metrics_contract");
@@ -127,6 +127,20 @@ int main()
     signal_synth::ecg_export_bundle preserved_export = bundle;
     ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 17, "failed_export_is_transactional");
     ok &= check(std::string(signal_synth::signal_synth_generator_version()) == "0.1.0-dev", "runtime_generator_version");
+
+    signal_synth::ecg_scenario_document paced_document = document;
+    paced_document.schema_version = 2;
+    paced_document.scenario_id = "paced_export";
+    paced_document.duration_seconds = 6.0;
+    paced_document.ecg.clear_conditions();
+    paced_document.ecg.add_condition(signal_synth::ecg_condition_pace);
+    paced_document.ecg.set_pacing_mode(signal_synth::ecg_pacing_dual_chamber);
+    paced_document.ecg.set_pacing_non_capture_every_n_beats(3);
+    signal_synth::ecg_render_bundle paced_render;
+    signal_synth::ecg_export_bundle paced_bundle;
+    ok &= check(signal_synth::render_ecg_document(paced_document, paced_render, result) && paced_render.record.pacing_event_count() > paced_render.record.beat_count() && signal_synth::build_ecg_export_bundle(paced_render, paced_bundle, result), "paced_export_render");
+    const signal_synth::ecg_text_artifact* paced_annotations = paced_bundle.find("annotations.json");
+    ok &= check(paced_annotations && paced_annotations->content.find("\"pacing_events\":[{") != std::string::npos && paced_annotations->content.find("\"kind\":\"atrial\"") != std::string::npos && paced_annotations->content.find("\"kind\":\"ventricular\"") != std::string::npos && paced_annotations->content.find("\"captured\":false") != std::string::npos && paced_annotations->content.find("\"beat_class\":\"paced\"") != std::string::npos, "paced_annotation_export_contract");
 
     signal_synth::ecg_scenario_document artifact_episode = document;
     artifact_episode.schema_version = 2;

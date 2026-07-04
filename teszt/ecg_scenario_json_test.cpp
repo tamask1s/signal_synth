@@ -46,13 +46,14 @@ int main()
         "\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,"
         "\"episode_rate_bpm\":170,"
         "\"flutter_conduction_pattern\":\"fixed\","
+        "\"pacing_mode\":\"ventricular\",\"pacing_non_capture_every_n_beats\":0,"
         "\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]}}";
 
     signal_synth::ecg_scenario_document document;
     signal_synth::ecg_scenario_json_result parsed;
     ok &= check(signal_synth::parse_ecg_scenario_json(input, document, parsed), "parse_valid_document");
     ok &= check(parsed.success && parsed.canonical_json == canonical && document.sample_count() == 5000, "canonicalization_and_sample_count");
-    ok &= check(parsed.document_fingerprint == "sha256:b271e46c437b21a745950369273ae340f67d28884f395949beeb603a76fb37cc", "sha256_known_answer");
+    ok &= check(parsed.document_fingerprint == "sha256:bbf5e3e375d37782a11e4e1f96eea364ada9b762c33f0d7fe2638a2e10676467", "sha256_known_answer");
     ok &= check(parsed.generation_fingerprint == document.ecg.fingerprint(), "generation_fingerprint_is_explicit");
 
     signal_synth::ecg_scenario_document roundtrip;
@@ -124,6 +125,19 @@ int main()
     signal_synth::ecg_scenario_json_result flutter_repeated;
     ok &= check(signal_synth::write_ecg_scenario_json(flutter_document, flutter_result) && flutter_result.canonical_json.find("\"flutter_conduction_pattern\":\"alternate_2_3\"") != std::string::npos && signal_synth::parse_ecg_scenario_json(flutter_result.canonical_json, flutter_roundtrip, flutter_repeated) && flutter_roundtrip.ecg.flutter_conduction_pattern() == signal_synth::ecg_flutter_alternate_2_3, "flutter_pattern_json_roundtrip");
 
+    signal_synth::ecg_scenario_document pacing_document;
+    pacing_document.schema_version = 2;
+    pacing_document.scenario_id = "paced_dual_non_capture";
+    pacing_document.name = "Paced dual chamber non-capture";
+    pacing_document.ecg.clear_conditions();
+    pacing_document.ecg.add_condition(signal_synth::ecg_condition_pace);
+    pacing_document.ecg.set_pacing_mode(signal_synth::ecg_pacing_dual_chamber);
+    pacing_document.ecg.set_pacing_non_capture_every_n_beats(4);
+    signal_synth::ecg_scenario_json_result pacing_result;
+    signal_synth::ecg_scenario_document pacing_roundtrip;
+    signal_synth::ecg_scenario_json_result pacing_repeated;
+    ok &= check(signal_synth::write_ecg_scenario_json(pacing_document, pacing_result) && pacing_result.canonical_json.find("\"pacing_mode\":\"dual_chamber\"") != std::string::npos && pacing_result.canonical_json.find("\"pacing_non_capture_every_n_beats\":4") != std::string::npos && signal_synth::parse_ecg_scenario_json(pacing_result.canonical_json, pacing_roundtrip, pacing_repeated) && pacing_roundtrip.ecg.pacing_mode() == signal_synth::ecg_pacing_dual_chamber && pacing_roundtrip.ecg.pacing_non_capture_every_n_beats() == 4, "pacing_json_roundtrip");
+
     signal_synth::ecg_scenario_document invalid_document;
     invalid_document.scenario_id.clear();
     signal_synth::ecg_scenario_json_result invalid_result;
@@ -149,7 +163,9 @@ int main()
         "\"ecg\":{\"heart_rate_bpm\":60,\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":0,"
         "\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\","
         "\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,"
-        "\"episode_rate_bpm\":170,\"flutter_conduction_pattern\":\"fixed\",\"fidelity_policy\":\"allow_parameterized\","
+        "\"episode_rate_bpm\":170,\"flutter_conduction_pattern\":\"fixed\","
+        "\"pacing_mode\":\"ventricular\",\"pacing_non_capture_every_n_beats\":0,"
+        "\"fidelity_policy\":\"allow_parameterized\","
         "\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]},"
         "\"hrv\":{\"enabled\":true,\"target_mean_hr_bpm\":72,\"target_sdnn_seconds\":0.045,"
         "\"lf_hf_ratio\":1.8,\"lf_center_hz\":0.1,\"lf_bandwidth_hz\":0.04,"

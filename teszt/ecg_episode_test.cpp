@@ -100,7 +100,7 @@ namespace
 int main()
 {
     bool ok = true;
-    ok &= check(signal_synth::find_ecg_condition(signal_synth::ecg_condition_psvt)->support == signal_synth::ecg_support_native && signal_synth::find_ecg_condition(signal_synth::ecg_condition_svarr)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_abqrs)->support == signal_synth::ecg_support_catalog_only && signal_synth::ecg_scenario_engine_version() == 11, "episode_support_levels_and_engine_version");
+    ok &= check(signal_synth::find_ecg_condition(signal_synth::ecg_condition_psvt)->support == signal_synth::ecg_support_native && signal_synth::find_ecg_condition(signal_synth::ecg_condition_svarr)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_abqrs)->support == signal_synth::ecg_support_catalog_only && signal_synth::ecg_scenario_engine_version() == 12, "episode_support_levels_and_engine_version");
 
     signal_synth::ecg_qa_scenario psvt;
     psvt.add_condition(signal_synth::ecg_condition_psvt);

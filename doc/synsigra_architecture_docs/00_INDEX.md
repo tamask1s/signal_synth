@@ -103,6 +103,8 @@ Implementation increment designs:
 - `increments/030_ECG_RHYTHM_ENGINE_V2.md` defines AFib irregularity,
   variable flutter conduction, exact ectopy cadence, episode transition truth,
   and artifact-overlap rhythm truth invariance.
+- `increments/031_ECG_PACED_RHYTHM_SCENARIOS.md` defines paced ECG modes,
+  capture/non-capture event truth, and pacing annotation export.
 
 Traceability demonstration:
 

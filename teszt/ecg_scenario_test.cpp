@@ -108,7 +108,7 @@ int main()
     second.add_condition(signal_synth::ecg_condition_pvc, 0.8);
     second.set_heart_rate_bpm(72.0);
     second.set_seed(1234);
-    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 2 && signal_synth::ecg_scenario_engine_version() == 11, "fingerprint_is_order_independent_and_versioned");
+    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 2 && signal_synth::ecg_scenario_engine_version() == 12, "fingerprint_is_order_independent_and_versioned");
     signal_synth::ecg_qa_scenario changed = first;
     changed.set_seed(1235);
     ok &= check(first.fingerprint() != changed.fingerprint(), "fingerprint_covers_generation_seed");
@@ -232,6 +232,17 @@ int main()
     sinus_arrhythmia.add_condition(signal_synth::ecg_condition_sarrh);
     signal_synth::ecg_qa_scenario paced;
     paced.add_condition(signal_synth::ecg_condition_pace);
+    signal_synth::ecg_qa_scenario atrial_paced_scenario = paced;
+    atrial_paced_scenario.set_pacing_mode(signal_synth::ecg_pacing_atrial);
+    ok &= check(engine.compile(atrial_paced_scenario, compiled, report) && compiled.rhythm.pacing_mode == signal_synth::clinical_pacing_atrial && atrial_paced_scenario.fingerprint() != paced.fingerprint(), "atrial_pacing_mode_compiles_and_fingerprints");
+    signal_synth::ecg_qa_scenario noncapture_paced_scenario = paced;
+    noncapture_paced_scenario.set_pacing_mode(signal_synth::ecg_pacing_dual_chamber);
+    noncapture_paced_scenario.set_pacing_non_capture_every_n_beats(4);
+    ok &= check(engine.compile(noncapture_paced_scenario, compiled, report) && compiled.rhythm.pacing_mode == signal_synth::clinical_pacing_dual_chamber && compiled.scenario.pacing_non_capture_every_n_beats == 4, "dual_chamber_non_capture_pacing_compiles");
+    signal_synth::ecg_qa_scenario unused_pacing;
+    unused_pacing.add_condition(signal_synth::ecg_condition_sr);
+    unused_pacing.set_pacing_mode(signal_synth::ecg_pacing_atrial);
+    ok &= check(!engine.validate(unused_pacing, report) && report_has_issue(report, signal_synth::ecg_issue_missing_requirement) && !unused_pacing.set_pacing_non_capture_every_n_beats(1), "unused_or_invalid_pacing_parameters_rejected");
     signal_synth::ecg_qa_scenario tachycardia_with_pvc;
     tachycardia_with_pvc.add_condition(signal_synth::ecg_condition_stach);
     tachycardia_with_pvc.add_condition(signal_synth::ecg_condition_pvc);

@@ -33,6 +33,7 @@ namespace signal_synth
             std::vector<clinical_atrial_event> atrial_events;
             std::vector<clinical_beat_annotation> beats;
             std::vector<clinical_fiducial_annotation> fiducials;
+            std::vector<clinical_pacing_event> pacing_events;
             std::vector<clinical_episode_annotation> episodes;
         };
 
@@ -196,11 +197,12 @@ namespace signal_synth
             const int av_conduction = enum_value(config.rhythm.av_conduction);
             const int intraventricular_conduction = enum_value(config.rhythm.intraventricular_conduction);
             const int preexcitation = enum_value(config.rhythm.preexcitation);
+            const int pacing_mode = enum_value(config.rhythm.pacing_mode);
             const int flutter_conduction_pattern = enum_value(config.rhythm.flutter_conduction_pattern);
             const int episode_kind = enum_value(config.scenario.episode_kind);
             const int premature_origin = enum_value(config.scenario.premature_origin);
             const int qt_correction = enum_value(config.timing.qt_correction);
-            if (rhythm < clinical_rhythm_sinus || rhythm > clinical_rhythm_paced || av_conduction < clinical_av_normal || av_conduction > clinical_av_complete_block || intraventricular_conduction < clinical_iv_normal || intraventricular_conduction > clinical_iv_nonspecific_delay || preexcitation < clinical_preexcitation_none || preexcitation > clinical_preexcitation_wpw || flutter_conduction_pattern < clinical_flutter_fixed || flutter_conduction_pattern > clinical_flutter_cycle_2_3_4 || episode_kind < clinical_episode_none || episode_kind > clinical_episode_svarr || premature_origin < clinical_origin_pac || premature_origin > clinical_origin_paced || qt_correction < clinical_qt_fixed || qt_correction > clinical_qt_hodges)
+            if (rhythm < clinical_rhythm_sinus || rhythm > clinical_rhythm_paced || av_conduction < clinical_av_normal || av_conduction > clinical_av_complete_block || intraventricular_conduction < clinical_iv_normal || intraventricular_conduction > clinical_iv_nonspecific_delay || preexcitation < clinical_preexcitation_none || preexcitation > clinical_preexcitation_wpw || pacing_mode < clinical_pacing_ventricular || pacing_mode > clinical_pacing_dual_chamber || flutter_conduction_pattern < clinical_flutter_fixed || flutter_conduction_pattern > clinical_flutter_cycle_2_3_4 || episode_kind < clinical_episode_none || episode_kind > clinical_episode_svarr || premature_origin < clinical_origin_pac || premature_origin > clinical_origin_paced || qt_correction < clinical_qt_fixed || qt_correction > clinical_qt_hodges)
                 return false;
             const double timing_values[] = {config.timing.p_duration_ms, config.timing.pr_interval_ms, config.timing.qrs_duration_ms, config.timing.qrs_q_fraction, config.timing.qrs_r_fraction, config.timing.qrs_s_fraction, config.timing.t_duration_ms, config.timing.t_peak_fraction, config.timing.qt_interval_ms, config.timing.qtc_ms};
             const double morphology_values[] = {config.morphology.p_amplitude_mv, config.morphology.q_amplitude_mv, config.morphology.r_amplitude_mv, config.morphology.s_amplitude_mv, config.morphology.t_amplitude_mv, config.morphology.st_j_amplitude_mv, config.morphology.st_slope_mv_per_second, config.morphology.p_axis_degrees, config.morphology.qrs_axis_degrees, config.morphology.t_axis_degrees, config.morphology.p_elevation_degrees, config.morphology.qrs_elevation_degrees, config.morphology.t_elevation_degrees, config.morphology.presence_threshold_mv};
@@ -239,6 +241,8 @@ namespace signal_synth
             if (config.rhythm.hrv_modulation_enabled && (config.rhythm.hrv_lf_hf_ratio < 0.0 || config.rhythm.hrv_lf_hf_ratio > 100.0 || config.rhythm.hrv_lf_center_hz <= 0.0 || config.rhythm.hrv_lf_center_hz > 1.0 || config.rhythm.hrv_lf_bandwidth_hz <= 0.0 || config.rhythm.hrv_lf_bandwidth_hz > 1.0 || config.rhythm.hrv_hf_center_hz <= 0.0 || config.rhythm.hrv_hf_center_hz > 1.0 || config.rhythm.hrv_hf_bandwidth_hz <= 0.0 || config.rhythm.hrv_hf_bandwidth_hz > 1.0 || config.rhythm.hrv_respiratory_frequency_hz <= 0.0 || config.rhythm.hrv_respiratory_frequency_hz > 1.0 || config.rhythm.hrv_respiratory_amplitude_seconds < 0.0 || config.rhythm.hrv_respiratory_amplitude_seconds > std::sqrt(2.0) * config.rhythm.rr_variability_seconds))
                 return false;
             if (config.scenario.premature_coupling_ratio <= 0.0 || config.scenario.premature_coupling_ratio >= 1.0 || config.scenario.compensatory_pause_ratio < 1.0 || config.scenario.sinus_pause_ratio <= 1.0)
+                return false;
+            if (config.scenario.pacing_non_capture_every_n_beats == 1)
                 return false;
             if (config.scenario.episode_kind != clinical_episode_none && (config.scenario.episode_start_seconds < 0.0 || config.scenario.episode_duration_seconds <= 0.0 || config.scenario.episode_rate_bpm <= 100.0 || config.scenario.episode_rate_bpm > 400.0 || config.scenario.episode_rate_bpm <= config.rhythm.heart_rate_bpm))
                 return false;
@@ -318,6 +322,24 @@ namespace signal_synth
             beat.t_present = true;
             beat.rr_was_clipped = false;
             return beat;
+        }
+
+        void add_pacing_event(generated_clinical_data& output, clinical_pacing_event_kind kind, double time_seconds, bool captured, long long atrial_index, long long ventricular_index)
+        {
+            clinical_pacing_event event = {};
+            event.pacing_index = output.pacing_events.size();
+            event.kind = kind;
+            event.time_seconds = time_seconds;
+            event.sample_index = 0;
+            event.captured = captured;
+            event.linked_atrial_index = atrial_index;
+            event.linked_ventricular_index = ventricular_index;
+            output.pacing_events.push_back(event);
+        }
+
+        bool pacing_non_capture(const clinical_ecg_config& config, unsigned long long pacing_cycle_index)
+        {
+            return config.scenario.pacing_non_capture_every_n_beats > 0 && (pacing_cycle_index + 1) % config.scenario.pacing_non_capture_every_n_beats == 0;
         }
 
         void generate_sequential_timeline(const clinical_ecg_config& config, double duration_seconds, generated_clinical_data& output)
@@ -420,6 +442,53 @@ namespace signal_synth
             beat.rhythm = clinical_rhythm_supraventricular_tachycardia;
             beat.p_present = false;
             output.beats.push_back(beat);
+        }
+
+        void generate_paced_timeline(const clinical_ecg_config& config, double duration_seconds, generated_clinical_data& output)
+        {
+            const double paced_rr = 60.0 / config.rhythm.heart_rate_bpm;
+            const double av_delay = std::max(0.080, std::min(0.220, config.timing.pr_interval_ms * 0.001));
+            double previous_r = -1.0;
+            unsigned long long cycle_index = 0;
+            for (double r_time = 0.5; r_time < duration_seconds; r_time += paced_rr, ++cycle_index)
+            {
+                const bool non_capture = pacing_non_capture(config, cycle_index);
+                const bool atrial_spike = config.rhythm.pacing_mode == clinical_pacing_atrial || config.rhythm.pacing_mode == clinical_pacing_dual_chamber;
+                const bool ventricular_spike = config.rhythm.pacing_mode == clinical_pacing_ventricular || config.rhythm.pacing_mode == clinical_pacing_dual_chamber;
+                const clinical_ventricular_origin origin = config.rhythm.pacing_mode == clinical_pacing_atrial ? clinical_origin_atrial_paced : clinical_origin_paced;
+                const double qrs_duration = adjusted_qrs_duration(config, origin);
+                const double qrs_onset = r_time - config.timing.qrs_r_fraction * qrs_duration;
+                const double atrial_onset = qrs_onset - av_delay;
+                const double atrial_spike_time = atrial_onset - 0.020;
+                long long atrial_index = -1;
+                if (atrial_spike)
+                {
+                    if (!non_capture || config.rhythm.pacing_mode == clinical_pacing_dual_chamber)
+                    {
+                        clinical_atrial_event atrial = {};
+                        atrial.atrial_index = output.atrial_events.size();
+                        atrial.onset_time_seconds = atrial_onset;
+                        atrial.peak_time_seconds = atrial_onset + 0.5 * config.timing.p_duration_ms * 0.001;
+                        atrial.offset_time_seconds = atrial_onset + config.timing.p_duration_ms * 0.001;
+                        atrial.visible = true;
+                        atrial.conducted = !non_capture || !ventricular_spike;
+                        atrial.linked_ventricular_index = non_capture ? -1 : static_cast<long long>(output.beats.size());
+                        atrial_index = static_cast<long long>(atrial.atrial_index);
+                        output.atrial_events.push_back(atrial);
+                    }
+                    add_pacing_event(output, clinical_pacing_event_atrial, atrial_spike_time, !non_capture || config.rhythm.pacing_mode == clinical_pacing_dual_chamber, atrial_index, non_capture ? -1 : static_cast<long long>(output.beats.size()));
+                }
+                if (ventricular_spike)
+                    add_pacing_event(output, clinical_pacing_event_ventricular, qrs_onset, !non_capture, atrial_index, non_capture ? -1 : static_cast<long long>(output.beats.size()));
+                if (non_capture)
+                    continue;
+                clinical_beat_annotation beat = make_beat(config, output.beats.size(), r_time, previous_r < 0.0 ? paced_rr : r_time - previous_r, atrial_index, atrial_index >= 0 ? av_delay : 0.0, origin);
+                beat.rhythm = clinical_rhythm_paced;
+                if (config.rhythm.pacing_mode == clinical_pacing_dual_chamber)
+                    beat.p_present = atrial_index >= 0;
+                output.beats.push_back(beat);
+                previous_r = r_time;
+            }
         }
 
         void generate_episode_timeline(const clinical_ecg_config& config, double duration_seconds, generated_clinical_data& output)
@@ -713,6 +782,16 @@ namespace signal_synth
                     amplitude *= -0.8;
                 render_compact_wave(sources[clinical_source_atrial], output.sampling_rate_hz, atrial.onset_time_seconds, atrial.peak_time_seconds, atrial.offset_time_seconds, source_vector(config, clinical_source_atrial, amplitude, config.morphology.p_axis_degrees, config.morphology.p_elevation_degrees));
             }
+            for (const clinical_pacing_event& event : output.pacing_events)
+            {
+                const int spike_sample = static_cast<int>(std::llround(event.time_seconds * output.sampling_rate_hz));
+                if (spike_sample >= 0 && static_cast<unsigned int>(spike_sample) < sources[clinical_source_pacing].size())
+                {
+                    const double axis = event.kind == clinical_pacing_event_atrial ? config.morphology.p_axis_degrees : config.morphology.qrs_axis_degrees;
+                    const double elevation = event.kind == clinical_pacing_event_atrial ? config.morphology.p_elevation_degrees : 20.0;
+                    sources[clinical_source_pacing][spike_sample] = add(sources[clinical_source_pacing][spike_sample], source_vector(config, clinical_source_pacing, event.kind == clinical_pacing_event_atrial ? 1.4 : 2.0, axis, elevation));
+                }
+            }
             for (const clinical_beat_annotation& beat : output.beats)
             {
                 double septal_axis = config.morphology.qrs_axis_degrees;
@@ -812,12 +891,6 @@ namespace signal_synth
                 const vec3 st_slope = source_vector(config, clinical_source_injury, config.morphology.st_slope_mv_per_second, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees);
                 render_injury_wave(sources[clinical_source_injury], output.sampling_rate_hz, beat, j, st_slope);
                 render_compact_wave(sources[clinical_source_repolarization], output.sampling_rate_hz, beat.t_onset_time_seconds, beat.t_peak_time_seconds, beat.t_offset_time_seconds, source_vector(config, clinical_source_repolarization, t_amplitude, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees));
-                if (beat.origin == clinical_origin_paced)
-                {
-                    const int spike_sample = static_cast<int>(std::llround(beat.qrs_onset_time_seconds * output.sampling_rate_hz));
-                    if (spike_sample >= 0 && static_cast<unsigned int>(spike_sample) < sources[clinical_source_pacing].size())
-                        sources[clinical_source_pacing][spike_sample] = add(sources[clinical_source_pacing][spike_sample], source_vector(config, clinical_source_pacing, 2.0, ventricular_axis, 20.0));
-                }
             }
         }
 
@@ -918,6 +991,12 @@ namespace signal_synth
             }
         }
 
+        void finalize_pacing_samples(generated_clinical_data& output)
+        {
+            for (clinical_pacing_event& event : output.pacing_events)
+                event.sample_index = sample_index(event.time_seconds, output.sampling_rate_hz, output.sample_count);
+        }
+
         void add_fiducial(generated_clinical_data& output, unsigned long long beat_index, long long atrial_index, int lead_index, clinical_fiducial_kind kind, clinical_fiducial_source source, double time_seconds, double amplitude, bool present)
         {
             clinical_fiducial_annotation annotation = {};
@@ -953,9 +1032,9 @@ namespace signal_synth
                 add_fiducial(output, beat.beat_index, beat.linked_atrial_index, -1, clinical_t_onset, clinical_fiducial_construction, beat.t_onset_time_seconds, 0.0, beat.t_present);
                 add_fiducial(output, beat.beat_index, beat.linked_atrial_index, -1, clinical_t_peak, clinical_fiducial_construction, beat.t_peak_time_seconds, 0.0, beat.t_present);
                 add_fiducial(output, beat.beat_index, beat.linked_atrial_index, -1, clinical_t_offset, clinical_fiducial_construction, beat.t_offset_time_seconds, 0.0, beat.t_present);
-                if (beat.origin == clinical_origin_paced)
-                    add_fiducial(output, beat.beat_index, beat.linked_atrial_index, -1, clinical_pacing_spike, clinical_fiducial_construction, beat.qrs_onset_time_seconds, 2.0, true);
             }
+            for (const clinical_pacing_event& event : output.pacing_events)
+                add_fiducial(output, event.linked_ventricular_index >= 0 ? static_cast<unsigned long long>(event.linked_ventricular_index) : NO_BEAT, event.linked_atrial_index, -1, clinical_pacing_spike, clinical_fiducial_construction, event.time_seconds, event.kind == clinical_pacing_event_atrial ? 1.4 : 2.0, true);
         }
 
         void measure_peak(generated_clinical_data& output, const clinical_ecg_config& config, unsigned long long beat_index, long long atrial_index, int lead_index, clinical_fiducial_kind kind, double start_time, double end_time)
@@ -1030,12 +1109,12 @@ namespace signal_synth
     }
 
     clinical_rhythm_config::clinical_rhythm_config()
-        : rhythm(clinical_rhythm_sinus), av_conduction(clinical_av_normal), intraventricular_conduction(clinical_iv_normal), preexcitation(clinical_preexcitation_none), heart_rate_bpm(60.0), atrial_rate_bpm(75.0), ventricular_escape_rate_bpm(35.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.25), maximum_rr_seconds(3.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), first_degree_pr_ms(240.0), mobitz_cycle_length(4), wenckebach_pr_increment_ms(40.0), flutter_conduction_ratio(2), flutter_conduction_pattern(clinical_flutter_fixed), seed(0x434c494e4943414cULL)
+        : rhythm(clinical_rhythm_sinus), av_conduction(clinical_av_normal), intraventricular_conduction(clinical_iv_normal), preexcitation(clinical_preexcitation_none), pacing_mode(clinical_pacing_ventricular), heart_rate_bpm(60.0), atrial_rate_bpm(75.0), ventricular_escape_rate_bpm(35.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.25), maximum_rr_seconds(3.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), first_degree_pr_ms(240.0), mobitz_cycle_length(4), wenckebach_pr_increment_ms(40.0), flutter_conduction_ratio(2), flutter_conduction_pattern(clinical_flutter_fixed), seed(0x434c494e4943414cULL)
     {
     }
 
     clinical_scenario_config::clinical_scenario_config()
-        : premature_every_n_beats(0), premature_origin(clinical_origin_pvc), premature_coupling_ratio(0.65), compensatory_pause_ratio(1.35), sinus_pause_every_n_beats(0), sinus_pause_ratio(2.0), episode_kind(clinical_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0)
+        : premature_every_n_beats(0), premature_origin(clinical_origin_pvc), premature_coupling_ratio(0.65), compensatory_pause_ratio(1.35), sinus_pause_every_n_beats(0), sinus_pause_ratio(2.0), pacing_non_capture_every_n_beats(0), episode_kind(clinical_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0)
     {
     }
 
@@ -1071,6 +1150,7 @@ namespace signal_synth
         std::vector<clinical_atrial_event> atrial_events;
         std::vector<clinical_beat_annotation> beats;
         std::vector<clinical_fiducial_annotation> fiducials;
+        std::vector<clinical_pacing_event> pacing_events;
         std::vector<clinical_episode_annotation> episodes;
 
         implementation()
@@ -1176,6 +1256,16 @@ namespace signal_synth
         return implementation_->fiducials.empty() ? 0 : implementation_->fiducials.data();
     }
 
+    unsigned int clinical_ecg_record::pacing_event_count() const
+    {
+        return static_cast<unsigned int>(implementation_->pacing_events.size());
+    }
+
+    const clinical_pacing_event* clinical_ecg_record::pacing_events() const
+    {
+        return implementation_->pacing_events.empty() ? 0 : implementation_->pacing_events.data();
+    }
+
     unsigned int clinical_ecg_record::episode_count() const
     {
         return static_cast<unsigned int>(implementation_->episodes.size());
@@ -1261,6 +1351,8 @@ namespace signal_synth
                 generate_af_timeline(implementation_->config, duration, generated);
             else if (implementation_->config.rhythm.rhythm == clinical_rhythm_atrial_flutter)
                 generate_flutter_timeline(implementation_->config, duration, generated);
+            else if (implementation_->config.rhythm.rhythm == clinical_rhythm_paced)
+                generate_paced_timeline(implementation_->config, duration, generated);
             else if (implementation_->config.rhythm.av_conduction == clinical_av_complete_block)
                 generate_complete_block_timeline(implementation_->config, duration, generated);
             else if (implementation_->config.rhythm.av_conduction != clinical_av_normal)
@@ -1276,6 +1368,7 @@ namespace signal_synth
             if (!finite_output(generated))
                 return false;
             finalize_episode_samples(generated);
+            finalize_pacing_samples(generated);
             build_construction_fiducials(generated);
             build_lead_measurements(implementation_->config, generated);
             clinical_ecg_record::implementation completed;
@@ -1291,6 +1384,7 @@ namespace signal_synth
             completed.atrial_events.swap(generated.atrial_events);
             completed.beats.swap(generated.beats);
             completed.fiducials.swap(generated.fiducials);
+            completed.pacing_events.swap(generated.pacing_events);
             completed.episodes.swap(generated.episodes);
             std::swap(*output.implementation_, completed);
             return true;

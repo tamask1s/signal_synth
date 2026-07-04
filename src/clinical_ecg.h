@@ -49,6 +49,13 @@ namespace signal_synth
         clinical_rhythm_paced = 5
     };
 
+    enum clinical_pacing_mode
+    {
+        clinical_pacing_ventricular = 0,
+        clinical_pacing_atrial = 1,
+        clinical_pacing_dual_chamber = 2
+    };
+
     enum clinical_av_conduction
     {
         clinical_av_normal = 0,
@@ -98,7 +105,14 @@ namespace signal_synth
         clinical_origin_junctional_escape = 3,
         clinical_origin_ventricular_escape = 4,
         clinical_origin_paced = 5,
-        clinical_origin_vt = 6
+        clinical_origin_vt = 6,
+        clinical_origin_atrial_paced = 7
+    };
+
+    enum clinical_pacing_event_kind
+    {
+        clinical_pacing_event_atrial = 0,
+        clinical_pacing_event_ventricular = 1
     };
 
     enum clinical_qt_correction
@@ -178,6 +192,7 @@ namespace signal_synth
         clinical_av_conduction av_conduction;
         clinical_intraventricular_conduction intraventricular_conduction;
         clinical_preexcitation preexcitation;
+        clinical_pacing_mode pacing_mode;
         double heart_rate_bpm;
         double atrial_rate_bpm;
         double ventricular_escape_rate_bpm;
@@ -210,6 +225,7 @@ namespace signal_synth
         double compensatory_pause_ratio;
         unsigned int sinus_pause_every_n_beats;
         double sinus_pause_ratio;
+        unsigned int pacing_non_capture_every_n_beats;
         clinical_episode_kind episode_kind;
         double episode_start_seconds;
         double episode_duration_seconds;
@@ -300,6 +316,17 @@ namespace signal_synth
         bool present;
     };
 
+    struct clinical_pacing_event
+    {
+        unsigned long long pacing_index;
+        clinical_pacing_event_kind kind;
+        double time_seconds;
+        unsigned long long sample_index;
+        bool captured;
+        long long linked_atrial_index;
+        long long linked_ventricular_index;
+    };
+
     struct clinical_episode_annotation
     {
         clinical_episode_kind kind;
@@ -343,6 +370,8 @@ namespace signal_synth
         const clinical_beat_annotation* beats() const;
         unsigned int fiducial_count() const;
         const clinical_fiducial_annotation* fiducials() const;
+        unsigned int pacing_event_count() const;
+        const clinical_pacing_event* pacing_events() const;
         unsigned int episode_count() const;
         const clinical_episode_annotation* episodes() const;
 

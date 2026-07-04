@@ -149,7 +149,8 @@ namespace signal_synth
         case clinical_origin_conducted: return ecg_beat_normal;
         case clinical_origin_pac: return ecg_beat_supraventricular_ectopic;
         case clinical_origin_pvc: return ecg_beat_ventricular_ectopic;
-        case clinical_origin_paced: return ecg_beat_paced;
+        case clinical_origin_paced:
+        case clinical_origin_atrial_paced: return ecg_beat_paced;
         case clinical_origin_junctional_escape:
         case clinical_origin_ventricular_escape: return ecg_beat_escape;
         case clinical_origin_vt:
