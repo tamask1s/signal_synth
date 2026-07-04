@@ -245,6 +245,10 @@ namespace signal_synth
         double heart_rate_bpm() const;
         bool set_rr_variability_seconds(double value);
         double rr_variability_seconds() const;
+        bool set_minimum_rr_seconds(double value);
+        double minimum_rr_seconds() const;
+        bool set_maximum_rr_seconds(double value);
+        double maximum_rr_seconds() const;
         bool set_ectopic_every_n_beats(unsigned int value);
         unsigned int ectopic_every_n_beats() const;
         bool set_second_degree_av_pattern(ecg_second_degree_av_pattern value);

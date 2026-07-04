@@ -416,6 +416,8 @@ namespace signal_synth
         unsigned long long seed;
         double heart_rate_bpm;
         double rr_variability_seconds;
+        double minimum_rr_seconds;
+        double maximum_rr_seconds;
         unsigned int ectopic_every_n_beats;
         ecg_second_degree_av_pattern second_degree_pattern;
         ecg_q_wave_territory q_wave_territory;
@@ -426,7 +428,7 @@ namespace signal_synth
         ecg_scenario_fidelity_policy fidelity_policy;
 
         implementation()
-            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), fidelity_policy(ecg_fidelity_allow_parameterized)
+            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), fidelity_policy(ecg_fidelity_allow_parameterized)
         {
         }
     };
@@ -1004,6 +1006,10 @@ namespace signal_synth
             config.sampling_rate_hz = scenario.sampling_rate_hz;
             config.rhythm.seed = scenario.seed;
             config.rhythm.rr_variability_seconds = scenario.rr_variability_seconds;
+            if (scenario.minimum_rr_seconds > 0.0)
+                config.rhythm.minimum_rr_seconds = scenario.minimum_rr_seconds;
+            if (scenario.maximum_rr_seconds > 0.0)
+                config.rhythm.maximum_rr_seconds = scenario.maximum_rr_seconds;
             if (scenario.heart_rate_bpm > 0.0)
                 config.rhythm.heart_rate_bpm = scenario.heart_rate_bpm;
             const bool episode_condition = has_condition(scenario.conditions, ecg_condition_psvt) || has_condition(scenario.conditions, ecg_condition_svarr);
@@ -2428,6 +2434,32 @@ namespace signal_synth
         return implementation_->rr_variability_seconds;
     }
 
+    bool ecg_qa_scenario::set_minimum_rr_seconds(double value)
+    {
+        if (!std::isfinite(value) || value < 0.0 || value > 10.0)
+            return false;
+        implementation_->minimum_rr_seconds = value;
+        return true;
+    }
+
+    double ecg_qa_scenario::minimum_rr_seconds() const
+    {
+        return implementation_->minimum_rr_seconds;
+    }
+
+    bool ecg_qa_scenario::set_maximum_rr_seconds(double value)
+    {
+        if (!std::isfinite(value) || value < 0.0 || value > 10.0)
+            return false;
+        implementation_->maximum_rr_seconds = value;
+        return true;
+    }
+
+    double ecg_qa_scenario::maximum_rr_seconds() const
+    {
+        return implementation_->maximum_rr_seconds;
+    }
+
     bool ecg_qa_scenario::set_ectopic_every_n_beats(unsigned int value)
     {
         implementation_->ectopic_every_n_beats = value;
@@ -2543,6 +2575,11 @@ namespace signal_synth
         hash_u64(hash, implementation_->seed);
         hash_u64(hash, quantize(implementation_->heart_rate_bpm, 1000.0));
         hash_u64(hash, quantize(implementation_->rr_variability_seconds, 1000000.0));
+        if (implementation_->minimum_rr_seconds > 0.0 || implementation_->maximum_rr_seconds > 0.0)
+        {
+            hash_u64(hash, quantize(implementation_->minimum_rr_seconds, 1000000.0));
+            hash_u64(hash, quantize(implementation_->maximum_rr_seconds, 1000000.0));
+        }
         hash_u64(hash, implementation_->ectopic_every_n_beats);
         hash_u64(hash, enum_value(implementation_->second_degree_pattern));
         hash_u64(hash, enum_value(implementation_->q_wave_territory));

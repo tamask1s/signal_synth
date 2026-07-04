@@ -129,6 +129,37 @@ int main()
     signal_synth::ecg_scenario_json_result changed_ppg;
     ok &= check(signal_synth::write_ecg_scenario_json(multimodal_roundtrip, changed_ppg) && changed_ppg.document_fingerprint != multimodal_result.document_fingerprint && changed_ppg.generation_fingerprint == multimodal_result.generation_fingerprint, "ppg_changes_document_not_ecg_fingerprint");
 
+    const std::string hrv_input =
+        "{"
+        "\"schema_version\":2,\"scenario_id\":\"hrv_schema\",\"name\":\"HRV schema\",\"description\":\"\",\"author\":\"\","
+        "\"tags\":[\"hrv\"],\"duration_seconds\":300,\"sample_rate_hz\":100,\"seed\":1,"
+        "\"ecg\":{\"heart_rate_bpm\":60,\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":0,"
+        "\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\","
+        "\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,"
+        "\"episode_rate_bpm\":170,\"fidelity_policy\":\"allow_parameterized\","
+        "\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]},"
+        "\"hrv\":{\"enabled\":true,\"target_mean_hr_bpm\":72,\"target_sdnn_seconds\":0.045,"
+        "\"lf_hf_ratio\":1.8,\"lf_center_hz\":0.1,\"lf_bandwidth_hz\":0.04,"
+        "\"hf_center_hz\":0.25,\"hf_bandwidth_hz\":0.12,"
+        "\"respiratory_frequency_hz\":0.25,\"respiratory_amplitude_seconds\":0.02,"
+        "\"minimum_rr_seconds\":0.45,\"maximum_rr_seconds\":1.6,\"seed\":4242},"
+        "\"ppg\":{\"enabled\":false,\"pulse_delay_ms\":180,\"rise_time_ms\":120,\"decay_time_ms\":300,"
+        "\"amplitude_au\":1,\"baseline_au\":0,\"dicrotic_delay_ms\":180,"
+        "\"dicrotic_width_ms\":80,\"dicrotic_amplitude_ratio\":0.15}"
+        "}";
+    signal_synth::ecg_scenario_document hrv_document;
+    signal_synth::ecg_scenario_json_result hrv_result;
+    ok &= check(signal_synth::parse_ecg_scenario_json(hrv_input, hrv_document, hrv_result), "hrv_schema_parse");
+    ok &= check(hrv_document.hrv.enabled && hrv_document.hrv.lf_hf_ratio == 1.8 && hrv_document.ecg.heart_rate_bpm() == 72.0 && hrv_document.ecg.rr_variability_seconds() == 0.045 && hrv_document.ecg.minimum_rr_seconds() == 0.45 && hrv_document.ecg.maximum_rr_seconds() == 1.6 && hrv_document.ecg.seed() == 4242, "hrv_schema_applies_timeline");
+    ok &= check(hrv_result.canonical_json.find("\"hrv\":{\"enabled\":true") != std::string::npos && hrv_result.canonical_json.find("\"lf_hf_ratio\":1.8") != std::string::npos, "hrv_canonical");
+    signal_synth::ecg_scenario_document hrv_changed = hrv_document;
+    hrv_changed.hrv.lf_hf_ratio = 2.1;
+    signal_synth::ecg_scenario_json_result hrv_changed_result;
+    ok &= check(signal_synth::write_ecg_scenario_json(hrv_changed, hrv_changed_result) && hrv_changed_result.document_fingerprint != hrv_result.document_fingerprint, "hrv_parameter_changes_document_fingerprint");
+    ok &= check(rejects_without_mutation(std::string(hrv_input).replace(hrv_input.find("\"lf_hf_ratio\":1.8"), std::string("\"lf_hf_ratio\":1.8").size(), "\"lf_hf_ratio\":-1"), signal_synth::ecg_json_range), "reject_invalid_hrv_lfhf");
+    ok &= check(rejects_without_mutation(std::string(hrv_input).replace(hrv_input.find("\"duration_seconds\":300"), std::string("\"duration_seconds\":300").size(), "\"duration_seconds\":40"), signal_synth::ecg_json_range), "reject_short_hrv_window");
+    ok &= check(rejects_without_mutation(std::string(hrv_input).replace(hrv_input.find("\"schema_version\":2"), std::string("\"schema_version\":2").size(), "\"schema_version\":1"), signal_synth::ecg_json_unknown_field), "schema_v1_rejects_hrv");
+
     signal_synth::ecg_scenario_document v1_with_ppg;
     v1_with_ppg.ppg.enabled = true;
     ok &= check(!signal_synth::write_ecg_scenario_json(v1_with_ppg, invalid_result) && invalid_result.messages[0].path == "$.ppg", "schema_v1_rejects_unrepresentable_ppg");

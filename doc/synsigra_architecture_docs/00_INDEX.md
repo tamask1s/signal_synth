@@ -90,6 +90,8 @@ Implementation increment designs:
   export artifacts.
 - `increments/024_EDF_BDF_WAVEFORM_EXPORT.md` defines deterministic EDF+/BDF+
   waveform export artifacts.
+- `increments/025_HRV_SCENARIO_SCHEMA.md` defines the product-facing HRV
+  scenario schema and first-layer ECG timeline mapping.
 
 Traceability demonstration:
 

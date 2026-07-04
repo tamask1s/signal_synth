@@ -704,12 +704,64 @@ namespace
             && config.dicrotic_amplitude_ratio == defaults.dicrotic_amplitude_ratio;
     }
 
+    bool default_hrv_config(const signal_synth::hrv_scenario_config& config)
+    {
+        const signal_synth::hrv_scenario_config defaults;
+        return config.enabled == defaults.enabled
+            && config.target_mean_hr_bpm == defaults.target_mean_hr_bpm
+            && config.target_sdnn_seconds == defaults.target_sdnn_seconds
+            && config.lf_hf_ratio == defaults.lf_hf_ratio
+            && config.lf_center_hz == defaults.lf_center_hz
+            && config.lf_bandwidth_hz == defaults.lf_bandwidth_hz
+            && config.hf_center_hz == defaults.hf_center_hz
+            && config.hf_bandwidth_hz == defaults.hf_bandwidth_hz
+            && config.respiratory_frequency_hz == defaults.respiratory_frequency_hz
+            && config.respiratory_amplitude_seconds == defaults.respiratory_amplitude_seconds
+            && config.minimum_rr_seconds == defaults.minimum_rr_seconds
+            && config.maximum_rr_seconds == defaults.maximum_rr_seconds
+            && config.seed == defaults.seed;
+    }
+
+    bool valid_hrv_config(const signal_synth::hrv_scenario_config& config, double duration_seconds)
+    {
+        if (!config.enabled)
+            return default_hrv_config(config);
+        if (!std::isfinite(config.target_mean_hr_bpm) || config.target_mean_hr_bpm < 30.0 || config.target_mean_hr_bpm > 220.0)
+            return false;
+        if (!std::isfinite(config.target_sdnn_seconds) || config.target_sdnn_seconds < 0.0 || config.target_sdnn_seconds > 2.0)
+            return false;
+        if (!std::isfinite(config.lf_hf_ratio) || config.lf_hf_ratio < 0.0 || config.lf_hf_ratio > 100.0)
+            return false;
+        if (!std::isfinite(config.lf_center_hz) || config.lf_center_hz <= 0.0 || config.lf_center_hz > 1.0)
+            return false;
+        if (!std::isfinite(config.lf_bandwidth_hz) || config.lf_bandwidth_hz <= 0.0 || config.lf_bandwidth_hz > 1.0)
+            return false;
+        if (!std::isfinite(config.hf_center_hz) || config.hf_center_hz <= 0.0 || config.hf_center_hz > 1.0)
+            return false;
+        if (!std::isfinite(config.hf_bandwidth_hz) || config.hf_bandwidth_hz <= 0.0 || config.hf_bandwidth_hz > 1.0)
+            return false;
+        if (!std::isfinite(config.respiratory_frequency_hz) || config.respiratory_frequency_hz <= 0.0 || config.respiratory_frequency_hz > 1.0)
+            return false;
+        if (!std::isfinite(config.respiratory_amplitude_seconds) || config.respiratory_amplitude_seconds < 0.0 || config.respiratory_amplitude_seconds > 2.0)
+            return false;
+        if (!std::isfinite(config.minimum_rr_seconds) || !std::isfinite(config.maximum_rr_seconds) || config.minimum_rr_seconds <= 0.0 || config.maximum_rr_seconds <= config.minimum_rr_seconds)
+            return false;
+        const double mean_rr_seconds = 60.0 / config.target_mean_hr_bpm;
+        if (mean_rr_seconds <= config.minimum_rr_seconds || mean_rr_seconds >= config.maximum_rr_seconds)
+            return false;
+        return duration_seconds >= 300.0;
+    }
+
     bool validate_document(const signal_synth::ecg_scenario_document& document, signal_synth::ecg_scenario_json_result& result, std::vector<std::string>& sorted_tags)
     {
         if (document.schema_version < 1 || document.schema_version > 2)
             add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema versions 1 and 2 are supported");
         if (document.schema_version == 1 && !default_ppg_config(document.ppg))
             add_message(result, signal_synth::ecg_json_semantic, "$.ppg", "schema version 1 cannot represent PPG configuration");
+        if (document.schema_version == 1 && !default_hrv_config(document.hrv))
+            add_message(result, signal_synth::ecg_json_semantic, "$.hrv", "schema version 1 cannot represent HRV configuration");
+        if (document.schema_version == 2 && !valid_hrv_config(document.hrv, document.duration_seconds))
+            add_message(result, signal_synth::ecg_json_range, "$.hrv", "invalid HRV configuration or unsupported short HRV window");
         if (document.schema_version == 1 && !document.signal_quality.artifacts.empty())
             add_message(result, signal_synth::ecg_json_semantic, "$.artifacts", "schema version 1 cannot represent acquisition artifacts");
         if (document.schema_version == 2 && !signal_synth::ppg_generator(document.ppg).valid())
@@ -789,6 +841,23 @@ namespace
                    << ",\"severity\":" << format_double(document.ecg.condition_severity(i)) << '}';
         }
         output << "]}";
+        if (document.hrv.enabled)
+        {
+            output << ",\"hrv\":{\"enabled\":true"
+                   << ",\"target_mean_hr_bpm\":" << format_double(document.hrv.target_mean_hr_bpm)
+                   << ",\"target_sdnn_seconds\":" << format_double(document.hrv.target_sdnn_seconds)
+                   << ",\"lf_hf_ratio\":" << format_double(document.hrv.lf_hf_ratio)
+                   << ",\"lf_center_hz\":" << format_double(document.hrv.lf_center_hz)
+                   << ",\"lf_bandwidth_hz\":" << format_double(document.hrv.lf_bandwidth_hz)
+                   << ",\"hf_center_hz\":" << format_double(document.hrv.hf_center_hz)
+                   << ",\"hf_bandwidth_hz\":" << format_double(document.hrv.hf_bandwidth_hz)
+                   << ",\"respiratory_frequency_hz\":" << format_double(document.hrv.respiratory_frequency_hz)
+                   << ",\"respiratory_amplitude_seconds\":" << format_double(document.hrv.respiratory_amplitude_seconds)
+                   << ",\"minimum_rr_seconds\":" << format_double(document.hrv.minimum_rr_seconds)
+                   << ",\"maximum_rr_seconds\":" << format_double(document.hrv.maximum_rr_seconds)
+                   << ",\"seed\":" << document.hrv.seed
+                   << '}';
+        }
         if (document.schema_version >= 2)
         {
             output << ",\"ppg\":{\"enabled\":" << (document.ppg.enabled ? "true" : "false")
@@ -844,6 +913,11 @@ namespace
 
 namespace signal_synth
 {
+    hrv_scenario_config::hrv_scenario_config()
+        : enabled(false), target_mean_hr_bpm(60.0), target_sdnn_seconds(0.0), lf_hf_ratio(1.0), lf_center_hz(0.10), lf_bandwidth_hz(0.04), hf_center_hz(0.25), hf_bandwidth_hz(0.12), respiratory_frequency_hz(0.25), respiratory_amplitude_seconds(0.0), minimum_rr_seconds(0.25), maximum_rr_seconds(3.0), seed(0x4852565343454e31ULL)
+    {
+    }
+
     const char* ecg_scenario_json_message_code_name(ecg_scenario_json_message_code code)
     {
         switch (code)
@@ -917,7 +991,7 @@ namespace signal_synth
             return false;
         }
 
-        const char* top_fields[] = {"schema_version","scenario_id","name","description","author","tags","duration_seconds","sample_rate_hz","seed","ecg","ppg","artifacts"};
+        const char* top_fields[] = {"schema_version","scenario_id","name","description","author","tags","duration_seconds","sample_rate_hz","seed","ecg","hrv","ppg","artifacts"};
         if (!allowed_fields(root, top_fields, sizeof(top_fields) / sizeof(top_fields[0]), "$", fresh_result))
         {
             result = fresh_result;
@@ -1062,6 +1136,64 @@ namespace signal_synth
             else if (fidelity->string != "allow_parameterized")
                 add_message(fresh_result, ecg_json_range, "$.ecg.fidelity_policy", "unknown fidelity policy");
             document.ecg.set_fidelity_policy(value);
+        }
+
+        const json_value* hrv = member(root, "hrv");
+        if (document.schema_version == 1 && hrv)
+            add_message(fresh_result, ecg_json_unknown_field, "$.hrv", "HRV requires schema version 2");
+        else if (hrv)
+        {
+            if (hrv->type != json_value::object_kind)
+                add_message(fresh_result, ecg_json_type, "$.hrv", "field has the wrong JSON type");
+            else
+            {
+                const char* hrv_fields[] = {"enabled","target_mean_hr_bpm","target_sdnn_seconds","lf_hf_ratio","lf_center_hz","lf_bandwidth_hz","hf_center_hz","hf_bandwidth_hz","respiratory_frequency_hz","respiratory_amplitude_seconds","minimum_rr_seconds","maximum_rr_seconds","seed"};
+                allowed_fields(*hrv, hrv_fields, sizeof(hrv_fields) / sizeof(hrv_fields[0]), "$.hrv", fresh_result);
+                const json_value* enabled = required(*hrv, "enabled", json_value::bool_kind, "$.hrv", fresh_result);
+                const json_value* target_mean_hr = required(*hrv, "target_mean_hr_bpm", json_value::number_kind, "$.hrv", fresh_result);
+                const json_value* target_sdnn = required(*hrv, "target_sdnn_seconds", json_value::number_kind, "$.hrv", fresh_result);
+                const json_value* lf_hf = required(*hrv, "lf_hf_ratio", json_value::number_kind, "$.hrv", fresh_result);
+                const json_value* lf_center = required(*hrv, "lf_center_hz", json_value::number_kind, "$.hrv", fresh_result);
+                const json_value* lf_bandwidth = required(*hrv, "lf_bandwidth_hz", json_value::number_kind, "$.hrv", fresh_result);
+                const json_value* hf_center = required(*hrv, "hf_center_hz", json_value::number_kind, "$.hrv", fresh_result);
+                const json_value* hf_bandwidth = required(*hrv, "hf_bandwidth_hz", json_value::number_kind, "$.hrv", fresh_result);
+                const json_value* respiratory_frequency = required(*hrv, "respiratory_frequency_hz", json_value::number_kind, "$.hrv", fresh_result);
+                const json_value* respiratory_amplitude = required(*hrv, "respiratory_amplitude_seconds", json_value::number_kind, "$.hrv", fresh_result);
+                const json_value* minimum_rr = required(*hrv, "minimum_rr_seconds", json_value::number_kind, "$.hrv", fresh_result);
+                const json_value* maximum_rr = required(*hrv, "maximum_rr_seconds", json_value::number_kind, "$.hrv", fresh_result);
+                const json_value* hrv_seed = required(*hrv, "seed", json_value::number_kind, "$.hrv", fresh_result);
+                if (enabled) document.hrv.enabled = enabled->boolean;
+                if (target_mean_hr) document.hrv.target_mean_hr_bpm = target_mean_hr->number;
+                if (target_sdnn) document.hrv.target_sdnn_seconds = target_sdnn->number;
+                if (lf_hf) document.hrv.lf_hf_ratio = lf_hf->number;
+                if (lf_center) document.hrv.lf_center_hz = lf_center->number;
+                if (lf_bandwidth) document.hrv.lf_bandwidth_hz = lf_bandwidth->number;
+                if (hf_center) document.hrv.hf_center_hz = hf_center->number;
+                if (hf_bandwidth) document.hrv.hf_bandwidth_hz = hf_bandwidth->number;
+                if (respiratory_frequency) document.hrv.respiratory_frequency_hz = respiratory_frequency->number;
+                if (respiratory_amplitude) document.hrv.respiratory_amplitude_seconds = respiratory_amplitude->number;
+                if (minimum_rr) document.hrv.minimum_rr_seconds = minimum_rr->number;
+                if (maximum_rr) document.hrv.maximum_rr_seconds = maximum_rr->number;
+                if (hrv_seed)
+                {
+                    if (!integral_number(*hrv_seed, std::numeric_limits<unsigned long long>::max(), integer))
+                        add_message(fresh_result, ecg_json_range, "$.hrv.seed", "seed must be an unsigned 64-bit decimal integer");
+                    else
+                        document.hrv.seed = integer;
+                }
+                if (document.hrv.enabled)
+                {
+                    if (!document.ecg.set_heart_rate_bpm(document.hrv.target_mean_hr_bpm))
+                        add_message(fresh_result, ecg_json_range, "$.hrv.target_mean_hr_bpm", "invalid target mean HR");
+                    if (!document.ecg.set_rr_variability_seconds(document.hrv.target_sdnn_seconds))
+                        add_message(fresh_result, ecg_json_range, "$.hrv.target_sdnn_seconds", "invalid target SDNN");
+                    if (!document.ecg.set_minimum_rr_seconds(document.hrv.minimum_rr_seconds))
+                        add_message(fresh_result, ecg_json_range, "$.hrv.minimum_rr_seconds", "invalid minimum RR");
+                    if (!document.ecg.set_maximum_rr_seconds(document.hrv.maximum_rr_seconds))
+                        add_message(fresh_result, ecg_json_range, "$.hrv.maximum_rr_seconds", "invalid maximum RR");
+                    document.ecg.set_seed(document.hrv.seed);
+                }
+            }
         }
 
         std::set<int> seen_conditions;

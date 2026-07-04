@@ -9,6 +9,25 @@
 
 namespace signal_synth
 {
+    struct hrv_scenario_config
+    {
+        hrv_scenario_config();
+
+        bool enabled;
+        double target_mean_hr_bpm;
+        double target_sdnn_seconds;
+        double lf_hf_ratio;
+        double lf_center_hz;
+        double lf_bandwidth_hz;
+        double hf_center_hz;
+        double hf_bandwidth_hz;
+        double respiratory_frequency_hz;
+        double respiratory_amplitude_seconds;
+        double minimum_rr_seconds;
+        double maximum_rr_seconds;
+        unsigned long long seed;
+    };
+
     enum ecg_scenario_json_message_code
     {
         ecg_json_syntax = 0,
@@ -45,6 +64,7 @@ namespace signal_synth
         std::vector<std::string> tags;
         double duration_seconds;
         ecg_qa_scenario ecg;
+        hrv_scenario_config hrv;
         ppg_config ppg;
         signal_quality_config signal_quality;
 
