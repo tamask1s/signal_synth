@@ -9,6 +9,7 @@
 #include <signal_synth/signal_synth.h>
 #include <signal_synth/ppg_model.h>
 #include <signal_synth/signal_quality.h>
+#include <signal_synth/synsigra_api.h>
 
 #include <string>
 
@@ -30,6 +31,8 @@ int main()
     signal_synth::ecg_compare_result compare_result;
     signal_synth::ppg_config ppg;
     signal_synth::signal_quality_artifact_config artifact;
+    signal_synth::synsigra_validation_result facade_validation;
+    signal_synth::synsigra_compare_options facade_compare_options;
 
     if (legacy.amplitude_r <= 0.0 || !signal_synth::ecg_model(model).valid() || !signal_synth::clinical_ecg_generator(clinical).valid())
         return 1;
@@ -61,5 +64,7 @@ int main()
         return 7;
     if (artifact.severity <= 0.0)
         return 8;
+    if (facade_validation.success || facade_compare_options.target != signal_synth::synsigra_compare_r_peak || std::string(signal_synth::synsigra_api_version()).empty())
+        return 11;
     return 0;
 }

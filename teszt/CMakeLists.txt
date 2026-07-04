@@ -42,6 +42,7 @@ signal_synth_add_test(ppg_model_test ppg_model_test.cpp TEST-PPG-001)
 signal_synth_add_test(signal_quality_test signal_quality_test.cpp TEST-SIGNAL-QUALITY-001)
 signal_synth_add_test(ecg_pack_test ecg_pack_test.cpp TEST-ECG-PACK-001)
 signal_synth_add_test(ecg_compare_test ecg_compare_test.cpp TEST-COMPARE-001)
+signal_synth_add_test(synsigra_api_test synsigra_api_test.cpp TEST-FACADE-001)
 
 add_test(
     NAME TEST-BUILD-001

@@ -76,6 +76,8 @@ Implementation increment designs:
   batch CLI rendering, and curated QA packs.
 - `increments/017_ALGORITHM_COMPARISON_SCORING.md` defines event-detector
   comparison against synthetic ECG/PPG ground truth.
+- `increments/018_STABLE_CPP_FACADE.md` defines the stable C++ facade for
+  validation, render/export, and comparison.
 
 Traceability demonstration:
 

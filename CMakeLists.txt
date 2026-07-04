@@ -14,6 +14,7 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/ecg_scenario_json.h
     src/ecg_export.h
     src/ecg_compare.h
+    src/synsigra_api.h
     src/signal_quality.h
     src/ecg_pack.h)
 list(APPEND SIGNAL_SYNTH_PUBLIC_HEADERS src/ppg_model.h)
@@ -29,6 +30,7 @@ add_library(
     src/ecg_scenario_json.cpp
     src/ecg_export.cpp
     src/ecg_compare.cpp
+    src/synsigra_api.cpp
     src/signal_quality.cpp
     src/ecg_pack.cpp)
 target_sources(signal_synth PRIVATE src/ppg_model.cpp)
