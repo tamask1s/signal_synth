@@ -4,7 +4,7 @@
 
 **Version:** 0.1
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Platform / SDK
 
@@ -13,6 +13,10 @@
 **Proposed traceability ID:** `TRC-DET-001`
 
 **Implementation issue:** [signal_synth#38](https://github.com/tamask1s/signal_synth/issues/38)
+
+**Implementation commit:** `5f98d5fa078c3e5947bf310bff75d44ad8179dd2`
+
+**Verification run:** [GitHub Actions run 28707154618](https://github.com/tamask1s/signal_synth/actions/runs/28707154618)
 
 ## 1. Decision
 
@@ -118,6 +122,13 @@ Add `TEST-DETECTION-IO-001`:
 Extend `TEST-CLI-001` with JSON detection input scoring.
 Extend `TEST-BUILD-001` package smoke to include the installed public header.
 
+Verified on 2026-07-04:
+
+- local release CTest: `21/21` passed;
+- local sanitizer CTest with leak detection disabled due local ptrace limitation:
+  `20/20` passed, excluding `TEST-BUILD-001`;
+- GitHub Actions run `28707154618`: Ubuntu C++11 and Windows C++11 passed.
+
 ## 8. Non-Goals
 
 - No Python package in this increment.
@@ -138,3 +149,4 @@ Extend `TEST-BUILD-001` package smoke to include the installed public header.
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-04 | Added CSV v2 and JSON v1 detection output contract |
+| 0.2 | 2026-07-04 | Recorded verification evidence |
