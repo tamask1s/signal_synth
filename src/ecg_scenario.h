@@ -145,6 +145,13 @@ namespace signal_synth
         ecg_episode_svarr = 2
     };
 
+    enum ecg_flutter_conduction_pattern
+    {
+        ecg_flutter_fixed = 0,
+        ecg_flutter_alternate_2_3 = 1,
+        ecg_flutter_cycle_2_3_4 = 2
+    };
+
     enum ecg_scenario_issue_severity
     {
         ecg_issue_warning = 0,
@@ -264,6 +271,8 @@ namespace signal_synth
         double episode_duration_seconds() const;
         bool set_episode_rate_bpm(double value);
         double episode_rate_bpm() const;
+        bool set_flutter_conduction_pattern(ecg_flutter_conduction_pattern value);
+        ecg_flutter_conduction_pattern flutter_conduction_pattern() const;
         bool set_fidelity_policy(ecg_scenario_fidelity_policy value);
         ecg_scenario_fidelity_policy fidelity_policy() const;
         unsigned int schema_version() const;

@@ -45,13 +45,14 @@ int main()
         "\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\","
         "\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,"
         "\"episode_rate_bpm\":170,"
+        "\"flutter_conduction_pattern\":\"fixed\","
         "\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]}}";
 
     signal_synth::ecg_scenario_document document;
     signal_synth::ecg_scenario_json_result parsed;
     ok &= check(signal_synth::parse_ecg_scenario_json(input, document, parsed), "parse_valid_document");
     ok &= check(parsed.success && parsed.canonical_json == canonical && document.sample_count() == 5000, "canonicalization_and_sample_count");
-    ok &= check(parsed.document_fingerprint == "sha256:6c898f8b51c1c4d1a04ff469fe09212767c308e801b5cf5677f72c785946fdd8", "sha256_known_answer");
+    ok &= check(parsed.document_fingerprint == "sha256:b271e46c437b21a745950369273ae340f67d28884f395949beeb603a76fb37cc", "sha256_known_answer");
     ok &= check(parsed.generation_fingerprint == document.ecg.fingerprint(), "generation_fingerprint_is_explicit");
 
     signal_synth::ecg_scenario_document roundtrip;
@@ -111,6 +112,18 @@ int main()
     signal_synth::ecg_scenario_json_result ischemia_repeated;
     ok &= check(signal_synth::write_ecg_scenario_json(ischemia, ischemia_result) && signal_synth::parse_ecg_scenario_json(ischemia_result.canonical_json, ischemia_roundtrip, ischemia_repeated) && ischemia_roundtrip.ecg.has_condition(signal_synth::ecg_condition_iscal) && ischemia_roundtrip.ecg.condition_severity(0) == 0.6 && ischemia_result.document_fingerprint == ischemia_repeated.document_fingerprint, "ischemia_condition_json_roundtrip");
 
+    signal_synth::ecg_scenario_document flutter_document;
+    flutter_document.schema_version = 2;
+    flutter_document.scenario_id = "flutter_variable";
+    flutter_document.name = "Flutter variable conduction";
+    flutter_document.ecg.clear_conditions();
+    flutter_document.ecg.add_condition(signal_synth::ecg_condition_aflt);
+    flutter_document.ecg.set_flutter_conduction_pattern(signal_synth::ecg_flutter_alternate_2_3);
+    signal_synth::ecg_scenario_json_result flutter_result;
+    signal_synth::ecg_scenario_document flutter_roundtrip;
+    signal_synth::ecg_scenario_json_result flutter_repeated;
+    ok &= check(signal_synth::write_ecg_scenario_json(flutter_document, flutter_result) && flutter_result.canonical_json.find("\"flutter_conduction_pattern\":\"alternate_2_3\"") != std::string::npos && signal_synth::parse_ecg_scenario_json(flutter_result.canonical_json, flutter_roundtrip, flutter_repeated) && flutter_roundtrip.ecg.flutter_conduction_pattern() == signal_synth::ecg_flutter_alternate_2_3, "flutter_pattern_json_roundtrip");
+
     signal_synth::ecg_scenario_document invalid_document;
     invalid_document.scenario_id.clear();
     signal_synth::ecg_scenario_json_result invalid_result;
@@ -136,7 +149,7 @@ int main()
         "\"ecg\":{\"heart_rate_bpm\":60,\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":0,"
         "\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\","
         "\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,"
-        "\"episode_rate_bpm\":170,\"fidelity_policy\":\"allow_parameterized\","
+        "\"episode_rate_bpm\":170,\"flutter_conduction_pattern\":\"fixed\",\"fidelity_policy\":\"allow_parameterized\","
         "\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]},"
         "\"hrv\":{\"enabled\":true,\"target_mean_hr_bpm\":72,\"target_sdnn_seconds\":0.045,"
         "\"lf_hf_ratio\":1.8,\"lf_center_hz\":0.1,\"lf_bandwidth_hz\":0.04,"

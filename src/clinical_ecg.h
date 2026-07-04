@@ -83,6 +83,13 @@ namespace signal_synth
         clinical_episode_svarr = 2
     };
 
+    enum clinical_flutter_conduction_pattern
+    {
+        clinical_flutter_fixed = 0,
+        clinical_flutter_alternate_2_3 = 1,
+        clinical_flutter_cycle_2_3_4 = 2
+    };
+
     enum clinical_ventricular_origin
     {
         clinical_origin_conducted = 0,
@@ -189,6 +196,7 @@ namespace signal_synth
         unsigned int mobitz_cycle_length;
         double wenckebach_pr_increment_ms;
         unsigned int flutter_conduction_ratio;
+        clinical_flutter_conduction_pattern flutter_conduction_pattern;
         unsigned long long seed;
     };
 
@@ -301,6 +309,14 @@ namespace signal_synth
         unsigned long long last_beat_index;
         unsigned long long start_sample_index;
         unsigned long long end_sample_index;
+        double onset_transition_start_seconds;
+        double onset_transition_end_seconds;
+        double offset_transition_start_seconds;
+        double offset_transition_end_seconds;
+        unsigned long long onset_transition_start_sample_index;
+        unsigned long long onset_transition_end_sample_index;
+        unsigned long long offset_transition_start_sample_index;
+        unsigned long long offset_transition_end_sample_index;
         bool present;
     };
 

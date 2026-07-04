@@ -59,7 +59,7 @@ namespace
         const signal_synth::clinical_episode_annotation* left_episodes = left.episodes();
         const signal_synth::clinical_episode_annotation* right_episodes = right.episodes();
         for (unsigned int i = 0; i < left.episode_count(); ++i)
-            if (left_episodes[i].kind != right_episodes[i].kind || left_episodes[i].start_time_seconds != right_episodes[i].start_time_seconds || left_episodes[i].end_time_seconds != right_episodes[i].end_time_seconds || left_episodes[i].first_beat_index != right_episodes[i].first_beat_index || left_episodes[i].last_beat_index != right_episodes[i].last_beat_index || left_episodes[i].start_sample_index != right_episodes[i].start_sample_index || left_episodes[i].end_sample_index != right_episodes[i].end_sample_index || left_episodes[i].present != right_episodes[i].present)
+            if (left_episodes[i].kind != right_episodes[i].kind || left_episodes[i].start_time_seconds != right_episodes[i].start_time_seconds || left_episodes[i].end_time_seconds != right_episodes[i].end_time_seconds || left_episodes[i].first_beat_index != right_episodes[i].first_beat_index || left_episodes[i].last_beat_index != right_episodes[i].last_beat_index || left_episodes[i].start_sample_index != right_episodes[i].start_sample_index || left_episodes[i].end_sample_index != right_episodes[i].end_sample_index || left_episodes[i].onset_transition_start_seconds != right_episodes[i].onset_transition_start_seconds || left_episodes[i].onset_transition_end_seconds != right_episodes[i].onset_transition_end_seconds || left_episodes[i].offset_transition_start_seconds != right_episodes[i].offset_transition_start_seconds || left_episodes[i].offset_transition_end_seconds != right_episodes[i].offset_transition_end_seconds || left_episodes[i].onset_transition_start_sample_index != right_episodes[i].onset_transition_start_sample_index || left_episodes[i].onset_transition_end_sample_index != right_episodes[i].onset_transition_end_sample_index || left_episodes[i].offset_transition_start_sample_index != right_episodes[i].offset_transition_start_sample_index || left_episodes[i].offset_transition_end_sample_index != right_episodes[i].offset_transition_end_sample_index || left_episodes[i].present != right_episodes[i].present)
                 return false;
         return true;
     }
@@ -344,9 +344,22 @@ int main()
     signal_synth::clinical_ecg_record af;
     signal_synth::clinical_ecg_generator(af_config).generate(10000, af);
     bool variable_rr = false;
+    unsigned int rr_direction_changes = 0;
+    double previous_rr_delta = 0.0;
+    double rr_minimum = std::numeric_limits<double>::max();
+    double rr_maximum = 0.0;
     for (unsigned int i = 1; i < af.beat_count(); ++i)
+    {
         variable_rr |= !close(af.beats()[i].rr_interval_seconds, af.beats()[0].rr_interval_seconds, 1e-6);
-    ok &= check(af.atrial_event_count() == 0 && !af.beats()[0].p_present && variable_rr, "atrial_fibrillation_irregular_without_p");
+        rr_minimum = std::min(rr_minimum, af.beats()[i].rr_interval_seconds);
+        rr_maximum = std::max(rr_maximum, af.beats()[i].rr_interval_seconds);
+        const double delta = af.beats()[i].rr_interval_seconds - af.beats()[i - 1].rr_interval_seconds;
+        if (previous_rr_delta != 0.0 && delta != 0.0 && (delta < 0.0) != (previous_rr_delta < 0.0))
+            ++rr_direction_changes;
+        if (delta != 0.0)
+            previous_rr_delta = delta;
+    }
+    ok &= check(af.atrial_event_count() == 0 && !af.beats()[0].p_present && variable_rr && rr_direction_changes >= 3 && rr_maximum - rr_minimum > 0.180, "atrial_fibrillation_irregular_without_p");
     signal_synth::clinical_ecg_config clipped_af_config = af_config;
     clipped_af_config.rhythm.minimum_rr_seconds = 0.7;
     clipped_af_config.rhythm.maximum_rr_seconds = 1.0;
@@ -364,6 +377,19 @@ int main()
     signal_synth::clinical_ecg_record flutter;
     signal_synth::clinical_ecg_generator(flutter_config).generate(5000, flutter);
     ok &= check(flutter.atrial_event_count() >= 3 * flutter.beat_count() && flutter.beat_count() > 0, "atrial_flutter_conduction_ratio");
+    signal_synth::clinical_ecg_config variable_flutter_config = flutter_config;
+    variable_flutter_config.rhythm.flutter_conduction_pattern = signal_synth::clinical_flutter_alternate_2_3;
+    signal_synth::clinical_ecg_record variable_flutter;
+    signal_synth::clinical_ecg_generator(variable_flutter_config).generate(7000, variable_flutter);
+    bool variable_flutter_pattern = variable_flutter.beat_count() >= 4;
+    for (unsigned int i = 1; variable_flutter_pattern && i < 4; ++i)
+    {
+        const long long previous = variable_flutter.beats()[i - 1].linked_atrial_index;
+        const long long current = variable_flutter.beats()[i].linked_atrial_index;
+        const long long expected = i % 2 == 1 ? 3 : 2;
+        variable_flutter_pattern = current - previous == expected;
+    }
+    ok &= check(variable_flutter_pattern, "atrial_flutter_variable_conduction_pattern");
 
     signal_synth::clinical_ecg_config lbbb_config = config;
     lbbb_config.rhythm.intraventricular_conduction = signal_synth::clinical_iv_lbbb;

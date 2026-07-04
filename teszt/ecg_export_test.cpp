@@ -38,6 +38,19 @@ namespace
         output << record_name << ' ' << channel_count << ' ' << record.sampling_rate_hz() << ' ' << record.sample_count() << '\n';
         return output.str();
     }
+
+    bool same_rhythm_truth(const signal_synth::clinical_ecg_record& left, const signal_synth::clinical_ecg_record& right)
+    {
+        if (left.beat_count() != right.beat_count() || left.episode_count() != right.episode_count())
+            return false;
+        for (unsigned int i = 0; i < left.beat_count(); ++i)
+            if (left.beats()[i].origin != right.beats()[i].origin || left.beats()[i].rhythm != right.beats()[i].rhythm || left.beats()[i].r_peak_time_seconds != right.beats()[i].r_peak_time_seconds || left.beats()[i].rr_interval_seconds != right.beats()[i].rr_interval_seconds)
+                return false;
+        for (unsigned int i = 0; i < left.episode_count(); ++i)
+            if (left.episodes()[i].kind != right.episodes()[i].kind || left.episodes()[i].start_time_seconds != right.episodes()[i].start_time_seconds || left.episodes()[i].end_time_seconds != right.episodes()[i].end_time_seconds || left.episodes()[i].first_beat_index != right.episodes()[i].first_beat_index || left.episodes()[i].last_beat_index != right.episodes()[i].last_beat_index)
+                return false;
+        return true;
+    }
 }
 
 int main()
@@ -114,6 +127,30 @@ int main()
     signal_synth::ecg_export_bundle preserved_export = bundle;
     ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 17, "failed_export_is_transactional");
     ok &= check(std::string(signal_synth::signal_synth_generator_version()) == "0.1.0-dev", "runtime_generator_version");
+
+    signal_synth::ecg_scenario_document artifact_episode = document;
+    artifact_episode.schema_version = 2;
+    artifact_episode.scenario_id = "artifact_episode_truth";
+    artifact_episode.duration_seconds = 8.0;
+    artifact_episode.ecg.clear_conditions();
+    artifact_episode.ecg.add_condition(signal_synth::ecg_condition_psvt);
+    artifact_episode.ecg.set_heart_rate_bpm(70.0);
+    artifact_episode.ecg.set_episode_start_seconds(2.0);
+    artifact_episode.ecg.set_episode_duration_seconds(4.0);
+    artifact_episode.ecg.set_episode_rate_bpm(180.0);
+    signal_synth::ecg_render_bundle clean_episode_render;
+    ok &= check(signal_synth::render_ecg_document(artifact_episode, clean_episode_render, result), "clean_episode_truth_render");
+    signal_synth::signal_quality_artifact_config artifact;
+    artifact.type = signal_synth::signal_quality_ecg_emg_noise;
+    artifact.start_seconds = 2.5;
+    artifact.duration_seconds = 2.0;
+    artifact.severity = 0.7;
+    artifact.seed = 90210;
+    for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead)
+        artifact.ecg_leads[lead] = true;
+    artifact_episode.signal_quality.artifacts.push_back(artifact);
+    signal_synth::ecg_render_bundle artifact_episode_render;
+    ok &= check(signal_synth::render_ecg_document(artifact_episode, artifact_episode_render, result) && same_rhythm_truth(clean_episode_render.record, artifact_episode_render.record) && artifact_episode_render.signal_quality.artifacts.size() == 1u, "artifact_overlap_preserves_rhythm_truth");
 
     signal_synth::ecg_scenario_document multimodal = document;
     multimodal.schema_version = 2;

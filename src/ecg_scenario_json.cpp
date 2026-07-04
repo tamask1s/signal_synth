@@ -585,6 +585,17 @@ namespace
         return "";
     }
 
+    const char* flutter_pattern_name(signal_synth::ecg_flutter_conduction_pattern value)
+    {
+        switch (value)
+        {
+        case signal_synth::ecg_flutter_fixed: return "fixed";
+        case signal_synth::ecg_flutter_alternate_2_3: return "alternate_2_3";
+        case signal_synth::ecg_flutter_cycle_2_3_4: return "cycle_2_3_4";
+        }
+        return "";
+    }
+
     bool artifact_type_from_name(const std::string& name, signal_synth::signal_quality_artifact_type& output)
     {
         if (name == "ecg_baseline_wander")
@@ -832,6 +843,7 @@ namespace
                << ",\"episode_start_seconds\":" << format_double(document.ecg.episode_start_seconds())
                << ",\"episode_duration_seconds\":" << format_double(document.ecg.episode_duration_seconds())
                << ",\"episode_rate_bpm\":" << format_double(document.ecg.episode_rate_bpm())
+               << ",\"flutter_conduction_pattern\":" << escape_json(flutter_pattern_name(document.ecg.flutter_conduction_pattern()))
                << ",\"fidelity_policy\":" << escape_json(fidelity_name(document.ecg.fidelity_policy()))
                << ",\"conditions\":[";
         for (unsigned int i = 0; i < document.ecg.condition_count(); ++i)
@@ -1048,7 +1060,7 @@ namespace signal_synth
         if (!integral_number(*seed, std::numeric_limits<unsigned long long>::max(), integer) || !document.ecg.set_seed(integer))
             add_message(fresh_result, ecg_json_range, "$.seed", "seed must be an unsigned 64-bit decimal integer");
 
-        const char* ecg_fields[] = {"heart_rate_bpm","rr_variability_seconds","ectopic_every_n_beats","second_degree_av_pattern","q_wave_territory","episode_type","episode_start_seconds","episode_duration_seconds","episode_rate_bpm","fidelity_policy","conditions"};
+        const char* ecg_fields[] = {"heart_rate_bpm","rr_variability_seconds","ectopic_every_n_beats","second_degree_av_pattern","q_wave_territory","episode_type","episode_start_seconds","episode_duration_seconds","episode_rate_bpm","flutter_conduction_pattern","fidelity_policy","conditions"};
         allowed_fields(*ecg, ecg_fields, sizeof(ecg_fields) / sizeof(ecg_fields[0]), "$.ecg", fresh_result);
         const json_value* heart_rate = required(*ecg, "heart_rate_bpm", json_value::number_kind, "$.ecg", fresh_result);
         const json_value* rr_variability = required(*ecg, "rr_variability_seconds", json_value::number_kind, "$.ecg", fresh_result);
@@ -1059,6 +1071,7 @@ namespace signal_synth
         const json_value* episode_start = member(*ecg, "episode_start_seconds");
         const json_value* episode_duration = member(*ecg, "episode_duration_seconds");
         const json_value* episode_rate = member(*ecg, "episode_rate_bpm");
+        const json_value* flutter_pattern = member(*ecg, "flutter_conduction_pattern");
         const json_value* fidelity = required(*ecg, "fidelity_policy", json_value::string_kind, "$.ecg", fresh_result);
         const json_value* conditions = required(*ecg, "conditions", json_value::array_kind, "$.ecg", fresh_result);
 
@@ -1129,6 +1142,22 @@ namespace signal_synth
                 add_message(fresh_result, ecg_json_type, "$.ecg.episode_rate_bpm", "field has the wrong JSON type");
             else if (!document.ecg.set_episode_rate_bpm(episode_rate->number))
                 add_message(fresh_result, ecg_json_range, "$.ecg.episode_rate_bpm", "invalid episode rate");
+        }
+        if (flutter_pattern)
+        {
+            if (flutter_pattern->type != json_value::string_kind)
+                add_message(fresh_result, ecg_json_type, "$.ecg.flutter_conduction_pattern", "field has the wrong JSON type");
+            else
+            {
+                ecg_flutter_conduction_pattern value = ecg_flutter_fixed;
+                if (flutter_pattern->string == "alternate_2_3")
+                    value = ecg_flutter_alternate_2_3;
+                else if (flutter_pattern->string == "cycle_2_3_4")
+                    value = ecg_flutter_cycle_2_3_4;
+                else if (flutter_pattern->string != "fixed")
+                    add_message(fresh_result, ecg_json_range, "$.ecg.flutter_conduction_pattern", "unknown flutter conduction pattern");
+                document.ecg.set_flutter_conduction_pattern(value);
+            }
         }
         if (fidelity)
         {

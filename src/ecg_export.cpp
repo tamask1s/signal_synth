@@ -419,10 +419,18 @@ namespace
             output << "{\"kind\":" << json_string(episode_kind_name(episode.kind))
                    << ",\"start_seconds\":" << episode.start_time_seconds
                    << ",\"end_seconds\":" << episode.end_time_seconds
+                   << ",\"onset_transition_start_seconds\":" << episode.onset_transition_start_seconds
+                   << ",\"onset_transition_end_seconds\":" << episode.onset_transition_end_seconds
+                   << ",\"offset_transition_start_seconds\":" << episode.offset_transition_start_seconds
+                   << ",\"offset_transition_end_seconds\":" << episode.offset_transition_end_seconds
                    << ",\"first_beat_index\":" << episode.first_beat_index
                    << ",\"last_beat_index\":" << episode.last_beat_index
                    << ",\"start_sample_index\":" << episode.start_sample_index
                    << ",\"end_sample_index\":" << episode.end_sample_index
+                   << ",\"onset_transition_start_sample_index\":" << episode.onset_transition_start_sample_index
+                   << ",\"onset_transition_end_sample_index\":" << episode.onset_transition_end_sample_index
+                   << ",\"offset_transition_start_sample_index\":" << episode.offset_transition_start_sample_index
+                   << ",\"offset_transition_end_sample_index\":" << episode.offset_transition_end_sample_index
                    << ",\"present\":" << boolean(episode.present) << '}';
         }
         output << ']';

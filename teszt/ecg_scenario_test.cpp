@@ -108,7 +108,7 @@ int main()
     second.add_condition(signal_synth::ecg_condition_pvc, 0.8);
     second.set_heart_rate_bpm(72.0);
     second.set_seed(1234);
-    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 2 && signal_synth::ecg_scenario_engine_version() == 10, "fingerprint_is_order_independent_and_versioned");
+    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 2 && signal_synth::ecg_scenario_engine_version() == 11, "fingerprint_is_order_independent_and_versioned");
     signal_synth::ecg_qa_scenario changed = first;
     changed.set_seed(1235);
     ok &= check(first.fingerprint() != changed.fingerprint(), "fingerprint_covers_generation_seed");
@@ -191,6 +191,13 @@ int main()
     flutter.add_condition(signal_synth::ecg_condition_aflt);
     flutter.set_heart_rate_bpm(75.0);
     ok &= check(engine.compile(flutter, compiled, report) && compiled.rhythm.flutter_conduction_ratio == 4 && compiled.rhythm.atrial_rate_bpm == 300.0, "flutter_rate_compiles_to_atrial_rate_and_ratio");
+    signal_synth::ecg_qa_scenario variable_flutter = flutter;
+    variable_flutter.set_flutter_conduction_pattern(signal_synth::ecg_flutter_alternate_2_3);
+    ok &= check(engine.compile(variable_flutter, compiled, report) && compiled.rhythm.flutter_conduction_pattern == signal_synth::clinical_flutter_alternate_2_3 && variable_flutter.fingerprint() != flutter.fingerprint(), "flutter_variable_conduction_compiles_and_fingerprints");
+    signal_synth::ecg_qa_scenario unused_flutter_pattern;
+    unused_flutter_pattern.add_condition(signal_synth::ecg_condition_sr);
+    unused_flutter_pattern.set_flutter_conduction_pattern(signal_synth::ecg_flutter_cycle_2_3_4);
+    ok &= check(!engine.validate(unused_flutter_pattern, report) && report_has_issue(report, signal_synth::ecg_issue_missing_requirement), "unused_flutter_pattern_is_rejected");
     flutter.set_rr_variability_seconds(0.1);
     ok &= check(!engine.validate(flutter, report) && report_has_issue(report, signal_synth::ecg_issue_invalid_parameter), "unused_timeline_variability_is_rejected");
 
@@ -242,6 +249,18 @@ int main()
     trigeminy.add_condition(signal_synth::ecg_condition_pac);
     trigeminy.add_condition(signal_synth::ecg_condition_trigu);
     ok &= check(generated_phenotype_passes(engine, pac_assertions) && generated_phenotype_passes(engine, pvc_assertions) && generated_phenotype_passes(engine, bigeminy) && generated_phenotype_passes(engine, trigeminy), "ectopy_phenotype_assertions");
+    signal_synth::clinical_ecg_record bigeminy_record;
+    signal_synth::clinical_ecg_record trigeminy_record;
+    signal_synth::ecg_scenario_report cadence_report;
+    engine.generate(bigeminy, 10000, bigeminy_record, cadence_report);
+    engine.generate(trigeminy, 10000, trigeminy_record, cadence_report);
+    bool exact_bigeminy = bigeminy_record.beat_count() > 6;
+    for (unsigned int i = 0; exact_bigeminy && i < bigeminy_record.beat_count(); ++i)
+        exact_bigeminy = ((i + 1) % 2 == 0) == (bigeminy_record.beats()[i].origin == signal_synth::clinical_origin_pvc);
+    bool exact_trigeminy = trigeminy_record.beat_count() > 6;
+    for (unsigned int i = 0; exact_trigeminy && i < trigeminy_record.beat_count(); ++i)
+        exact_trigeminy = ((i + 1) % 3 == 0) == (trigeminy_record.beats()[i].origin == signal_synth::clinical_origin_pac);
+    ok &= check(exact_bigeminy && exact_trigeminy, "ectopy_cadence_truth_is_exact");
     signal_synth::clinical_ecg_record too_short_record;
     signal_synth::ecg_scenario_report too_short_report;
     ok &= check(engine.generate(pvc_assertions, 400, too_short_record, too_short_report) && too_short_report.success() && !too_short_report.phenotype_passed() && too_short_report.assertion_count() > 0, "failed_phenotype_assertions_preserve_generated_waveform");

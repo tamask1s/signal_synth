@@ -56,6 +56,10 @@ namespace
         const signal_synth::clinical_episode_annotation& episode = record.episodes()[0];
         if (episode.kind != kind || !episode.present || !close(episode.start_time_seconds, start) || !close(episode.end_time_seconds, end) || episode.start_sample_index != static_cast<unsigned long long>(std::llround(start * record.sampling_rate_hz())) || episode.end_sample_index != static_cast<unsigned long long>(std::llround(end * record.sampling_rate_hz())))
             return false;
+        if (!(episode.onset_transition_start_seconds < episode.start_time_seconds && episode.onset_transition_end_seconds > episode.start_time_seconds && episode.offset_transition_start_seconds < episode.end_time_seconds && episode.offset_transition_end_seconds > episode.end_time_seconds))
+            return false;
+        if (episode.onset_transition_start_sample_index >= episode.onset_transition_end_sample_index || episode.offset_transition_start_sample_index >= episode.offset_transition_end_sample_index)
+            return false;
         unsigned int inside = 0;
         unsigned int outside = 0;
         unsigned int hidden_p = 0;
@@ -96,7 +100,7 @@ namespace
 int main()
 {
     bool ok = true;
-    ok &= check(signal_synth::find_ecg_condition(signal_synth::ecg_condition_psvt)->support == signal_synth::ecg_support_native && signal_synth::find_ecg_condition(signal_synth::ecg_condition_svarr)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_abqrs)->support == signal_synth::ecg_support_catalog_only && signal_synth::ecg_scenario_engine_version() == 10, "episode_support_levels_and_engine_version");
+    ok &= check(signal_synth::find_ecg_condition(signal_synth::ecg_condition_psvt)->support == signal_synth::ecg_support_native && signal_synth::find_ecg_condition(signal_synth::ecg_condition_svarr)->support == signal_synth::ecg_support_parameterized && signal_synth::find_ecg_condition(signal_synth::ecg_condition_abqrs)->support == signal_synth::ecg_support_catalog_only && signal_synth::ecg_scenario_engine_version() == 11, "episode_support_levels_and_engine_version");
 
     signal_synth::ecg_qa_scenario psvt;
     psvt.add_condition(signal_synth::ecg_condition_psvt);
@@ -164,7 +168,7 @@ int main()
     signal_synth::ecg_render_bundle render;
     signal_synth::ecg_export_result export_result;
     signal_synth::ecg_export_bundle bundle;
-    ok &= check(signal_synth::render_ecg_document(document, render, export_result) && signal_synth::build_ecg_export_bundle(render, bundle, export_result) && bundle.find("annotations.json") && bundle.find("annotations.json")->content.find("\"episodes\":[{\"kind\":\"psvt\"") != std::string::npos && bundle.find("ground_truth_metrics.json")->content.find("\"episode_count\":1") != std::string::npos, "episode_export_contract");
+    ok &= check(signal_synth::render_ecg_document(document, render, export_result) && signal_synth::build_ecg_export_bundle(render, bundle, export_result) && bundle.find("annotations.json") && bundle.find("annotations.json")->content.find("\"episodes\":[{\"kind\":\"psvt\"") != std::string::npos && bundle.find("annotations.json")->content.find("\"onset_transition_start_seconds\"") != std::string::npos && bundle.find("ground_truth_metrics.json")->content.find("\"episode_count\":1") != std::string::npos, "episode_export_contract");
     std::ifstream script("../examples/databrowser/074_ECG_Episode_Rhythm_Phenotypes.txt");
     if (!script.good())
     {

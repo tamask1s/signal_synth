@@ -100,6 +100,9 @@ Implementation increment designs:
   HRV benchmark pack, spectral RR modulation, exclusions, and expected metrics.
 - `increments/029_ECG_BEAT_CLASSIFICATION_SCORING.md` defines canonical ECG
   beat classes, timing-aware multi-class scoring, and standard exports.
+- `increments/030_ECG_RHYTHM_ENGINE_V2.md` defines AFib irregularity,
+  variable flutter conduction, exact ectopy cadence, episode transition truth,
+  and artifact-overlap rhythm truth invariance.
 
 Traceability demonstration:
 

@@ -196,10 +196,11 @@ namespace signal_synth
             const int av_conduction = enum_value(config.rhythm.av_conduction);
             const int intraventricular_conduction = enum_value(config.rhythm.intraventricular_conduction);
             const int preexcitation = enum_value(config.rhythm.preexcitation);
+            const int flutter_conduction_pattern = enum_value(config.rhythm.flutter_conduction_pattern);
             const int episode_kind = enum_value(config.scenario.episode_kind);
             const int premature_origin = enum_value(config.scenario.premature_origin);
             const int qt_correction = enum_value(config.timing.qt_correction);
-            if (rhythm < clinical_rhythm_sinus || rhythm > clinical_rhythm_paced || av_conduction < clinical_av_normal || av_conduction > clinical_av_complete_block || intraventricular_conduction < clinical_iv_normal || intraventricular_conduction > clinical_iv_nonspecific_delay || preexcitation < clinical_preexcitation_none || preexcitation > clinical_preexcitation_wpw || episode_kind < clinical_episode_none || episode_kind > clinical_episode_svarr || premature_origin < clinical_origin_pac || premature_origin > clinical_origin_paced || qt_correction < clinical_qt_fixed || qt_correction > clinical_qt_hodges)
+            if (rhythm < clinical_rhythm_sinus || rhythm > clinical_rhythm_paced || av_conduction < clinical_av_normal || av_conduction > clinical_av_complete_block || intraventricular_conduction < clinical_iv_normal || intraventricular_conduction > clinical_iv_nonspecific_delay || preexcitation < clinical_preexcitation_none || preexcitation > clinical_preexcitation_wpw || flutter_conduction_pattern < clinical_flutter_fixed || flutter_conduction_pattern > clinical_flutter_cycle_2_3_4 || episode_kind < clinical_episode_none || episode_kind > clinical_episode_svarr || premature_origin < clinical_origin_pac || premature_origin > clinical_origin_paced || qt_correction < clinical_qt_fixed || qt_correction > clinical_qt_hodges)
                 return false;
             const double timing_values[] = {config.timing.p_duration_ms, config.timing.pr_interval_ms, config.timing.qrs_duration_ms, config.timing.qrs_q_fraction, config.timing.qrs_r_fraction, config.timing.qrs_s_fraction, config.timing.t_duration_ms, config.timing.t_peak_fraction, config.timing.qt_interval_ms, config.timing.qtc_ms};
             const double morphology_values[] = {config.morphology.p_amplitude_mv, config.morphology.q_amplitude_mv, config.morphology.r_amplitude_mv, config.morphology.s_amplitude_mv, config.morphology.t_amplitude_mv, config.morphology.st_j_amplitude_mv, config.morphology.st_slope_mv_per_second, config.morphology.p_axis_degrees, config.morphology.qrs_axis_degrees, config.morphology.t_axis_degrees, config.morphology.p_elevation_degrees, config.morphology.qrs_elevation_degrees, config.morphology.t_elevation_degrees, config.morphology.presence_threshold_mv};
@@ -427,6 +428,7 @@ namespace signal_synth
             const double episode_rr = 60.0 / config.scenario.episode_rate_bpm;
             const double episode_start = config.scenario.episode_start_seconds;
             const double episode_end = episode_start + config.scenario.episode_duration_seconds;
+            const double transition_seconds = std::min(0.5, 0.5 * std::min(baseline_rr, episode_rr));
             double previous_r = -1.0;
             for (double r_time = 0.5; r_time < duration_seconds && r_time < episode_start; r_time += baseline_rr)
             {
@@ -440,6 +442,14 @@ namespace signal_synth
             episode.end_time_seconds = episode_end;
             episode.first_beat_index = NO_BEAT;
             episode.last_beat_index = NO_BEAT;
+            episode.onset_transition_start_seconds = std::max(0.0, episode_start - transition_seconds);
+            episode.onset_transition_end_seconds = std::min(duration_seconds, episode_start + transition_seconds);
+            episode.offset_transition_start_seconds = std::max(0.0, episode_end - transition_seconds);
+            episode.offset_transition_end_seconds = std::min(duration_seconds, episode_end + transition_seconds);
+            episode.onset_transition_start_sample_index = 0;
+            episode.onset_transition_end_sample_index = 0;
+            episode.offset_transition_start_sample_index = 0;
+            episode.offset_transition_end_sample_index = 0;
             episode.present = false;
             for (double r_time = episode_start; r_time < duration_seconds && r_time < episode_end; r_time += episode_rr)
             {
@@ -537,14 +547,28 @@ namespace signal_synth
             }
         }
 
+        unsigned int flutter_conduction_interval(const clinical_ecg_config& config, unsigned int conducted_index)
+        {
+            if (config.rhythm.flutter_conduction_pattern == clinical_flutter_alternate_2_3)
+                return conducted_index % 2 == 0 ? 2U : 3U;
+            if (config.rhythm.flutter_conduction_pattern == clinical_flutter_cycle_2_3_4)
+            {
+                const unsigned int cycle[] = {2U, 3U, 4U};
+                return cycle[conducted_index % 3U];
+            }
+            return config.rhythm.flutter_conduction_ratio;
+        }
+
         void generate_flutter_timeline(const clinical_ecg_config& config, double duration_seconds, generated_clinical_data& output)
         {
             const double atrial_period = 60.0 / config.rhythm.atrial_rate_bpm;
             double previous_r = -1.0;
             unsigned long long atrial_index = 0;
+            unsigned int conducted_index = 0;
+            unsigned long long next_conducted_at = flutter_conduction_interval(config, 0) - 1U;
             for (double onset = 0.15; onset < duration_seconds; onset += atrial_period, ++atrial_index)
             {
-                const bool conducted = (atrial_index + 1) % config.rhythm.flutter_conduction_ratio == 0;
+                const bool conducted = atrial_index == next_conducted_at;
                 clinical_atrial_event atrial = {};
                 atrial.atrial_index = atrial_index;
                 atrial.onset_time_seconds = onset;
@@ -566,6 +590,8 @@ namespace signal_synth
                         output.beats.push_back(make_beat(config, output.beats.size(), r_time, rr, static_cast<long long>(atrial_index), pr, clinical_origin_conducted));
                         output.beats.back().rhythm = clinical_rhythm_atrial_flutter;
                         previous_r = r_time;
+                        ++conducted_index;
+                        next_conducted_at += flutter_conduction_interval(config, conducted_index);
                     }
                     else
                     {
@@ -579,12 +605,19 @@ namespace signal_synth
         void generate_af_timeline(const clinical_ecg_config& config, double duration_seconds, generated_clinical_data& output)
         {
             const double nominal_rr = 60.0 / config.rhythm.heart_rate_bpm;
+            const double spread = std::max(0.120, config.rhythm.rr_variability_seconds);
+            const double first_phase = TWO_PI * deterministic_unit(config.rhythm.seed, 7001);
+            const double second_phase = TWO_PI * deterministic_unit(config.rhythm.seed, 7002);
             double previous_r = -1.0;
             double r_time = 0.5;
             unsigned long long beat_index = 0;
             while (r_time < duration_seconds)
             {
-                const double unbounded_rr = beat_index == 0 ? nominal_rr : nominal_rr + std::max(0.080, config.rhythm.rr_variability_seconds) * deterministic_normal(config.rhythm.seed, beat_index);
+                const double u = std::max(deterministic_unit(config.rhythm.seed, 7100 + beat_index), 0.001);
+                const double skewed = std::min(3.0, -std::log(u)) - 1.0;
+                const double short_long = deterministic_unit(config.rhythm.seed, 7200 + beat_index) < 0.48 ? -0.75 * deterministic_unit(config.rhythm.seed, 7300 + beat_index) : 0.55 * deterministic_unit(config.rhythm.seed, 7400 + beat_index);
+                const double slow = 0.35 * std::sin(0.83 * beat_index + first_phase) + 0.22 * std::sin(1.91 * beat_index + second_phase);
+                const double unbounded_rr = beat_index == 0 ? nominal_rr : nominal_rr + spread * (0.55 * skewed + short_long + slow);
                 const double rr = std::max(config.rhythm.minimum_rr_seconds, std::min(config.rhythm.maximum_rr_seconds, unbounded_rr));
                 if (beat_index > 0)
                     r_time = previous_r + rr;
@@ -877,6 +910,10 @@ namespace signal_synth
             {
                 episode.start_sample_index = sample_index(episode.start_time_seconds, output.sampling_rate_hz, output.sample_count);
                 episode.end_sample_index = sample_index(episode.end_time_seconds, output.sampling_rate_hz, output.sample_count);
+                episode.onset_transition_start_sample_index = sample_index(episode.onset_transition_start_seconds, output.sampling_rate_hz, output.sample_count);
+                episode.onset_transition_end_sample_index = sample_index(episode.onset_transition_end_seconds, output.sampling_rate_hz, output.sample_count);
+                episode.offset_transition_start_sample_index = sample_index(episode.offset_transition_start_seconds, output.sampling_rate_hz, output.sample_count);
+                episode.offset_transition_end_sample_index = sample_index(episode.offset_transition_end_seconds, output.sampling_rate_hz, output.sample_count);
                 episode.present = episode.present && episode.first_beat_index != NO_BEAT && episode.last_beat_index != NO_BEAT && episode.start_time_seconds < static_cast<double>(output.sample_count) / output.sampling_rate_hz;
             }
         }
@@ -993,7 +1030,7 @@ namespace signal_synth
     }
 
     clinical_rhythm_config::clinical_rhythm_config()
-        : rhythm(clinical_rhythm_sinus), av_conduction(clinical_av_normal), intraventricular_conduction(clinical_iv_normal), preexcitation(clinical_preexcitation_none), heart_rate_bpm(60.0), atrial_rate_bpm(75.0), ventricular_escape_rate_bpm(35.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.25), maximum_rr_seconds(3.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), first_degree_pr_ms(240.0), mobitz_cycle_length(4), wenckebach_pr_increment_ms(40.0), flutter_conduction_ratio(2), seed(0x434c494e4943414cULL)
+        : rhythm(clinical_rhythm_sinus), av_conduction(clinical_av_normal), intraventricular_conduction(clinical_iv_normal), preexcitation(clinical_preexcitation_none), heart_rate_bpm(60.0), atrial_rate_bpm(75.0), ventricular_escape_rate_bpm(35.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.25), maximum_rr_seconds(3.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), first_degree_pr_ms(240.0), mobitz_cycle_length(4), wenckebach_pr_increment_ms(40.0), flutter_conduction_ratio(2), flutter_conduction_pattern(clinical_flutter_fixed), seed(0x434c494e4943414cULL)
     {
     }
 
