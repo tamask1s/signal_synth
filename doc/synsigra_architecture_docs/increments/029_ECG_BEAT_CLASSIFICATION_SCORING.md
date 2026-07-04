@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-029
 
-**Version:** 0.9
+**Version:** 1.0
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Core generation / Algorithm QA
 
@@ -13,6 +13,10 @@
 **Traceability ID:** `TRC-ECG-BC-001`
 
 **Implementation issue:** [signal_synth#44](https://github.com/tamask1s/signal_synth/issues/44)
+
+**Implementation commit:** `80cb11396f0e52e7339c3453dfb4791fb4c75140`
+
+**CI verification:** [GitHub Actions run 28712750254](https://github.com/tamask1s/signal_synth/actions/runs/28712750254)
 
 ## 1. Decision
 
@@ -161,6 +165,11 @@ Verified locally on 2026-07-04:
 - CLI example: 12/12 correct, accuracy 1.0, micro F1 1.0;
 - `git diff --check`: passed.
 
+Verified in CI on 2026-07-04:
+
+- Ubuntu C++11 configure/build/test: passed;
+- Windows C++11 configure/build/test: passed.
+
 ## 9. Integration and Non-Goals
 
 - No DataBrowser API or script is required; this is a local SDK/CLI/Python
@@ -176,3 +185,4 @@ Verified locally on 2026-07-04:
 |---|---|---|
 | 0.1 | 2026-07-04 | Accepted beat-classification QA architecture |
 | 0.9 | 2026-07-04 | Implemented C++, CLI, Python, export, example, and test surfaces |
+| 1.0 | 2026-07-04 | Completed Linux and Windows CI verification |
