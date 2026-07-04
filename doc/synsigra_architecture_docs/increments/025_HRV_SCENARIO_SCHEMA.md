@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-025
 
-**Version:** 0.1
+**Version:** 1.0
 
-**Status:** Implemented, verification pending
+**Status:** Verified
 
 **Owner role:** Platform / SDK
 
@@ -14,9 +14,9 @@
 
 **Implementation issue:** [signal_synth#40](https://github.com/tamask1s/signal_synth/issues/40)
 
-**Implementation commit:** Pending
+**Implementation commit:** `55fcf1e0dbb9ad438e331f58325cb22eeadc0aa6`
 
-**CI verification:** Pending
+**CI verification:** [GitHub Actions run 28710445918](https://github.com/tamask1s/signal_synth/actions/runs/28710445918)
 
 ## 1. Decision
 
@@ -114,6 +114,20 @@ Extend existing scenario and CLI coverage by preserving installed build and
 render behavior through `TEST-ECG-SCENARIO-001`, `TEST-CLI-001`, and
 `TEST-BUILD-001`.
 
+Verified locally on 2026-07-04:
+
+- `cmake --build build-release`: passed;
+- `cmake --build build-sanitize`: passed;
+- `ctest --output-on-failure` in `build-release`: 25/25 passed;
+- `ASAN_OPTIONS=detect_leaks=0 ctest -E TEST-BUILD-001 --output-on-failure`
+  in `build-sanitize`: 24/24 passed;
+- `git diff --check`: passed.
+
+Verified in CI on 2026-07-04:
+
+- Ubuntu C++11 configure/build/test: passed;
+- Windows C++11 configure/build/test: passed.
+
 ## 6. Non-Goals
 
 - No spectral HRV metric computation.
@@ -136,3 +150,4 @@ render behavior through `TEST-ECG-SCENARIO-001`, `TEST-CLI-001`, and
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-07-04 | Added product-facing HRV scenario schema design |
+| 1.0 | 2026-07-04 | Verified implementation and CI results |
