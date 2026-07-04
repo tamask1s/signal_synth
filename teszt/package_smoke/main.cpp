@@ -4,6 +4,7 @@
 #include <signal_synth/ecg_model.h>
 #include <signal_synth/ecg_export.h>
 #include <signal_synth/ecg_wfdb_export.h>
+#include <signal_synth/ecg_edf_bdf_export.h>
 #include <signal_synth/ecg_compare.h>
 #include <signal_synth/ecg_morphology.h>
 #include <signal_synth/ecg_scenario.h>
@@ -43,6 +44,7 @@ int main()
     signal_synth::synsigra_validation_result facade_validation;
     signal_synth::synsigra_compare_options facade_compare_options;
     signal_synth::wfdb_export_bundle wfdb_bundle;
+    signal_synth::edf_bdf_export_bundle edf_bdf_bundle;
 
     if (legacy.amplitude_r <= 0.0 || !signal_synth::ecg_model(model).valid() || !signal_synth::clinical_ecg_generator(clinical).valid())
         return 1;
@@ -82,7 +84,7 @@ int main()
         return 8;
     if (facade_validation.success || facade_compare_options.target != signal_synth::synsigra_compare_r_peak || std::string(signal_synth::synsigra_api_version()).empty())
         return 11;
-    if (!wfdb_bundle.artifacts.empty())
+    if (!wfdb_bundle.artifacts.empty() || !edf_bdf_bundle.artifacts.empty())
         return 15;
     return 0;
 }

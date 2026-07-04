@@ -1,4 +1,5 @@
 #include "ecg_export.h"
+#include "ecg_edf_bdf_export.h"
 #include "ecg_wfdb_export.h"
 
 #include <algorithm>
@@ -617,7 +618,7 @@ namespace
         output << "<li>The compact cardiac phantom is not population-fitted clinical evidence.</li>"
                << (render.signal_quality.artifacts.empty() ? "<li>No acquisition artifacts are present in this scenario.</li>" : "<li>Acquisition artifacts corrupt waveform samples but do not change construction ground truth.</li>") << "</ul>"
                << "<h2>Artifacts</h2><p>scenario.json, metadata.json, waveform.csv, annotations.json, "
-               << "ground_truth_metrics.json, warnings.json, report.html, README.txt, synsigra.hea, synsigra.dat, synsigra.atr, wfdb_metadata.json</p></body></html>";
+               << "ground_truth_metrics.json, warnings.json, report.html, README.txt, synsigra.hea, synsigra.dat, synsigra.atr, wfdb_metadata.json, synsigra.edf, synsigra.bdf, edf_bdf_metadata.json</p></body></html>";
         return output.str();
     }
 
@@ -735,6 +736,11 @@ namespace signal_synth
             return false;
         for (std::size_t i = 0; i < wfdb.artifacts.size(); ++i)
             add_artifact(fresh, wfdb.artifacts[i].name.c_str(), wfdb.artifacts[i].media_type.c_str(), wfdb.artifacts[i].content);
+        edf_bdf_export_bundle edf_bdf;
+        if (!build_edf_bdf_export_bundle(render, "synsigra", edf_bdf, fresh_result))
+            return false;
+        for (std::size_t i = 0; i < edf_bdf.artifacts.size(); ++i)
+            add_artifact(fresh, edf_bdf.artifacts[i].name.c_str(), edf_bdf.artifacts[i].media_type.c_str(), edf_bdf.artifacts[i].content);
         fresh_result.success = true;
         output = fresh;
         result = fresh_result;

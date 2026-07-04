@@ -88,6 +88,8 @@ Implementation increment designs:
   Python challenge loading and scoring SDK layer.
 - `increments/023_WFDB_WAVEFORM_EXPORT.md` defines deterministic WFDB waveform
   export artifacts.
+- `increments/024_EDF_BDF_WAVEFORM_EXPORT.md` defines deterministic EDF+/BDF+
+  waveform export artifacts.
 
 Traceability demonstration:
 

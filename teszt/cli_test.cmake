@@ -39,7 +39,7 @@ endif()
 
 set(render_dir "${SIGNAL_SYNTH_CLI_WORK_DIR}/render")
 execute_process(COMMAND "${SIGNAL_SYNTH_CLI}" render "${SIGNAL_SYNTH_EXAMPLE}" --out "${render_dir}" RESULT_VARIABLE render_result OUTPUT_VARIABLE render_output ERROR_VARIABLE render_error)
-if(NOT render_result EQUAL 0 OR NOT render_error STREQUAL "" OR NOT render_output MATCHES "^status=rendered" OR NOT EXISTS "${render_dir}/report.html" OR NOT EXISTS "${render_dir}/waveform.csv" OR NOT EXISTS "${render_dir}/synsigra.hea" OR NOT EXISTS "${render_dir}/synsigra.dat" OR NOT EXISTS "${render_dir}/synsigra.atr")
+if(NOT render_result EQUAL 0 OR NOT render_error STREQUAL "" OR NOT render_output MATCHES "^status=rendered" OR NOT EXISTS "${render_dir}/report.html" OR NOT EXISTS "${render_dir}/waveform.csv" OR NOT EXISTS "${render_dir}/synsigra.hea" OR NOT EXISTS "${render_dir}/synsigra.dat" OR NOT EXISTS "${render_dir}/synsigra.atr" OR NOT EXISTS "${render_dir}/synsigra.edf" OR NOT EXISTS "${render_dir}/synsigra.bdf")
     message(FATAL_ERROR "CLI render contract failed: ${render_error}")
 endif()
 file(READ "${render_dir}/annotations.json" render_annotations)
