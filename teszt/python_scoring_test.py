@@ -116,6 +116,10 @@ def main():
     assert case_summary["case_id"] == "clean_ecg"
     assert case_summary["render"]["sample_rate_hz"] == 500
     assert "r_peak" in case_summary["targets"]
+    assert challenge.case("clean_ecg").metadata()["scenario"]["id"] == "ecg_clean_001"
+    assert challenge.case("clean_ecg").ground_truth_metrics()["beats"]["count"] == 12
+    assert challenge.case("clean_ecg").hrv_metrics()["counts"]["accepted"] == 12
+    assert isinstance(challenge.case("clean_ecg").warnings()["issues"], list)
 
     tampered_dir = os.path.join(work_dir, "tampered")
     shutil.copytree(challenge_dir, tampered_dir)
@@ -138,11 +142,15 @@ def main():
     detections_dir = os.path.join(work_dir, "detections")
     os.makedirs(detections_dir)
     rpeak_path = os.path.join(detections_dir, "clean_ecg.json")
+    rpeak_recommended_path = os.path.join(detections_dir, "clean_ecg_r_peak.json")
     ppg_path = os.path.join(detections_dir, "ppg_clean.json")
     beat_class_path = os.path.join(detections_dir, "clean_ecg_beat_classes.json")
+    beat_class_recommended_path = os.path.join(detections_dir, "clean_ecg_ecg_beat_classification.json")
     write_detections(rpeak_path, "r_peak", rpeak_detections(challenge.case("clean_ecg").annotations()))
+    shutil.copyfile(rpeak_path, rpeak_recommended_path)
     write_detections(ppg_path, "ppg_systolic_peak", ppg_detections(challenge.case("ppg_clean").annotations()))
     write_detections(beat_class_path, "ecg_beat_classification", beat_classifications(challenge.case("clean_ecg").annotations()))
+    shutil.copyfile(beat_class_path, beat_class_recommended_path)
 
     rpeak_detections_doc = ss.load_detections(rpeak_path, target="r_peak")
     ppg_detections_doc = ss.load_detections(ppg_path, target="ppg_systolic_peak")
@@ -182,6 +190,23 @@ def main():
     assert hrv_report.json["metric_pass_fraction"] == 1
     assert hrv_report.json["rr"]["missing_count"] == 0
     assert "HRV Algorithm QA Score" in hrv_report.html
+
+    local_verify_dir = os.path.join(work_dir, "local_verify")
+    local_report = ss.verify_package(archive_path, detections_dir, local_verify_dir)
+    assert local_report.summary["success"]
+    assert local_report.summary["package"]["package_id"] == "python_scoring_challenge"
+    assert local_report.summary["case_target_count"] == 3
+    assert local_report.summary["passed_case_target_count"] == 3
+    assert read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_r_peak", "comparison.json"))["comparison"]["metrics"]["total"]["f1_score"] == 1
+    assert read_json(os.path.join(local_verify_dir, "verification", "ppg_clean", "comparison.json"))["comparison"]["metrics"]["total"]["f1_score"] == 1
+    assert read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_ecg_beat_classification", "comparison.json"))["summary"]["micro_f1_score"] == 1
+    with open(os.path.join(local_verify_dir, "verification_report.html"), "r") as handle:
+        assert "Synsigra Local Verification Report" in handle.read()
+
+    cli_verify_dir = os.path.join(work_dir, "cli_verify")
+    cli_output = run([sys.executable, "-m", "synsigra.cli", "verify", archive_path, detections_dir, cli_verify_dir])
+    assert "status=passed" in cli_output
+    assert read_json(os.path.join(cli_verify_dir, "verification_summary.json"))["success"]
 
     exported_dir = os.path.join(work_dir, "exported_report")
     rpeak_report.write(exported_dir)

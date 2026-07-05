@@ -63,6 +63,18 @@ class ChallengeCase(object):
     def case_summary(self):
         return self.package.read_json("cases/%s/case_summary.json" % self.id)
 
+    def metadata(self):
+        return self.package.read_json("cases/%s/metadata.json" % self.id)
+
+    def ground_truth_metrics(self):
+        return self.package.read_json("cases/%s/ground_truth_metrics.json" % self.id)
+
+    def hrv_metrics(self):
+        return self.package.read_json("cases/%s/hrv_metrics.json" % self.id)
+
+    def warnings(self):
+        return self.package.read_json("cases/%s/warnings.json" % self.id)
+
 
 class ChallengePackage(object):
     def __init__(self, root, manifest, tempdir=None):
