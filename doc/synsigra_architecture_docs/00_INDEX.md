@@ -108,8 +108,10 @@ Implementation increment designs:
   capture/non-capture event truth, and pacing annotation export.
 - `increments/032_ECG_ACQUISITION_LEAD_FAULT_PACK.md` defines deterministic
   ECG acquisition faults and lead-fault waveform transforms.
-- `increments/033_NATIVE_FORMAT_TOOL_CONFORMANCE.md` defines optional native
-  WFDB and EDF/BDF reader conformance tests.
+- `increments/033_NATIVE_FORMAT_TOOL_CONFORMANCE.md` defines native WFDB and
+  EDF/BDF reader conformance tests.
+- `increments/034_VERIFICATION_CI_RUNTIME_POLICY.md` defines the default Linux
+  full verification and manual Windows smoke policy.
 
 Traceability demonstration:
 

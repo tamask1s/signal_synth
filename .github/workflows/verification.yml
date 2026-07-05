@@ -13,16 +13,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ctest:
-    name: ${{ matrix.os }} / C++11
-    runs-on: ${{ matrix.os }}
+  linux-full:
+    name: ubuntu-latest / C++11 full
+    runs-on: ubuntu-latest
     timeout-minutes: 15
-    strategy:
-      fail-fast: false
-      matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
 
     steps:
       - name: Check out source
@@ -35,7 +29,6 @@ jobs:
         run: cmake --build build --config Release --parallel 2
 
       - name: Install WFDB native tools
-        if: runner.os == 'Linux'
         run: |
           curl -fsSL -o /tmp/wfdb-10.7.0.zip https://physionet.org/content/wfdb/get-zip/10.7.0/
           unzip -q /tmp/wfdb-10.7.0.zip -d /tmp/wfdb-10.7.0-src
@@ -52,7 +45,35 @@ jobs:
         if: always()
         uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
-          name: ctest-${{ matrix.os }}-${{ github.sha }}
+          name: ctest-ubuntu-full-${{ github.sha }}
+          path: build/ctest-output.txt
+          if-no-files-found: warn
+          retention-days: 30
+
+  windows-smoke:
+    name: windows-latest / C++11 smoke
+    runs-on: windows-latest
+    timeout-minutes: 10
+    if: github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
+
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DSIGNAL_SYNTH_BUILD_TESTS=ON
+
+      - name: Build
+        run: cmake --build build --config Release --parallel 2
+
+      - name: Run package smoke test
+        run: ctest --test-dir build -C Release -R TEST-BUILD-001 --output-on-failure --output-log build/ctest-output.txt
+
+      - name: Preserve smoke log
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: ctest-windows-smoke-${{ github.sha }}
           path: build/ctest-output.txt
           if-no-files-found: warn
           retention-days: 30

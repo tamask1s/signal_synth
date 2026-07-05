@@ -13,7 +13,8 @@ This file is the short checklist to check before and after every change.
    the issue and architecture record before claiming it is verified.
 4. Every traceable commit must include the full GitHub issue link on the first
    commit-message line, so GitHub commit summaries show a directly clickable
-   link. Use this form:
+   link. The first line must still be a meaningful commit subject; do not use
+   the issue URL as the whole subject. Use this form:
 
    ```text
    type(scope): concise change summary [issue https://github.com/tamask1s/signal_synth/issues/123]
@@ -44,4 +45,5 @@ type(scope): concise change summary [issue https://github.com/tamask1s/signal_sy
 Additional explanatory paragraphs may be added after the first line when they
 help future audit or review. The first-line issue link is mandatory for
 implementation, verification, documentation, synchronization, and follow-up fix
-commits that belong to a traceable work item.
+commits that belong to a traceable work item. A commit whose first line is only
+an issue URL is non-compliant even if GitHub renders it as clickable.

@@ -64,7 +64,8 @@ integration evidence, and unsupported claims.
 
 Use an imperative or descriptive subject. Add the primary issue link on the
 first commit-message line so GitHub commit summaries show a directly clickable
-link. The full URL form is mandatory:
+link. The issue URL must not replace the subject; the first line needs both a
+concise human-readable message and the full URL form:
 
 ```text
 feat(ecg): add deterministic scenario fingerprint [issue https://github.com/tamask1s/signal_synth/issues/123]
@@ -72,7 +73,9 @@ feat(ecg): add deterministic scenario fingerprint [issue https://github.com/tama
 
 Additional issue lines in the body are allowed when a commit genuinely
 implements multiple approved work items. Avoid ambiguous forms such as only
-`#123` in repositories that participate in cross-repository traceability.
+`#123` in repositories that participate in cross-repository traceability. Avoid
+first lines that contain only an issue URL, because they hide the actual change
+summary in GitHub commit lists.
 
 Before pushing, inspect the commit range with `git log --format=fuller` or an
 equivalent command and verify that every traceable commit contains the required
@@ -100,8 +103,10 @@ Stable suite IDs use the form `TEST-<AREA>-<NNN>`. The current suites are:
 | `TEST-CLI-001` | CLI input, output, exit-code and size-limit contract | `teszt/cli_test.cmake` |
 | `TEST-BUILD-001` | Installed CMake package discovery, link and execution | `teszt/package_smoke/` |
 
-`CI-VER-001` is the cross-platform GitHub Actions procedure defined in
-`.github/workflows/verification.yml`.
+`CI-VER-001` is the GitHub Actions procedure defined in
+`.github/workflows/verification.yml`. The default push and pull-request path is
+Linux full verification. Windows is a non-critical manual smoke path triggered
+with `workflow_dispatch`, not a required gate for normal traceable commits.
 
 ## 6. What counts as evidence
 
