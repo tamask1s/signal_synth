@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "catalog_id": "synsigra_verification_packs",
+  "version": "1.0",
+  "product": "Synsigra Testbench",
+  "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
+  "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
+  "packs": [
+    {"pack_id":"r_peak_stress_v1","path":"../packs/r_peak_stress_v1.json","modality":["ECG"],"targets":["r_peak"],"difficulty":["smoke","stress"],"recommended_profile":"stress","scoring_mode":"local","feature_tags":["clean","bradycardia","tachycardia","artifact"]},
+    {"pack_id":"hrv_v1","path":"../packs/hrv_v1.json","modality":["ECG"],"targets":["hrv"],"difficulty":["benchmark"],"recommended_profile":"benchmark","scoring_mode":"local","feature_tags":["sdnn","rmssd","pnn50","sd1_sd2","lf_hf","respiration","ectopy_exclusion","artifact_exclusion"]},
+    {"pack_id":"ecg_beat_classification_v1","path":"../packs/ecg_beat_classification_v1.json","modality":["ECG"],"targets":["ecg_beat_classification"],"difficulty":["regression"],"recommended_profile":"regression","scoring_mode":"local","feature_tags":["normal","pac","pvc","paced","non_capture"]},
+    {"pack_id":"ecg_rhythm_v1","path":"../packs/ecg_rhythm_v1.json","modality":["ECG"],"targets":["r_peak","ecg_beat_classification"],"difficulty":["regression","stress"],"recommended_profile":"stress","scoring_mode":"local","feature_tags":["afib","flutter","svt","psvt","pause","ectopy","paced","transition"]},
+    {"pack_id":"signal_quality_v1","path":"../packs/signal_quality_v1.json","modality":["ECG"],"targets":["signal_quality"],"difficulty":["stress"],"recommended_profile":null,"scoring_mode":"reference_only","feature_tags":["baseline_wander","powerline","dropout","saturation","lead_fault","acquisition_fault"]},
+    {"pack_id":"ecg_morphology_stress_v1","path":"../packs/ecg_morphology_stress_v1.json","modality":["ECG"],"targets":["morphology_assertions","signal_quality"],"difficulty":["stress"],"recommended_profile":null,"scoring_mode":"reference_only","feature_tags":["conduction","st_t","ischemia","hypertrophy","infarction","lead_fault","acquisition_fault"]},
+    {"pack_id":"ppg_alignment_v1","path":"../packs/ppg_alignment_v1.json","modality":["ECG","PPG"],"targets":["ppg_systolic_peak","ecg_ppg_alignment"],"difficulty":["smoke"],"recommended_profile":"smoke","scoring_mode":"mixed","feature_tags":["pulse_transit_delay","ecg_ppg_alignment"]},
+    {"pack_id":"combined_worst_case_v1","path":"../packs/combined_worst_case_v1.json","modality":["ECG","PPG"],"targets":["r_peak","hrv","ppg_systolic_peak","signal_quality"],"difficulty":["stress"],"recommended_profile":"stress","scoring_mode":"mixed","feature_tags":["multimodal","artifact","dropout","timing"]}
+  ]
+}

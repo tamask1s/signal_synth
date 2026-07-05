@@ -90,6 +90,13 @@ endif()
 find_program(SIGNAL_SYNTH_PYTHON_EXECUTABLE NAMES python3 python)
 if(TARGET signal_synth_cli AND SIGNAL_SYNTH_PYTHON_EXECUTABLE)
     add_test(
+        NAME TEST-VERIFICATION-CATALOG-001
+        COMMAND ${SIGNAL_SYNTH_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/verification_catalog_test.py)
+    set_tests_properties(
+        TEST-VERIFICATION-CATALOG-001
+        PROPERTIES
+            ENVIRONMENT "SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..")
+    add_test(
         NAME TEST-PYTHON-SCORING-001
         COMMAND ${SIGNAL_SYNTH_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/python_scoring_test.py)
     set_tests_properties(
