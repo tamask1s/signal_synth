@@ -10,12 +10,18 @@ import shutil
 
 from .challenge import ChallengePackage, load_challenge
 from .detections import DetectionDocument, load_detections
+from .profiles import load_threshold_profile
 
 
 SCORING_VERSION = "synsigra-python-local-v1"
 LIMITATION_TEXT = "Synthetic engineering QA evidence; not diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment."
 BEAT_CLASSES = ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "unscored"]
 SCORED_BEAT_CLASSES = set(["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape"])
+HRV_METRICS = [
+    "mean_rr_seconds", "mean_heart_rate_bpm", "sdnn_seconds", "rmssd_seconds",
+    "pnn50_percent", "sd1_seconds", "sd2_seconds", "sd1_sd2_ratio",
+    "lf_power_seconds2", "hf_power_seconds2", "lf_hf_ratio", "total_power_seconds2",
+]
 
 
 class VerificationError(ValueError):
@@ -40,7 +46,7 @@ class _TruthEvent(object):
         self.in_artifact_interval = bool(in_artifact_interval)
 
 
-def verify_package(challenge, detections_dir, out_dir, cases=None, targets=None, force=False):
+def verify_package(challenge, detections_dir, out_dir, cases=None, targets=None, profile="regression", force=False):
     """Verify user detections against a Synsigra challenge package locally.
 
     This verifier uses only challenge package contents: manifest metadata,
@@ -53,6 +59,7 @@ def verify_package(challenge, detections_dir, out_dir, cases=None, targets=None,
             raise VerificationError("detections directory does not exist: %s" % detections_dir)
         integrity = package.verify_integrity()
         scoring_manifest = package.scoring_manifest()
+        threshold_profile = load_threshold_profile(profile)
         _prepare_output_dir(out_dir, force)
         selected_cases = _normalize_filter(cases)
         selected_targets = _normalize_filter(targets)
@@ -72,7 +79,7 @@ def verify_package(challenge, detections_dir, out_dir, cases=None, targets=None,
                 if not entry.get("supported", False):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
-                if target not in ("r_peak", "ppg_systolic_peak", "ecg_beat_classification"):
+                if target not in ("r_peak", "ppg_systolic_peak", "ecg_beat_classification", "hrv"):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
                 result = _verify_case_target(package, case, case_summary, annotations, entry, detections_dir, out_dir)
@@ -81,7 +88,7 @@ def verify_package(challenge, detections_dir, out_dir, cases=None, targets=None,
         if not results:
             messages.append("no scoreable case-target pairs matched the selected filters")
 
-        summary = _build_verification_summary(package, scoring_manifest, integrity, results, messages)
+        summary = _build_verification_summary(package, scoring_manifest, integrity, results, messages, threshold_profile)
         json_path = os.path.join(out_dir, "verification_summary.json")
         csv_path = os.path.join(out_dir, "verification_summary.csv")
         html_path = os.path.join(out_dir, "verification_report.html")
@@ -103,6 +110,21 @@ def _verify_case_target(package, case, case_summary, annotations, entry, detecti
     if detection_path is None:
         return _error_result(package, case, case_summary, entry, target_dir, "missing_detection", "no detection file found for %s/%s" % (case.id, target))
     try:
+        if target == "hrv":
+            user_output = _load_hrv_user_output(detection_path)
+            report_json = _score_hrv(package, case, case_summary, user_output)
+            report_csv = _hrv_csv(report_json)
+            report_html = _hrv_html(report_json)
+            input_identity = {
+                "path": detection_path,
+                "format": "hrv_json_v1",
+                "algorithm": dict(user_output.get("algorithm", {})),
+                "event_count": len(user_output.get("rr_intervals", [])),
+            }
+            _write_json(os.path.join(target_dir, "comparison.json"), report_json)
+            _write_text(os.path.join(target_dir, "comparison.csv"), report_csv)
+            _write_text(os.path.join(target_dir, "comparison_report.html"), report_html)
+            return _case_result_from_report(case, case_summary, target, relative_out, detection_path, input_identity, report_json)
         detections = load_detections(detection_path, target=target)
         if target == "ecg_beat_classification":
             report_json = _score_beat_classification(package, case, case_summary, annotations, detections, entry)
@@ -115,7 +137,7 @@ def _verify_case_target(package, case, case_summary, annotations, entry, detecti
         _write_json(os.path.join(target_dir, "comparison.json"), report_json)
         _write_text(os.path.join(target_dir, "comparison.csv"), report_csv)
         _write_text(os.path.join(target_dir, "comparison_report.html"), report_html)
-        return _case_result_from_report(case, case_summary, target, relative_out, detection_path, detections, report_json)
+        return _case_result_from_report(case, case_summary, target, relative_out, detection_path, _detection_identity(detections), report_json)
     except Exception as error:
         return _error_result(package, case, case_summary, entry, target_dir, "scoring_error", str(error), detection_path)
 
@@ -168,6 +190,167 @@ def _score_beat_classification(package, case, case_summary, annotations, detecti
         "not_for": "diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
     })
     return result
+
+
+def _load_hrv_user_output(path):
+    with open(path, "r") as handle:
+        document = json.load(handle)
+    if not isinstance(document, dict) or isinstance(document.get("schema_version"), bool) or document.get("schema_version") != 1:
+        raise VerificationError("HRV output must be a schema_version 1 JSON object")
+    allowed = set(["schema_version", "algorithm", "metrics", "rr_intervals"])
+    unknown = sorted(set(document.keys()) - allowed)
+    if unknown:
+        raise VerificationError("unknown HRV output field: %s" % unknown[0])
+    algorithm = document.get("algorithm")
+    if not isinstance(algorithm, dict) or not isinstance(algorithm.get("name"), str) or not algorithm.get("name") or not isinstance(algorithm.get("version"), str):
+        raise VerificationError("HRV output algorithm must contain non-empty name and string version")
+    if set(algorithm.keys()) - set(["name", "version"]):
+        raise VerificationError("HRV output algorithm contains unknown fields")
+    metrics = document.get("metrics")
+    if not isinstance(metrics, dict):
+        raise VerificationError("HRV output metrics must be an object")
+    for name, value in metrics.items():
+        if name not in HRV_METRICS:
+            raise VerificationError("unknown HRV metric: %s" % name)
+        if not _finite_non_negative(value):
+            raise VerificationError("HRV metric %s must be finite and non-negative" % name)
+    intervals = document.get("rr_intervals", [])
+    if not isinstance(intervals, list):
+        raise VerificationError("HRV rr_intervals must be an array")
+    for index, item in enumerate(intervals):
+        if not isinstance(item, dict) or set(item.keys()) - set(["beat_time_seconds", "rr_seconds"]):
+            raise VerificationError("HRV rr_intervals[%s] has invalid fields" % index)
+        if not _finite_non_negative(item.get("beat_time_seconds")) or not _finite_positive(item.get("rr_seconds")):
+            raise VerificationError("HRV rr_intervals[%s] requires non-negative time and positive RR" % index)
+    if not metrics and not intervals:
+        raise VerificationError("HRV output requires at least one metric or RR interval")
+    return document
+
+
+def _score_hrv(package, case, case_summary, user_output):
+    truth = case.hrv_metrics()
+    truth_metrics = {}
+    truth_metrics.update(truth.get("time_domain", {}))
+    truth_metrics.update(truth.get("frequency_domain", {}))
+    metric_scores = []
+    for name, user_value in user_output.get("metrics", {}).items():
+        if name not in truth_metrics:
+            raise VerificationError("challenge has no HRV ground truth metric: %s" % name)
+        ground_truth = float(truth_metrics[name])
+        user_value = float(user_value)
+        absolute_error = abs(user_value - ground_truth)
+        relative_error = 100.0 * absolute_error / ground_truth if ground_truth > 0.0 else (0.0 if absolute_error == 0.0 else 1.7976931348623157e308)
+        absolute_tolerance, relative_tolerance = _hrv_metric_tolerances(name)
+        metric_scores.append({
+            "name": name,
+            "unit": _hrv_metric_unit(name),
+            "ground_truth": ground_truth,
+            "user": user_value,
+            "absolute_error": absolute_error,
+            "relative_error_percent": relative_error,
+            "absolute_tolerance": absolute_tolerance,
+            "relative_tolerance_percent": relative_tolerance,
+            "passed": absolute_error <= absolute_tolerance or relative_error <= relative_tolerance,
+        })
+    passed_metric_count = sum(1 for item in metric_scores if item["passed"])
+    rr_score = _score_hrv_rr(truth.get("tachogram", []), user_output.get("rr_intervals", []))
+    return {
+        "schema_version": 1,
+        "score_type": "hrv_algorithm_qa",
+        "scoring_version": "synsigra-python-local-hrv-v1",
+        "package": _package_identity(package),
+        "scenario": _scenario_identity(case, case_summary, {}),
+        "algorithm": dict(user_output.get("algorithm", {})),
+        "metric_definition_version": truth.get("definition_version", ""),
+        "exclusion_policy": truth.get("exclusion_policy", ""),
+        "spectral_method": truth.get("spectral_method", ""),
+        "limitations": LIMITATION_TEXT,
+        "success": True,
+        "passed_metric_count": passed_metric_count,
+        "metric_pass_fraction": _ratio(passed_metric_count, len(metric_scores)),
+        "metrics": metric_scores,
+        "rr": rr_score,
+    }
+
+
+def _hrv_metric_tolerances(name):
+    absolute = 0.010
+    relative = 10.0
+    if name == "mean_rr_seconds":
+        return 0.010, 2.0
+    if name == "mean_heart_rate_bpm":
+        return 1.0, 2.0
+    if name == "pnn50_percent":
+        return 2.0, relative
+    if name == "sd1_sd2_ratio":
+        return 0.10, relative
+    if name == "lf_hf_ratio":
+        return 0.20, 15.0
+    if name in ("lf_power_seconds2", "hf_power_seconds2"):
+        return 0.0005, 15.0
+    if name == "total_power_seconds2":
+        return 0.001, 15.0
+    return absolute, relative
+
+
+def _hrv_metric_unit(name):
+    if name == "mean_heart_rate_bpm":
+        return "bpm"
+    if name == "pnn50_percent":
+        return "percent"
+    if name in ("sd1_sd2_ratio", "lf_hf_ratio"):
+        return "ratio"
+    if name in ("lf_power_seconds2", "hf_power_seconds2", "total_power_seconds2"):
+        return "s2"
+    return "s"
+
+
+def _score_hrv_rr(truth_intervals, user_intervals):
+    truth = [item for item in truth_intervals if not item.get("excluded", False)]
+    truth_used = [False] * len(truth)
+    user_used = [False] * len(user_intervals)
+    errors = []
+    passed_count = 0
+    while True:
+        best_truth = None
+        best_user = None
+        best_time_error = 1.050
+        for truth_index, truth_item in enumerate(truth):
+            if truth_used[truth_index]:
+                continue
+            for user_index, user_item in enumerate(user_intervals):
+                if user_used[user_index]:
+                    continue
+                time_error = abs(float(user_item["beat_time_seconds"]) - float(truth_item["beat_time_seconds"]))
+                if time_error <= 0.050 and time_error < best_time_error:
+                    best_time_error = time_error
+                    best_truth = truth_index
+                    best_user = user_index
+        if best_truth is None:
+            break
+        truth_used[best_truth] = True
+        user_used[best_user] = True
+        absolute_error = abs(float(user_intervals[best_user]["rr_seconds"]) - float(truth[best_truth]["rr_seconds"]))
+        relative_error = 100.0 * absolute_error / float(truth[best_truth]["rr_seconds"])
+        if absolute_error <= 0.020 or relative_error <= 5.0:
+            passed_count += 1
+        errors.append(absolute_error)
+    return {
+        "evaluated": bool(user_intervals),
+        "ground_truth_count": len(truth) if user_intervals else 0,
+        "user_count": len(user_intervals),
+        "matched_count": len(errors),
+        "missing_count": len(truth) - len(errors) if user_intervals else 0,
+        "extra_count": len(user_intervals) - len(errors),
+        "passed_count": passed_count,
+        "pass_fraction": _ratio(passed_count, len(truth)) if user_intervals else 0.0,
+        "time_tolerance_seconds": 0.050,
+        "absolute_tolerance_seconds": 0.020,
+        "relative_tolerance_percent": 5.0,
+        "mean_absolute_error_seconds": _mean(errors),
+        "rms_error_seconds": _rms(errors),
+        "max_absolute_error_seconds": max(errors) if errors else 0.0,
+    }
 
 
 def _compare_events(target, truth, detections, tolerance_seconds):
@@ -490,24 +673,44 @@ def _safe_relative_path(path):
     return normalized
 
 
-def _case_result_from_report(case, case_summary, target, relative_out, detection_path, detections, report_json):
+def _case_result_from_report(case, case_summary, target, relative_out, detection_path, detection_identity, report_json):
     result = {
         "case_id": case.id,
         "scenario_id": case_summary.get("scenario_id", case.scenario_id),
         "target": target,
-        "status": "passed",
+        "status": "scored",
         "success": True,
         "report_path": relative_out + "/comparison.json",
         "report_directory": relative_out,
-        "detection_input": _detection_identity(detections),
+        "detection_input": detection_identity,
         "detection_input_sha256": _sha256_file(detection_path),
     }
     if target == "ecg_beat_classification":
         result["score_type"] = "classification"
+        result["exclusion_policy"] = "Ground-truth beats labelled unscored are excluded from accuracy, recall, and F1 denominators."
         result["summary"] = dict(report_json.get("summary", {}))
+        result["classes"] = list(report_json.get("classes", []))
+        result["confusion_matrix"] = dict(report_json.get("confusion_matrix", {}))
+    elif target == "hrv":
+        result["score_type"] = "hrv_metrics"
+        result["exclusion_policy"] = report_json.get("exclusion_policy", "")
+        result["summary"] = {
+            "passed_metric_count": report_json.get("passed_metric_count", 0),
+            "metric_count": len(report_json.get("metrics", [])),
+            "metric_pass_fraction": report_json.get("metric_pass_fraction", 0.0),
+        }
+        result["metrics"] = list(report_json.get("metrics", []))
+        result["rr"] = dict(report_json.get("rr", {}))
     else:
         result["score_type"] = "event_detection"
+        result["exclusion_policy"] = "All events are scored in total; clean and artifact bins partition events by target-affecting half-open artifact intervals [start,end)."
         result["metrics"] = dict(report_json.get("comparison", {}).get("metrics", {}))
+        errors = {"total": [], "clean": [], "artifact": []}
+        for match in report_json.get("comparison", {}).get("matches", []):
+            value = abs(float(match["error_seconds"]))
+            errors["total"].append(value)
+            errors["artifact" if match.get("in_artifact_interval", False) else "clean"].append(value)
+        result["_absolute_errors"] = errors
     return result
 
 
@@ -556,22 +759,33 @@ def _error_result(package, case, case_summary, entry, target_dir, status, messag
     }
 
 
-def _build_verification_summary(package, scoring_manifest, integrity, results, messages):
+def _build_verification_summary(package, scoring_manifest, integrity, results, messages, threshold_profile):
     targets = _aggregate_targets(results)
-    success = bool(results) and all(item.get("success", False) for item in results)
+    scoring_success = bool(results) and all(item.get("success", False) for item in results)
+    policy = _evaluate_policy(targets, threshold_profile)
+    success = scoring_success and policy["passed"]
+    public_results = []
+    for result in results:
+        public_result = dict(result)
+        public_result.pop("_absolute_errors", None)
+        public_results.append(public_result)
     return {
         "schema_version": 1,
         "summary_type": "synsigra_local_verification",
         "scoring_version": SCORING_VERSION,
         "status": "passed" if success else "failed",
         "success": success,
+        "scoring_success": scoring_success,
+        "threshold_profile": threshold_profile,
+        "policy": policy,
         "package": _package_identity(package, scoring_manifest),
         "integrity": integrity,
         "case_target_count": len(results),
+        "scored_case_target_count": sum(1 for item in results if item.get("success", False)),
         "passed_case_target_count": sum(1 for item in results if item.get("success", False)),
         "failed_case_target_count": sum(1 for item in results if not item.get("success", False)),
         "targets": targets,
-        "cases": results,
+        "cases": public_results,
         "messages": messages,
         "limitation": LIMITATION_TEXT,
     }
@@ -584,6 +798,8 @@ def _aggregate_targets(results):
         if target not in aggregates:
             aggregates[target] = {"target": target, "case_count": 0, "passed_case_count": 0, "failed_case_count": 0}
         aggregate = aggregates[target]
+        if result.get("exclusion_policy") and "exclusion_policy" not in aggregate:
+            aggregate["exclusion_policy"] = result["exclusion_policy"]
         aggregate["case_count"] += 1
         if result.get("success", False):
             aggregate["passed_case_count"] += 1
@@ -593,6 +809,8 @@ def _aggregate_targets(results):
             _aggregate_event_result(aggregate, result)
         if result.get("score_type") == "classification" and result.get("success", False):
             _aggregate_classification_result(aggregate, result)
+        if result.get("score_type") == "hrv_metrics" and result.get("success", False):
+            _aggregate_hrv_result(aggregate, result)
     ordered = []
     for target in sorted(aggregates.keys()):
         aggregate = aggregates[target]
@@ -604,6 +822,9 @@ def _aggregate_targets(results):
             aggregate["micro_precision"] = _ratio(aggregate["correct_count"], aggregate["scored_prediction_count"])
             aggregate["micro_recall"] = _ratio(aggregate["correct_count"], aggregate["scored_ground_truth_count"])
             aggregate["micro_f1_score"] = _f1(aggregate["micro_precision"], aggregate["micro_recall"])
+            _finalize_classification_aggregate(aggregate)
+        if aggregate.get("score_type") == "hrv_metrics":
+            _finalize_hrv_aggregate(aggregate)
         ordered.append(aggregate)
     return ordered
 
@@ -619,6 +840,7 @@ def _aggregate_event_result(aggregate, result):
         source = metrics.get(name, {})
         for key in ("ground_truth_count", "detection_count", "true_positive_count", "false_positive_count", "false_negative_count"):
             aggregate[name][key] += int(source.get(key, 0))
+        aggregate["event_errors_" + name].extend(result.get("_absolute_errors", {}).get(name, []))
 
 
 def _aggregate_classification_result(aggregate, result):
@@ -628,9 +850,144 @@ def _aggregate_classification_result(aggregate, result):
         aggregate["scored_prediction_count"] = 0
         aggregate["matched_count"] = 0
         aggregate["correct_count"] = 0
+        aggregate["classes"] = dict((name, _empty_class_metrics(name != "unscored")) for name in BEAT_CLASSES)
+        aggregate["confusion_matrix"] = dict((actual, dict((predicted, 0) for predicted in BEAT_CLASSES)) for actual in BEAT_CLASSES)
     summary = result.get("summary", {})
     for key in ("scored_ground_truth_count", "scored_prediction_count", "matched_count", "correct_count"):
         aggregate[key] += int(summary.get(key, 0))
+    for item in result.get("classes", []):
+        name = item.get("class")
+        if name not in aggregate["classes"]:
+            continue
+        for key in ("ground_truth_count", "prediction_count", "true_positive_count", "false_positive_count", "false_negative_count"):
+            aggregate["classes"][name][key] += int(item.get(key, 0))
+    matrix = result.get("confusion_matrix", {})
+    labels = matrix.get("labels", [])
+    for row_index, actual in enumerate(labels):
+        if actual not in aggregate["confusion_matrix"] or row_index >= len(matrix.get("rows", [])):
+            continue
+        for column_index, predicted in enumerate(labels):
+            if predicted in aggregate["confusion_matrix"][actual] and column_index < len(matrix["rows"][row_index]):
+                aggregate["confusion_matrix"][actual][predicted] += int(matrix["rows"][row_index][column_index])
+
+
+def _finalize_classification_aggregate(aggregate):
+    class_rows = []
+    for name in BEAT_CLASSES:
+        metrics = aggregate["classes"][name]
+        if metrics["scored"]:
+            metrics["precision"] = _ratio(metrics["true_positive_count"], metrics["true_positive_count"] + metrics["false_positive_count"])
+            metrics["recall"] = _ratio(metrics["true_positive_count"], metrics["true_positive_count"] + metrics["false_negative_count"])
+            metrics["f1_score"] = _f1(metrics["precision"], metrics["recall"])
+        class_rows.append(_class_row(name, metrics))
+    aggregate["classes"] = class_rows
+    confusion = aggregate["confusion_matrix"]
+    aggregate["confusion_matrix"] = {"labels": list(BEAT_CLASSES), "rows": [[confusion[actual][predicted] for predicted in BEAT_CLASSES] for actual in BEAT_CLASSES]}
+
+
+def _aggregate_hrv_result(aggregate, result):
+    if aggregate.get("score_type") != "hrv_metrics":
+        aggregate["score_type"] = "hrv_metrics"
+        aggregate["evaluated_metric_count"] = 0
+        aggregate["passed_metric_count"] = 0
+        aggregate["metrics"] = {}
+        aggregate["rr"] = {"evaluated_case_count": 0, "ground_truth_count": 0, "user_count": 0, "matched_count": 0, "missing_count": 0, "extra_count": 0, "passed_count": 0}
+    for item in result.get("metrics", []):
+        name = item.get("name", "")
+        row = aggregate["metrics"].setdefault(name, {"name": name, "unit": item.get("unit", ""), "evaluated_count": 0, "passed_count": 0, "_absolute_errors": []})
+        row["evaluated_count"] += 1
+        row["passed_count"] += 1 if item.get("passed", False) else 0
+        row["_absolute_errors"].append(float(item.get("absolute_error", 0.0)))
+        aggregate["evaluated_metric_count"] += 1
+        aggregate["passed_metric_count"] += 1 if item.get("passed", False) else 0
+    rr = result.get("rr", {})
+    if rr.get("evaluated", False):
+        aggregate["rr"]["evaluated_case_count"] += 1
+        for key in ("ground_truth_count", "user_count", "matched_count", "missing_count", "extra_count", "passed_count"):
+            aggregate["rr"][key] += int(rr.get(key, 0))
+
+
+def _finalize_hrv_aggregate(aggregate):
+    aggregate["metric_pass_fraction"] = _ratio(aggregate["passed_metric_count"], aggregate["evaluated_metric_count"])
+    rows = []
+    for name in sorted(aggregate["metrics"].keys()):
+        row = aggregate["metrics"][name]
+        errors = row.pop("_absolute_errors")
+        row["pass_fraction"] = _ratio(row["passed_count"], row["evaluated_count"])
+        row["mean_absolute_error"] = _mean(errors)
+        row["max_absolute_error"] = max(errors) if errors else 0.0
+        rows.append(row)
+    aggregate["metrics"] = rows
+    aggregate["rr"]["pass_fraction"] = _ratio(aggregate["rr"]["passed_count"], aggregate["rr"]["ground_truth_count"])
+
+
+def _evaluate_policy(targets, profile):
+    checks = []
+    target_results = []
+    definitions = profile.get("targets", {})
+    for target in targets:
+        score_type = target.get("score_type", "")
+        definition_name = target["target"] if target["target"] in definitions else score_type
+        if score_type == "classification":
+            definition_name = "ecg_beat_classification"
+        elif score_type == "hrv_metrics":
+            definition_name = "hrv"
+        definition = definitions.get(definition_name, {})
+        target_checks = []
+        if score_type == "event_detection":
+            for section_name, limits in definition.items():
+                metrics = target.get(section_name, {})
+                applicable = int(metrics.get("ground_truth_count", 0)) > 0 or int(metrics.get("detection_count", 0)) > 0
+                target_checks.extend(_threshold_checks(target["target"], section_name, metrics, limits, applicable))
+        elif score_type == "classification":
+            target_checks.extend(_threshold_checks(target["target"], "summary", target, definition.get("summary", {}), target.get("scored_ground_truth_count", 0) > 0))
+            per_class = definition.get("per_class", {})
+            for class_metrics in target.get("classes", []):
+                applicable = class_metrics.get("scored", False) and class_metrics.get("ground_truth_count", 0) > 0
+                target_checks.extend(_threshold_checks(target["target"], "class/%s" % class_metrics.get("class", ""), class_metrics, per_class, applicable))
+        elif score_type == "hrv_metrics":
+            target_checks.extend(_threshold_checks(target["target"], "summary", target, definition.get("summary", {}), target.get("evaluated_metric_count", 0) > 0))
+            target_checks.extend(_threshold_checks(target["target"], "rr", target.get("rr", {}), definition.get("rr", {}), target.get("rr", {}).get("evaluated_case_count", 0) > 0))
+        target_passed = bool(target_checks) and all(item["passed"] for item in target_checks if item["applicable"])
+        target["policy"] = {"profile_id": profile["profile_id"], "passed": target_passed, "checks": target_checks}
+        target_results.append({"target": target["target"], "passed": target_passed, "check_count": len(target_checks)})
+        checks.extend(target_checks)
+    applicable_checks = [item for item in checks if item["applicable"]]
+    passed = bool(target_results) and all(item["passed"] for item in target_results)
+    return {
+        "profile_id": profile["profile_id"],
+        "passed": passed,
+        "target_count": len(target_results),
+        "check_count": len(checks),
+        "applicable_check_count": len(applicable_checks),
+        "failed_check_count": sum(1 for item in applicable_checks if not item["passed"]),
+        "targets": target_results,
+        "checks": checks,
+    }
+
+
+def _threshold_checks(target, section, metrics, limits, applicable):
+    checks = []
+    for metric_name in sorted(limits.keys()):
+        actual_present = metric_name in metrics and isinstance(metrics.get(metric_name), (int, float))
+        actual = float(metrics.get(metric_name, 0.0))
+        for operator in ("min", "max"):
+            if operator not in limits[metric_name]:
+                continue
+            threshold = float(limits[metric_name][operator])
+            check_applicable = applicable and actual_present
+            passed = not check_applicable or (actual >= threshold if operator == "min" else actual <= threshold)
+            checks.append({
+                "target": target,
+                "section": section,
+                "metric": metric_name,
+                "operator": operator,
+                "threshold": threshold,
+                "actual": actual if actual_present else None,
+                "applicable": check_applicable,
+                "passed": passed,
+            })
+    return checks
 
 
 def _event_comparison_csv(report_json):
@@ -673,14 +1030,29 @@ def _beat_classification_csv(report_json):
     return output.getvalue()
 
 
+def _hrv_csv(report_json):
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["row_type", "name", "unit", "ground_truth", "user", "absolute_error", "relative_error_percent", "absolute_tolerance", "relative_tolerance_percent", "passed", "count"])
+    for item in report_json["metrics"]:
+        writer.writerow(["metric", item["name"], item["unit"], item["ground_truth"], item["user"], item["absolute_error"], item["relative_error_percent"], item["absolute_tolerance"], item["relative_tolerance_percent"], int(item["passed"]), ""])
+    rr = report_json["rr"]
+    writer.writerow(["rr", "matched", "count", "", "", "", "", "", "", int(rr["evaluated"]), rr["matched_count"]])
+    writer.writerow(["rr", "missing", "count", "", "", "", "", "", "", "", rr["missing_count"]])
+    writer.writerow(["rr", "extra", "count", "", "", "", "", "", "", "", rr["extra_count"]])
+    writer.writerow(["rr", "mean_absolute_error", "seconds", "", "", rr["mean_absolute_error_seconds"], "", "", "", "", rr["matched_count"]])
+    return output.getvalue()
+
+
 def _summary_csv(summary):
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["case_id", "scenario_id", "target", "status", "score_type", "ground_truth_count", "detection_count", "true_positive_count", "false_positive_count", "false_negative_count", "f1_score", "accuracy", "micro_f1_score", "report_path", "message"])
+    writer.writerow(["case_id", "scenario_id", "target", "status", "score_type", "ground_truth_count", "detection_count", "true_positive_count", "false_positive_count", "false_negative_count", "f1_score", "accuracy", "micro_f1_score", "hrv_metric_pass_fraction", "threshold_profile", "package_policy_passed", "report_path", "message"])
     for item in summary["cases"]:
-        total = item.get("metrics", {}).get("total", {})
+        metric_data = item.get("metrics", {})
+        total = metric_data.get("total", {}) if isinstance(metric_data, dict) else {}
         classification = item.get("summary", {})
-        writer.writerow([item.get("case_id", ""), item.get("scenario_id", ""), item.get("target", ""), item.get("status", ""), item.get("score_type", ""), total.get("ground_truth_count", ""), total.get("detection_count", ""), total.get("true_positive_count", ""), total.get("false_positive_count", ""), total.get("false_negative_count", ""), total.get("f1_score", ""), classification.get("accuracy", ""), classification.get("micro_f1_score", ""), item.get("report_path", ""), item.get("message", "")])
+        writer.writerow([item.get("case_id", ""), item.get("scenario_id", ""), item.get("target", ""), item.get("status", ""), item.get("score_type", ""), total.get("ground_truth_count", ""), total.get("detection_count", ""), total.get("true_positive_count", ""), total.get("false_positive_count", ""), total.get("false_negative_count", ""), total.get("f1_score", ""), classification.get("accuracy", ""), classification.get("micro_f1_score", ""), classification.get("metric_pass_fraction", ""), summary["policy"]["profile_id"], int(summary["policy"]["passed"]), item.get("report_path", ""), item.get("message", "")])
     return output.getvalue()
 
 
@@ -710,12 +1082,29 @@ def _beat_classification_html(report_json):
             _h(LIMITATION_TEXT), summary["accuracy"], summary["micro_f1_score"], summary["correct_count"], summary["scored_ground_truth_count"], report_json["tolerance_seconds"], "".join(class_rows)))
 
 
+def _hrv_html(report_json):
+    metric_rows = []
+    for item in report_json["metrics"]:
+        metric_rows.append("<tr><td>%s</td><td>%.8g</td><td>%.8g</td><td>%.8g</td><td>%s</td></tr>" % (
+            _h(item["name"]), item["ground_truth"], item["user"], item["absolute_error"], "PASS" if item["passed"] else "FAIL"))
+    rr = report_json["rr"]
+    return _html_page(
+        "HRV Algorithm QA Score",
+        "<h1>HRV Algorithm QA Score</h1><p class=\"notice\">%s</p><table><tr><th>Scenario</th><td>%s</td></tr><tr><th>Metric pass fraction</th><td>%.6g</td></tr></table><h2>Metrics</h2><table><tr><th>Metric</th><th>GT</th><th>User</th><th>Abs error</th><th>Result</th></tr>%s</table><h2>RR intervals</h2><table><tr><th>Evaluated</th><th>GT</th><th>User</th><th>Matched</th><th>Missing</th><th>Extra</th><th>Passed</th><th>MAE s</th></tr><tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%.6g</td></tr></table>" % (
+            _h(LIMITATION_TEXT), _h(report_json["scenario"].get("id", "")), report_json["metric_pass_fraction"], "".join(metric_rows),
+            "yes" if rr["evaluated"] else "no", rr["ground_truth_count"], rr["user_count"], rr["matched_count"], rr["missing_count"], rr["extra_count"], rr["passed_count"], rr["mean_absolute_error_seconds"]))
+
+
 def _summary_html(summary):
     rows = []
     for item in summary["cases"]:
-        metric = item.get("summary", {}).get("micro_f1_score", item.get("metrics", {}).get("total", {}).get("f1_score", ""))
+        metric_data = item.get("metrics", {})
+        event_f1 = metric_data.get("total", {}).get("f1_score", "") if isinstance(metric_data, dict) else ""
+        metric = item.get("summary", {}).get("micro_f1_score", item.get("summary", {}).get("metric_pass_fraction", event_f1))
         rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (_h(item.get("case_id", "")), _h(item.get("target", "")), _h(item.get("status", "")), _h(str(metric)), _h(item.get("report_path", ""))))
-    return _html_page("Synsigra Local Verification Report", "<h1>Synsigra Local Verification Report</h1><p class=\"notice\">%s</p><table><tr><th>Package</th><td>%s</td></tr><tr><th>Status</th><td>%s</td></tr><tr><th>Passed case-targets</th><td>%s / %s</td></tr></table><h2>Cases</h2><table><tr><th>Case</th><th>Target</th><th>Status</th><th>Primary score</th><th>Report</th></tr>%s</table>" % (_h(summary["limitation"]), _h(summary["package"].get("package_id", "")), _h(summary["status"]), summary["passed_case_target_count"], summary["case_target_count"], "".join(rows)))
+    failed_checks = [item for item in summary["policy"]["checks"] if item["applicable"] and not item["passed"]]
+    check_rows = ["<tr><td>%s</td><td>%s</td><td>%s</td><td>%.6g</td><td>%s %.6g</td></tr>" % (_h(item["target"]), _h(item["section"]), _h(item["metric"]), item["actual"], _h(item["operator"]), item["threshold"]) for item in failed_checks]
+    return _html_page("Synsigra Local Verification Report", "<h1>Synsigra Local Verification Report</h1><p class=\"notice\">%s</p><table><tr><th>Package</th><td>%s</td></tr><tr><th>Status</th><td>%s</td></tr><tr><th>Threshold profile</th><td>%s</td></tr><tr><th>Successfully scored case-targets</th><td>%s / %s</td></tr><tr><th>Failed policy checks</th><td>%s</td></tr></table><h2>Cases</h2><table><tr><th>Case</th><th>Target</th><th>Status</th><th>Primary score</th><th>Report</th></tr>%s</table><h2>Failed policy checks</h2><table><tr><th>Target</th><th>Section</th><th>Metric</th><th>Actual</th><th>Required</th></tr>%s</table>" % (_h(summary["limitation"]), _h(summary["package"].get("package_id", "")), _h(summary["status"]), _h(summary["policy"]["profile_id"]), summary["scored_case_target_count"], summary["case_target_count"], summary["policy"]["failed_check_count"], "".join(rows), "".join(check_rows)))
 
 
 def _error_html(report):
@@ -792,6 +1181,14 @@ def _f1(recall_or_precision, precision_or_recall):
     return 2.0 * recall_or_precision * precision_or_recall / (recall_or_precision + precision_or_recall) if recall_or_precision + precision_or_recall > 0.0 else 0.0
 
 
+def _mean(values):
+    return sum(values) / float(len(values)) if values else 0.0
+
+
+def _rms(values):
+    return math.sqrt(sum(item * item for item in values) / len(values)) if values else 0.0
+
+
 def _default_tolerance_seconds(target):
     if target == "ppg_systolic_peak":
         return 0.080
@@ -806,6 +1203,10 @@ def _finite_non_negative(value):
     except (TypeError, ValueError):
         return False
     return numeric >= 0.0 and math.isfinite(numeric)
+
+
+def _finite_positive(value):
+    return _finite_non_negative(value) and float(value) > 0.0
 
 
 def _detection_identity(detections):
