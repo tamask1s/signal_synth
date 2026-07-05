@@ -34,6 +34,17 @@ jobs:
       - name: Build
         run: cmake --build build --config Release --parallel 2
 
+      - name: Install WFDB native tools
+        if: runner.os == 'Linux'
+        run: |
+          curl -fsSL -o /tmp/wfdb-10.7.0.zip https://physionet.org/content/wfdb/get-zip/10.7.0/
+          unzip -q /tmp/wfdb-10.7.0.zip -d /tmp/wfdb-10.7.0-src
+          cd /tmp/wfdb-10.7.0-src/wfdb-software-package-10.7.0
+          ./configure --prefix=/tmp/wfdb-10.7.0-install
+          make install
+          echo "/tmp/wfdb-10.7.0-install/bin" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=/tmp/wfdb-10.7.0-install/lib:${LD_LIBRARY_PATH}" >> "$GITHUB_ENV"
+
       - name: Run verification tests
         run: ctest --test-dir build -C Release --output-on-failure --output-log build/ctest-output.txt
 

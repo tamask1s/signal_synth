@@ -97,7 +97,7 @@ The authoritative implementation/result details remain in the linked issues.
 | `TEST-PYTHON-SCORING-001` | `teszt/python_scoring_test.py` | Python challenge directory/archive loading, waveform access, CSV/JSON detection loading, R-peak/PPG scoring through CLI, and report artifact handling |
 | `TEST-WFDB-EXPORT-001` | `teszt/ecg_wfdb_export_test.cpp` | WFDB header, binary signal scaling, PPG channel, R-peak annotation EOF, sidecar metadata, and transactional failure behavior |
 | `TEST-EDF-BDF-EXPORT-001` | `teszt/ecg_edf_bdf_export_test.cpp` | EDF+/BDF+ headers, binary signal scaling, PPG channel, native annotation signal labels, sidecar metadata, and transactional failure behavior |
-| `TEST-WFDB-NATIVE-001` | `teszt/wfdb_native_conformance.cmake` | Optional `rdsamp`/`rdann` conformance over generated ECG-only and ECG+PPG WFDB records |
+| `TEST-WFDB-NATIVE-001` | `teszt/wfdb_native_conformance.cmake` | Native `rdsamp`/`rdann` conformance over generated ECG-only and ECG+PPG WFDB records; Linux CI provisions WFDB tools and tool-less environments use a documented skip |
 | `TEST-EDF-BDF-NATIVE-001` | `teszt/edf_bdf_native_conformance.py` | Optional `pyedflib` reader conformance over generated ECG-only and ECG+PPG EDF+/BDF+ records |
 | `TEST-HRV-METRICS-001` | `teszt/hrv_metrics_test.cpp` | HRV tachogram construction, exclusion flags, SDNN/RMSSD/pNN50/SD1/SD2, deterministic LF/HF spectral metrics, and artifact-overlap handling |
 | `TEST-HRV-SCORING-001` | `teszt/hrv_scoring_test.cpp` | Strict HRV user-output parsing, metric tolerance scoring, accepted-RR matching, report contracts, and rejection behavior |

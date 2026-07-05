@@ -2,9 +2,9 @@
 
 **Document ID:** SYN-ARCH-INC-033
 
-**Version:** 1.0
+**Version:** 1.1
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Export / Algorithm QA
 
@@ -14,9 +14,9 @@
 
 **Implementation issues:** [signal_synth#55](https://github.com/tamask1s/signal_synth/issues/55), [signal_synth#56](https://github.com/tamask1s/signal_synth/issues/56)
 
-**Implementation commit:** `ce23701`
+**Implementation commit:** `ce23701`, `9b4edfe`
 
-**CI verification:** GitHub Actions run `28719275239` passed on Linux and Windows
+**CI verification:** GitHub Actions run `28719357494` passed on Linux and Windows; WFDB Linux native-tool CI pending for the next run
 
 ## 1. Decision
 
@@ -88,10 +88,21 @@ Verified in CI on 2026-07-04:
 - `TEST-WFDB-NATIVE-001` remains a documented skip when `rdsamp`/`rdann` are
   absent.
 
-Pending before `Verified`:
+Verified locally with native WFDB tools on 2026-07-05:
 
-- #55 remains externally tool-dependent unless a CI image or local job provides
-  `rdsamp`/`rdann`.
+- built the official PhysioNet WFDB Software Package 10.7.0 from source into
+  `/tmp/wfdb-10.7.0-install`;
+- confirmed `rdsamp` and `rdann` are executable;
+- `env PATH=/tmp/wfdb-10.7.0-install/bin:... LD_LIBRARY_PATH=/tmp/wfdb-10.7.0-install/lib ctest -R TEST-WFDB-NATIVE-001 --output-on-failure`: passed;
+- `ctest --output-on-failure` in `build-release`: 31/31 passed.
+
+Workflow hardening on 2026-07-05:
+
+- Ubuntu CI installs the official WFDB 10.7.0 tools before running CTest, so
+  `TEST-WFDB-NATIVE-001` executes against `rdsamp` and `rdann` instead of
+  silently relying on the documented skip path;
+- Windows CI keeps the documented skip behavior because native WFDB tool
+  provisioning is not yet part of the Windows verification environment.
 
 ## 4. Writer Correction
 
@@ -110,3 +121,4 @@ now uses:
 | 0.1 | 2026-07-04 | Accepted native format conformance design |
 | 0.9 | 2026-07-04 | Added optional native tests and fixed EDF/BDF native-reader compatibility |
 | 1.0 | 2026-07-04 | Recorded CI evidence; EDF/BDF native conformance is verified and WFDB external-reader execution remains pending |
+| 1.1 | 2026-07-05 | Verified WFDB exports with native `rdsamp`/`rdann` and added Linux CI WFDB tool provisioning |

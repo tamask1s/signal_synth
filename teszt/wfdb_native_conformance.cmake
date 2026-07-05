@@ -9,6 +9,8 @@ if(NOT SIGNAL_SYNTH_RDSAMP_EXECUTABLE OR NOT SIGNAL_SYNTH_RDANN_EXECUTABLE)
     return()
 endif()
 
+file(MAKE_DIRECTORY "${SIGNAL_SYNTH_WFDB_NATIVE_WORK_DIR}")
+
 function(signal_synth_wfdb_case case_id scenario_path)
     set(case_dir "${SIGNAL_SYNTH_WFDB_NATIVE_WORK_DIR}/${case_id}")
     file(REMOVE_RECURSE "${case_dir}")
@@ -22,7 +24,7 @@ function(signal_synth_wfdb_case case_id scenario_path)
     endif()
 
     execute_process(
-        COMMAND "${SIGNAL_SYNTH_RDSAMP_EXECUTABLE}" -r synsigra -n 8
+        COMMAND "${SIGNAL_SYNTH_RDSAMP_EXECUTABLE}" -r synsigra
         WORKING_DIRECTORY "${case_dir}"
         RESULT_VARIABLE rdsamp_result
         OUTPUT_VARIABLE rdsamp_output
