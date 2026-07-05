@@ -99,6 +99,16 @@ Validate and fingerprint a portable scenario document:
 /tmp/signal_synth-build/signal-synth render examples/scenarios/ecg_clean.json --out /tmp/ecg_clean_export
 ```
 
+Discover the SaaS-safe form contract, scenario templates, and pack estimates:
+
+```sh
+/tmp/signal_synth-build/signal-synth authoring schema
+/tmp/signal_synth-build/signal-synth authoring templates
+/tmp/signal_synth-build/signal-synth pack analyze examples/packs/ecg_rhythm_v1.json
+```
+
+See `SCENARIO_AUTHORING.md` for the JSON and C++ integration contract.
+
 Use `-DSIGNAL_SYNTH_BUILD_CLI=OFF` for a library-only build.
 
 The render command creates deterministic scenario, metadata, 12-lead CSV,

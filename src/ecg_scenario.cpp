@@ -2347,6 +2347,11 @@ namespace signal_synth
         return 0;
     }
 
+    bool ecg_condition_supports_variable_severity(ecg_condition_code code)
+    {
+        return supports_variable_severity(code);
+    }
+
     ecg_qa_scenario::ecg_qa_scenario()
         : implementation_(new implementation)
     {

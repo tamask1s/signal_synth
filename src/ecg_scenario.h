@@ -116,6 +116,7 @@ namespace signal_synth
     unsigned int ecg_scenario_engine_version();
     const ecg_condition_info* find_ecg_condition(ecg_condition_code code);
     const ecg_condition_info* find_ecg_condition(const char* scp_code);
+    bool ecg_condition_supports_variable_severity(ecg_condition_code code);
 
     enum ecg_scenario_fidelity_policy
     {

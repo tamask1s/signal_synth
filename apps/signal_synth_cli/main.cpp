@@ -7,6 +7,7 @@
 #include "ecg_beat_classification.h"
 #include "detection_io.h"
 #include "hrv_scoring.h"
+#include "scenario_authoring.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -73,9 +74,11 @@ namespace
                   << "       signal-synth compare <rpeaks|ppg-peaks|beat-classes> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
                   << "       signal-synth pack validate <pack.json>\n"
+                  << "       signal-synth pack analyze <pack.json>\n"
                   << "       signal-synth pack render <pack.json> --out <new-directory>\n"
                   << "       signal-synth pack challenge <pack.json> --out <new-directory>\n"
-                  << "       signal-synth pack score <pack.json> <detections-directory> --out <new-directory>\n";
+                  << "       signal-synth pack score <pack.json> <detections-directory> --out <new-directory>\n"
+                  << "       signal-synth authoring <schema|templates>\n";
     }
 
     void print_errors(const signal_synth::ecg_scenario_json_result& result)
@@ -791,6 +794,25 @@ int main(int argc, char** argv)
         return 2;
     }
     const std::string command(argv[1]);
+    if (command == "authoring")
+    {
+        if (argc != 3)
+        {
+            print_usage();
+            return 2;
+        }
+        const std::string action(argv[2]);
+        if (action == "schema")
+            std::cout << signal_synth::scenario_authoring_metadata_json() << '\n';
+        else if (action == "templates")
+            std::cout << signal_synth::scenario_template_catalog_json() << '\n';
+        else
+        {
+            print_usage();
+            return 2;
+        }
+        return 0;
+    }
     if (command == "hrv")
     {
         if (argc != 7 || std::string(argv[2]) != "score" || std::string(argv[5]) != "--out")
@@ -1052,7 +1074,8 @@ int main(int argc, char** argv)
         const bool pack_render = pack_action == "render";
         const bool pack_challenge = pack_action == "challenge";
         const bool pack_score = pack_action == "score";
-        if (((pack_render || pack_challenge) && (argc != 6 || std::string(argv[4]) != "--out")) || (pack_score && (argc != 7 || std::string(argv[5]) != "--out")) || (!pack_render && !pack_challenge && !pack_score && (argc != 4 || pack_action != "validate")))
+        const bool pack_analyze = pack_action == "analyze";
+        if (((pack_render || pack_challenge) && (argc != 6 || std::string(argv[4]) != "--out")) || (pack_score && (argc != 7 || std::string(argv[5]) != "--out")) || (!pack_render && !pack_challenge && !pack_score && !pack_analyze && (argc != 4 || pack_action != "validate")) || (pack_analyze && argc != 4))
         {
             print_usage();
             return 2;
@@ -1071,6 +1094,33 @@ int main(int argc, char** argv)
             {
                 print_pack_errors(pack_result);
                 return 4;
+            }
+            if (pack_analyze)
+            {
+                const std::string base_directory = std::string(argv[3]) == "-" ? "." : directory_name(argv[3]);
+                std::vector<signal_synth::ecg_scenario_document> documents;
+                for (std::size_t i = 0; i < manifest.scenarios.size(); ++i)
+                {
+                    const std::string scenario_path = join_path(base_directory, manifest.scenarios[i].path);
+                    std::string scenario_json;
+                    if (!read_input(scenario_path, scenario_json))
+                    {
+                        std::cerr << "error=INPUT_READ_FAILED path=" << scenario_path << " message=unable to read pack scenario\n";
+                        return 3;
+                    }
+                    signal_synth::ecg_scenario_document document;
+                    signal_synth::ecg_scenario_json_result scenario_result;
+                    if (!signal_synth::parse_ecg_scenario_json(scenario_json, document, scenario_result))
+                    {
+                        print_errors(scenario_result);
+                        return 4;
+                    }
+                    documents.push_back(document);
+                }
+                signal_synth::scenario_pack_analysis analysis;
+                signal_synth::analyze_scenario_pack(manifest, documents, analysis);
+                std::cout << signal_synth::scenario_pack_analysis_json(analysis) << '\n';
+                return analysis.success ? 0 : 4;
             }
             if (!pack_render && !pack_challenge)
             {

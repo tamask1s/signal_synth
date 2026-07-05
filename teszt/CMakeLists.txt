@@ -53,6 +53,7 @@ signal_synth_add_test(ecg_compare_test ecg_compare_test.cpp TEST-COMPARE-001)
 signal_synth_add_test(detection_io_test detection_io_test.cpp TEST-DETECTION-IO-001)
 signal_synth_add_test(synsigra_api_test synsigra_api_test.cpp TEST-FACADE-001)
 signal_synth_add_test(challenge_package_test challenge_package_test.cpp TEST-CHALLENGE-PACKAGE-001)
+signal_synth_add_test(scenario_authoring_test scenario_authoring_test.cpp TEST-AUTHORING-001)
 
 add_test(
     NAME TEST-BUILD-001
@@ -89,6 +90,13 @@ endif()
 
 find_program(SIGNAL_SYNTH_PYTHON_EXECUTABLE NAMES python3 python)
 if(TARGET signal_synth_cli AND SIGNAL_SYNTH_PYTHON_EXECUTABLE)
+    add_test(
+        NAME TEST-AUTHORING-CLI-001
+        COMMAND ${SIGNAL_SYNTH_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/authoring_cli_test.py)
+    set_tests_properties(
+        TEST-AUTHORING-CLI-001
+        PROPERTIES
+            ENVIRONMENT "SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..")
     add_test(
         NAME TEST-VERIFICATION-CATALOG-001
         COMMAND ${SIGNAL_SYNTH_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/verification_catalog_test.py)
