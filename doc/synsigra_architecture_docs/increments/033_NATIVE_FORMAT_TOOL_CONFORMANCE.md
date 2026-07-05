@@ -14,9 +14,9 @@
 
 **Implementation issues:** [signal_synth#55](https://github.com/tamask1s/signal_synth/issues/55), [signal_synth#56](https://github.com/tamask1s/signal_synth/issues/56)
 
-**Implementation commit:** `ce23701`, `9b4edfe`
+**Implementation commit:** `ce23701`, `9b4edfe`, `038da94`
 
-**CI verification:** GitHub Actions run `28719357494` passed on Linux and Windows; WFDB Linux native-tool CI pending for the next run
+**CI verification:** GitHub Actions run `28729144337` passed on Linux and Windows; Ubuntu installed WFDB 10.7.0 and ran the native `rdsamp`/`rdann` conformance test
 
 ## 1. Decision
 
@@ -103,6 +103,7 @@ Workflow hardening on 2026-07-05:
   silently relying on the documented skip path;
 - Windows CI keeps the documented skip behavior because native WFDB tool
   provisioning is not yet part of the Windows verification environment.
+- GitHub Actions run `28729144337`: passed on Ubuntu and Windows.
 
 ## 4. Writer Correction
 
