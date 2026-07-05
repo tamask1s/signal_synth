@@ -13,7 +13,9 @@
 #include <cstdlib>
 #include <cstdio>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <limits>
 #include <locale>
 #include <new>
 #include <sstream>
@@ -345,13 +347,271 @@ namespace
         std::string scenario_id;
         std::string document_fingerprint;
         std::string render_identity;
+        std::vector<std::string> targets;
+        unsigned int sample_rate_hz;
         unsigned int sample_count;
+        double duration_seconds;
+        unsigned int channel_count;
         unsigned int beat_count;
         unsigned int artifact_count;
         unsigned int ppg_pulse_count;
         double mean_heart_rate_bpm;
         double total_artifact_seconds;
     };
+
+    void add_unique_string(std::vector<std::string>& values, const std::string& value)
+    {
+        if (std::find(values.begin(), values.end(), value) == values.end())
+            values.push_back(value);
+    }
+
+    std::vector<std::string> effective_pack_targets(const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_scenario& scenario)
+    {
+        if (!scenario.targets.empty())
+            return scenario.targets;
+        return manifest.targets;
+    }
+
+    void write_json_string_array(std::ostringstream& output, const std::vector<std::string>& values)
+    {
+        output << '[';
+        for (std::size_t i = 0; i < values.size(); ++i)
+            output << (i ? "," : "") << json_text(values[i]);
+        output << ']';
+    }
+
+    bool scoring_command_for_target(const std::string& target, std::string& score_type, std::string& command_name, bool& hrv);
+
+    std::string detection_stem_for_target(const std::string& case_id, const std::vector<std::string>& targets, const std::string& target)
+    {
+        unsigned int supported_count = 0;
+        for (std::size_t i = 0; i < targets.size(); ++i)
+        {
+            std::string score_type;
+            std::string command_name;
+            bool hrv = false;
+            if (scoring_command_for_target(targets[i], score_type, command_name, hrv))
+                ++supported_count;
+        }
+        return supported_count <= 1u ? case_id : case_id + "_" + target;
+    }
+
+    bool scoring_command_for_target(const std::string& target, std::string& score_type, std::string& command_name, bool& hrv)
+    {
+        hrv = false;
+        if (target == "hrv")
+        {
+            score_type = "hrv_metrics";
+            command_name = "hrv score";
+            hrv = true;
+            return true;
+        }
+        signal_synth::ecg_compare_target compare_target;
+        if (!signal_synth::detection_compare_target_from_name(target, compare_target))
+            return false;
+        score_type = "event_detection";
+        if (compare_target == signal_synth::ecg_compare_r_peak)
+            command_name = "compare rpeaks";
+        else if (compare_target == signal_synth::ecg_compare_ppg_systolic_peak)
+            command_name = "compare ppg-peaks";
+        else
+        {
+            score_type = "classification";
+            command_name = "compare beat-classes";
+        }
+        return true;
+    }
+
+    void write_detection_files(std::ostringstream& output, const std::string& stem, bool hrv)
+    {
+        output << '[';
+        if (hrv)
+        {
+            output << "{\"format\":\"hrv_json_v1\",\"path\":" << json_text("hrv_outputs/" + stem + ".json") << "}";
+        }
+        else
+        {
+            output << "{\"format\":\"detection_json_v1\",\"path\":" << json_text("detections/" + stem + ".json") << "},"
+                   << "{\"format\":\"detection_csv_v2\",\"path\":" << json_text("detections/" + stem + ".csv") << "}";
+        }
+        output << ']';
+    }
+
+    void write_scoring_entries(std::ostringstream& output, const std::string& case_id, const std::string& scenario_path, const std::vector<std::string>& targets)
+    {
+        output << '[';
+        for (std::size_t i = 0; i < targets.size(); ++i)
+        {
+            const std::string stem = detection_stem_for_target(case_id, targets, targets[i]);
+            std::string score_type;
+            std::string command_name;
+            bool hrv = false;
+            const bool supported = scoring_command_for_target(targets[i], score_type, command_name, hrv);
+            output << (i ? "," : "") << "{\"target\":" << json_text(targets[i])
+                   << ",\"supported\":" << (supported ? "true" : "false");
+            if (supported)
+            {
+                output << ",\"score_type\":" << json_text(score_type);
+                if (hrv)
+                {
+                    output << ",\"accepted_user_output_formats\":[\"hrv_json_v1\"]";
+                    output << ",\"score_command\":" << json_text("signal-synth hrv score " + scenario_path + " hrv_outputs/" + stem + ".json --out verification/" + stem);
+                }
+                else
+                {
+                    signal_synth::ecg_compare_target compare_target;
+                    signal_synth::detection_compare_target_from_name(targets[i], compare_target);
+                    output << ",\"accepted_detection_formats\":[\"detection_json_v1\",\"detection_csv_v2\"]"
+                           << ",\"default_tolerance_seconds\":" << signal_synth::ecg_compare_default_tolerance_seconds(compare_target)
+                           << ",\"score_command\":" << json_text("signal-synth " + command_name + " " + scenario_path + " detections/" + stem + ".json --out verification/" + stem);
+                }
+                output << ",\"recommended_files\":";
+                write_detection_files(output, stem, hrv);
+            }
+            else
+            {
+                output << ",\"score_type\":\"generated_reference_only\",\"note\":\"No local scoring command is defined for this target yet.\"";
+            }
+            output << '}';
+        }
+        output << ']';
+    }
+
+    void write_case_channels(std::ostringstream& output, const signal_synth::ecg_render_bundle& render)
+    {
+        output << '[';
+        for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
+            output << (lead ? "," : "") << "{\"name\":" << json_text(render.record.lead_name(lead)) << ",\"unit\":\"mV\"}";
+        if (render.ppg.sample_count())
+            output << (render.record.lead_count() ? "," : "") << "{\"name\":\"ppg_green\",\"unit\":\"a.u.\"}";
+        output << ']';
+    }
+
+    void write_artifact_channel_array(std::ostringstream& output, const signal_synth::ecg_render_bundle& render, const signal_synth::signal_quality_artifact_interval& artifact)
+    {
+        output << '[';
+        bool first = true;
+        for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
+        {
+            if (artifact.ecg_leads[lead])
+            {
+                output << (first ? "" : ",") << json_text(render.record.lead_name(lead));
+                first = false;
+            }
+        }
+        if (artifact.ppg)
+            output << (first ? "" : ",") << "\"ppg_green\"";
+        output << ']';
+    }
+
+    std::string case_summary_json(const signal_synth::ecg_pack_scenario& pack_scenario, const signal_synth::ecg_scenario_document& document, const signal_synth::ecg_render_bundle& render, const std::vector<std::string>& targets)
+    {
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << std::setprecision(std::numeric_limits<double>::max_digits10)
+               << "{\"schema_version\":1,\"case_id\":" << json_text(pack_scenario.id)
+               << ",\"scenario_id\":" << json_text(document.scenario_id)
+               << ",\"scenario_path\":" << json_text("cases/" + pack_scenario.id + "/scenario.json")
+               << ",\"document_fingerprint\":" << json_text(render.document_identity.document_fingerprint)
+               << ",\"render_identity\":" << json_text(render.render_identity)
+               << ",\"targets\":";
+        write_json_string_array(output, targets);
+        output << ",\"render\":{\"sample_rate_hz\":" << render.record.sampling_rate_hz()
+               << ",\"sample_count\":" << render.record.sample_count()
+               << ",\"duration_seconds\":" << document.duration_seconds
+               << ",\"channel_count\":" << render.record.lead_count() + (render.ppg.sample_count() ? 1u : 0u)
+               << ",\"channels\":";
+        write_case_channels(output, render);
+        output << "},\"ground_truth\":{\"beat_count\":" << render.metrics.beat_count
+               << ",\"atrial_event_count\":" << render.metrics.atrial_event_count
+               << ",\"ppg_pulse_count\":" << render.metrics.ppg_pulse_count
+               << ",\"artifact_count\":" << render.metrics.artifact_count
+               << ",\"total_artifact_seconds\":" << render.metrics.total_artifact_seconds
+               << ",\"mean_heart_rate_bpm\":" << render.metrics.mean_heart_rate_bpm
+               << ",\"hrv_accepted_interval_count\":" << render.metrics.hrv_accepted_interval_count
+               << ",\"hrv_excluded_interval_count\":" << render.metrics.hrv_excluded_interval_count << "}"
+               << ",\"artifact_intervals\":[";
+        for (std::size_t i = 0; i < render.signal_quality.artifacts.size(); ++i)
+        {
+            const signal_synth::signal_quality_artifact_interval& artifact = render.signal_quality.artifacts[i];
+            output << (i ? "," : "") << "{\"type\":" << json_text(signal_synth::signal_quality_artifact_type_name(artifact.type))
+                   << ",\"start_seconds\":" << artifact.start_seconds
+                   << ",\"end_seconds\":" << artifact.end_seconds
+                   << ",\"severity\":" << artifact.severity
+                   << ",\"channels\":";
+            write_artifact_channel_array(output, render, artifact);
+            output << '}';
+        }
+        output << "],\"scoring\":";
+        write_scoring_entries(output, pack_scenario.id, "cases/" + pack_scenario.id + "/scenario.json", targets);
+        output << '}';
+        return output.str();
+    }
+
+    std::string scoring_manifest_json(const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_json_result& identity, const std::vector<pack_render_row>& rows)
+    {
+        std::vector<std::string> targets;
+        for (std::size_t i = 0; i < rows.size(); ++i)
+            for (std::size_t target = 0; target < rows[i].targets.size(); ++target)
+                add_unique_string(targets, rows[i].targets[target]);
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << std::setprecision(std::numeric_limits<double>::max_digits10)
+               << "{\"schema_version\":1,\"package_id\":" << json_text(manifest.pack_id)
+               << ",\"pack_version\":" << json_text(manifest.version)
+               << ",\"pack_fingerprint\":" << json_text(identity.pack_fingerprint)
+               << ",\"generator_version\":" << json_text(signal_synth::signal_synth_generator_version())
+               << ",\"detection_directory\":\"detections\""
+               << ",\"verification_output_directory\":\"verification\""
+               << ",\"targets\":[";
+        for (std::size_t i = 0; i < targets.size(); ++i)
+        {
+            std::string score_type;
+            std::string command_name;
+            bool hrv = false;
+            const bool supported = scoring_command_for_target(targets[i], score_type, command_name, hrv);
+            output << (i ? "," : "") << "{\"target\":" << json_text(targets[i])
+                   << ",\"supported\":" << (supported ? "true" : "false");
+            if (supported)
+            {
+                output << ",\"score_type\":" << json_text(score_type);
+                if (hrv)
+                    output << ",\"accepted_user_output_formats\":[\"hrv_json_v1\"]";
+                else
+                {
+                    signal_synth::ecg_compare_target compare_target;
+                    signal_synth::detection_compare_target_from_name(targets[i], compare_target);
+                    output << ",\"accepted_detection_formats\":[\"detection_json_v1\",\"detection_csv_v2\"]"
+                           << ",\"default_tolerance_seconds\":" << signal_synth::ecg_compare_default_tolerance_seconds(compare_target);
+                }
+            }
+            output << ",\"cases\":[";
+            bool first_case = true;
+            for (std::size_t row = 0; row < rows.size(); ++row)
+            {
+                if (std::find(rows[row].targets.begin(), rows[row].targets.end(), targets[i]) == rows[row].targets.end())
+                    continue;
+                output << (first_case ? "" : ",") << json_text(rows[row].id);
+                first_case = false;
+            }
+            output << "]}";
+        }
+        output << "],\"cases\":[";
+        for (std::size_t i = 0; i < rows.size(); ++i)
+        {
+            output << (i ? "," : "") << "{\"case_id\":" << json_text(rows[i].id)
+                   << ",\"scenario_id\":" << json_text(rows[i].scenario_id)
+                   << ",\"scenario_path\":" << json_text("cases/" + rows[i].id + "/scenario.json")
+                   << ",\"case_summary_path\":" << json_text("cases/" + rows[i].id + "/case_summary.json")
+                   << ",\"targets\":";
+            write_json_string_array(output, rows[i].targets);
+            output << ",\"scoring\":";
+            write_scoring_entries(output, rows[i].id, "cases/" + rows[i].id + "/scenario.json", rows[i].targets);
+            output << '}';
+        }
+        output << "],\"limitations\":{\"not_for\":\"diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment\"}}";
+        return output.str();
+    }
 
     std::string csv_cell(const std::string& value)
     {
@@ -986,6 +1246,7 @@ int main(int argc, char** argv)
                 }
                 else
                 {
+                    const std::vector<std::string> targets = effective_pack_targets(manifest, pack_scenario);
                     signal_synth::challenge_package_case_input challenge_case;
                     challenge_case.id = pack_scenario.id;
                     challenge_case.scenario_id = document.scenario_id;
@@ -997,6 +1258,7 @@ int main(int argc, char** argv)
                         const signal_synth::ecg_text_artifact& artifact = export_bundle.artifacts[artifact_index];
                         challenge_case.files.push_back(make_challenge_file("cases/" + pack_scenario.id + "/" + artifact.name, signal_synth::challenge_file_role_for_export_artifact(artifact.name), artifact.media_type, artifact.content));
                     }
+                    challenge_case.files.push_back(make_challenge_file("cases/" + pack_scenario.id + "/case_summary.json", signal_synth::challenge_file_metadata_json, "application/json", case_summary_json(pack_scenario, document, render, targets)));
                     challenge_cases.push_back(challenge_case);
                 }
                 pack_render_row row;
@@ -1005,7 +1267,11 @@ int main(int argc, char** argv)
                 row.scenario_id = document.scenario_id;
                 row.document_fingerprint = scenario_result.document_fingerprint;
                 row.render_identity = render.render_identity;
+                row.targets = effective_pack_targets(manifest, pack_scenario);
+                row.sample_rate_hz = render.record.sampling_rate_hz();
                 row.sample_count = document.sample_count();
+                row.duration_seconds = document.duration_seconds;
+                row.channel_count = render.record.lead_count() + (render.ppg.sample_count() ? 1u : 0u);
                 row.beat_count = render.metrics.beat_count;
                 row.artifact_count = render.metrics.artifact_count;
                 row.ppg_pulse_count = render.metrics.ppg_pulse_count;
@@ -1016,6 +1282,7 @@ int main(int argc, char** argv)
             const std::string summary_json = pack_summary_json(manifest, pack_result, rows);
             const std::string summary_csv = pack_summary_csv(rows);
             const std::string index_html = pack_index_html(manifest, pack_result, rows);
+            const std::string scoring_json = scoring_manifest_json(manifest, pack_result, rows);
             if (pack_challenge)
             {
                 signal_synth::challenge_package_build_options options;
@@ -1029,6 +1296,7 @@ int main(int argc, char** argv)
                 options.package_files.push_back(make_challenge_file("summary.json", signal_synth::challenge_file_metadata_json, "application/json", summary_json));
                 options.package_files.push_back(make_challenge_file("summary.csv", signal_synth::challenge_file_other, "text/csv", summary_csv));
                 options.package_files.push_back(make_challenge_file("index.html", signal_synth::challenge_file_readme, "text/html", index_html));
+                options.package_files.push_back(make_challenge_file("scoring_manifest.json", signal_synth::challenge_file_metadata_json, "application/json", scoring_json));
                 signal_synth::challenge_package_build_result challenge_result;
                 if (!signal_synth::build_challenge_package_manifest(options, challenge_cases, challenge_result))
                 {

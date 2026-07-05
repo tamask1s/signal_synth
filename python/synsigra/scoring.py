@@ -57,6 +57,7 @@ def compare_beat_classes(case, detections, out_dir=None, cli_path=None, toleranc
 
 
 def score_hrv(case, user_output, out_dir=None, cli_path=None):
+    case.package.ensure_integrity_verified()
     tempdir = None
     if out_dir is None or isinstance(user_output, dict):
         tempdir = _TemporaryDirectory()
@@ -103,6 +104,7 @@ def score_pack(pack_json, detections_dir, out_dir=None, cli_path=None):
 def _compare(target, case, detections, out_dir, cli_path, tolerance_ms):
     if not isinstance(detections, DetectionDocument):
         raise TypeError("detections must be a DetectionDocument")
+    case.package.ensure_integrity_verified()
     tempdir = None
     if out_dir is None:
         tempdir = _TemporaryDirectory()

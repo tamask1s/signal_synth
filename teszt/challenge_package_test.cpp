@@ -91,7 +91,7 @@ int main()
     ok &= check(signal_synth::challenge_file_role_from_name("waveform_csv", parsed.files[0].role) && parsed.files[0].role == signal_synth::challenge_file_waveform_csv, "role_parse");
     ok &= check(std::string(signal_synth::challenge_file_role_name(signal_synth::challenge_file_annotations_json)) == "annotations_json", "role_name");
     ok &= check(signal_synth::challenge_package_content_sha256("abc") == "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", "content_sha256");
-    ok &= check(signal_synth::challenge_file_role_for_export_artifact("synsigra.hea") == signal_synth::challenge_file_wfdb_header && signal_synth::challenge_file_role_for_export_artifact("synsigra.edf") == signal_synth::challenge_file_edf, "artifact_role_mapping");
+    ok &= check(signal_synth::challenge_file_role_for_export_artifact("synsigra.hea") == signal_synth::challenge_file_wfdb_header && signal_synth::challenge_file_role_for_export_artifact("synsigra.edf") == signal_synth::challenge_file_edf && signal_synth::challenge_file_role_for_export_artifact("case_summary.json") == signal_synth::challenge_file_metadata_json, "artifact_role_mapping");
 
     signal_synth::challenge_package_build_options build_options;
     build_options.package_id = "assembled_challenge";

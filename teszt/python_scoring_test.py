@@ -107,6 +107,27 @@ def main():
     assert challenge.case_ids() == ["clean_ecg", "ppg_clean"]
     assert len(challenge.case("clean_ecg").waveform()) > 0
     assert "II_mv" in challenge.case("clean_ecg").waveform().columns
+    integrity = challenge.verify_integrity()
+    assert integrity["ok"] and integrity["checked_file_count"] > 0
+    scoring_manifest = challenge.scoring_manifest()
+    assert scoring_manifest["cases"][0]["case_summary_path"] == "cases/clean_ecg/case_summary.json"
+    assert scoring_manifest["cases"][0]["scoring"][0]["score_command"].startswith("signal-synth compare rpeaks")
+    case_summary = challenge.case("clean_ecg").case_summary()
+    assert case_summary["case_id"] == "clean_ecg"
+    assert case_summary["render"]["sample_rate_hz"] == 500
+    assert "r_peak" in case_summary["targets"]
+
+    tampered_dir = os.path.join(work_dir, "tampered")
+    shutil.copytree(challenge_dir, tampered_dir)
+    with open(os.path.join(tampered_dir, "cases", "clean_ecg", "waveform.csv"), "a") as handle:
+        handle.write("tamper\n")
+    tampered = ss.load_challenge(tampered_dir)
+    try:
+        tampered.verify_integrity()
+        raise AssertionError("tampered package was accepted")
+    except ss.ChallengeIntegrityError:
+        pass
+    tampered.close()
 
     archive_path = os.path.join(work_dir, "challenge.synsigra")
     zip_directory(challenge_dir, archive_path)

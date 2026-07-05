@@ -1,4 +1,5 @@
 import csv
+import hashlib
 import json
 import os
 import shutil
@@ -31,6 +32,10 @@ class WaveformTable(object):
         return len(self.rows)
 
 
+class ChallengeIntegrityError(ValueError):
+    pass
+
+
 class ChallengeCase(object):
     def __init__(self, package, data):
         self.package = package
@@ -55,6 +60,9 @@ class ChallengeCase(object):
         with open(self.file_path("annotations_json"), "r") as handle:
             return json.load(handle)
 
+    def case_summary(self):
+        return self.package.read_json("cases/%s/case_summary.json" % self.id)
+
 
 class ChallengePackage(object):
     def __init__(self, root, manifest, tempdir=None):
@@ -67,6 +75,7 @@ class ChallengePackage(object):
         self.files = list(manifest.get("files", []))
         self.cases = [ChallengeCase(self, item) for item in manifest.get("cases", [])]
         self._case_map = dict((item.id, item) for item in self.cases)
+        self._integrity_report = None
 
     def close(self):
         if self._tempdir is not None:
@@ -90,6 +99,50 @@ class ChallengePackage(object):
             if item.get("role") == role:
                 return self.resolve(item.get("path", ""))
         raise KeyError(role)
+
+    def read_json(self, relative_path):
+        with open(self.resolve(relative_path), "r") as handle:
+            return json.load(handle)
+
+    def scoring_manifest(self):
+        return self.read_json("scoring_manifest.json")
+
+    def verify_integrity(self):
+        errors = []
+        checked_files = 0
+        total_bytes = 0
+        for item in self.files:
+            relative_path = item.get("path", "")
+            try:
+                path = self.resolve(relative_path)
+            except ValueError as error:
+                errors.append(str(error))
+                continue
+            if not os.path.isfile(path):
+                errors.append("missing file: %s" % relative_path)
+                continue
+            size = os.path.getsize(path)
+            expected_size = item.get("size_bytes")
+            if expected_size is not None and size != expected_size:
+                errors.append("size mismatch for %s: expected %s, got %s" % (relative_path, expected_size, size))
+            digest = _sha256_file(path)
+            expected_sha = item.get("sha256", "")
+            if expected_sha and digest != expected_sha:
+                errors.append("sha256 mismatch for %s: expected %s, got %s" % (relative_path, expected_sha, digest))
+            checked_files += 1
+            total_bytes += size
+        report = {"checked_file_count": checked_files, "total_bytes": total_bytes, "errors": errors, "ok": not errors}
+        self._integrity_report = report
+        if errors:
+            raise ChallengeIntegrityError("; ".join(errors))
+        return report
+
+    def ensure_integrity_verified(self):
+        if self._integrity_report is None:
+            return self.verify_integrity()
+        if not self._integrity_report.get("ok"):
+            raise ChallengeIntegrityError("; ".join(self._integrity_report.get("errors", [])))
+        return self._integrity_report
 
     def __enter__(self):
         return self
@@ -128,6 +181,17 @@ def _extract_archive_safely(archive, destination):
         with archive.open(member, "r") as source:
             with open(target, "wb") as handle:
                 shutil.copyfileobj(source, handle)
+
+
+def _sha256_file(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        while True:
+            block = handle.read(1024 * 1024)
+            if not block:
+                break
+            digest.update(block)
+    return "sha256:" + digest.hexdigest()
 
 
 def read_waveform_csv(path):

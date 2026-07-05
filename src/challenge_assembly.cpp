@@ -75,7 +75,7 @@ namespace signal_synth
     {
         if (artifact_name == "scenario.json")
             return challenge_file_scenario_json;
-        if (artifact_name == "metadata.json" || artifact_name == "warnings.json" || artifact_name == "wfdb_metadata.json" || artifact_name == "edf_bdf_metadata.json")
+        if (artifact_name == "metadata.json" || artifact_name == "warnings.json" || artifact_name == "wfdb_metadata.json" || artifact_name == "edf_bdf_metadata.json" || artifact_name == "case_summary.json" || artifact_name == "scoring_manifest.json")
             return challenge_file_metadata_json;
         if (artifact_name == "waveform.csv")
             return challenge_file_waveform_csv;
