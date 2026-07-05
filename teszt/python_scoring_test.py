@@ -29,66 +29,28 @@ def write_json(path, data):
         json.dump(data, handle, sort_keys=True, separators=(",", ":"))
 
 
-def copy_case(source_dir, scenario_name, case_root, case_id, cli):
-    scenario_source = os.path.join(source_dir, "examples", "scenarios", scenario_name)
-    scenario_dir = os.path.join(case_root, case_id)
+def create_challenge_with_cli(source_dir, work_dir, cli):
+    pack_source_dir = os.path.join(work_dir, "pack_source")
+    scenario_dir = os.path.join(pack_source_dir, "scenarios")
     os.makedirs(scenario_dir)
-    scenario_path = os.path.join(scenario_dir, "scenario.json")
-    shutil.copyfile(scenario_source, scenario_path)
-    render_dir = os.path.join(scenario_dir, "render")
-    run([cli, "render", scenario_path, "--out", render_dir])
-    shutil.copyfile(os.path.join(render_dir, "waveform.csv"), os.path.join(scenario_dir, "waveform.csv"))
-    shutil.copyfile(os.path.join(render_dir, "annotations.json"), os.path.join(scenario_dir, "annotations.json"))
-    annotations = read_json(os.path.join(scenario_dir, "annotations.json"))
-    return {
-        "id": case_id,
-        "scenario_id": read_json(scenario_path)["scenario_id"],
-        "scenario_path": "cases/%s/scenario.json" % case_id,
-        "document_fingerprint": annotations["document_fingerprint"],
-        "render_identity": annotations["render_identity"],
-        "files": [
-            "cases/%s/scenario.json" % case_id,
-            "cases/%s/waveform.csv" % case_id,
-            "cases/%s/annotations.json" % case_id,
-        ],
-    }
-
-
-def write_manifest(challenge_dir, cases):
-    files = []
-    for item in cases:
-        for path in item["files"]:
-            role = "scenario_json"
-            media_type = "application/json"
-            if path.endswith("waveform.csv"):
-                role = "waveform_csv"
-                media_type = "text/csv"
-            elif path.endswith("annotations.json"):
-                role = "annotations_json"
-            files.append({
-                "path": path,
-                "role": role,
-                "media_type": media_type,
-                "sha256": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-                "size_bytes": 1,
-                "required": True,
-            })
-    manifest = {
+    shutil.copyfile(os.path.join(source_dir, "examples", "scenarios", "ecg_clean.json"), os.path.join(scenario_dir, "clean_ecg.json"))
+    shutil.copyfile(os.path.join(source_dir, "examples", "scenarios", "ecg_ppg_clean.json"), os.path.join(scenario_dir, "ppg_clean.json"))
+    pack_path = os.path.join(pack_source_dir, "pack.json")
+    write_json(pack_path, {
         "schema_version": 1,
-        "package_id": "python_scoring_challenge",
+        "pack_id": "python_scoring_challenge",
         "name": "Python Scoring Challenge",
         "version": "1",
         "description": "Python scoring integration test challenge.",
-        "package_type": "scenario_pack",
-        "ground_truth_included": True,
-        "waveform_formats": ["csv"],
-        "generator_version": "test",
-        "usage_restrictions": "engineering algorithm QA only",
-        "not_for": "diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment",
-        "files": files,
-        "cases": cases,
-    }
-    write_json(os.path.join(challenge_dir, "manifest.json"), manifest)
+        "targets": ["r_peak", "ppg_systolic_peak", "ecg_beat_classification"],
+        "scenarios": [
+            {"id": "clean_ecg", "path": "scenarios/clean_ecg.json", "targets": ["r_peak", "ecg_beat_classification"]},
+            {"id": "ppg_clean", "path": "scenarios/ppg_clean.json", "targets": ["ppg_systolic_peak"]},
+        ],
+    })
+    challenge_dir = os.path.join(work_dir, "challenge")
+    run([cli, "pack", "challenge", pack_path, "--out", challenge_dir])
+    return challenge_dir
 
 
 def rpeak_detections(annotations):
@@ -138,11 +100,7 @@ def main():
         shutil.rmtree(work_dir)
     os.makedirs(work_dir)
 
-    challenge_dir = os.path.join(work_dir, "challenge")
-    os.makedirs(os.path.join(challenge_dir, "cases"))
-    ecg_case = copy_case(source_dir, "ecg_clean.json", os.path.join(challenge_dir, "cases"), "clean_ecg", cli)
-    ppg_case = copy_case(source_dir, "ecg_ppg_clean.json", os.path.join(challenge_dir, "cases"), "ppg_clean", cli)
-    write_manifest(challenge_dir, [ecg_case, ppg_case])
+    challenge_dir = create_challenge_with_cli(source_dir, work_dir, cli)
 
     challenge = ss.load_challenge(challenge_dir)
     assert challenge.package_id == "python_scoring_challenge"

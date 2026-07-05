@@ -1,7 +1,9 @@
+#include "../src/challenge_assembly.h"
 #include "../src/challenge_package.h"
 
 #include <iostream>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -88,6 +90,44 @@ int main()
     ok &= check(parsed_result.canonical_json == result.canonical_json && parsed_result.package_fingerprint == result.package_fingerprint, "roundtrip_identity");
     ok &= check(signal_synth::challenge_file_role_from_name("waveform_csv", parsed.files[0].role) && parsed.files[0].role == signal_synth::challenge_file_waveform_csv, "role_parse");
     ok &= check(std::string(signal_synth::challenge_file_role_name(signal_synth::challenge_file_annotations_json)) == "annotations_json", "role_name");
+    ok &= check(signal_synth::challenge_package_content_sha256("abc") == "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", "content_sha256");
+    ok &= check(signal_synth::challenge_file_role_for_export_artifact("synsigra.hea") == signal_synth::challenge_file_wfdb_header && signal_synth::challenge_file_role_for_export_artifact("synsigra.edf") == signal_synth::challenge_file_edf, "artifact_role_mapping");
+
+    signal_synth::challenge_package_build_options build_options;
+    build_options.package_id = "assembled_challenge";
+    build_options.name = "Assembled Challenge";
+    build_options.version = "1";
+    build_options.description = "Assembled package.";
+    build_options.generator_version = "test-generator";
+    build_options.package_files.push_back(signal_synth::challenge_package_input_file());
+    build_options.package_files[0].path = "pack.json";
+    build_options.package_files[0].role = signal_synth::challenge_file_pack_json;
+    build_options.package_files[0].media_type = "application/json";
+    build_options.package_files[0].content = "{}";
+    signal_synth::challenge_package_case_input build_case;
+    build_case.id = "clean";
+    build_case.scenario_id = "assembled_clean";
+    build_case.scenario_path = "cases/clean/scenario.json";
+    build_case.document_fingerprint = fake_sha();
+    build_case.render_identity = std::string(fake_sha()) + ":ecg-run-1";
+    signal_synth::challenge_package_input_file build_waveform;
+    build_waveform.path = "cases/clean/waveform.csv";
+    build_waveform.role = signal_synth::challenge_file_waveform_csv;
+    build_waveform.media_type = "text/csv";
+    build_waveform.content = "time_seconds,II_mv\n0,0\n";
+    build_case.files.push_back(build_waveform);
+    signal_synth::challenge_package_input_file build_annotations;
+    build_annotations.path = "cases/clean/annotations.json";
+    build_annotations.role = signal_synth::challenge_file_annotations_json;
+    build_annotations.media_type = "application/json";
+    build_annotations.content = "{\"beats\":[]}";
+    build_case.files.push_back(build_annotations);
+    std::vector<signal_synth::challenge_package_case_input> build_cases;
+    build_cases.push_back(build_case);
+    signal_synth::challenge_package_build_result build_result;
+    ok &= check(signal_synth::build_challenge_package_manifest(build_options, build_cases, build_result) && build_result.success, "build_challenge_manifest");
+    ok &= check(build_result.manifest.files.size() == 3 && build_result.manifest.cases.size() == 1 && build_result.manifest.waveform_formats[0] == "csv", "built_manifest_shape");
+    ok &= check(build_result.manifest.files[1].sha256 == signal_synth::challenge_package_content_sha256(build_waveform.content), "built_manifest_real_sha");
 
     signal_synth::challenge_package_manifest no_ground_truth = manifest;
     no_ground_truth.ground_truth_included = false;

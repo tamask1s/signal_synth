@@ -112,6 +112,8 @@ Implementation increment designs:
   EDF/BDF reader conformance tests.
 - `increments/034_VERIFICATION_CI_RUNTIME_POLICY.md` defines the default Linux
   full verification and manual Windows smoke policy.
+- `increments/035_SAAS_CHALLENGE_PACKAGE_ASSEMBLY.md` defines the C++ and CLI
+  surface that emits SaaS-ready offline challenge packages.
 
 Traceability demonstration:
 

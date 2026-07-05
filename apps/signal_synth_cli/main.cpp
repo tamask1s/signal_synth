@@ -1,4 +1,5 @@
 #include "ecg_scenario_json.h"
+#include "challenge_assembly.h"
 #include "ecg_export.h"
 #include "ecg_pack.h"
 #include "ecg_pack_score.h"
@@ -21,6 +22,7 @@
 
 #ifdef _WIN32
 #include <direct.h>
+#include <sys/stat.h>
 #else
 #include <sys/stat.h>
 #include <unistd.h>
@@ -70,6 +72,7 @@ namespace
                   << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack render <pack.json> --out <new-directory>\n"
+                  << "       signal-synth pack challenge <pack.json> --out <new-directory>\n"
                   << "       signal-synth pack score <pack.json> <detections-directory> --out <new-directory>\n";
     }
 
@@ -92,6 +95,17 @@ namespace
 #endif
     }
 
+    bool directory_exists(const std::string& path)
+    {
+#ifdef _WIN32
+        struct _stat info;
+        return _stat(path.c_str(), &info) == 0 && (info.st_mode & _S_IFDIR);
+#else
+        struct stat info;
+        return stat(path.c_str(), &info) == 0 && S_ISDIR(info.st_mode);
+#endif
+    }
+
     bool remove_directory(const std::string& path)
     {
 #ifdef _WIN32
@@ -99,6 +113,18 @@ namespace
 #else
         return rmdir(path.c_str()) == 0;
 #endif
+    }
+
+    bool create_directory_recorded(const std::string& path, std::vector<std::string>& created_directories)
+    {
+        if (path.empty() || path == ".")
+            return true;
+        if (directory_exists(path))
+            return true;
+        if (!create_directory(path))
+            return false;
+        created_directories.push_back(path);
+        return true;
     }
 
     bool write_export_directory(const std::string& path, const signal_synth::ecg_export_bundle& bundle)
@@ -215,6 +241,98 @@ namespace
         if (std::rename(temporary.c_str(), path.c_str()) != 0)
         {
             std::remove(temporary.c_str());
+            return false;
+        }
+        return true;
+    }
+
+    bool create_relative_parent_directories(const std::string& root, const std::string& relative_path, std::vector<std::string>& created_directories)
+    {
+        std::string::size_type offset = 0;
+        while (true)
+        {
+            const std::string::size_type slash = relative_path.find('/', offset);
+            if (slash == std::string::npos)
+                return true;
+            const std::string partial = relative_path.substr(0, slash);
+            if (!partial.empty() && !create_directory_recorded(join_path(root, partial), created_directories))
+                return false;
+            offset = slash + 1;
+        }
+    }
+
+    bool write_challenge_file(const std::string& root, const signal_synth::challenge_package_input_file& file, std::vector<std::string>& completed_files, std::vector<std::string>& created_directories)
+    {
+        if (!create_relative_parent_directories(root, file.path, created_directories))
+            return false;
+        const std::string final_path = join_path(root, file.path);
+        const std::string temporary_path = final_path + ".tmp";
+        std::ofstream output(temporary_path.c_str(), std::ios::out | std::ios::binary | std::ios::trunc);
+        output.write(file.content.data(), static_cast<std::streamsize>(file.content.size()));
+        const bool ok = output.good();
+        output.close();
+        if (!ok)
+        {
+            std::remove(temporary_path.c_str());
+            return false;
+        }
+        if (std::rename(temporary_path.c_str(), final_path.c_str()) != 0)
+        {
+            std::remove(temporary_path.c_str());
+            return false;
+        }
+        completed_files.push_back(final_path);
+        return true;
+    }
+
+    signal_synth::challenge_package_input_file make_challenge_file(const std::string& path, signal_synth::challenge_file_role role, const std::string& media_type, const std::string& content)
+    {
+        signal_synth::challenge_package_input_file file;
+        file.path = path;
+        file.role = role;
+        file.media_type = media_type;
+        file.content = content;
+        file.required = true;
+        return file;
+    }
+
+    void cleanup_challenge_write(const std::vector<std::string>& completed_files, const std::vector<std::string>& created_directories)
+    {
+        for (std::size_t i = completed_files.size(); i > 0; --i)
+            std::remove(completed_files[i - 1].c_str());
+        for (std::size_t i = created_directories.size(); i > 0; --i)
+            remove_directory(created_directories[i - 1]);
+    }
+
+    bool write_challenge_directory(const std::string& path, const std::vector<signal_synth::challenge_package_input_file>& package_files, const std::vector<signal_synth::challenge_package_case_input>& cases, const std::string& manifest_json)
+    {
+        std::vector<std::string> completed_files;
+        std::vector<std::string> created_directories;
+        if (!create_directory(path))
+            return false;
+        created_directories.push_back(path);
+        for (std::size_t i = 0; i < package_files.size(); ++i)
+        {
+            if (!write_challenge_file(path, package_files[i], completed_files, created_directories))
+            {
+                cleanup_challenge_write(completed_files, created_directories);
+                return false;
+            }
+        }
+        for (std::size_t i = 0; i < cases.size(); ++i)
+        {
+            for (std::size_t f = 0; f < cases[i].files.size(); ++f)
+            {
+                if (!write_challenge_file(path, cases[i].files[f], completed_files, created_directories))
+                {
+                    cleanup_challenge_write(completed_files, created_directories);
+                    return false;
+                }
+            }
+        }
+        if (!write_text_file(join_path(path, "manifest.json"), manifest_json))
+        {
+            cleanup_challenge_write(completed_files, created_directories);
             return false;
         }
         return true;
@@ -672,8 +790,9 @@ int main(int argc, char** argv)
         }
         const std::string pack_action(argv[2]);
         const bool pack_render = pack_action == "render";
+        const bool pack_challenge = pack_action == "challenge";
         const bool pack_score = pack_action == "score";
-        if ((pack_render && (argc != 6 || std::string(argv[4]) != "--out")) || (pack_score && (argc != 7 || std::string(argv[5]) != "--out")) || (!pack_render && !pack_score && (argc != 4 || pack_action != "validate")))
+        if (((pack_render || pack_challenge) && (argc != 6 || std::string(argv[4]) != "--out")) || (pack_score && (argc != 7 || std::string(argv[5]) != "--out")) || (!pack_render && !pack_challenge && !pack_score && (argc != 4 || pack_action != "validate")))
         {
             print_usage();
             return 2;
@@ -693,7 +812,7 @@ int main(int argc, char** argv)
                 print_pack_errors(pack_result);
                 return 4;
             }
-            if (!pack_render)
+            if (!pack_render && !pack_challenge)
             {
                 if (!pack_score)
                 {
@@ -823,13 +942,14 @@ int main(int argc, char** argv)
                 return 0;
             }
             const std::string output_directory(argv[5]);
-            if (!create_directory(output_directory))
+            if (pack_render && !create_directory(output_directory))
             {
                 std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=output directory must be new and writable\n";
                 return 3;
             }
             const std::string base_directory = std::string(argv[3]) == "-" ? "." : directory_name(argv[3]);
             std::vector<pack_render_row> rows;
+            std::vector<signal_synth::challenge_package_case_input> challenge_cases;
             for (std::size_t i = 0; i < manifest.scenarios.size(); ++i)
             {
                 const signal_synth::ecg_pack_scenario& pack_scenario = manifest.scenarios[i];
@@ -855,11 +975,29 @@ int main(int argc, char** argv)
                     std::cerr << "error=RENDER_FAILED path=" << pack_scenario.path << " message=" << (export_result.messages.empty() ? "render or export failed" : export_result.messages[0]) << '\n';
                     return 4;
                 }
-                const std::string scenario_output = join_path(output_directory, pack_scenario.id);
-                if (!write_export_directory(scenario_output, export_bundle))
+                if (pack_render)
                 {
-                    std::cerr << "error=OUTPUT_WRITE_FAILED path=" << scenario_output << " message=unable to write scenario export directory\n";
-                    return 3;
+                    const std::string scenario_output = join_path(output_directory, pack_scenario.id);
+                    if (!write_export_directory(scenario_output, export_bundle))
+                    {
+                        std::cerr << "error=OUTPUT_WRITE_FAILED path=" << scenario_output << " message=unable to write scenario export directory\n";
+                        return 3;
+                    }
+                }
+                else
+                {
+                    signal_synth::challenge_package_case_input challenge_case;
+                    challenge_case.id = pack_scenario.id;
+                    challenge_case.scenario_id = document.scenario_id;
+                    challenge_case.scenario_path = "cases/" + pack_scenario.id + "/scenario.json";
+                    challenge_case.document_fingerprint = scenario_result.document_fingerprint;
+                    challenge_case.render_identity = render.render_identity;
+                    for (std::size_t artifact_index = 0; artifact_index < export_bundle.artifacts.size(); ++artifact_index)
+                    {
+                        const signal_synth::ecg_text_artifact& artifact = export_bundle.artifacts[artifact_index];
+                        challenge_case.files.push_back(make_challenge_file("cases/" + pack_scenario.id + "/" + artifact.name, signal_synth::challenge_file_role_for_export_artifact(artifact.name), artifact.media_type, artifact.content));
+                    }
+                    challenge_cases.push_back(challenge_case);
                 }
                 pack_render_row row;
                 row.id = pack_scenario.id;
@@ -875,10 +1013,52 @@ int main(int argc, char** argv)
                 row.total_artifact_seconds = render.metrics.total_artifact_seconds;
                 rows.push_back(row);
             }
+            const std::string summary_json = pack_summary_json(manifest, pack_result, rows);
+            const std::string summary_csv = pack_summary_csv(rows);
+            const std::string index_html = pack_index_html(manifest, pack_result, rows);
+            if (pack_challenge)
+            {
+                signal_synth::challenge_package_build_options options;
+                options.package_id = manifest.pack_id;
+                options.name = manifest.name;
+                options.version = manifest.version;
+                options.description = manifest.description;
+                options.package_type = signal_synth::challenge_package_scenario_pack;
+                options.generator_version = signal_synth::signal_synth_generator_version();
+                options.package_files.push_back(make_challenge_file("pack.json", signal_synth::challenge_file_pack_json, "application/json", pack_result.canonical_json));
+                options.package_files.push_back(make_challenge_file("summary.json", signal_synth::challenge_file_metadata_json, "application/json", summary_json));
+                options.package_files.push_back(make_challenge_file("summary.csv", signal_synth::challenge_file_other, "text/csv", summary_csv));
+                options.package_files.push_back(make_challenge_file("index.html", signal_synth::challenge_file_readme, "text/html", index_html));
+                signal_synth::challenge_package_build_result challenge_result;
+                if (!signal_synth::build_challenge_package_manifest(options, challenge_cases, challenge_result))
+                {
+                    for (std::size_t message_index = 0; message_index < challenge_result.manifest_json.messages.size(); ++message_index)
+                    {
+                        const signal_synth::challenge_package_json_message& message = challenge_result.manifest_json.messages[message_index];
+                        std::cerr << "error=" << signal_synth::challenge_package_json_message_code_name(message.code)
+                                  << " path=" << message.path << " message=" << message.message << '\n';
+                    }
+                    if (challenge_result.manifest_json.messages.empty())
+                        std::cerr << "error=CHALLENGE_PACKAGE_FAILED path=$ message=challenge package manifest assembly failed\n";
+                    return 4;
+                }
+                if (!write_challenge_directory(output_directory, options.package_files, challenge_cases, challenge_result.manifest_json.canonical_json))
+                {
+                    std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=unable to write challenge package directory\n";
+                    return 3;
+                }
+                std::cout << "status=challenge-rendered\n"
+                          << "output_directory=" << output_directory << '\n'
+                          << "package_id=" << challenge_result.manifest.package_id << '\n'
+                          << "scenario_count=" << challenge_result.manifest.cases.size() << '\n'
+                          << "pack_fingerprint=" << pack_result.pack_fingerprint << '\n'
+                          << "package_fingerprint=" << challenge_result.manifest_json.package_fingerprint << '\n';
+                return 0;
+            }
             if (!write_text_file(join_path(output_directory, "pack.json"), pack_result.canonical_json)
-                || !write_text_file(join_path(output_directory, "summary.json"), pack_summary_json(manifest, pack_result, rows))
-                || !write_text_file(join_path(output_directory, "summary.csv"), pack_summary_csv(rows))
-                || !write_text_file(join_path(output_directory, "index.html"), pack_index_html(manifest, pack_result, rows)))
+                || !write_text_file(join_path(output_directory, "summary.json"), summary_json)
+                || !write_text_file(join_path(output_directory, "summary.csv"), summary_csv)
+                || !write_text_file(join_path(output_directory, "index.html"), index_html))
             {
                 std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=unable to write pack summary files\n";
                 return 3;

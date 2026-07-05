@@ -1,4 +1,5 @@
 #include <signal_synth/clinical_ecg.h>
+#include <signal_synth/challenge_assembly.h>
 #include <signal_synth/challenge_package.h>
 #include <signal_synth/detection_io.h>
 #include <signal_synth/ecg_model.h>
@@ -28,6 +29,8 @@ int main()
     signal_synth::clinical_ecg_config clinical;
     signal_synth::challenge_package_manifest challenge_package;
     signal_synth::challenge_package_file challenge_file;
+    signal_synth::challenge_package_build_options challenge_options;
+    signal_synth::challenge_package_input_file challenge_input_file;
     signal_synth::detection_io_document detection_document;
     signal_synth::detection_io_event detection_event;
     signal_synth::clinical_ecg_record record;
@@ -56,6 +59,8 @@ int main()
         return 1;
     if (challenge_package.schema_version != 1 || challenge_file.role != signal_synth::challenge_file_other)
         return 12;
+    if (challenge_options.package_type != signal_synth::challenge_package_scenario_pack || challenge_input_file.role != signal_synth::challenge_file_other)
+        return 19;
     if (detection_document.schema_version != 1 || detection_event.has_confidence)
         return 13;
     if (signal_synth::ecg_condition_catalog_size() != signal_synth::ecg_condition_count)

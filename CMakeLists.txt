@@ -22,6 +22,7 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/detection_io.h
     src/synsigra_api.h
     src/challenge_package.h
+    src/challenge_assembly.h
     src/signal_quality.h
     src/ecg_pack.h
     src/ecg_pack_score.h)
@@ -46,6 +47,7 @@ add_library(
     src/detection_io.cpp
     src/synsigra_api.cpp
     src/challenge_package.cpp
+    src/challenge_assembly.cpp
     src/signal_quality.cpp
     src/ecg_pack.cpp
     src/ecg_pack_score.cpp)

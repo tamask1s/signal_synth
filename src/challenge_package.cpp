@@ -593,6 +593,11 @@ namespace signal_synth
         return false;
     }
 
+    std::string challenge_package_content_sha256(const std::string& content)
+    {
+        return sha256(content);
+    }
+
     bool write_challenge_package_json(const challenge_package_manifest& manifest, challenge_package_json_result& result)
     {
         challenge_package_json_result fresh;

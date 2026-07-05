@@ -102,6 +102,7 @@ namespace signal_synth
     const char* challenge_file_role_name(challenge_file_role role);
     bool challenge_package_type_from_name(const std::string& name, challenge_package_type& output);
     bool challenge_file_role_from_name(const std::string& name, challenge_file_role& output);
+    std::string challenge_package_content_sha256(const std::string& content);
     bool parse_challenge_package_json(const std::string& json, challenge_package_manifest& output, challenge_package_json_result& result);
     bool write_challenge_package_json(const challenge_package_manifest& manifest, challenge_package_json_result& result);
 }
