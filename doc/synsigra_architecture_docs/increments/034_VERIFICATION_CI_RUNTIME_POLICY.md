@@ -41,12 +41,14 @@ default CI wall-clock time and avoiding routine Windows capacity use.
 
 ## 4. Verification
 
-Required evidence after implementation:
+Evidence:
 
-- local workflow syntax/diff review;
-- GitHub Actions run for the updated workflow;
-- issue comment recording whether Ubuntu full verification and optional Windows
-  smoke behaved as intended.
+- local workflow syntax/diff review: passed;
+- GitHub Actions run `28729524128`: passed;
+- Ubuntu full verification ran in `1m33s` and included WFDB 10.7.0 native-tool
+  provisioning plus full CTest;
+- Windows smoke was skipped on push as intended and remains available through
+  manual `workflow_dispatch`.
 
 ## 5. Change Log
 
