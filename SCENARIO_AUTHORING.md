@@ -32,7 +32,8 @@ result through normal scenario validation.
 
 - target compatibility and local-scoring/reference-only status;
 - case duration, sample rate, sample count, and channel count;
-- estimated CSV, binary-signal, and complete uncompressed package sizes;
+- estimated CSV, binary-signal, complete uncompressed package size, and peak
+  generation memory;
 - structured errors and warnings suitable for form display.
 
 Size values are deterministic planning estimates, not storage quotas or exact

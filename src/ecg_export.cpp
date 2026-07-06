@@ -181,8 +181,16 @@ namespace
     {
         metrics.ppg_expected_pulse_count = ppg.pulse_count();
         for (unsigned int i = 0; i < ppg.pulse_count(); ++i)
-            if (ppg.pulses()[i].intentionally_missing)
+        {
+            if (ppg.pulses()[i].state == signal_synth::ppg_pulse_missing)
                 ++metrics.ppg_missing_pulse_count;
+            if (ppg.pulses()[i].state == signal_synth::ppg_pulse_weak)
+                ++metrics.ppg_weak_pulse_count;
+            if (ppg.pulses()[i].low_perfusion)
+                ++metrics.ppg_low_perfusion_pulse_count;
+            if (ppg.pulses()[i].state == signal_synth::ppg_pulse_out_of_record)
+                ++metrics.ppg_out_of_record_pulse_count;
+        }
         double onset_delay = 0.0;
         double peak_delay = 0.0;
         unsigned int peak_count = 0;
@@ -494,6 +502,14 @@ namespace
                        << ",\"ecg_r_time_seconds\":" << pulse.ecg_r_time_seconds
                        << ",\"pulse_delay_seconds\":" << pulse.pulse_delay_seconds
                        << ",\"expected_onset_time_seconds\":" << pulse.expected_onset_time_seconds
+                       << ",\"expected_peak_time_seconds\":" << pulse.expected_peak_time_seconds
+                       << ",\"expected_offset_time_seconds\":" << pulse.expected_offset_time_seconds
+                       << ",\"effective_amplitude_au\":" << pulse.effective_amplitude_au
+                       << ",\"effective_rise_time_seconds\":" << pulse.effective_rise_time_seconds
+                       << ",\"effective_decay_time_seconds\":" << pulse.effective_decay_time_seconds
+                       << ",\"state\":" << json_string(signal_synth::ppg_pulse_state_name(pulse.state))
+                       << ",\"low_perfusion\":" << boolean(pulse.low_perfusion)
+                       << ",\"valid_for_peak_scoring\":" << boolean(pulse.valid_for_peak_scoring)
                        << ",\"generated\":" << boolean(pulse.generated)
                        << ",\"intentionally_missing\":" << boolean(pulse.intentionally_missing) << '}';
             }
@@ -598,6 +614,9 @@ namespace
             output << ",\"ppg\":{\"pulse_count\":" << metrics.ppg_pulse_count
                    << ",\"expected_pulse_count\":" << metrics.ppg_expected_pulse_count
                    << ",\"intentionally_missing_pulse_count\":" << metrics.ppg_missing_pulse_count
+                   << ",\"weak_pulse_count\":" << metrics.ppg_weak_pulse_count
+                   << ",\"low_perfusion_pulse_count\":" << metrics.ppg_low_perfusion_pulse_count
+                   << ",\"out_of_record_pulse_count\":" << metrics.ppg_out_of_record_pulse_count
                    << ",\"mean_onset_delay_seconds\":" << metrics.mean_ppg_onset_delay_seconds
                    << ",\"mean_measured_peak_delay_seconds\":" << metrics.mean_ppg_peak_delay_seconds << '}';
         output << '}';
@@ -801,7 +820,7 @@ namespace
 namespace signal_synth
 {
     ecg_ground_truth_metrics::ecg_ground_truth_metrics()
-        : beat_count(0), atrial_event_count(0), fiducial_count(0), episode_count(0), artifact_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), hrv_accepted_interval_count(0), hrv_excluded_interval_count(0), hrv_ectopic_interval_count(0), hrv_artifact_overlap_interval_count(0), sd1_seconds(0.0), sd2_seconds(0.0), sd1_sd2_ratio(0.0), lf_power_seconds2(0.0), hf_power_seconds2(0.0), lf_hf_ratio(0.0), total_power_seconds2(0.0), ppg_pulse_count(0), ppg_expected_pulse_count(0), ppg_missing_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0), total_artifact_seconds(0.0), ppg_artifact_seconds(0.0)
+        : beat_count(0), atrial_event_count(0), fiducial_count(0), episode_count(0), artifact_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), hrv_accepted_interval_count(0), hrv_excluded_interval_count(0), hrv_ectopic_interval_count(0), hrv_artifact_overlap_interval_count(0), sd1_seconds(0.0), sd2_seconds(0.0), sd1_sd2_ratio(0.0), lf_power_seconds2(0.0), hf_power_seconds2(0.0), lf_hf_ratio(0.0), total_power_seconds2(0.0), ppg_pulse_count(0), ppg_expected_pulse_count(0), ppg_missing_pulse_count(0), ppg_weak_pulse_count(0), ppg_low_perfusion_pulse_count(0), ppg_out_of_record_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0), total_artifact_seconds(0.0), ppg_artifact_seconds(0.0)
     {
         for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
             ecg_artifact_seconds[lead] = 0.0;
@@ -821,7 +840,7 @@ namespace signal_synth
 
     const char* signal_synth_generator_version()
     {
-        return "0.2.0-dev";
+        return "0.3.0-dev";
     }
 
     bool render_ecg_document(const ecg_scenario_document& document, ecg_render_bundle& output, ecg_export_result& result)
@@ -889,7 +908,7 @@ namespace signal_synth
             result = fresh_result;
             return false;
         }
-        if (fresh.ppg.sample_count() && !remeasure_ppg_systolic_peaks(fresh.signal_quality.ppg.data(), static_cast<unsigned int>(fresh.signal_quality.ppg.size()), fresh.ppg))
+        if (fresh.ppg.sample_count() && !remeasure_ppg_fiducials(fresh.signal_quality.ppg.data(), static_cast<unsigned int>(fresh.signal_quality.ppg.size()), fresh.ppg))
         {
             fresh_result.messages.push_back("final PPG peak measurement failed");
             result = fresh_result;

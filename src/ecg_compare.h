@@ -60,6 +60,8 @@ namespace signal_synth
         double detection_time_seconds;
         double error_seconds;
         bool in_artifact_interval;
+        bool low_perfusion;
+        bool weak_pulse;
     };
 
     struct ecg_compare_unmatched_event
@@ -69,6 +71,9 @@ namespace signal_synth
         unsigned int index;
         double time_seconds;
         bool in_artifact_interval;
+        bool low_perfusion;
+        bool weak_pulse;
+        bool missing_pulse_window;
     };
 
     struct ecg_compare_result
@@ -81,6 +86,10 @@ namespace signal_synth
         ecg_compare_bin_metrics total;
         ecg_compare_bin_metrics clean;
         ecg_compare_bin_metrics artifact;
+        ecg_compare_bin_metrics low_perfusion;
+        ecg_compare_bin_metrics weak;
+        unsigned int missing_pulse_opportunity_count;
+        unsigned int detections_in_missing_pulse_windows;
         std::vector<ecg_compare_match> matches;
         std::vector<ecg_compare_unmatched_event> false_positives;
         std::vector<ecg_compare_unmatched_event> false_negatives;

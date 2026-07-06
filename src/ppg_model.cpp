@@ -18,7 +18,7 @@ namespace
 
     bool valid_config(const signal_synth::ppg_config& config)
     {
-        return finite(config.pulse_delay_ms) && config.pulse_delay_ms >= 0.0 && config.pulse_delay_ms <= 2000.0
+        if (!(finite(config.pulse_delay_ms) && config.pulse_delay_ms >= 0.0 && config.pulse_delay_ms <= 2000.0
             && finite(config.rise_time_ms) && config.rise_time_ms >= 10.0 && config.rise_time_ms <= 1000.0
             && finite(config.decay_time_ms) && config.decay_time_ms >= 10.0 && config.decay_time_ms <= 3000.0
             && config.rise_time_ms + config.decay_time_ms <= 5000.0
@@ -30,7 +30,48 @@ namespace
             && finite(config.dicrotic_amplitude_ratio) && config.dicrotic_amplitude_ratio >= 0.0 && config.dicrotic_amplitude_ratio <= 1.0
             && finite(config.pulse_delay_variation_ms) && config.pulse_delay_variation_ms >= 0.0 && config.pulse_delay_variation_ms <= 1000.0
             && finite(config.pulse_delay_variation_hz) && config.pulse_delay_variation_hz >= 0.0 && config.pulse_delay_variation_hz <= 10.0
-            && finite(config.clock_drift_ppm) && std::fabs(config.clock_drift_ppm) <= 100000.0;
+            && finite(config.clock_drift_ppm) && std::fabs(config.clock_drift_ppm) <= 100000.0
+            && finite(config.pulse_delay_jitter_ms) && config.pulse_delay_jitter_ms >= 0.0 && config.pulse_delay_jitter_ms <= 1000.0
+            && finite(config.low_frequency_amplitude_modulation_ratio) && config.low_frequency_amplitude_modulation_ratio >= 0.0 && config.low_frequency_amplitude_modulation_ratio <= 0.95
+            && finite(config.low_frequency_amplitude_modulation_hz) && config.low_frequency_amplitude_modulation_hz > 0.0 && config.low_frequency_amplitude_modulation_hz <= 1.0
+            && finite(config.rise_time_variation_ratio) && config.rise_time_variation_ratio >= 0.0 && config.rise_time_variation_ratio <= 0.9
+            && finite(config.decay_time_variation_ratio) && config.decay_time_variation_ratio >= 0.0 && config.decay_time_variation_ratio <= 0.9
+            && config.pulse_delay_ms >= config.pulse_delay_variation_ms + config.pulse_delay_jitter_ms
+            && config.perfusion_episodes.size() <= 64u))
+            return false;
+        for (std::size_t i = 0; i < config.perfusion_episodes.size(); ++i)
+        {
+            const signal_synth::ppg_perfusion_episode_config& episode = config.perfusion_episodes[i];
+            if (!finite(episode.start_seconds) || !finite(episode.duration_seconds) || !finite(episode.amplitude_scale)
+                || !finite(episode.rise_time_scale) || !finite(episode.decay_time_scale) || !finite(episode.weak_pulse_amplitude_scale)
+                || episode.start_seconds < 0.0 || episode.duration_seconds <= 0.0
+                || episode.amplitude_scale <= 0.0 || episode.amplitude_scale > 1.0
+                || episode.rise_time_scale < 0.25 || episode.rise_time_scale > 4.0
+                || episode.decay_time_scale < 0.25 || episode.decay_time_scale > 4.0
+                || episode.weak_pulse_amplitude_scale <= 0.0 || episode.weak_pulse_amplitude_scale > 1.0)
+                return false;
+            const double end = episode.start_seconds + episode.duration_seconds;
+            if (!finite(end))
+                return false;
+            for (std::size_t previous = 0; previous < i; ++previous)
+            {
+                const signal_synth::ppg_perfusion_episode_config& other = config.perfusion_episodes[previous];
+                const double other_end = other.start_seconds + other.duration_seconds;
+                if (episode.start_seconds < other_end && other.start_seconds < end)
+                    return false;
+            }
+        }
+        double maximum_rise_scale = 1.0;
+        double maximum_decay_scale = 1.0;
+        for (std::size_t i = 0; i < config.perfusion_episodes.size(); ++i)
+        {
+            maximum_rise_scale = std::max(maximum_rise_scale, config.perfusion_episodes[i].rise_time_scale);
+            maximum_decay_scale = std::max(maximum_decay_scale, config.perfusion_episodes[i].decay_time_scale);
+        }
+        if (config.rise_time_ms * (1.0 + config.rise_time_variation_ratio) * maximum_rise_scale
+            + config.decay_time_ms * (1.0 + config.decay_time_variation_ratio) * maximum_decay_scale > 5000.0)
+            return false;
+        return true;
     }
 
     double deterministic_unit(unsigned long long seed)
@@ -43,13 +84,18 @@ namespace
         return static_cast<double>(seed >> 11) * (1.0 / 9007199254740992.0);
     }
 
+    double deterministic_signed(unsigned long long seed, unsigned long long index, unsigned long long stream)
+    {
+        return 2.0 * deterministic_unit(seed ^ (0x9e3779b97f4a7c15ULL * (index + 1u)) ^ stream) - 1.0;
+    }
+
     unsigned long long sample_at_or_after(double time_seconds, unsigned int sampling_rate_hz)
     {
         const double sample = std::ceil(time_seconds * sampling_rate_hz - 1e-12);
         return sample <= 0.0 ? 0u : static_cast<unsigned long long>(sample);
     }
 
-    double pulse_value(double time, double onset, double peak, double offset, const signal_synth::ppg_config& config)
+    double pulse_value(double time, double onset, double peak, double offset, double amplitude, double dicrotic_delay_seconds, double dicrotic_width_seconds, double dicrotic_amplitude_ratio)
     {
         double primary = 0.0;
         if (time >= onset && time <= peak)
@@ -64,14 +110,14 @@ namespace
         }
 
         double dicrotic = 0.0;
-        if (config.dicrotic_amplitude_ratio > 0.0)
+        if (dicrotic_amplitude_ratio > 0.0)
         {
-            const double center = peak + config.dicrotic_delay_ms / 1000.0;
-            const double sigma = config.dicrotic_width_ms / 1000.0 / 2.3548200450309493;
+            const double center = peak + dicrotic_delay_seconds;
+            const double sigma = dicrotic_width_seconds / 2.3548200450309493;
             const double normalized = (time - center) / sigma;
-            dicrotic = config.dicrotic_amplitude_ratio * std::exp(-0.5 * normalized * normalized);
+            dicrotic = dicrotic_amplitude_ratio * std::exp(-0.5 * normalized * normalized);
         }
-        return config.amplitude_au * (primary + dicrotic);
+        return amplitude * (primary + dicrotic);
     }
 
     void add_annotation(std::vector<signal_synth::ppg_annotation>& annotations, const signal_synth::clinical_beat_annotation& beat, signal_synth::ppg_fiducial_kind kind, signal_synth::ppg_fiducial_source source, double time, double value, unsigned int sampling_rate)
@@ -85,6 +131,14 @@ namespace
         annotation.time_seconds = time;
         annotation.value_au = value;
         annotations.push_back(annotation);
+    }
+
+    int perfusion_episode_index_at(const signal_synth::ppg_config& config, double time_seconds)
+    {
+        for (std::size_t i = 0; i < config.perfusion_episodes.size(); ++i)
+            if (time_seconds >= config.perfusion_episodes[i].start_seconds && time_seconds < config.perfusion_episodes[i].start_seconds + config.perfusion_episodes[i].duration_seconds)
+                return static_cast<int>(i);
+        return -1;
     }
 }
 
@@ -100,8 +154,25 @@ namespace signal_synth
         implementation() : sampling_rate_hz(0) {}
     };
 
+    const char* ppg_pulse_state_name(ppg_pulse_state state)
+    {
+        switch (state)
+        {
+        case ppg_pulse_valid: return "valid";
+        case ppg_pulse_weak: return "weak";
+        case ppg_pulse_missing: return "missing";
+        case ppg_pulse_out_of_record: return "out_of_record";
+        }
+        return "unknown";
+    }
+
+    ppg_perfusion_episode_config::ppg_perfusion_episode_config()
+        : start_seconds(0.0), duration_seconds(1.0), amplitude_scale(0.35), rise_time_scale(1.0), decay_time_scale(1.0), weak_pulse_every_n_beats(0), weak_pulse_amplitude_scale(0.35), missing_pulse_every_n_beats(0)
+    {
+    }
+
     ppg_config::ppg_config()
-        : enabled(false), pulse_delay_ms(180.0), rise_time_ms(120.0), decay_time_ms(300.0), amplitude_au(1.0), baseline_au(0.0), dicrotic_delay_ms(180.0), dicrotic_width_ms(80.0), dicrotic_amplitude_ratio(0.15), pulse_delay_variation_ms(0.0), pulse_delay_variation_hz(0.0), missing_pulse_every_n_beats(0), clock_drift_ppm(0.0), seed(0x5050475f53545253ULL)
+        : enabled(false), pulse_delay_ms(180.0), rise_time_ms(120.0), decay_time_ms(300.0), amplitude_au(1.0), baseline_au(0.0), dicrotic_delay_ms(180.0), dicrotic_width_ms(80.0), dicrotic_amplitude_ratio(0.15), pulse_delay_variation_ms(0.0), pulse_delay_variation_hz(0.0), missing_pulse_every_n_beats(0), clock_drift_ppm(0.0), pulse_delay_jitter_ms(0.0), low_frequency_amplitude_modulation_ratio(0.0), low_frequency_amplitude_modulation_hz(0.1), rise_time_variation_ratio(0.0), decay_time_variation_ratio(0.0), seed(0x5050475f53545253ULL), perfusion_episodes()
     {
     }
 
@@ -171,23 +242,53 @@ namespace signal_synth
         {
             fresh.implementation_->samples.assign(timeline.sample_count(), config_.baseline_au);
             const double record_end = static_cast<double>(timeline.sample_count() - 1) / timeline.sampling_rate_hz();
+            for (std::size_t i = 0; i < config_.perfusion_episodes.size(); ++i)
+                if (config_.perfusion_episodes[i].start_seconds + config_.perfusion_episodes[i].duration_seconds > record_end + 1.0 / timeline.sampling_rate_hz())
+                    return false;
             const double variation_phase = 2.0 * pi * deterministic_unit(config_.seed);
+            const double amplitude_phase = 2.0 * pi * deterministic_unit(config_.seed ^ 0x4c465f414d505f31ULL);
+            std::vector<unsigned int> episode_pulse_counts(config_.perfusion_episodes.size(), 0u);
             for (unsigned int beat_index = 0; beat_index < timeline.beat_count(); ++beat_index)
             {
                 const clinical_beat_annotation& beat = timeline.beats()[beat_index];
+                const int episode_index = perfusion_episode_index_at(config_, beat.r_peak_time_seconds);
+                const ppg_perfusion_episode_config* perfusion = episode_index >= 0 ? &config_.perfusion_episodes[static_cast<std::size_t>(episode_index)] : 0;
+                const unsigned int episode_pulse_index = episode_index >= 0 ? ++episode_pulse_counts[static_cast<std::size_t>(episode_index)] : 0u;
+                const bool globally_missing = config_.missing_pulse_every_n_beats != 0 && (beat_index + 1u) % config_.missing_pulse_every_n_beats == 0;
+                const bool episode_missing = perfusion && perfusion->missing_pulse_every_n_beats != 0 && episode_pulse_index % perfusion->missing_pulse_every_n_beats == 0;
+                const bool weak = perfusion && perfusion->weak_pulse_every_n_beats != 0 && episode_pulse_index % perfusion->weak_pulse_every_n_beats == 0;
                 const double variable_delay_ms = config_.pulse_delay_variation_ms * std::sin(2.0 * pi * config_.pulse_delay_variation_hz * beat.r_peak_time_seconds + variation_phase);
+                const double jitter_ms = config_.pulse_delay_jitter_ms * deterministic_signed(config_.seed, beat_index, 0x5054545f4a495454ULL);
                 const double drift_seconds = beat.r_peak_time_seconds * config_.clock_drift_ppm * 1e-6;
-                const double pulse_delay_seconds = (config_.pulse_delay_ms + variable_delay_ms) / 1000.0 + drift_seconds;
+                const double pulse_delay_seconds = (config_.pulse_delay_ms + variable_delay_ms + jitter_ms) / 1000.0 + drift_seconds;
+                if (pulse_delay_seconds < 0.0)
+                    return false;
+                const double low_frequency_scale = std::max(0.0, 1.0 + config_.low_frequency_amplitude_modulation_ratio * std::sin(2.0 * pi * config_.low_frequency_amplitude_modulation_hz * beat.r_peak_time_seconds + amplitude_phase));
+                const double perfusion_amplitude_scale = perfusion ? perfusion->amplitude_scale : 1.0;
+                const double weak_amplitude_scale = weak ? perfusion->weak_pulse_amplitude_scale : 1.0;
+                const double effective_amplitude = config_.amplitude_au * low_frequency_scale * perfusion_amplitude_scale * weak_amplitude_scale;
+                const double rise_variation = 1.0 + config_.rise_time_variation_ratio * deterministic_signed(config_.seed, beat_index, 0x524953455f564152ULL);
+                const double decay_variation = 1.0 + config_.decay_time_variation_ratio * deterministic_signed(config_.seed, beat_index, 0x44454341595f5641ULL);
+                const double rise_seconds = config_.rise_time_ms / 1000.0 * rise_variation * (perfusion ? perfusion->rise_time_scale : 1.0);
+                const double decay_seconds = config_.decay_time_ms / 1000.0 * decay_variation * (perfusion ? perfusion->decay_time_scale : 1.0);
                 const double onset = beat.r_peak_time_seconds + pulse_delay_seconds;
-                const double peak = onset + config_.rise_time_ms / 1000.0;
-                const double offset = peak + config_.decay_time_ms / 1000.0;
+                const double peak = onset + rise_seconds;
+                const double offset = peak + decay_seconds;
                 ppg_pulse_annotation pulse;
                 pulse.ecg_beat_index = beat.beat_index;
                 pulse.ecg_r_time_seconds = beat.r_peak_time_seconds;
                 pulse.pulse_delay_seconds = pulse_delay_seconds;
                 pulse.expected_onset_time_seconds = onset;
-                pulse.intentionally_missing = config_.missing_pulse_every_n_beats != 0 && (beat_index + 1u) % config_.missing_pulse_every_n_beats == 0;
+                pulse.expected_peak_time_seconds = peak;
+                pulse.expected_offset_time_seconds = offset;
+                pulse.effective_amplitude_au = effective_amplitude;
+                pulse.effective_rise_time_seconds = rise_seconds;
+                pulse.effective_decay_time_seconds = decay_seconds;
+                pulse.low_perfusion = perfusion != 0;
+                pulse.intentionally_missing = globally_missing || episode_missing;
                 pulse.generated = !pulse.intentionally_missing && onset >= 0.0 && offset <= record_end;
+                pulse.state = pulse.intentionally_missing ? ppg_pulse_missing : pulse.generated ? (weak ? ppg_pulse_weak : ppg_pulse_valid) : ppg_pulse_out_of_record;
+                pulse.valid_for_peak_scoring = pulse.generated;
                 fresh.implementation_->pulses.push_back(pulse);
                 if (!pulse.generated)
                     continue;
@@ -196,20 +297,23 @@ namespace signal_synth
                 for (unsigned long long sample = first; sample <= last && sample < timeline.sample_count(); ++sample)
                 {
                     const double time = static_cast<double>(sample) / timeline.sampling_rate_hz();
-                    fresh.implementation_->samples[static_cast<std::size_t>(sample)] += pulse_value(time, onset, peak, offset, config_);
+                    fresh.implementation_->samples[static_cast<std::size_t>(sample)] += pulse_value(time, onset, peak, offset, effective_amplitude, config_.dicrotic_delay_ms / 1000.0, config_.dicrotic_width_ms / 1000.0, config_.dicrotic_amplitude_ratio);
                 }
 
                 add_annotation(fresh.implementation_->annotations, beat, ppg_pulse_onset, ppg_fiducial_construction, onset, config_.baseline_au, timeline.sampling_rate_hz());
-                add_annotation(fresh.implementation_->annotations, beat, ppg_systolic_peak, ppg_fiducial_construction, peak, config_.baseline_au + config_.amplitude_au, timeline.sampling_rate_hz());
+                add_annotation(fresh.implementation_->annotations, beat, ppg_systolic_peak, ppg_fiducial_construction, peak, config_.baseline_au + effective_amplitude, timeline.sampling_rate_hz());
                 if (config_.dicrotic_amplitude_ratio > 0.0)
-                    add_annotation(fresh.implementation_->annotations, beat, ppg_dicrotic_feature, ppg_fiducial_construction, peak + config_.dicrotic_delay_ms / 1000.0, config_.baseline_au + config_.amplitude_au * config_.dicrotic_amplitude_ratio, timeline.sampling_rate_hz());
+                    add_annotation(fresh.implementation_->annotations, beat, ppg_dicrotic_feature, ppg_fiducial_construction, peak + config_.dicrotic_delay_ms / 1000.0, config_.baseline_au + effective_amplitude * config_.dicrotic_amplitude_ratio, timeline.sampling_rate_hz());
                 add_annotation(fresh.implementation_->annotations, beat, ppg_pulse_offset, ppg_fiducial_construction, offset, config_.baseline_au, timeline.sampling_rate_hz());
+                add_annotation(fresh.implementation_->annotations, beat, ppg_pulse_onset, ppg_fiducial_measurement, static_cast<double>(first) / timeline.sampling_rate_hz(), fresh.implementation_->samples[static_cast<std::size_t>(first)], timeline.sampling_rate_hz());
 
                 unsigned long long measured_sample = first;
                 for (unsigned long long sample = first + 1; sample <= last && sample < timeline.sample_count(); ++sample)
                     if (fresh.implementation_->samples[static_cast<std::size_t>(sample)] > fresh.implementation_->samples[static_cast<std::size_t>(measured_sample)])
                         measured_sample = sample;
                 add_annotation(fresh.implementation_->annotations, beat, ppg_systolic_peak, ppg_fiducial_measurement, static_cast<double>(measured_sample) / timeline.sampling_rate_hz(), fresh.implementation_->samples[static_cast<std::size_t>(measured_sample)], timeline.sampling_rate_hz());
+                const unsigned long long measured_offset = std::min<unsigned long long>(last, timeline.sample_count() - 1u);
+                add_annotation(fresh.implementation_->annotations, beat, ppg_pulse_offset, ppg_fiducial_measurement, static_cast<double>(measured_offset) / timeline.sampling_rate_hz(), fresh.implementation_->samples[static_cast<std::size_t>(measured_offset)], timeline.sampling_rate_hz());
             }
             for (std::size_t i = 0; i < fresh.implementation_->samples.size(); ++i)
                 if (!std::isfinite(fresh.implementation_->samples[i]))
@@ -223,17 +327,18 @@ namespace signal_synth
         return true;
     }
 
-    bool remeasure_ppg_systolic_peaks(const double* samples, unsigned int sample_count, ppg_record& record)
+    bool remeasure_ppg_fiducials(const double* samples, unsigned int sample_count, ppg_record& record)
     {
         if (!samples || sample_count != record.sample_count() || !record.sampling_rate_hz())
             return false;
         for (std::size_t i = 0; i < record.implementation_->annotations.size(); ++i)
         {
             ppg_annotation& measured = record.implementation_->annotations[i];
-            if (measured.kind != ppg_systolic_peak || measured.source != ppg_fiducial_measurement)
+            if (measured.source != ppg_fiducial_measurement)
                 continue;
             const ppg_annotation* onset = 0;
             const ppg_annotation* offset = 0;
+            const ppg_annotation* construction = 0;
             for (std::size_t j = i; j > 0; --j)
             {
                 const ppg_annotation& candidate = record.implementation_->annotations[j - 1u];
@@ -245,6 +350,17 @@ namespace signal_synth
                     onset = &candidate;
                 else if (candidate.kind == ppg_pulse_offset)
                     offset = &candidate;
+                if (candidate.kind == measured.kind)
+                    construction = &candidate;
+            }
+            if (!construction)
+                return false;
+            if (measured.kind != ppg_systolic_peak)
+            {
+                measured.sample_index = std::min<unsigned long long>(construction->sample_index, sample_count - 1u);
+                measured.time_seconds = static_cast<double>(measured.sample_index) / record.sampling_rate_hz();
+                measured.value_au = samples[measured.sample_index];
+                continue;
             }
             if (!onset || !offset)
                 return false;
@@ -261,5 +377,10 @@ namespace signal_synth
             measured.value_au = samples[peak];
         }
         return true;
+    }
+
+    bool remeasure_ppg_systolic_peaks(const double* samples, unsigned int sample_count, ppg_record& record)
+    {
+        return remeasure_ppg_fiducials(samples, sample_count, record);
     }
 }

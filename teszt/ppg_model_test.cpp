@@ -23,7 +23,8 @@ namespace
     {
         if (left.sampling_rate_hz() != right.sampling_rate_hz()
             || left.sample_count() != right.sample_count()
-            || left.annotation_count() != right.annotation_count())
+            || left.annotation_count() != right.annotation_count()
+            || left.pulse_count() != right.pulse_count())
             return false;
         if (left.sample_count() && std::memcmp(left.samples(), right.samples(), left.sample_count() * sizeof(double)) != 0)
             return false;
@@ -32,6 +33,19 @@ namespace
             const signal_synth::ppg_annotation& a = left.annotations()[i];
             const signal_synth::ppg_annotation& b = right.annotations()[i];
             if (a.ecg_beat_index != b.ecg_beat_index || a.ecg_r_time_seconds != b.ecg_r_time_seconds || a.kind != b.kind || a.source != b.source || a.sample_index != b.sample_index || a.time_seconds != b.time_seconds || a.value_au != b.value_au)
+                return false;
+        }
+        for (unsigned int i = 0; i < left.pulse_count(); ++i)
+        {
+            const signal_synth::ppg_pulse_annotation& a = left.pulses()[i];
+            const signal_synth::ppg_pulse_annotation& b = right.pulses()[i];
+            if (a.ecg_beat_index != b.ecg_beat_index || a.ecg_r_time_seconds != b.ecg_r_time_seconds
+                || a.pulse_delay_seconds != b.pulse_delay_seconds || a.expected_onset_time_seconds != b.expected_onset_time_seconds
+                || a.expected_peak_time_seconds != b.expected_peak_time_seconds || a.expected_offset_time_seconds != b.expected_offset_time_seconds
+                || a.effective_amplitude_au != b.effective_amplitude_au || a.effective_rise_time_seconds != b.effective_rise_time_seconds
+                || a.effective_decay_time_seconds != b.effective_decay_time_seconds || a.state != b.state
+                || a.low_perfusion != b.low_perfusion || a.valid_for_peak_scoring != b.valid_for_peak_scoring
+                || a.generated != b.generated || a.intentionally_missing != b.intentionally_missing)
                 return false;
         }
         return true;
@@ -70,10 +84,13 @@ namespace
             {
                 if (annotation.value_au != ppg.samples()[annotation.sample_index])
                     return false;
-                const unsigned long long left = annotation.sample_index ? annotation.sample_index - 1 : annotation.sample_index;
-                const unsigned long long right = std::min<unsigned long long>(ppg.sample_count() - 1, annotation.sample_index + 1);
-                if (ppg.samples()[annotation.sample_index] < ppg.samples()[left] || ppg.samples()[annotation.sample_index] < ppg.samples()[right])
-                    return false;
+                if (annotation.kind == signal_synth::ppg_systolic_peak)
+                {
+                    const unsigned long long left = annotation.sample_index ? annotation.sample_index - 1 : annotation.sample_index;
+                    const unsigned long long right = std::min<unsigned long long>(ppg.sample_count() - 1, annotation.sample_index + 1);
+                    if (ppg.samples()[annotation.sample_index] < ppg.samples()[left] || ppg.samples()[annotation.sample_index] < ppg.samples()[right])
+                        return false;
+                }
             }
         }
         const signal_synth::ppg_annotation* onset = find_annotation(ppg, ppg.annotations()[0].ecg_beat_index, signal_synth::ppg_pulse_onset, signal_synth::ppg_fiducial_construction);
@@ -96,7 +113,7 @@ int main()
     ok &= check(generator.valid() && generator.generate(ecg, first) && generator.generate(ecg, second), "ppg_generation");
     ok &= check(same_record(first, second), "ppg_is_deterministic");
     ok &= check(first.sample_count() == ecg.sample_count() && std::string(first.channel_name()) == "ppg_green" && std::string(first.unit()) == "a.u.", "ppg_public_contract");
-    ok &= check(first.annotation_count() > 0 && first.annotation_count() % 5 == 0, "construction_and_measured_annotations");
+    ok &= check(first.annotation_count() > 0 && first.annotation_count() % 7 == 0, "construction_and_measured_annotations");
     std::vector<double> modified(first.samples(), first.samples() + first.sample_count());
     const unsigned long long first_beat = first.annotations()[0].ecg_beat_index;
     const signal_synth::ppg_annotation* first_onset = find_annotation(first, first_beat, signal_synth::ppg_pulse_onset, signal_synth::ppg_fiducial_construction);

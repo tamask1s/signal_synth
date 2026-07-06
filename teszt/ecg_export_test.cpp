@@ -126,7 +126,7 @@ int main()
     signal_synth::ecg_render_bundle incomplete;
     signal_synth::ecg_export_bundle preserved_export = bundle;
     ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 17, "failed_export_is_transactional");
-    ok &= check(std::string(signal_synth::signal_synth_generator_version()) == "0.2.0-dev", "runtime_generator_version");
+    ok &= check(std::string(signal_synth::signal_synth_generator_version()) == "0.3.0-dev", "runtime_generator_version");
 
     signal_synth::ecg_scenario_document paced_document = document;
     paced_document.schema_version = 2;

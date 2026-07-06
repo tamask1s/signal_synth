@@ -11,9 +11,10 @@ provides the versioned product-facing QA scenario contract, complete PTB-XL
 condition catalog, strict validation, reproducibility fingerprint, and audit
 report. `ecg_morphology` measures deterministic beat-by-lead morphology from
 the generated 12-lead signal. `ecg_scenario_json` provides strict schema-v1
-and schema-v2 JSON parsing, canonical serialization, and SHA-256 document
-identity. `ppg_model` generates a linked optical pulse channel from the exact
-ECG ventricular timeline.
+through schema-v4 JSON parsing, canonical serialization, and SHA-256 document
+identity. `ppg_model` generates a linked optical pulse channel with variable
+PTT, morphology, modulation, perfusion, weak-pulse, and missing-pulse ground
+truth from the exact ECG ventricular timeline.
 
 ## ECG model status
 
@@ -111,13 +112,15 @@ See `SCENARIO_AUTHORING.md` for the JSON and C++ integration contract.
 
 Use `-DSIGNAL_SYNTH_BUILD_CLI=OFF` for a library-only build.
 
-The render command creates deterministic scenario, metadata, 12-lead CSV,
-annotation, metric, warning, HTML report, and README artifacts. Reports and
-exports are synthetic engineering test evidence, not clinical validation.
+The render command creates deterministic scenario, metadata, waveform,
+annotation, metric, warning, HTML, WFDB, EDF+, and BDF+ artifacts. Compact
+schema-v3/v4 scenarios retain WFDB while omitting redundant large waveform
+formats. Reports and exports are synthetic engineering test evidence, not
+clinical validation.
 
-GitHub Actions runs the five behavioral `TEST-*` suites and the installed
-package smoke suite on Linux and Windows, and preserves the CTest logs as
-finite-retention artifacts. See the
+GitHub Actions runs the behavioral `TEST-*` suites and installed package smoke
+suite on Linux, and preserves the CTest logs as finite-retention artifacts.
+See the
 [traceability SOP](doc/synsigra_architecture_docs/17_TRACEABILITY_SOP.md) and
 [demonstration matrix](doc/synsigra_architecture_docs/18_TRACEABILITY_MATRIX.md).
 This is engineering verification evidence, not clinical validation or a claim

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 namespace signal_synth
 {
     class clinical_ecg_record;
@@ -16,6 +18,30 @@ namespace signal_synth
     {
         ppg_fiducial_construction = 0,
         ppg_fiducial_measurement = 1
+    };
+
+    enum ppg_pulse_state
+    {
+        ppg_pulse_valid = 0,
+        ppg_pulse_weak = 1,
+        ppg_pulse_missing = 2,
+        ppg_pulse_out_of_record = 3
+    };
+
+    const char* ppg_pulse_state_name(ppg_pulse_state state);
+
+    struct ppg_perfusion_episode_config
+    {
+        ppg_perfusion_episode_config();
+
+        double start_seconds;
+        double duration_seconds;
+        double amplitude_scale;
+        double rise_time_scale;
+        double decay_time_scale;
+        unsigned int weak_pulse_every_n_beats;
+        double weak_pulse_amplitude_scale;
+        unsigned int missing_pulse_every_n_beats;
     };
 
     struct ppg_config
@@ -35,7 +61,13 @@ namespace signal_synth
         double pulse_delay_variation_hz;
         unsigned int missing_pulse_every_n_beats;
         double clock_drift_ppm;
+        double pulse_delay_jitter_ms;
+        double low_frequency_amplitude_modulation_ratio;
+        double low_frequency_amplitude_modulation_hz;
+        double rise_time_variation_ratio;
+        double decay_time_variation_ratio;
         unsigned long long seed;
+        std::vector<ppg_perfusion_episode_config> perfusion_episodes;
     };
 
     struct ppg_annotation
@@ -55,6 +87,14 @@ namespace signal_synth
         double ecg_r_time_seconds;
         double pulse_delay_seconds;
         double expected_onset_time_seconds;
+        double expected_peak_time_seconds;
+        double expected_offset_time_seconds;
+        double effective_amplitude_au;
+        double effective_rise_time_seconds;
+        double effective_decay_time_seconds;
+        ppg_pulse_state state;
+        bool low_perfusion;
+        bool valid_for_peak_scoring;
         bool generated;
         bool intentionally_missing;
     };
@@ -82,6 +122,7 @@ namespace signal_synth
         implementation* implementation_;
         friend class ppg_generator;
         friend bool remeasure_ppg_systolic_peaks(const double* samples, unsigned int sample_count, ppg_record& record);
+        friend bool remeasure_ppg_fiducials(const double* samples, unsigned int sample_count, ppg_record& record);
     };
 
     class ppg_generator
@@ -101,4 +142,5 @@ namespace signal_synth
     };
 
     bool remeasure_ppg_systolic_peaks(const double* samples, unsigned int sample_count, ppg_record& record);
+    bool remeasure_ppg_fiducials(const double* samples, unsigned int sample_count, ppg_record& record);
 }

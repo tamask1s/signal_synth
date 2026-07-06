@@ -35,6 +35,7 @@ def create_challenge_with_cli(source_dir, work_dir, cli):
     os.makedirs(scenario_dir)
     shutil.copyfile(os.path.join(source_dir, "examples", "scenarios", "ecg_clean.json"), os.path.join(scenario_dir, "clean_ecg.json"))
     shutil.copyfile(os.path.join(source_dir, "examples", "scenarios", "ecg_ppg_clean.json"), os.path.join(scenario_dir, "ppg_clean.json"))
+    shutil.copyfile(os.path.join(source_dir, "examples", "scenarios", "ppg_perfusion_stress_v4.json"), os.path.join(scenario_dir, "ppg_stress.json"))
     shutil.copyfile(os.path.join(source_dir, "examples", "scenarios", "hrv", "hrv_mild_variability.json"), os.path.join(scenario_dir, "hrv_mild.json"))
     pack_path = os.path.join(pack_source_dir, "pack.json")
     write_json(pack_path, {
@@ -47,6 +48,7 @@ def create_challenge_with_cli(source_dir, work_dir, cli):
         "scenarios": [
             {"id": "clean_ecg", "path": "scenarios/clean_ecg.json", "targets": ["r_peak", "ecg_beat_classification"]},
             {"id": "ppg_clean", "path": "scenarios/ppg_clean.json", "targets": ["ppg_systolic_peak"]},
+            {"id": "ppg_stress", "path": "scenarios/ppg_stress.json", "targets": ["ppg_systolic_peak"]},
             {"id": "hrv_mild", "path": "scenarios/hrv_mild.json", "targets": ["hrv"]},
         ],
     })
@@ -131,7 +133,7 @@ def main():
 
     challenge = ss.load_challenge(challenge_dir)
     assert challenge.package_id == "python_scoring_challenge"
-    assert challenge.case_ids() == ["clean_ecg", "ppg_clean", "hrv_mild"]
+    assert challenge.case_ids() == ["clean_ecg", "ppg_clean", "ppg_stress", "hrv_mild"]
     assert len(challenge.case("clean_ecg").waveform()) > 0
     assert "II_mv" in challenge.case("clean_ecg").waveform().columns
     integrity = challenge.verify_integrity()
@@ -171,12 +173,14 @@ def main():
     rpeak_path = os.path.join(detections_dir, "clean_ecg.json")
     rpeak_recommended_path = os.path.join(detections_dir, "clean_ecg_r_peak.json")
     ppg_path = os.path.join(detections_dir, "ppg_clean.json")
+    ppg_stress_path = os.path.join(detections_dir, "ppg_stress.json")
     beat_class_path = os.path.join(detections_dir, "clean_ecg_beat_classes.json")
     beat_class_recommended_path = os.path.join(detections_dir, "clean_ecg_ecg_beat_classification.json")
     hrv_path = os.path.join(detections_dir, "hrv_mild.json")
     write_detections(rpeak_path, "r_peak", rpeak_detections(challenge.case("clean_ecg").annotations()))
     shutil.copyfile(rpeak_path, rpeak_recommended_path)
     write_detections(ppg_path, "ppg_systolic_peak", ppg_detections(challenge.case("ppg_clean").annotations()))
+    write_detections(ppg_stress_path, "ppg_systolic_peak", ppg_detections(challenge.case("ppg_stress").annotations()))
     write_detections(beat_class_path, "ecg_beat_classification", beat_classifications(challenge.case("clean_ecg").annotations()))
     shutil.copyfile(beat_class_path, beat_class_recommended_path)
     write_json(hrv_path, hrv_output(challenge.case("hrv_mild")))
@@ -198,6 +202,10 @@ def main():
 
     ppg_report = ss.compare_ppg_peaks(challenge.case("ppg_clean"), ppg_detections_doc, cli_path=cli)
     assert ppg_report.json["comparison"]["metrics"]["total"]["f1_score"] == 1
+    ppg_stress_report = ss.compare_ppg_peaks(challenge.case("ppg_stress"), ss.load_detections(ppg_stress_path, target="ppg_systolic_peak"), cli_path=cli)
+    assert ppg_stress_report.json["comparison"]["metrics"]["low_perfusion"]["ground_truth_count"] > 0
+    assert ppg_stress_report.json["comparison"]["metrics"]["weak"]["ground_truth_count"] > 0
+    assert ppg_stress_report.json["comparison"]["metrics"]["missing_pulse"]["opportunity_count"] > 0
 
     beat_class_report = ss.compare_beat_classes(challenge.case("clean_ecg"), beat_class_doc, cli_path=cli)
     assert beat_class_report.json["summary"]["accuracy"] == 1
@@ -224,12 +232,22 @@ def main():
     local_report = ss.verify_package(archive_path, detections_dir, local_verify_dir)
     assert local_report.summary["success"]
     assert local_report.summary["package"]["package_id"] == "python_scoring_challenge"
-    assert local_report.summary["case_target_count"] == 4
-    assert local_report.summary["passed_case_target_count"] == 4
+    assert local_report.summary["case_target_count"] == 5
+    assert local_report.summary["passed_case_target_count"] == 5
     assert local_report.summary["policy"]["profile_id"] == "regression"
     assert local_report.summary["policy"]["passed"]
     assert read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_r_peak", "comparison.json"))["comparison"]["metrics"]["total"]["f1_score"] == 1
     assert read_json(os.path.join(local_verify_dir, "verification", "ppg_clean", "comparison.json"))["comparison"]["metrics"]["total"]["f1_score"] == 1
+    stress_metrics = read_json(os.path.join(local_verify_dir, "verification", "ppg_stress", "comparison.json"))["comparison"]["metrics"]
+    assert stress_metrics["low_perfusion"]["ground_truth_count"] > 0
+    assert stress_metrics["weak"]["ground_truth_count"] > 0
+    assert stress_metrics["missing_pulse"]["opportunity_count"] > 0
+    cpp_stress_dir = os.path.join(work_dir, "cpp_ppg_stress")
+    run([cli, "compare", "ppg-peaks", challenge.case("ppg_stress").scenario_path, ppg_stress_path, "--out", cpp_stress_dir])
+    python_stress = read_json(os.path.join(local_verify_dir, "verification", "ppg_stress", "comparison.json"))["comparison"]
+    cpp_stress = read_json(os.path.join(cpp_stress_dir, "comparison.json"))["comparison"]
+    for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
+        assert python_stress[key] == cpp_stress[key]
     assert read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_ecg_beat_classification", "comparison.json"))["summary"]["micro_f1_score"] == 1
     assert read_json(os.path.join(local_verify_dir, "verification", "hrv_mild", "comparison.json"))["metric_pass_fraction"] == 1
     assert next(item for item in local_report.summary["targets"] if item["target"] == "ecg_beat_classification")["confusion_matrix"]["labels"] == ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "unscored"]

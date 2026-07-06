@@ -746,7 +746,13 @@ namespace
             && config.pulse_delay_variation_hz == defaults.pulse_delay_variation_hz
             && config.missing_pulse_every_n_beats == defaults.missing_pulse_every_n_beats
             && config.clock_drift_ppm == defaults.clock_drift_ppm
-            && config.seed == defaults.seed;
+            && config.pulse_delay_jitter_ms == defaults.pulse_delay_jitter_ms
+            && config.low_frequency_amplitude_modulation_ratio == defaults.low_frequency_amplitude_modulation_ratio
+            && config.low_frequency_amplitude_modulation_hz == defaults.low_frequency_amplitude_modulation_hz
+            && config.rise_time_variation_ratio == defaults.rise_time_variation_ratio
+            && config.decay_time_variation_ratio == defaults.decay_time_variation_ratio
+            && config.seed == defaults.seed
+            && config.perfusion_episodes.empty();
     }
 
     bool default_hrv_config(const signal_synth::hrv_scenario_config& config)
@@ -839,6 +845,17 @@ namespace
         return false;
     }
 
+    bool default_v4_config(const signal_synth::ecg_scenario_document& document)
+    {
+        const signal_synth::ppg_config ppg;
+        return document.ppg.pulse_delay_jitter_ms == ppg.pulse_delay_jitter_ms
+            && document.ppg.low_frequency_amplitude_modulation_ratio == ppg.low_frequency_amplitude_modulation_ratio
+            && document.ppg.low_frequency_amplitude_modulation_hz == ppg.low_frequency_amplitude_modulation_hz
+            && document.ppg.rise_time_variation_ratio == ppg.rise_time_variation_ratio
+            && document.ppg.decay_time_variation_ratio == ppg.decay_time_variation_ratio
+            && document.ppg.perfusion_episodes.empty();
+    }
+
     bool valid_v3_config(const signal_synth::ecg_scenario_document& document)
     {
         const signal_synth::scenario_randomization_config& randomization = document.randomization;
@@ -894,10 +911,36 @@ namespace
         return true;
     }
 
+    bool valid_v4_config(const signal_synth::ecg_scenario_document& document)
+    {
+        if (!valid_v3_config(document))
+            return false;
+        if ((!document.ppg.perfusion_episodes.empty() || document.ppg.pulse_delay_jitter_ms > 0.0
+            || document.ppg.low_frequency_amplitude_modulation_ratio > 0.0 || document.ppg.rise_time_variation_ratio > 0.0
+            || document.ppg.decay_time_variation_ratio > 0.0) && !document.ppg.enabled)
+            return false;
+        double minimum_pulse_delay_ms = document.ppg.pulse_delay_ms;
+        for (std::size_t i = 0; i < document.randomization.envelopes.size(); ++i)
+            if (document.randomization.envelopes[i].parameter == "ppg.pulse_delay_ms")
+                minimum_pulse_delay_ms = document.randomization.envelopes[i].minimum;
+        minimum_pulse_delay_ms -= document.ppg.pulse_delay_variation_ms + document.ppg.pulse_delay_jitter_ms;
+        if (document.ppg.clock_drift_ppm < 0.0)
+            minimum_pulse_delay_ms += document.duration_seconds * document.ppg.clock_drift_ppm * 0.001;
+        if (minimum_pulse_delay_ms < 0.0)
+            return false;
+        for (std::size_t i = 0; i < document.ppg.perfusion_episodes.size(); ++i)
+        {
+            const signal_synth::ppg_perfusion_episode_config& episode = document.ppg.perfusion_episodes[i];
+            if (episode.start_seconds + episode.duration_seconds > document.duration_seconds)
+                return false;
+        }
+        return true;
+    }
+
     bool validate_document(const signal_synth::ecg_scenario_document& document, signal_synth::ecg_scenario_json_result& result, std::vector<std::string>& sorted_tags)
     {
-        if (document.schema_version < 1 || document.schema_version > 3)
-            add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema versions 1, 2, and 3 are supported");
+        if (document.schema_version < 1 || document.schema_version > 4)
+            add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema versions 1, 2, 3, and 4 are supported");
         if (document.schema_version == 1 && !default_ppg_config(document.ppg))
             add_message(result, signal_synth::ecg_json_semantic, "$.ppg", "schema version 1 cannot represent PPG configuration");
         if (document.schema_version == 1 && !default_hrv_config(document.hrv))
@@ -910,8 +953,12 @@ namespace
             add_message(result, signal_synth::ecg_json_range, "$.ppg", "invalid PPG configuration");
         if (document.schema_version < 3 && !default_v3_config(document))
             add_message(result, signal_synth::ecg_json_semantic, "$", "randomization, physiology, output, and PPG stress controls require schema version 3");
-        if (document.schema_version == 3 && !valid_v3_config(document))
+        if (document.schema_version >= 3 && !valid_v3_config(document))
             add_message(result, signal_synth::ecg_json_range, "$", "invalid schema-v3 randomization, physiology, output, or PPG stress configuration");
+        if (document.schema_version < 4 && !default_v4_config(document))
+            add_message(result, signal_synth::ecg_json_semantic, "$.ppg", "PPG physiology-v2 and perfusion controls require schema version 4");
+        if (document.schema_version == 4 && !valid_v4_config(document))
+            add_message(result, signal_synth::ecg_json_range, "$.ppg", "invalid schema-v4 PPG physiology or perfusion configuration");
         if (!signal_synth::validate_signal_quality_config(document.signal_quality, document.duration_seconds, document.ecg.sampling_rate_hz(), document.ppg.enabled))
             add_message(result, signal_synth::ecg_json_range, "$.artifacts", "invalid artifact configuration");
         if (!safe_identifier(document.scenario_id))
@@ -1024,6 +1071,27 @@ namespace
                        << ",\"missing_pulse_every_n_beats\":" << document.ppg.missing_pulse_every_n_beats
                        << ",\"clock_drift_ppm\":" << format_double(document.ppg.clock_drift_ppm)
                        << ",\"seed\":" << document.ppg.seed;
+            if (document.schema_version >= 4)
+            {
+                std::vector<signal_synth::ppg_perfusion_episode_config> episodes = document.ppg.perfusion_episodes;
+                std::sort(episodes.begin(), episodes.end(), [](const signal_synth::ppg_perfusion_episode_config& left, const signal_synth::ppg_perfusion_episode_config& right) { return left.start_seconds < right.start_seconds; });
+                output << ",\"pulse_delay_jitter_ms\":" << format_double(document.ppg.pulse_delay_jitter_ms)
+                       << ",\"low_frequency_amplitude_modulation_ratio\":" << format_double(document.ppg.low_frequency_amplitude_modulation_ratio)
+                       << ",\"low_frequency_amplitude_modulation_hz\":" << format_double(document.ppg.low_frequency_amplitude_modulation_hz)
+                       << ",\"rise_time_variation_ratio\":" << format_double(document.ppg.rise_time_variation_ratio)
+                       << ",\"decay_time_variation_ratio\":" << format_double(document.ppg.decay_time_variation_ratio)
+                       << ",\"perfusion_episodes\":[";
+                for (std::size_t i = 0; i < episodes.size(); ++i)
+                    output << (i ? "," : "") << "{\"start_seconds\":" << format_double(episodes[i].start_seconds)
+                           << ",\"duration_seconds\":" << format_double(episodes[i].duration_seconds)
+                           << ",\"amplitude_scale\":" << format_double(episodes[i].amplitude_scale)
+                           << ",\"rise_time_scale\":" << format_double(episodes[i].rise_time_scale)
+                           << ",\"decay_time_scale\":" << format_double(episodes[i].decay_time_scale)
+                           << ",\"weak_pulse_every_n_beats\":" << episodes[i].weak_pulse_every_n_beats
+                           << ",\"weak_pulse_amplitude_scale\":" << format_double(episodes[i].weak_pulse_amplitude_scale)
+                           << ",\"missing_pulse_every_n_beats\":" << episodes[i].missing_pulse_every_n_beats << '}';
+                output << ']';
+            }
             output << '}';
         }
         if (document.schema_version >= 3)
@@ -1209,8 +1277,8 @@ namespace signal_synth
         }
 
         unsigned long long integer = 0;
-        if (!integral_number(*schema, 3, integer) || integer < 1 || integer > 3)
-            add_message(fresh_result, ecg_json_schema_version, "$.schema_version", "only schema versions 1, 2, and 3 are supported");
+        if (!integral_number(*schema, 4, integer) || integer < 1 || integer > 4)
+            add_message(fresh_result, ecg_json_schema_version, "$.schema_version", "only schema versions 1, 2, 3, and 4 are supported");
         ecg_scenario_document document;
         document.schema_version = static_cast<unsigned int>(integer);
         document.ecg.clear_conditions();
@@ -1480,8 +1548,9 @@ namespace signal_synth
                 add_message(fresh_result, ecg_json_type, "$.ppg", "field has the wrong JSON type");
             else
             {
-                const char* ppg_fields[] = {"enabled","pulse_delay_ms","rise_time_ms","decay_time_ms","amplitude_au","baseline_au","dicrotic_delay_ms","dicrotic_width_ms","dicrotic_amplitude_ratio","pulse_delay_variation_ms","pulse_delay_variation_hz","missing_pulse_every_n_beats","clock_drift_ppm","seed"};
-                allowed_fields(*ppg, ppg_fields, document.schema_version >= 3 ? sizeof(ppg_fields) / sizeof(ppg_fields[0]) : 9u, "$.ppg", fresh_result);
+                const char* ppg_fields[] = {"enabled","pulse_delay_ms","rise_time_ms","decay_time_ms","amplitude_au","baseline_au","dicrotic_delay_ms","dicrotic_width_ms","dicrotic_amplitude_ratio","pulse_delay_variation_ms","pulse_delay_variation_hz","missing_pulse_every_n_beats","clock_drift_ppm","seed","pulse_delay_jitter_ms","low_frequency_amplitude_modulation_ratio","low_frequency_amplitude_modulation_hz","rise_time_variation_ratio","decay_time_variation_ratio","perfusion_episodes"};
+                const std::size_t ppg_field_count = document.schema_version >= 4 ? sizeof(ppg_fields) / sizeof(ppg_fields[0]) : document.schema_version >= 3 ? 14u : 9u;
+                allowed_fields(*ppg, ppg_fields, ppg_field_count, "$.ppg", fresh_result);
                 const json_value* enabled = required(*ppg, "enabled", json_value::bool_kind, "$.ppg", fresh_result);
                 const json_value* pulse_delay = required(*ppg, "pulse_delay_ms", json_value::number_kind, "$.ppg", fresh_result);
                 const json_value* rise = required(*ppg, "rise_time_ms", json_value::number_kind, "$.ppg", fresh_result);
@@ -1496,6 +1565,12 @@ namespace signal_synth
                 const json_value* missing_pulse = member(*ppg, "missing_pulse_every_n_beats");
                 const json_value* clock_drift = member(*ppg, "clock_drift_ppm");
                 const json_value* ppg_seed = member(*ppg, "seed");
+                const json_value* delay_jitter = member(*ppg, "pulse_delay_jitter_ms");
+                const json_value* lf_amplitude = member(*ppg, "low_frequency_amplitude_modulation_ratio");
+                const json_value* lf_frequency = member(*ppg, "low_frequency_amplitude_modulation_hz");
+                const json_value* rise_variation = member(*ppg, "rise_time_variation_ratio");
+                const json_value* decay_variation = member(*ppg, "decay_time_variation_ratio");
+                const json_value* perfusion_episodes = member(*ppg, "perfusion_episodes");
                 if (document.schema_version >= 3)
                 {
                     delay_variation = required(*ppg, "pulse_delay_variation_ms", json_value::number_kind, "$.ppg", fresh_result);
@@ -1503,6 +1578,15 @@ namespace signal_synth
                     missing_pulse = required(*ppg, "missing_pulse_every_n_beats", json_value::number_kind, "$.ppg", fresh_result);
                     clock_drift = required(*ppg, "clock_drift_ppm", json_value::number_kind, "$.ppg", fresh_result);
                     ppg_seed = required(*ppg, "seed", json_value::number_kind, "$.ppg", fresh_result);
+                }
+                if (document.schema_version >= 4)
+                {
+                    delay_jitter = required(*ppg, "pulse_delay_jitter_ms", json_value::number_kind, "$.ppg", fresh_result);
+                    lf_amplitude = required(*ppg, "low_frequency_amplitude_modulation_ratio", json_value::number_kind, "$.ppg", fresh_result);
+                    lf_frequency = required(*ppg, "low_frequency_amplitude_modulation_hz", json_value::number_kind, "$.ppg", fresh_result);
+                    rise_variation = required(*ppg, "rise_time_variation_ratio", json_value::number_kind, "$.ppg", fresh_result);
+                    decay_variation = required(*ppg, "decay_time_variation_ratio", json_value::number_kind, "$.ppg", fresh_result);
+                    perfusion_episodes = required(*ppg, "perfusion_episodes", json_value::array_kind, "$.ppg", fresh_result);
                 }
                 if (enabled) document.ppg.enabled = enabled->boolean;
                 if (pulse_delay) document.ppg.pulse_delay_ms = pulse_delay->number;
@@ -1548,6 +1632,52 @@ namespace signal_synth
                     else
                         document.ppg.seed = integer;
                 }
+                if (delay_jitter && delay_jitter->type == json_value::number_kind) document.ppg.pulse_delay_jitter_ms = delay_jitter->number;
+                if (lf_amplitude && lf_amplitude->type == json_value::number_kind) document.ppg.low_frequency_amplitude_modulation_ratio = lf_amplitude->number;
+                if (lf_frequency && lf_frequency->type == json_value::number_kind) document.ppg.low_frequency_amplitude_modulation_hz = lf_frequency->number;
+                if (rise_variation && rise_variation->type == json_value::number_kind) document.ppg.rise_time_variation_ratio = rise_variation->number;
+                if (decay_variation && decay_variation->type == json_value::number_kind) document.ppg.decay_time_variation_ratio = decay_variation->number;
+                if (perfusion_episodes && perfusion_episodes->type == json_value::array_kind)
+                {
+                    for (std::size_t i = 0; i < perfusion_episodes->array.size(); ++i)
+                    {
+                        const std::string path = "$.ppg.perfusion_episodes[" + json_index(i) + "]";
+                        const json_value& item = perfusion_episodes->array[i];
+                        if (item.type != json_value::object_kind)
+                        {
+                            add_message(fresh_result, ecg_json_type, path, "perfusion episode must be an object");
+                            continue;
+                        }
+                        const char* fields[] = {"start_seconds","duration_seconds","amplitude_scale","rise_time_scale","decay_time_scale","weak_pulse_every_n_beats","weak_pulse_amplitude_scale","missing_pulse_every_n_beats"};
+                        allowed_fields(item, fields, 8u, path, fresh_result);
+                        const json_value* start = required(item, fields[0], json_value::number_kind, path, fresh_result);
+                        const json_value* episode_duration = required(item, fields[1], json_value::number_kind, path, fresh_result);
+                        const json_value* amplitude_scale = required(item, fields[2], json_value::number_kind, path, fresh_result);
+                        const json_value* rise_scale = required(item, fields[3], json_value::number_kind, path, fresh_result);
+                        const json_value* decay_scale = required(item, fields[4], json_value::number_kind, path, fresh_result);
+                        const json_value* weak_every = required(item, fields[5], json_value::number_kind, path, fresh_result);
+                        const json_value* weak_scale = required(item, fields[6], json_value::number_kind, path, fresh_result);
+                        const json_value* missing_every = required(item, fields[7], json_value::number_kind, path, fresh_result);
+                        unsigned long long weak_integer = 0, missing_integer = 0;
+                        if (weak_every && !integral_number(*weak_every, std::numeric_limits<unsigned int>::max(), weak_integer))
+                            add_message(fresh_result, ecg_json_range, path + ".weak_pulse_every_n_beats", "field must be an unsigned integer");
+                        if (missing_every && !integral_number(*missing_every, std::numeric_limits<unsigned int>::max(), missing_integer))
+                            add_message(fresh_result, ecg_json_range, path + ".missing_pulse_every_n_beats", "field must be an unsigned integer");
+                        if (start && episode_duration && amplitude_scale && rise_scale && decay_scale && weak_every && weak_scale && missing_every)
+                        {
+                            ppg_perfusion_episode_config episode;
+                            episode.start_seconds = start->number;
+                            episode.duration_seconds = episode_duration->number;
+                            episode.amplitude_scale = amplitude_scale->number;
+                            episode.rise_time_scale = rise_scale->number;
+                            episode.decay_time_scale = decay_scale->number;
+                            episode.weak_pulse_every_n_beats = static_cast<unsigned int>(weak_integer);
+                            episode.weak_pulse_amplitude_scale = weak_scale->number;
+                            episode.missing_pulse_every_n_beats = static_cast<unsigned int>(missing_integer);
+                            document.ppg.perfusion_episodes.push_back(episode);
+                        }
+                    }
+                }
                 if (!ppg_generator(document.ppg).valid())
                     add_message(fresh_result, ecg_json_range, "$.ppg", "invalid PPG configuration");
             }
@@ -1558,7 +1688,7 @@ namespace signal_synth
         const json_value* output_config = member(root, "output");
         if (document.schema_version < 3 && (randomization || physiology || output_config))
             add_message(fresh_result, ecg_json_unknown_field, "$", "randomization, physiology, and output require schema version 3");
-        if (document.schema_version == 3)
+        if (document.schema_version >= 3)
         {
             if (!randomization || !physiology || !output_config)
                 add_message(fresh_result, ecg_json_missing_field, "$", "schema version 3 requires randomization, physiology, and output");
