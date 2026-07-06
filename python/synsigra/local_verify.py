@@ -39,11 +39,12 @@ class VerificationReport(object):
 
 
 class _TruthEvent(object):
-    def __init__(self, index, time_seconds, label="", in_artifact_interval=False, low_perfusion=False, weak_pulse=False, missing_pulse_window=False):
+    def __init__(self, index, time_seconds, label="", in_artifact_interval=False, in_motion_artifact_interval=False, low_perfusion=False, weak_pulse=False, missing_pulse_window=False):
         self.index = int(index)
         self.time_seconds = float(time_seconds)
         self.label = label
         self.in_artifact_interval = bool(in_artifact_interval)
+        self.in_motion_artifact_interval = bool(in_motion_artifact_interval)
         self.low_perfusion = bool(low_perfusion)
         self.weak_pulse = bool(weak_pulse)
         self.missing_pulse_window = bool(missing_pulse_window)
@@ -156,6 +157,7 @@ def _score_event_detection(package, case, case_summary, annotations, detections,
         pulse = _ppg_pulse_at_time(annotations, item.time_seconds) if target == "ppg_systolic_peak" else None
         detection_events.append(_TruthEvent(
             item.original_index, item.time_seconds, "", _in_artifact_interval(target, item.time_seconds, annotations, case_summary),
+            _in_motion_artifact_interval(target, item.time_seconds, annotations, case_summary),
             bool(pulse and pulse.get("low_perfusion", False)),
             bool(pulse and _ppg_pulse_state(pulse) == "weak"),
             bool(pulse and _ppg_pulse_state(pulse) == "missing")))
@@ -378,11 +380,13 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
     total = _empty_event_metrics()
     clean = _empty_event_metrics()
     artifact = _empty_event_metrics()
+    motion = _empty_event_metrics()
     low_perfusion = _empty_event_metrics()
     weak = _empty_event_metrics()
     total_errors = []
     clean_errors = []
     artifact_errors = []
+    motion_errors = []
     low_perfusion_errors = []
     weak_errors = []
     matches = []
@@ -403,6 +407,7 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
             "detection_time_seconds": detection_event.time_seconds,
             "error_seconds": error_seconds,
             "in_artifact_interval": truth_event.in_artifact_interval,
+            "in_motion_artifact_interval": truth_event.in_motion_artifact_interval,
             "low_perfusion": truth_event.low_perfusion,
             "weak_pulse": truth_event.weak_pulse,
         }
@@ -418,12 +423,17 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
         if truth_event.low_perfusion:
             low_perfusion["true_positive_count"] += 1
             low_perfusion_errors.append(abs(error_seconds))
+        if truth_event.in_motion_artifact_interval:
+            motion["true_positive_count"] += 1
+            motion_errors.append(abs(error_seconds))
         if truth_event.weak_pulse:
             weak["true_positive_count"] += 1
             weak_errors.append(abs(error_seconds))
 
     for index, truth_event in enumerate(truth):
         _bin_metrics(truth_event.in_artifact_interval, clean, artifact)["ground_truth_count"] += 1
+        if truth_event.in_motion_artifact_interval:
+            motion["ground_truth_count"] += 1
         if truth_event.low_perfusion:
             low_perfusion["ground_truth_count"] += 1
         if truth_event.weak_pulse:
@@ -432,6 +442,7 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
             event = {
                 "ground_truth_index": truth_event.index, "time_seconds": truth_event.time_seconds,
                 "in_artifact_interval": truth_event.in_artifact_interval,
+                "in_motion_artifact_interval": truth_event.in_motion_artifact_interval,
                 "low_perfusion": truth_event.low_perfusion, "weak_pulse": truth_event.weak_pulse,
             }
             false_negatives.append(event)
@@ -441,8 +452,12 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
                 low_perfusion["false_negative_count"] += 1
             if truth_event.weak_pulse:
                 weak["false_negative_count"] += 1
+            if truth_event.in_motion_artifact_interval:
+                motion["false_negative_count"] += 1
     for index, detection_event in enumerate(sorted_detections):
         _bin_metrics(detection_event.in_artifact_interval, clean, artifact)["detection_count"] += 1
+        if detection_event.in_motion_artifact_interval:
+            motion["detection_count"] += 1
         if detection_event.low_perfusion:
             low_perfusion["detection_count"] += 1
         if detection_event.weak_pulse:
@@ -451,6 +466,7 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
             event = {
                 "detection_index": detection_event.index, "time_seconds": detection_event.time_seconds,
                 "in_artifact_interval": detection_event.in_artifact_interval,
+                "in_motion_artifact_interval": detection_event.in_motion_artifact_interval,
                 "low_perfusion": detection_event.low_perfusion, "weak_pulse": detection_event.weak_pulse,
                 "missing_pulse_window": detection_event.missing_pulse_window,
             }
@@ -461,11 +477,14 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
                 low_perfusion["false_positive_count"] += 1
             if detection_event.weak_pulse:
                 weak["false_positive_count"] += 1
+            if detection_event.in_motion_artifact_interval:
+                motion["false_positive_count"] += 1
     total["ground_truth_count"] = len(truth)
     total["detection_count"] = len(detections)
     _finalize_event_metrics(total, total_errors)
     _finalize_event_metrics(clean, clean_errors)
     _finalize_event_metrics(artifact, artifact_errors)
+    _finalize_event_metrics(motion, motion_errors)
     _finalize_event_metrics(low_perfusion, low_perfusion_errors)
     _finalize_event_metrics(weak, weak_errors)
     return {
@@ -473,7 +492,7 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
         "tolerance_seconds": tolerance_seconds,
         "success": True,
         "metrics": {
-            "total": total, "clean": clean, "artifact": artifact,
+            "total": total, "clean": clean, "artifact": artifact, "motion": motion,
             "low_perfusion": low_perfusion, "weak": weak,
             "missing_pulse": {
                 "opportunity_count": missing_pulse_opportunity_count,
@@ -628,6 +647,7 @@ def _truth_events_for_target(target, annotations, case_summary):
                 pulse = _ppg_pulse_for_beat(annotations, item.get("ecg_beat_index"))
                 events.append(_TruthEvent(
                     len(events), time_seconds, "", _in_artifact_interval(target, time_seconds, annotations, case_summary),
+                    _in_motion_artifact_interval(target, time_seconds, annotations, case_summary),
                     bool(pulse and pulse.get("low_perfusion", False)),
                     bool(pulse and _ppg_pulse_state(pulse) == "weak")))
         return events
@@ -670,6 +690,21 @@ def _in_artifact_interval(target, time_seconds, annotations, case_summary):
         start = float(interval.get("start_seconds", 0.0))
         end = float(interval.get("end_seconds", 0.0))
         if time_seconds >= start and time_seconds < end and _artifact_affects_target(interval, target):
+            return True
+    return False
+
+
+def _in_motion_artifact_interval(target, time_seconds, annotations, case_summary):
+    if target != "ppg_systolic_peak":
+        return False
+    intervals = annotations.get("artifact_intervals")
+    if intervals is None:
+        intervals = case_summary.get("artifact_intervals", [])
+    for interval in intervals:
+        artifact_type = str(interval.get("type", ""))
+        start = float(interval.get("start_seconds", 0.0))
+        end = float(interval.get("end_seconds", 0.0))
+        if artifact_type.startswith("ppg_motion_") and time_seconds >= start and time_seconds < end:
             return True
     return False
 
@@ -1082,7 +1117,7 @@ def _event_comparison_csv(report_json):
     output = io.StringIO()
     writer = csv.writer(output)
     writer.writerow(["row_type", "bin", "ground_truth_index", "detection_index", "ground_truth_time_seconds", "detection_time_seconds", "error_seconds", "ground_truth_count", "detection_count", "true_positive_count", "false_positive_count", "false_negative_count", "sensitivity", "positive_predictive_value", "f1_score", "mean_absolute_error_seconds", "median_absolute_error_seconds", "rms_error_seconds", "max_absolute_error_seconds"])
-    for name in ("total", "clean", "artifact", "low_perfusion", "weak"):
+    for name in ("total", "clean", "artifact", "motion", "low_perfusion", "weak"):
         metrics = comparison["metrics"][name]
         writer.writerow(["metrics", name, "", "", "", "", "", metrics["ground_truth_count"], metrics["detection_count"], metrics["true_positive_count"], metrics["false_positive_count"], metrics["false_negative_count"], metrics["sensitivity"], metrics["positive_predictive_value"], metrics["f1_score"], metrics["mean_absolute_error_seconds"], metrics["median_absolute_error_seconds"], metrics["rms_error_seconds"], metrics["max_absolute_error_seconds"]])
     missing = comparison["metrics"]["missing_pulse"]
@@ -1097,6 +1132,8 @@ def _event_comparison_csv(report_json):
 
 
 def _event_bin(item):
+    if item.get("in_motion_artifact_interval", False):
+        return "motion"
     if item.get("in_artifact_interval", False):
         return "artifact"
     if item.get("missing_pulse_window", False):
@@ -1161,7 +1198,7 @@ def _event_comparison_html(report_json):
     comparison = report_json["comparison"]
     scenario = report_json["scenario"]
     rows = []
-    for name in ("total", "clean", "artifact", "low_perfusion", "weak"):
+    for name in ("total", "clean", "artifact", "motion", "low_perfusion", "weak"):
         metrics = comparison["metrics"][name]
         rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%.6g</td><td>%.6g</td><td>%.6g</td><td>%.6g s</td><td>%.6g s</td></tr>" % (
             _h(name), metrics["ground_truth_count"], metrics["detection_count"], metrics["true_positive_count"], metrics["false_positive_count"], metrics["false_negative_count"], metrics["sensitivity"], metrics["positive_predictive_value"], metrics["f1_score"], metrics["mean_absolute_error_seconds"], metrics["rms_error_seconds"]))

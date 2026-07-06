@@ -16,7 +16,7 @@ namespace
 
     bool is_ecg_type(signal_synth::signal_quality_artifact_type type)
     {
-        return type != signal_synth::signal_quality_ppg_dropout;
+        return !signal_synth::signal_quality_artifact_is_ppg(type);
     }
 
     bool is_valid_type(signal_synth::signal_quality_artifact_type type)
@@ -38,6 +38,11 @@ namespace
         case signal_synth::signal_quality_ecg_dropped_samples:
         case signal_synth::signal_quality_ecg_quantization:
         case signal_synth::signal_quality_ecg_adc_clipping:
+        case signal_synth::signal_quality_ppg_motion_periodic:
+        case signal_synth::signal_quality_ppg_motion_burst:
+        case signal_synth::signal_quality_ppg_motion_broadband:
+        case signal_synth::signal_quality_ppg_ambient_light:
+        case signal_synth::signal_quality_ppg_sensor_saturation:
             return true;
         }
         return false;
@@ -220,16 +225,59 @@ namespace
         }
     }
 
-    void apply_ppg_artifact(std::vector<double>& samples, const signal_synth::signal_quality_artifact_config& config, unsigned long long first, unsigned long long past)
+    void apply_ppg_artifact(std::vector<double>& samples, std::vector<double>& accelerometer, const signal_synth::signal_quality_artifact_config& config, unsigned int sampling_rate_hz, unsigned long long first, unsigned long long past, double baseline, double span)
     {
         if (samples.empty())
             return;
-        const double baseline = *std::min_element(samples.begin(), samples.end());
+        const double phase = two_pi * unit_from_seed(config.seed ^ 0x243f6a8885a308d3ULL);
+        const double frequency = 0.8 + 2.2 * unit_from_seed(config.seed ^ 0x13198a2e03707344ULL);
+        unsigned long long ppg_noise_state = config.seed ^ 0xa4093822299f31d0ULL;
+        unsigned long long acceleration_noise_state = config.seed ^ 0x082efa98ec4e6c89ULL;
+        double previous_ppg_noise = 0.0;
+        double previous_acceleration_noise = 0.0;
         for (unsigned long long sample = first; sample < past; ++sample)
         {
             const std::size_t index = static_cast<std::size_t>(sample);
-            const double weight = envelope(sample, first, past) * config.severity;
-            samples[index] = samples[index] * (1.0 - weight) + baseline * weight;
+            const double time = static_cast<double>(sample) / sampling_rate_hz;
+            const double edge_weight = envelope(sample, first, past);
+            const double weight = edge_weight * config.severity;
+            if (config.type == signal_synth::signal_quality_ppg_dropout)
+                samples[index] = samples[index] * (1.0 - weight) + baseline * weight;
+            else if (config.type == signal_synth::signal_quality_ppg_motion_periodic)
+            {
+                const double acceleration = weight * (0.35 * std::sin(two_pi * frequency * time + phase) + 0.10 * std::sin(two_pi * 2.0 * frequency * time + 0.4 + phase));
+                accelerometer[index] += acceleration;
+                samples[index] += span * (1.15 * acceleration + weight * 0.12 * std::sin(two_pi * 0.5 * frequency * time + phase));
+            }
+            else if (config.type == signal_synth::signal_quality_ppg_motion_burst)
+            {
+                const double burst_phase = std::sin(two_pi * 0.35 * frequency * time + phase);
+                const double gate = burst_phase > 0.25 ? std::pow((burst_phase - 0.25) / 0.75, 2.0) : 0.0;
+                const double acceleration = weight * gate * (0.55 * std::sin(two_pi * 2.4 * frequency * time + phase) + 0.16 * std::sin(two_pi * 4.1 * frequency * time));
+                accelerometer[index] += acceleration;
+                samples[index] += span * (0.95 * acceleration + weight * gate * 0.18);
+            }
+            else if (config.type == signal_synth::signal_quality_ppg_motion_broadband)
+            {
+                const double ppg_raw = signed_noise(ppg_noise_state);
+                const double acceleration_raw = signed_noise(acceleration_noise_state);
+                const double ppg_band = ppg_raw - 0.72 * previous_ppg_noise;
+                const double acceleration_band = acceleration_raw - 0.58 * previous_acceleration_noise;
+                previous_ppg_noise = ppg_raw;
+                previous_acceleration_noise = acceleration_raw;
+                const double acceleration = weight * 0.32 * acceleration_band;
+                accelerometer[index] += acceleration;
+                samples[index] += span * weight * (0.55 * ppg_band + 0.80 * acceleration_band);
+            }
+            else if (config.type == signal_synth::signal_quality_ppg_ambient_light)
+                samples[index] += span * weight * (0.55 + 0.12 * std::sin(two_pi * 100.0 * time + phase));
+            else if (config.type == signal_synth::signal_quality_ppg_sensor_saturation)
+            {
+                const bool upper = unit_from_seed(config.seed ^ 0x452821e638d01377ULL) >= 0.5;
+                const double rail = upper ? baseline + span * (1.0 - 0.65 * config.severity) : baseline + span * 0.65 * config.severity;
+                const double saturated = upper ? std::min(samples[index], rail) : std::max(samples[index], rail);
+                samples[index] = samples[index] * (1.0 - edge_weight) + saturated * edge_weight;
+            }
         }
     }
 
@@ -263,8 +311,30 @@ namespace signal_synth
         case signal_quality_ecg_dropped_samples: return "ecg_dropped_samples";
         case signal_quality_ecg_quantization: return "ecg_quantization";
         case signal_quality_ecg_adc_clipping: return "ecg_adc_clipping";
+        case signal_quality_ppg_motion_periodic: return "ppg_motion_periodic";
+        case signal_quality_ppg_motion_burst: return "ppg_motion_burst";
+        case signal_quality_ppg_motion_broadband: return "ppg_motion_broadband";
+        case signal_quality_ppg_ambient_light: return "ppg_ambient_light";
+        case signal_quality_ppg_sensor_saturation: return "ppg_sensor_saturation";
         }
         return "unknown";
+    }
+
+    bool signal_quality_artifact_is_ppg(signal_quality_artifact_type type)
+    {
+        return type == signal_quality_ppg_dropout
+            || type == signal_quality_ppg_motion_periodic
+            || type == signal_quality_ppg_motion_burst
+            || type == signal_quality_ppg_motion_broadband
+            || type == signal_quality_ppg_ambient_light
+            || type == signal_quality_ppg_sensor_saturation;
+    }
+
+    bool signal_quality_artifact_is_motion(signal_quality_artifact_type type)
+    {
+        return type == signal_quality_ppg_motion_periodic
+            || type == signal_quality_ppg_motion_burst
+            || type == signal_quality_ppg_motion_broadband;
     }
 
     signal_quality_artifact_config::signal_quality_artifact_config()
@@ -285,6 +355,13 @@ namespace signal_synth
     bool signal_quality_artifact_config::affects_ppg() const
     {
         return ppg;
+    }
+
+    signal_quality_artifact_interval::signal_quality_artifact_interval()
+        : type(signal_quality_ecg_baseline_wander), start_seconds(0.0), end_seconds(0.0), start_sample_index(0), end_sample_index(0), severity(0.0), seed(0), ppg(false), accelerometer_reference(false)
+    {
+        for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
+            ecg_leads[lead] = false;
     }
 
     bool validate_signal_quality_config(const signal_quality_config& config, double duration_seconds, unsigned int sampling_rate_hz, bool ppg_enabled)
@@ -345,6 +422,15 @@ namespace signal_synth
                     return false;
                 fresh.ppg.assign(source, source + ppg.sample_count());
             }
+            const double ppg_baseline = fresh.ppg.empty() ? 0.0 : *std::min_element(fresh.ppg.begin(), fresh.ppg.end());
+            const double ppg_maximum = fresh.ppg.empty() ? 0.0 : *std::max_element(fresh.ppg.begin(), fresh.ppg.end());
+            const double ppg_span = std::max(1e-9, ppg_maximum - ppg_baseline);
+            for (std::size_t i = 0; i < config.artifacts.size(); ++i)
+                if (signal_quality_artifact_is_motion(config.artifacts[i].type))
+                {
+                    fresh.accelerometer.assign(ecg.sample_count(), 0.0);
+                    break;
+                }
             const double duration_seconds = static_cast<double>(ecg.sample_count()) / ecg.sampling_rate_hz();
             if (!validate_signal_quality_config(config, duration_seconds, ecg.sampling_rate_hz(), ppg.sample_count() != 0))
                 return false;
@@ -368,7 +454,7 @@ namespace signal_synth
                     }
                 }
                 else
-                    apply_ppg_artifact(fresh.ppg, artifact, first, past);
+                    apply_ppg_artifact(fresh.ppg, fresh.accelerometer, artifact, ecg.sampling_rate_hz(), first, past, ppg_baseline, ppg_span);
 
                 signal_quality_artifact_interval interval;
                 interval.type = artifact.type;
@@ -379,6 +465,7 @@ namespace signal_synth
                 interval.severity = artifact.severity;
                 interval.seed = artifact.seed;
                 interval.ppg = artifact.ppg;
+                interval.accelerometer_reference = signal_quality_artifact_is_motion(artifact.type);
                 for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
                     interval.ecg_leads[lead] = artifact.ecg_leads[lead];
                 fresh.artifacts.push_back(interval);
@@ -389,6 +476,9 @@ namespace signal_synth
                         return false;
             for (std::size_t sample = 0; sample < fresh.ppg.size(); ++sample)
                 if (!is_finite(fresh.ppg[sample]))
+                    return false;
+            for (std::size_t sample = 0; sample < fresh.accelerometer.size(); ++sample)
+                if (!is_finite(fresh.accelerometer[sample]))
                     return false;
         }
         catch (...)

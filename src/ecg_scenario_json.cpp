@@ -639,6 +639,16 @@ namespace
             output = signal_synth::signal_quality_ecg_quantization;
         else if (name == "ecg_adc_clipping")
             output = signal_synth::signal_quality_ecg_adc_clipping;
+        else if (name == "ppg_motion_periodic")
+            output = signal_synth::signal_quality_ppg_motion_periodic;
+        else if (name == "ppg_motion_burst")
+            output = signal_synth::signal_quality_ppg_motion_burst;
+        else if (name == "ppg_motion_broadband")
+            output = signal_synth::signal_quality_ppg_motion_broadband;
+        else if (name == "ppg_ambient_light")
+            output = signal_synth::signal_quality_ppg_ambient_light;
+        else if (name == "ppg_sensor_saturation")
+            output = signal_synth::signal_quality_ppg_sensor_saturation;
         else
             return false;
         return true;
@@ -646,7 +656,7 @@ namespace
 
     bool artifact_is_ecg(signal_synth::signal_quality_artifact_type type)
     {
-        return type != signal_synth::signal_quality_ppg_dropout;
+        return !signal_synth::signal_quality_artifact_is_ppg(type);
     }
 
     const char* clinical_lead_json_name(unsigned int lead)

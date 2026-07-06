@@ -81,7 +81,18 @@ For fixed ECG record, PPG configuration, seed, build, and floating-point
 environment, output samples and annotations are reproducible. Every per-beat
 draw is derived from the PPG seed, beat index, and a stable stream identifier.
 
+## Motion and sensor artifacts
+
+The signal-quality layer can add periodic, burst, or broadband motion to the
+green PPG channel. Each motion interval also produces a deterministic,
+correlated `accel_motion` engineering reference in `g`. The reference is
+zero-centered and exactly zero outside configured motion intervals.
+
+Ambient-light interference and sensor saturation are separate PPG artifact
+types and do not create accelerometer activity. All artifact classes use exact
+half-open intervals and tapered boundaries. Exports preserve artifact masks,
+affected channels, and the motion-reference role.
+
 The model remains a single green optical engineering channel. It does not
-claim validated perfusion, vascular, or optical physiology. Accelerometer
-coupling, motion/ambient-light sensor artifacts, and red/infrared channels are
-separate planned increments.
+claim validated perfusion, vascular, inertial-sensor, or optical physiology.
+Red/infrared channels are a separate planned increment.

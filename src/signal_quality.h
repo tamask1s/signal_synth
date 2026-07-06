@@ -23,10 +23,17 @@ namespace signal_synth
         signal_quality_ecg_clock_drift = 11,
         signal_quality_ecg_dropped_samples = 12,
         signal_quality_ecg_quantization = 13,
-        signal_quality_ecg_adc_clipping = 14
+        signal_quality_ecg_adc_clipping = 14,
+        signal_quality_ppg_motion_periodic = 15,
+        signal_quality_ppg_motion_burst = 16,
+        signal_quality_ppg_motion_broadband = 17,
+        signal_quality_ppg_ambient_light = 18,
+        signal_quality_ppg_sensor_saturation = 19
     };
 
     const char* signal_quality_artifact_type_name(signal_quality_artifact_type type);
+    bool signal_quality_artifact_is_ppg(signal_quality_artifact_type type);
+    bool signal_quality_artifact_is_motion(signal_quality_artifact_type type);
 
     struct signal_quality_artifact_config
     {
@@ -51,6 +58,8 @@ namespace signal_synth
 
     struct signal_quality_artifact_interval
     {
+        signal_quality_artifact_interval();
+
         signal_quality_artifact_type type;
         double start_seconds;
         double end_seconds;
@@ -60,12 +69,14 @@ namespace signal_synth
         unsigned long long seed;
         bool ecg_leads[clinical_lead_count];
         bool ppg;
+        bool accelerometer_reference;
     };
 
     struct signal_quality_waveforms
     {
         std::vector<std::vector<double> > ecg_leads;
         std::vector<double> ppg;
+        std::vector<double> accelerometer;
         std::vector<signal_quality_artifact_interval> artifacts;
     };
 

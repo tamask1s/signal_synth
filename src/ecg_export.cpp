@@ -254,6 +254,8 @@ namespace
             output << ',' << render.record.lead_name(lead) << "_mv";
         if (render.ppg.sample_count())
             output << ",ppg_green_au";
+        if (!render.signal_quality.accelerometer.empty())
+            output << ",accel_motion_g";
         output << '\n';
         for (unsigned int sample = 0; sample < render.record.sample_count(); ++sample)
         {
@@ -262,6 +264,8 @@ namespace
                 output << ',' << normalized_zero(rendered_ecg_lead(render, lead)[sample]);
             if (render.ppg.sample_count())
                 output << ',' << normalized_zero(rendered_ppg(render)[sample]);
+            if (!render.signal_quality.accelerometer.empty())
+                output << ',' << normalized_zero(render.signal_quality.accelerometer[sample]);
             output << '\n';
         }
         return output.str();
@@ -286,6 +290,13 @@ namespace
             if (!first)
                 output << ',';
             output << "\"ppg_green\"";
+            first = false;
+        }
+        if (artifact.accelerometer_reference)
+        {
+            if (!first)
+                output << ',';
+            output << "\"accel_motion\"";
         }
         output << ']';
     }
@@ -657,7 +668,7 @@ namespace
                << "},\"render\":{\"sample_rate_hz\":" << render.record.sampling_rate_hz()
                << ",\"sample_count\":" << render.record.sample_count()
                << ",\"duration_seconds\":" << std::setprecision(std::numeric_limits<double>::max_digits10) << render.document.duration_seconds
-               << ",\"channel_count\":" << render.record.lead_count() + (render.ppg.sample_count() ? 1u : 0u)
+               << ",\"channel_count\":" << render.record.lead_count() + (render.ppg.sample_count() ? 1u : 0u) + (render.signal_quality.accelerometer.empty() ? 0u : 1u)
                << ",\"channels\":[";
         for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
         {
@@ -667,6 +678,8 @@ namespace
         }
         if (render.ppg.sample_count())
             output << ",{\"name\":\"ppg_green\",\"unit\":\"a.u.\"}";
+        if (!render.signal_quality.accelerometer.empty())
+            output << ",{\"name\":\"accel_motion\",\"unit\":\"g\",\"role\":\"motion_reference\"}";
         output << "],\"timestamp_policy\":\"not_recorded_for_deterministic_local_export\""
                << ",\"compact_output\":" << (render.resolved_document.output.compact ? "true" : "false")
                << ",\"source_channels_retained\":" << (render.resolved_document.output.retain_source_channels ? "true" : "false")
@@ -840,7 +853,7 @@ namespace signal_synth
 
     const char* signal_synth_generator_version()
     {
-        return "0.3.0-dev";
+        return "0.4.0-dev";
     }
 
     bool render_ecg_document(const ecg_scenario_document& document, ecg_render_bundle& output, ecg_export_result& result)

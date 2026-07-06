@@ -12,6 +12,7 @@ namespace
 {
     const int ecg_gain_adc_per_mv = 1000;
     const int ppg_gain_adc_per_au = 10000;
+    const int accelerometer_gain_adc_per_g = 10000;
     const int wfdb_ann_normal = 1;
     const int wfdb_ann_pvc = 5;
     const int wfdb_ann_pac = 8;
@@ -83,6 +84,12 @@ namespace
         return render.ppg.samples();
     }
 
+    const double* rendered_accelerometer(const signal_synth::ecg_render_bundle& render)
+    {
+        return render.signal_quality.accelerometer.size() == render.record.sample_count() && !render.signal_quality.accelerometer.empty()
+            ? &render.signal_quality.accelerometer[0] : 0;
+    }
+
     short clamp_adc(double value, int gain)
     {
         const double scaled = std::floor(value * gain + (value >= 0.0 ? 0.5 : -0.5));
@@ -151,13 +158,16 @@ namespace
     std::string wfdb_dat(const signal_synth::ecg_render_bundle& render, std::vector<long>& checksums, std::vector<short>& initial_values)
     {
         const unsigned int ecg_count = render.record.lead_count();
-        const unsigned int channel_count = ecg_count + (render.ppg.sample_count() ? 1u : 0u);
+        const bool has_ppg = render.ppg.sample_count() != 0;
+        const bool has_accelerometer = !render.signal_quality.accelerometer.empty();
+        const unsigned int channel_count = ecg_count + (has_ppg ? 1u : 0u) + (has_accelerometer ? 1u : 0u);
         checksums.assign(channel_count, 0);
         initial_values.assign(channel_count, 0);
 
         std::string output;
         output.reserve(static_cast<std::size_t>(render.record.sample_count()) * channel_count * 2u);
         const double* ppg = rendered_ppg(render);
+        const double* accelerometer = rendered_accelerometer(render);
         for (unsigned int sample = 0; sample < render.record.sample_count(); ++sample)
         {
             for (unsigned int lead = 0; lead < ecg_count; ++lead)
@@ -174,6 +184,15 @@ namespace
                 if (!sample)
                     initial_values[ecg_count] = value;
                 checksums[ecg_count] += value;
+                append_i16_le(output, value);
+            }
+            if (accelerometer)
+            {
+                const unsigned int channel = ecg_count + (has_ppg ? 1u : 0u);
+                const short value = clamp_adc(accelerometer[sample], accelerometer_gain_adc_per_g);
+                if (!sample)
+                    initial_values[channel] = value;
+                checksums[channel] += value;
                 append_i16_le(output, value);
             }
         }
@@ -195,7 +214,9 @@ namespace
         std::ostringstream output;
         output.imbue(std::locale::classic());
         const unsigned int ecg_count = render.record.lead_count();
-        const unsigned int channel_count = ecg_count + (render.ppg.sample_count() ? 1u : 0u);
+        const bool has_ppg = render.ppg.sample_count() != 0;
+        const bool has_accelerometer = !render.signal_quality.accelerometer.empty();
+        const unsigned int channel_count = ecg_count + (has_ppg ? 1u : 0u) + (has_accelerometer ? 1u : 0u);
         output << record_name << ' ' << channel_count << ' ' << std::setprecision(std::numeric_limits<double>::max_digits10)
                << render.record.sampling_rate_hz() << ' ' << render.record.sample_count() << '\n';
         output << "# generator=signal_synth " << signal_synth::signal_synth_generator_version() << '\n';
@@ -204,8 +225,13 @@ namespace
         output << "# render_identity=" << render.render_identity << '\n';
         for (unsigned int lead = 0; lead < ecg_count; ++lead)
             output << record_name << ".dat 16 " << ecg_gain_adc_per_mv << "(0)/mV 16 0 " << initial_values[lead] << ' ' << wfdb_checksum(checksums[lead]) << " 0 " << clinical_lead_name(lead) << '\n';
-        if (render.ppg.sample_count())
+        if (has_ppg)
             output << record_name << ".dat 16 " << ppg_gain_adc_per_au << "(0)/NU 16 0 " << initial_values[ecg_count] << ' ' << wfdb_checksum(checksums[ecg_count]) << " 0 ppg_green\n";
+        if (has_accelerometer)
+        {
+            const unsigned int channel = ecg_count + (has_ppg ? 1u : 0u);
+            output << record_name << ".dat 16 " << accelerometer_gain_adc_per_g << "(0)/g 16 0 " << initial_values[channel] << ' ' << wfdb_checksum(checksums[channel]) << " 0 accel_motion\n";
+        }
         return output.str();
     }
 
@@ -254,6 +280,8 @@ namespace
         }
         if (render.ppg.sample_count())
             output << ",{\"name\":\"ppg_green\",\"unit\":\"normalized_unit\",\"gain_adc_per_unit\":" << ppg_gain_adc_per_au << ",\"adc_zero\":0}";
+        if (!render.signal_quality.accelerometer.empty())
+            output << ",{\"name\":\"accel_motion\",\"unit\":\"g\",\"gain_adc_per_unit\":" << accelerometer_gain_adc_per_g << ",\"adc_zero\":0,\"role\":\"motion_reference\"}";
         output << "],\"annotation_strategy\":{\"native_wfdb_annotation\":\"r_peak_with_beat_class\",\"native_file\":" << json_string(record_name + ".atr")
                << ",\"full_ground_truth\":\"annotations.json\"},"
                << "\"intended_use\":\"synthetic engineering algorithm testing and QA\","

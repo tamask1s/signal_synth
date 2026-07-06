@@ -12,7 +12,7 @@
 
 namespace
 {
-    const char* metadata_version = "synsigra_authoring_v3";
+    const char* metadata_version = "synsigra_authoring_v4";
     const char* template_version = "synsigra_templates_v3";
 
     struct field_definition
@@ -353,10 +353,10 @@ namespace signal_synth
             output << "]}";
         }
         output << "],\"artifacts\":[";
-        for (int type = signal_quality_ecg_baseline_wander; type <= signal_quality_ecg_adc_clipping; ++type)
+        for (int type = signal_quality_ecg_baseline_wander; type <= signal_quality_ppg_sensor_saturation; ++type)
         {
             const signal_quality_artifact_type artifact = static_cast<signal_quality_artifact_type>(type);
-            const bool ppg = artifact == signal_quality_ppg_dropout;
+            const bool ppg = signal_quality_artifact_is_ppg(artifact);
             output << (type ? "," : "") << "{\"type\":" << json_string(signal_quality_artifact_type_name(artifact))
                    << ",\"channel_family\":" << json_string(ppg ? "ppg" : "ecg")
                    << ",\"item_fields\":["
@@ -445,7 +445,11 @@ namespace signal_synth
             item.duration_seconds = document.duration_seconds;
             item.sampling_rate_hz = document.ecg.sampling_rate_hz();
             item.sample_count = document.sample_count();
-            item.channel_count = clinical_lead_count + (document.ppg.enabled ? 1u : 0u);
+            bool has_accelerometer = false;
+            for (std::size_t artifact = 0; artifact < document.signal_quality.artifacts.size(); ++artifact)
+                if (signal_quality_artifact_is_motion(document.signal_quality.artifacts[artifact].type))
+                    has_accelerometer = true;
+            item.channel_count = clinical_lead_count + (document.ppg.enabled ? 1u : 0u) + (has_accelerometer ? 1u : 0u);
             item.targets = pack_case.targets;
             item.estimated_package_bytes = estimate_case_package_bytes(document, item.channel_count, item.estimated_waveform_csv_bytes, item.estimated_binary_signal_bytes);
             item.estimated_peak_memory_bytes = estimate_case_peak_memory_bytes(document);

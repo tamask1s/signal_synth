@@ -487,6 +487,8 @@ namespace
             output << (lead ? "," : "") << "{\"name\":" << json_text(render.record.lead_name(lead)) << ",\"unit\":\"mV\"}";
         if (render.ppg.sample_count())
             output << (render.record.lead_count() ? "," : "") << "{\"name\":\"ppg_green\",\"unit\":\"a.u.\"}";
+        if (!render.signal_quality.accelerometer.empty())
+            output << (render.record.lead_count() || render.ppg.sample_count() ? "," : "") << "{\"name\":\"accel_motion\",\"unit\":\"g\",\"role\":\"motion_reference\"}";
         output << ']';
     }
 
@@ -503,7 +505,12 @@ namespace
             }
         }
         if (artifact.ppg)
+        {
             output << (first ? "" : ",") << "\"ppg_green\"";
+            first = false;
+        }
+        if (artifact.accelerometer_reference)
+            output << (first ? "" : ",") << "\"accel_motion\"";
         output << ']';
     }
 
@@ -522,7 +529,7 @@ namespace
         output << ",\"render\":{\"sample_rate_hz\":" << render.record.sampling_rate_hz()
                << ",\"sample_count\":" << render.record.sample_count()
                << ",\"duration_seconds\":" << document.duration_seconds
-               << ",\"channel_count\":" << render.record.lead_count() + (render.ppg.sample_count() ? 1u : 0u)
+               << ",\"channel_count\":" << render.record.lead_count() + (render.ppg.sample_count() ? 1u : 0u) + (render.signal_quality.accelerometer.empty() ? 0u : 1u)
                << ",\"channels\":";
         write_case_channels(output, render);
         output << "},\"ground_truth\":{\"beat_count\":" << render.metrics.beat_count
@@ -1321,7 +1328,7 @@ int main(int argc, char** argv)
                 row.sample_rate_hz = render.record.sampling_rate_hz();
                 row.sample_count = document.sample_count();
                 row.duration_seconds = document.duration_seconds;
-                row.channel_count = render.record.lead_count() + (render.ppg.sample_count() ? 1u : 0u);
+                row.channel_count = render.record.lead_count() + (render.ppg.sample_count() ? 1u : 0u) + (render.signal_quality.accelerometer.empty() ? 0u : 1u);
                 row.beat_count = render.metrics.beat_count;
                 row.artifact_count = render.metrics.artifact_count;
                 row.ppg_pulse_count = render.metrics.ppg_pulse_count;

@@ -18,9 +18,11 @@ wearable-algorithm QA and SaaS buildout.
 Current PPG strengths:
 
 - one green PPG channel derived from ECG beat timeline;
-- configurable delay, rise/decay, amplitude, baseline, dicrotic feature;
-- construction and measured systolic peak annotations;
-- PPG peak event scoring.
+- configurable beat-to-beat delay, rise/decay, amplitude and dicrotic feature;
+- explicit low-perfusion, weak-pulse and missing-pulse state;
+- construction and measured onset/peak/offset annotations;
+- deterministic motion/sensor artifact generation with motion reference;
+- PPG peak event scoring with clean, artifact, motion and perfusion bins.
 
 The current model is useful but still simple. The next work should improve
 wearable QA relevance while keeping exact ground truth.
@@ -88,9 +90,9 @@ At minimum, create PPG packs for:
 
 ## 8. Planned Implementation Issues
 
-- PPG physiology v2 with variable PTT and modulation;
-- PPG motion artifact with accelerometer reference;
-- PPG perfusion/dropout/weak-pulse scenarios;
+- PPG physiology v2 with variable PTT and modulation (implemented by #50);
+- PPG motion artifact with accelerometer reference (implemented by #51);
+- PPG perfusion/dropout/weak-pulse scenarios (implemented by #52);
 - PPG detection JSON/CSV scoring expansion;
 - PPG benchmark pack;
 - optional red/IR PPG extension.

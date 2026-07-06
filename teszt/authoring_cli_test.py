@@ -39,7 +39,9 @@ def main():
     assert schema["scenario_schema_version"] == 4
     assert len(schema["fields"]) >= 40
     assert len(schema["conditions"]) == 71
-    assert len(schema["artifacts"]) == 15
+    assert len(schema["artifacts"]) == 20
+    assert any(item["type"] == "ppg_motion_periodic" and item["channel_family"] == "ppg" for item in schema["artifacts"])
+    assert any(item["type"] == "ppg_sensor_saturation" and item["channel_family"] == "ppg" for item in schema["artifacts"])
     assert len(schema["targets"]) >= 7
     paths = [item["path"] for item in schema["fields"]]
     assert len(paths) == len(set(paths))

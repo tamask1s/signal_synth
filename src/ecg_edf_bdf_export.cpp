@@ -16,6 +16,8 @@ namespace
     const int edf_ppg_gain_adc_per_au = 10000;
     const int bdf_ecg_gain_adc_per_mv = 100000;
     const int bdf_ppg_gain_adc_per_au = 1000000;
+    const int edf_accelerometer_gain_adc_per_g = 10000;
+    const int bdf_accelerometer_gain_adc_per_g = 1000000;
 
     enum standard_kind
     {
@@ -94,6 +96,12 @@ namespace
         if (render.signal_quality.ppg.size() == render.ppg.sample_count())
             return render.signal_quality.ppg.empty() ? 0 : &render.signal_quality.ppg[0];
         return render.ppg.samples();
+    }
+
+    const double* rendered_accelerometer(const signal_synth::ecg_render_bundle& render)
+    {
+        return render.signal_quality.accelerometer.size() == render.record.sample_count() && !render.signal_quality.accelerometer.empty()
+            ? &render.signal_quality.accelerometer[0] : 0;
     }
 
     std::string number(double value)
@@ -254,7 +262,8 @@ namespace
     {
         (void)record_name;
         const bool has_ppg = render.ppg.sample_count() != 0;
-        const unsigned int waveform_signal_count = render.record.lead_count() + (has_ppg ? 1u : 0u);
+        const bool has_accelerometer = !render.signal_quality.accelerometer.empty();
+        const unsigned int waveform_signal_count = render.record.lead_count() + (has_ppg ? 1u : 0u) + (has_accelerometer ? 1u : 0u);
         const unsigned int signal_count = waveform_signal_count + 1u;
         const unsigned int header_bytes = 256u + signal_count * 256u;
         const char* annotation_label = kind == standard_edf ? "EDF Annotations" : "BDF Annotations";
@@ -296,6 +305,19 @@ namespace
             samples_per_record.push_back(integer(layout.waveform_samples_per_record));
             signal_reserved.push_back("");
         }
+        if (has_accelerometer)
+        {
+            labels.push_back("accel_motion");
+            transducers.push_back("synthetic");
+            dimensions.push_back("g");
+            physical_minimum.push_back(kind == standard_edf ? "-3.2768" : "-8.3886");
+            physical_maximum.push_back(kind == standard_edf ? "3.2767" : "8.3886");
+            digital_minimum.push_back(kind == standard_edf ? "-32768" : "-8388608");
+            digital_maximum.push_back(kind == standard_edf ? "32767" : "8388607");
+            prefilters.push_back("none");
+            samples_per_record.push_back(integer(layout.waveform_samples_per_record));
+            signal_reserved.push_back("motion_reference");
+        }
         labels.push_back(annotation_label);
         transducers.push_back("");
         dimensions.push_back("");
@@ -336,11 +358,13 @@ namespace
     {
         std::string output;
         const bool has_ppg = render.ppg.sample_count() != 0;
-        const unsigned int waveform_signal_count = render.record.lead_count() + (has_ppg ? 1u : 0u);
+        const bool has_accelerometer = !render.signal_quality.accelerometer.empty();
+        const unsigned int waveform_signal_count = render.record.lead_count() + (has_ppg ? 1u : 0u) + (has_accelerometer ? 1u : 0u);
         const unsigned int sample_bytes = kind == standard_edf ? 2u : 3u;
         const std::size_t bytes_per_record = static_cast<std::size_t>(waveform_signal_count) * layout.waveform_samples_per_record * sample_bytes + layout.annotation_bytes_per_record;
         output.reserve(layout.data_record_count * bytes_per_record);
         const double* ppg = rendered_ppg(render);
+        const double* accelerometer = rendered_accelerometer(render);
         for (unsigned int record = 0; record < layout.data_record_count; ++record)
         {
             const unsigned int first_sample = record * layout.waveform_samples_per_record;
@@ -364,6 +388,16 @@ namespace
                         append_i16_le(output, clamp_i16(ppg[sample], edf_ppg_gain_adc_per_au));
                     else
                         append_i24_le(output, clamp_i24(ppg[sample], bdf_ppg_gain_adc_per_au));
+                }
+            }
+            if (accelerometer)
+            {
+                for (unsigned int sample = first_sample; sample < past_sample; ++sample)
+                {
+                    if (kind == standard_edf)
+                        append_i16_le(output, clamp_i16(accelerometer[sample], edf_accelerometer_gain_adc_per_g));
+                    else
+                        append_i24_le(output, clamp_i24(accelerometer[sample], bdf_accelerometer_gain_adc_per_g));
                 }
             }
             output += layout.annotations[record];
@@ -402,6 +436,8 @@ namespace
         }
         if (render.ppg.sample_count())
             output << ",{\"name\":\"ppg_green\",\"unit\":\"normalized_unit\",\"edf_gain_adc_per_unit\":" << edf_ppg_gain_adc_per_au << ",\"bdf_gain_adc_per_unit\":" << bdf_ppg_gain_adc_per_au << "}";
+        if (!render.signal_quality.accelerometer.empty())
+            output << ",{\"name\":\"accel_motion\",\"unit\":\"g\",\"edf_gain_adc_per_unit\":" << edf_accelerometer_gain_adc_per_g << ",\"bdf_gain_adc_per_unit\":" << bdf_accelerometer_gain_adc_per_g << ",\"role\":\"motion_reference\"}";
         output << "],\"annotation_strategy\":{\"native_annotation_signal\":[\"r_peak\",\"ppg_systolic_peak\"],"
                << "\"full_ground_truth\":\"annotations.json\"},"
                << "\"intended_use\":\"synthetic engineering algorithm testing and QA\","
