@@ -1,12 +1,54 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "1.1",
+  "version": "1.2",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
   "packs": [
-    {"pack_id":"r_peak_stress_v1","path":"../packs/r_peak_stress_v1.json","modality":["ECG"],"targets":["r_peak"],"difficulty":["smoke","stress"],"recommended_profile":"stress","scoring_mode":"local","feature_tags":["clean","bradycardia","tachycardia","artifact"]},
+    {
+      "pack_id": "r_peak_stress_v1",
+      "path": "../packs/r_peak_stress_v1.json",
+      "modality": ["ECG"],
+      "targets": ["r_peak"],
+      "difficulty": ["smoke", "stress"],
+      "recommended_profile": "stress",
+      "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
+      "scoring_mode": "local",
+      "feature_tags": ["clean", "bradycardia", "tachycardia", "artifact"],
+      "release_status": "beta",
+      "release_date": "2026-07-06",
+      "deprecation_message": "",
+      "recommended_for": [
+        "R-peak detector smoke tests",
+        "R-peak detector rate-stress checks",
+        "R-peak detector baseline-wander and powerline robustness checks",
+        "CI regression gates using exact synthetic R-peak ground truth"
+      ],
+      "not_recommended_for": [
+        "HRV metric validation",
+        "PPG peak or onset testing",
+        "ECG morphology diagnosis claims",
+        "clinical validation certification"
+      ],
+      "changelog": [
+        {
+          "version": "1.0",
+          "date": "2026-07-06",
+          "changes": [
+            "Initial beta curated R-peak stress pack with clean, bradycardia, tachycardia, and artifact cases."
+          ]
+        }
+      ],
+      "generator_compatibility": {
+        "minimum_generator_version": "0.5.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [2, 3, 4],
+        "challenge_package_contract": "synsigra_challenge_package_v1",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v1",
+        "local_verifier_min_version": "0.2.0"
+      }
+    },
     {"pack_id":"hrv_v1","path":"../packs/hrv_v1.json","modality":["ECG"],"targets":["hrv"],"difficulty":["benchmark"],"recommended_profile":"benchmark","scoring_mode":"local","feature_tags":["sdnn","rmssd","pnn50","sd1_sd2","lf_hf","respiration","ectopy_exclusion","artifact_exclusion"]},
     {"pack_id":"ecg_beat_classification_v1","path":"../packs/ecg_beat_classification_v1.json","modality":["ECG"],"targets":["ecg_beat_classification"],"difficulty":["regression"],"recommended_profile":"regression","scoring_mode":"local","feature_tags":["normal","pac","pvc","paced","non_capture"]},
     {"pack_id":"ecg_rhythm_v1","path":"../packs/ecg_rhythm_v1.json","modality":["ECG"],"targets":["r_peak","ecg_beat_classification"],"difficulty":["regression","stress"],"recommended_profile":"stress","scoring_mode":"local","feature_tags":["afib","flutter","svt","psvt","pause","ectopy","paced","transition"]},

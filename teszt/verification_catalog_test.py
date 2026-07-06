@@ -26,7 +26,7 @@ def main():
     catalog = load_json(catalog_path)
     assert catalog["schema_version"] == 1
     assert catalog["catalog_id"] == "synsigra_verification_packs"
-    assert catalog["version"] == "1.1"
+    assert catalog["version"] == "1.2"
     assert "clinical validation" in catalog["not_for"].lower()
 
     expected = set([
@@ -43,6 +43,11 @@ def main():
         assert entry["scoring_mode"] in ("local", "mixed", "reference_only")
         if entry["scoring_mode"] == "local":
             assert entry["recommended_profile"] in ("smoke", "regression", "stress", "benchmark")
+        if pack_id == "r_peak_stress_v1":
+            assert entry["release_status"] == "beta"
+            assert entry["supported_threshold_profiles"] == ["smoke", "regression", "stress", "benchmark"]
+            assert entry["recommended_for"] and entry["not_recommended_for"] and entry["changelog"]
+            assert entry["generator_compatibility"]["challenge_package_contract"] == "synsigra_challenge_package_v1"
         pack_path = os.path.normpath(os.path.join(os.path.dirname(catalog_path), entry["path"]))
         assert os.path.isfile(pack_path)
         assert run([cli, "pack", "validate", pack_path]).startswith("status=valid\n")

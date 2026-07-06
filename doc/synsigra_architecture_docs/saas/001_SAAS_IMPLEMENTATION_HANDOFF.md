@@ -44,6 +44,14 @@ CLI:
 - SaaS-ready challenge package assembly;
 - smoke-testable contract for automation.
 
+Pack metadata export:
+
+- `examples/catalog/curated_pack_metadata_v1.json` is the SaaS-ingestable
+  curated-pack metadata snapshot;
+- regenerate it with `scripts/export_curated_pack_metadata.py`;
+- it distinguishes declared targets, effective scoreable targets, and
+  reference-only ground-truth outputs before job creation.
+
 Python package:
 
 - user-facing local challenge loading;
@@ -63,6 +71,9 @@ SaaS API:
 Web UI:
 
 - browse scenarios and packs;
+- use `curated_pack_metadata_v1.json` for pack cards, target badges,
+  scoreability/reference-only labels, size estimates, release status, and
+  profile support;
 - configure safe parameter presets;
 - generate and download challenge packages;
 - view generated reports and audit metadata;
