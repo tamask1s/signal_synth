@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "package_id": "python_distribution_smoke",
+  "pack_version": "1.0",
+  "pack_fingerprint": "sha256:fixture",
+  "generator_version": "fixture",
+  "targets": [
+    {
+      "target": "r_peak",
+      "supported": true,
+      "score_type": "event_detection",
+      "accepted_detection_formats": ["detection_json_v1", "detection_csv_v2"],
+      "default_tolerance_seconds": 0.05,
+      "cases": ["clean"]
+    }
+  ],
+  "cases": [
+    {
+      "case_id": "clean",
+      "scenario_id": "distribution_smoke_clean",
+      "scenario_path": "cases/clean/scenario.json",
+      "case_summary_path": "cases/clean/case_summary.json",
+      "targets": ["r_peak"],
+      "scoring": [
+        {
+          "target": "r_peak",
+          "supported": true,
+          "score_type": "event_detection",
+          "accepted_detection_formats": ["detection_json_v1", "detection_csv_v2"],
+          "default_tolerance_seconds": 0.05,
+          "recommended_files": [
+            {"format": "detection_json_v1", "path": "detections/clean.json"}
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -11,7 +11,7 @@ def main(argv=None):
     if argv and argv[0] == "verify":
         argv = argv[1:]
     parser = argparse.ArgumentParser(prog="synsigra-verify", description="Verify local algorithm outputs against a Synsigra challenge package.")
-    parser.add_argument("challenge", help="Challenge package directory or .synsigra archive.")
+    parser.add_argument("challenge", help="Challenge package directory, .zip archive, or .synsigra archive.")
     parser.add_argument("detections_dir", help="Directory containing user detection JSON/CSV files.")
     parser.add_argument("output_dir", help="New output directory for verification reports.")
     parser.add_argument("--case", dest="cases", action="append", help="Restrict verification to a case id. Can be repeated.")

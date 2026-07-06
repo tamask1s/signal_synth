@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "case_id": "clean",
+  "scenario_id": "distribution_smoke_clean",
+  "scenario_path": "cases/clean/scenario.json",
+  "document_fingerprint": "sha256:fixture",
+  "render_identity": "fixture-render",
+  "targets": ["r_peak"],
+  "artifact_intervals": [],
+  "scoring": [
+    {
+      "target": "r_peak",
+      "supported": true,
+      "score_type": "event_detection",
+      "accepted_detection_formats": ["detection_json_v1", "detection_csv_v2"],
+      "default_tolerance_seconds": 0.05,
+      "recommended_files": [
+        {"format": "detection_json_v1", "path": "detections/clean.json"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "package_id": "python_distribution_smoke",
+  "name": "Python distribution smoke",
+  "version": "1.0",
+  "package_type": "scenario_pack",
+  "ground_truth_included": true,
+  "generator_version": "fixture",
+  "usage_restrictions": "engineering algorithm QA only",
+  "not_for": "diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment",
+  "files": [
+    {
+      "path": "scoring_manifest.json",
+      "role": "metadata_json",
+      "media_type": "application/json",
+      "sha256": "sha256:d61aa760c8957a127028d20172afe1ffa7dbf7e151789b705eef12ad3c963cdf",
+      "size_bytes": 1082,
+      "required": true
+    },
+    {
+      "path": "cases/clean/scenario.json",
+      "role": "scenario_json",
+      "media_type": "application/json",
+      "sha256": "sha256:79b4a12c14a773c894ed3278417b19305a897896844864b3ca0bb7a325343b45",
+      "size_bytes": 62,
+      "required": true
+    },
+    {
+      "path": "cases/clean/case_summary.json",
+      "role": "metadata_json",
+      "media_type": "application/json",
+      "sha256": "sha256:6285b36f935f87a6b952c7caaf1734f64ee0400e67ba12d41eb1f4b8d0ad3959",
+      "size_bytes": 629,
+      "required": true
+    },
+    {
+      "path": "cases/clean/annotations.json",
+      "role": "annotations_json",
+      "media_type": "application/json",
+      "sha256": "sha256:0c76021b65d0732e54a559fa31dd4021230254c0f2e30ba636d3addf21a7a4d6",
+      "size_bytes": 370,
+      "required": true
+    }
+  ],
+  "cases": [
+    {
+      "id": "clean",
+      "scenario_id": "distribution_smoke_clean",
+      "scenario_path": "cases/clean/scenario.json",
+      "document_fingerprint": "sha256:fixture",
+      "render_identity": "fixture-render",
+      "files": [
+        "cases/clean/scenario.json",
+        "cases/clean/case_summary.json",
+        "cases/clean/annotations.json"
+      ]
+    }
+  ]
+}

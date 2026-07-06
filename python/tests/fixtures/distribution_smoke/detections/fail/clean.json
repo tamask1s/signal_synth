@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "algorithm": {"name": "distribution_smoke_bad", "version": "1"},
+  "target": "r_peak",
+  "events": [
+    {"time_seconds": 1.0}
+  ]
+}

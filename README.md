@@ -133,3 +133,31 @@ See `MODEL_SPECIFICATION.md`, `CLINICAL_ECG_SPECIFICATION.md`,
 `PRODUCT_DIRECTION.md`. Review
 `LEGAL_PROVENANCE.md` and `DATA_LICENSES.md` before adding model code,
 dependencies, datasets, or release artifacts.
+
+<!-- synsigra-python-sdk-distribution -->
+## Python SDK and local verifier distribution
+
+The user-facing Python package is `synsigra`. It is intended for algorithm developers and CI systems that need to verify local detector output against a downloaded Synsigra challenge package without building the C++ generator.
+
+Install from a checkout during beta:
+
+```bash
+python -m pip install .
+```
+
+External beta users install the generator-free wheel supplied with the
+release:
+
+```bash
+python -m pip install synsigra-0.2.0-py3-none-any.whl
+```
+
+Run local verification:
+
+```bash
+synsigra-verify package.zip detections/ verification-results/ --profile regression
+```
+
+The verifier reads package manifests, case summaries, annotations, user detection files, and threshold profiles locally. It does not invoke the C++ generator. It writes `verification_summary.json`, `verification_summary.csv`, `verification_report.html`, and per-case evidence under `verification/`. Exit code `0` means pass, `1` means verification failure, and `2` means invalid CLI usage. Built-in profiles are `smoke`, `regression`, `stress`, and `benchmark`.
+
+See `python/README.md` and `doc/PYTHON_DISTRIBUTION.md` for packaging, smoke-test, and release guidance.

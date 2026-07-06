@@ -1,0 +1,11 @@
+include README.md
+include DATA_LICENSES.md
+include LEGAL_PROVENANCE.md
+include python/README.md
+include doc/PYTHON_DISTRIBUTION.md
+recursive-include python/synsigra *.py py.typed
+recursive-include python/tests/fixtures *.json
+prune build
+prune .git
+prune .github
+prune teszt
