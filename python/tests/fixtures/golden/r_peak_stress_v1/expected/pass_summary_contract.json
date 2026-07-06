@@ -1,0 +1,268 @@
+{
+  "case_target_count": 4,
+  "cases": [
+    {
+      "artifact": {
+        "detection_count": 0,
+        "f1_score": 0.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 0,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 0.0,
+        "sensitivity": 0.0,
+        "true_positive_count": 0
+      },
+      "case_id": "clean_70",
+      "clean": {
+        "detection_count": 23,
+        "f1_score": 1.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 23,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 1.0,
+        "sensitivity": 1.0,
+        "true_positive_count": 23
+      },
+      "detection_input_sha256": "sha256:15223f332a3fd42543d98d6f8db2e7b7ef865014a2fb090beb3328aa4d354b84",
+      "report_path": "verification/clean_70/comparison.json",
+      "scenario_id": "rpeak_clean_70",
+      "score_type": "event_detection",
+      "status": "scored",
+      "success": true,
+      "target": "r_peak",
+      "total": {
+        "detection_count": 23,
+        "f1_score": 1.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 23,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 1.0,
+        "sensitivity": 1.0,
+        "true_positive_count": 23
+      }
+    },
+    {
+      "artifact": {
+        "detection_count": 0,
+        "f1_score": 0.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 0,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 0.0,
+        "sensitivity": 0.0,
+        "true_positive_count": 0
+      },
+      "case_id": "slow_45",
+      "clean": {
+        "detection_count": 23,
+        "f1_score": 1.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 23,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 1.0,
+        "sensitivity": 1.0,
+        "true_positive_count": 23
+      },
+      "detection_input_sha256": "sha256:2aaf9634d2c867ee3248d6e8deff41844e42d7a44d36fcab3b8e9754f0287e84",
+      "report_path": "verification/slow_45/comparison.json",
+      "scenario_id": "rpeak_slow_45",
+      "score_type": "event_detection",
+      "status": "scored",
+      "success": true,
+      "target": "r_peak",
+      "total": {
+        "detection_count": 23,
+        "f1_score": 1.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 23,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 1.0,
+        "sensitivity": 1.0,
+        "true_positive_count": 23
+      }
+    },
+    {
+      "artifact": {
+        "detection_count": 0,
+        "f1_score": 0.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 0,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 0.0,
+        "sensitivity": 0.0,
+        "true_positive_count": 0
+      },
+      "case_id": "fast_120",
+      "clean": {
+        "detection_count": 39,
+        "f1_score": 1.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 39,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 1.0,
+        "sensitivity": 1.0,
+        "true_positive_count": 39
+      },
+      "detection_input_sha256": "sha256:5337ba44e06342b75e94474ce3e5f0ced4f783bd91b305fdcaa3dc4529e61d84",
+      "report_path": "verification/fast_120/comparison.json",
+      "scenario_id": "rpeak_fast_120",
+      "score_type": "event_detection",
+      "status": "scored",
+      "success": true,
+      "target": "r_peak",
+      "total": {
+        "detection_count": 39,
+        "f1_score": 1.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 39,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 1.0,
+        "sensitivity": 1.0,
+        "true_positive_count": 39
+      }
+    },
+    {
+      "artifact": {
+        "detection_count": 35,
+        "f1_score": 1.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 35,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 1.0,
+        "sensitivity": 1.0,
+        "true_positive_count": 35
+      },
+      "case_id": "baseline_powerline",
+      "clean": {
+        "detection_count": 0,
+        "f1_score": 0.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 0,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 0.0,
+        "sensitivity": 0.0,
+        "true_positive_count": 0
+      },
+      "detection_input_sha256": "sha256:fea696ffb84db887347189b2e7969f6418f91b5554c5c5df5ba0ec1d1d611072",
+      "report_path": "verification/baseline_powerline/comparison.json",
+      "scenario_id": "sq_baseline_powerline",
+      "score_type": "event_detection",
+      "status": "scored",
+      "success": true,
+      "target": "r_peak",
+      "total": {
+        "detection_count": 35,
+        "f1_score": 1.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 35,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 1.0,
+        "sensitivity": 1.0,
+        "true_positive_count": 35
+      }
+    }
+  ],
+  "failed_case_target_count": 0,
+  "integrity": {
+    "checked_file_count": 15,
+    "ok": true,
+    "total_bytes": 1751145
+  },
+  "package": {
+    "generator_version": "0.5.0-dev",
+    "ground_truth_included": true,
+    "not_for": "diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment",
+    "pack_fingerprint": "sha256:3baac9270fe98e1b999f44a93f461efac8e93ca312e134eb4362b9951c09a2eb",
+    "package_id": "r_peak_stress_v1",
+    "usage_restrictions": "engineering algorithm QA only",
+    "version": "1.0"
+  },
+  "passed_case_target_count": 4,
+  "policy": {
+    "failed_check_count": 0,
+    "passed": true,
+    "profile_id": "regression",
+    "target_count": 1
+  },
+  "schema_version": 1,
+  "scored_case_target_count": 4,
+  "scoring_success": true,
+  "scoring_version": "synsigra-python-local-v2",
+  "status": "passed",
+  "success": true,
+  "summary_type": "synsigra_local_verification",
+  "targets": [
+    {
+      "artifact": {
+        "detection_count": 35,
+        "f1_score": 1.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 35,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 1.0,
+        "sensitivity": 1.0,
+        "true_positive_count": 35
+      },
+      "case_count": 4,
+      "clean": {
+        "detection_count": 85,
+        "f1_score": 1.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 85,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 1.0,
+        "sensitivity": 1.0,
+        "true_positive_count": 85
+      },
+      "failed_case_count": 0,
+      "passed_case_count": 4,
+      "policy": {
+        "failed_checks": [],
+        "passed": true,
+        "profile_id": "regression"
+      },
+      "score_type": "event_detection",
+      "target": "r_peak",
+      "total": {
+        "detection_count": 120,
+        "f1_score": 1.0,
+        "false_negative_count": 0,
+        "false_positive_count": 0,
+        "ground_truth_count": 120,
+        "max_absolute_error_seconds": 0.0,
+        "mean_absolute_error_seconds": 0.0,
+        "positive_predictive_value": 1.0,
+        "sensitivity": 1.0,
+        "true_positive_count": 120
+      }
+    }
+  ]
+}

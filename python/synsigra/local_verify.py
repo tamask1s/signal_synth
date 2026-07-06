@@ -152,10 +152,10 @@ def _score_event_detection(package, case, case_summary, annotations, detections,
     tolerance_seconds = float(entry.get("default_tolerance_seconds", _default_tolerance_seconds(target)))
     truth = _truth_events_for_target(target, annotations, case_summary)
     detection_events = []
+    ppg_target = target in ("ppg_systolic_peak", "ppg_pulse_onset")
     for item in detections.events:
         if not _finite_non_negative(item.time_seconds):
             raise VerificationError("detection time must be finite and non-negative")
-        ppg_target = target in ("ppg_systolic_peak", "ppg_pulse_onset")
         pulse = _ppg_pulse_at_time(annotations, item.time_seconds) if ppg_target else None
         detection_events.append(_TruthEvent(
             item.original_index, item.time_seconds, "", _in_artifact_interval(target, item.time_seconds, annotations, case_summary),

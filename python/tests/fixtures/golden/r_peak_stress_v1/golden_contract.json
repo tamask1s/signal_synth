@@ -1,0 +1,39 @@
+{
+  "case_ids": [
+    "clean_70",
+    "slow_45",
+    "fast_120",
+    "baseline_powerline"
+  ],
+  "compact_archive_sha256": "sha256:41fa371700477d880f0bac3df4b077cbbd139b0dc4c5b7145053aed673221c8f",
+  "compact_fixture_note": "This fixture keeps only files required by the local verifier. It intentionally omits waveform.csv, WFDB, EDF, BDF, HTML reports, and other bulky render payloads.",
+  "expected": {
+    "fail_summary": "expected/fail_summary_contract.json",
+    "pass_summary": "expected/pass_summary_contract.json"
+  },
+  "extension_points": [
+    "hrv_v1",
+    "ppg_benchmark_v1",
+    "ecg_beat_classification_v1"
+  ],
+  "fixture_id": "r_peak_stress_v1_compact_golden",
+  "full_package_fingerprint": "sha256:34e5d6419a9cc4bd6e640aaa9179f5675273b3b5547c75d2a9de790f2c4d80a0",
+  "full_package_waveform_formats": [
+    "csv",
+    "wfdb",
+    "edf",
+    "bdf"
+  ],
+  "generator_version": "0.5.0-dev",
+  "issue_url": "https://github.com/tamask1s/signal_synth/issues/66",
+  "manifest_sha256": "sha256:6d463b182bc170d50ebca730adc219bcfc1e6e2cd5a81ee845af23aa26dfbb39",
+  "pack_fingerprint": "sha256:3baac9270fe98e1b999f44a93f461efac8e93ca312e134eb4362b9951c09a2eb",
+  "pack_id": "r_peak_stress_v1",
+  "pack_json_sha256": "sha256:3baac9270fe98e1b999f44a93f461efac8e93ca312e134eb4362b9951c09a2eb",
+  "pack_version": "1.0",
+  "schema_version": 1,
+  "scoring_manifest_sha256": "sha256:3515314cfbeeb610456189965aa8ed17ed73faa6441da1e16455d923b8e9038a",
+  "source_pack_path": "examples/packs/r_peak_stress_v1.json",
+  "summary_json_sha256": "sha256:2f755bc5ac3a904bcbfdb7ada8f3ff38b3823e354a68e0bd9429e40cc165c1f5",
+  "target": "r_peak"
+}
