@@ -48,7 +48,7 @@ def create_challenge_with_cli(source_dir, work_dir, cli):
         "targets": ["r_peak", "ppg_systolic_peak", "ecg_beat_classification", "hrv"],
         "scenarios": [
             {"id": "clean_ecg", "path": "scenarios/clean_ecg.json", "targets": ["r_peak", "ecg_beat_classification"]},
-            {"id": "ppg_clean", "path": "scenarios/ppg_clean.json", "targets": ["ppg_systolic_peak"]},
+            {"id": "ppg_clean", "path": "scenarios/ppg_clean.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
             {"id": "ppg_stress", "path": "scenarios/ppg_stress.json", "targets": ["ppg_systolic_peak"]},
             {"id": "ppg_motion", "path": "scenarios/ppg_motion.json", "targets": ["ppg_systolic_peak"]},
             {"id": "hrv_mild", "path": "scenarios/hrv_mild.json", "targets": ["hrv"]},
@@ -68,6 +68,14 @@ def ppg_detections(annotations):
         {"time_seconds": item["time_seconds"], "label": "ppg_peak"}
         for item in annotations.get("ppg_fiducials", [])
         if item.get("kind") == "systolic_peak" and item.get("source") == "measurement"
+    ]
+
+
+def ppg_onset_detections(annotations):
+    return [
+        {"time_seconds": item["time_seconds"], "label": "ppg_onset"}
+        for item in annotations.get("ppg_fiducials", [])
+        if item.get("kind") == "pulse_onset" and item.get("source") == "measurement"
     ]
 
 
@@ -175,6 +183,8 @@ def main():
     rpeak_path = os.path.join(detections_dir, "clean_ecg.json")
     rpeak_recommended_path = os.path.join(detections_dir, "clean_ecg_r_peak.json")
     ppg_path = os.path.join(detections_dir, "ppg_clean.json")
+    ppg_recommended_path = os.path.join(detections_dir, "ppg_clean_ppg_systolic_peak.json")
+    ppg_onset_path = os.path.join(detections_dir, "ppg_clean_ppg_pulse_onset.json")
     ppg_stress_path = os.path.join(detections_dir, "ppg_stress.json")
     ppg_motion_path = os.path.join(detections_dir, "ppg_motion.json")
     beat_class_path = os.path.join(detections_dir, "clean_ecg_beat_classes.json")
@@ -183,6 +193,8 @@ def main():
     write_detections(rpeak_path, "r_peak", rpeak_detections(challenge.case("clean_ecg").annotations()))
     shutil.copyfile(rpeak_path, rpeak_recommended_path)
     write_detections(ppg_path, "ppg_systolic_peak", ppg_detections(challenge.case("ppg_clean").annotations()))
+    shutil.copyfile(ppg_path, ppg_recommended_path)
+    write_detections(ppg_onset_path, "ppg_pulse_onset", ppg_onset_detections(challenge.case("ppg_clean").annotations()))
     write_detections(ppg_stress_path, "ppg_systolic_peak", ppg_detections(challenge.case("ppg_stress").annotations()))
     write_detections(ppg_motion_path, "ppg_systolic_peak", ppg_detections(challenge.case("ppg_motion").annotations()))
     write_detections(beat_class_path, "ecg_beat_classification", beat_classifications(challenge.case("clean_ecg").annotations()))
@@ -206,6 +218,10 @@ def main():
 
     ppg_report = ss.compare_ppg_peaks(challenge.case("ppg_clean"), ppg_detections_doc, cli_path=cli)
     assert ppg_report.json["comparison"]["metrics"]["total"]["f1_score"] == 1
+    assert ppg_report.json["comparison"]["metrics"]["pulse_timing"]["matched_interval_count"] > 0
+    onset_report = ss.compare_ppg_onsets(challenge.case("ppg_clean"), ss.load_detections(ppg_onset_path, target="ppg_pulse_onset"), cli_path=cli)
+    assert onset_report.json["comparison"]["metrics"]["total"]["f1_score"] == 1
+    assert onset_report.json["comparison"]["metrics"]["pulse_timing"]["mean_absolute_interval_error_seconds"] == 0
     ppg_stress_report = ss.compare_ppg_peaks(challenge.case("ppg_stress"), ss.load_detections(ppg_stress_path, target="ppg_systolic_peak"), cli_path=cli)
     assert ppg_stress_report.json["comparison"]["metrics"]["low_perfusion"]["ground_truth_count"] > 0
     assert ppg_stress_report.json["comparison"]["metrics"]["weak"]["ground_truth_count"] > 0
@@ -236,12 +252,18 @@ def main():
     local_report = ss.verify_package(archive_path, detections_dir, local_verify_dir)
     assert local_report.summary["success"]
     assert local_report.summary["package"]["package_id"] == "python_scoring_challenge"
-    assert local_report.summary["case_target_count"] == 6
-    assert local_report.summary["passed_case_target_count"] == 6
+    assert local_report.summary["case_target_count"] == 7
+    assert local_report.summary["passed_case_target_count"] == 7
     assert local_report.summary["policy"]["profile_id"] == "regression"
     assert local_report.summary["policy"]["passed"]
     assert read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_r_peak", "comparison.json"))["comparison"]["metrics"]["total"]["f1_score"] == 1
-    assert read_json(os.path.join(local_verify_dir, "verification", "ppg_clean", "comparison.json"))["comparison"]["metrics"]["total"]["f1_score"] == 1
+    assert read_json(os.path.join(local_verify_dir, "verification", "ppg_clean_ppg_systolic_peak", "comparison.json"))["comparison"]["metrics"]["total"]["f1_score"] == 1
+    local_onset = read_json(os.path.join(local_verify_dir, "verification", "ppg_clean_ppg_pulse_onset", "comparison.json"))["comparison"]
+    cpp_onset_dir = os.path.join(work_dir, "cpp_ppg_onset")
+    run([cli, "compare", "ppg-onsets", challenge.case("ppg_clean").scenario_path, ppg_onset_path, "--out", cpp_onset_dir])
+    cpp_onset = read_json(os.path.join(cpp_onset_dir, "comparison.json"))["comparison"]
+    for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
+        assert local_onset[key] == cpp_onset[key]
     stress_metrics = read_json(os.path.join(local_verify_dir, "verification", "ppg_stress", "comparison.json"))["comparison"]["metrics"]
     assert stress_metrics["low_perfusion"]["ground_truth_count"] > 0
     assert stress_metrics["weak"]["ground_truth_count"] > 0

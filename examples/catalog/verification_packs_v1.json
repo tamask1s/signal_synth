@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "1.0",
+  "version": "1.1",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -14,6 +14,7 @@
     {"pack_id":"ecg_morphology_stress_v1","path":"../packs/ecg_morphology_stress_v1.json","modality":["ECG"],"targets":["morphology_assertions","signal_quality"],"difficulty":["stress"],"recommended_profile":null,"scoring_mode":"reference_only","feature_tags":["conduction","st_t","ischemia","hypertrophy","infarction","lead_fault","acquisition_fault"]},
     {"pack_id":"ppg_alignment_v1","path":"../packs/ppg_alignment_v1.json","modality":["ECG","PPG"],"targets":["ppg_systolic_peak","ecg_ppg_alignment"],"difficulty":["smoke"],"recommended_profile":"smoke","scoring_mode":"mixed","feature_tags":["pulse_transit_delay","ecg_ppg_alignment"]},
     {"pack_id":"combined_worst_case_v1","path":"../packs/combined_worst_case_v1.json","modality":["ECG","PPG"],"targets":["r_peak","hrv","ppg_systolic_peak","signal_quality"],"difficulty":["stress"],"recommended_profile":"stress","scoring_mode":"mixed","feature_tags":["multimodal","artifact","dropout","timing"]},
-    {"pack_id":"wearable_stress_v1","path":"../packs/wearable_stress_v1.json","modality":["ECG","PPG"],"targets":["r_peak","hrv","ppg_systolic_peak","ecg_ppg_alignment"],"difficulty":["stress","benchmark"],"recommended_profile":"stress","scoring_mode":"mixed","feature_tags":["controlled_randomization","respiration","activity","pulse_transit_delay","missing_pulse","clock_drift","long_duration","compact"]}
+    {"pack_id":"wearable_stress_v1","path":"../packs/wearable_stress_v1.json","modality":["ECG","PPG"],"targets":["r_peak","hrv","ppg_systolic_peak","ecg_ppg_alignment"],"difficulty":["stress","benchmark"],"recommended_profile":"stress","scoring_mode":"mixed","feature_tags":["controlled_randomization","respiration","activity","pulse_transit_delay","missing_pulse","clock_drift","long_duration","compact"]},
+    {"pack_id":"ppg_benchmark_v1","path":"../packs/ppg_benchmark_v1.json","modality":["ECG","PPG"],"targets":["ppg_systolic_peak","ppg_pulse_onset"],"difficulty":["benchmark","stress"],"recommended_profile":"benchmark","scoring_mode":"local","feature_tags":["onset","peak","pulse_interval","pulse_rate","ptt","respiration","perfusion","motion","dropout","saturation","weak_pulse","missing_pulse"]}
   ]
 }

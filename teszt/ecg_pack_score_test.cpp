@@ -94,7 +94,9 @@ int main()
     const std::string json = signal_synth::ecg_pack_score_summary_json(summary);
     const std::string csv = signal_synth::ecg_pack_score_summary_csv(summary);
     const std::string html = signal_synth::ecg_pack_score_report_html(summary);
-    ok &= check(json.find("\"summary_type\":\"algorithm_qa_pack_score\"") != std::string::npos && json.find("\"detection_input_id\":\"detections/noisy.json\"") != std::string::npos, "json_contract");
+    ok &= check(json.find("\"summary_type\":\"algorithm_qa_pack_score\"") != std::string::npos
+        && json.find("\"detection_input_id\":\"detections/noisy.json\"") != std::string::npos
+        && json.find("\"motion\":") != std::string::npos && json.find("\"dropout\":") != std::string::npos, "json_contract");
     ok &= check(csv.find("row_type,target,bin") == 0 && csv.find("target_summary,r_peak,total") != std::string::npos, "csv_contract");
     ok &= check(html.find("Algorithm QA Pack Score") != std::string::npos && html.find("not diagnosis") != std::string::npos, "html_contract");
 

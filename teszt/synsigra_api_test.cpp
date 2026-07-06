@@ -108,10 +108,12 @@ int main()
     ok &= check(compare.find_artifact("comparison.json") && compare.find_artifact("comparison.csv") && compare.find_artifact("comparison_report.html"), "compare_artifacts");
     ok &= check(std::fabs(signal_synth::synsigra_default_compare_tolerance_seconds(signal_synth::synsigra_compare_r_peak) - 0.050) < 1e-12, "default_r_tolerance");
     ok &= check(std::fabs(signal_synth::synsigra_default_compare_tolerance_seconds(signal_synth::synsigra_compare_ppg_systolic_peak) - 0.080) < 1e-12, "default_ppg_tolerance");
+    ok &= check(std::fabs(signal_synth::synsigra_default_compare_tolerance_seconds(signal_synth::synsigra_compare_ppg_pulse_onset) - 0.050) < 1e-12
+        && std::string(signal_synth::synsigra_compare_target_name(signal_synth::synsigra_compare_ppg_pulse_onset)) == "ppg_pulse_onset", "ppg_onset_contract");
 
     signal_synth::synsigra_validation_result invalid;
     ok &= check(!signal_synth::synsigra_validate_scenario_json("{\"schema_version\":2}", invalid) && !invalid.success && !invalid.messages.empty(), "invalid_has_messages");
-    ok &= check(std::string(signal_synth::synsigra_api_version()) == "0.1.0", "api_version");
+    ok &= check(std::string(signal_synth::synsigra_api_version()) == "0.2.0", "api_version");
 
     return ok ? 0 : 1;
 }

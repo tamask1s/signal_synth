@@ -96,3 +96,20 @@ affected channels, and the motion-reference role.
 The model remains a single green optical engineering channel. It does not
 claim validated perfusion, vascular, inertial-sensor, or optical physiology.
 Red/infrared channels are a separate planned increment.
+
+## Detection scoring
+
+Peak and pulse-onset detections use the versioned detection JSON or CSV
+contract. Reports include total and clean/all-artifact event metrics plus
+overlapping low-perfusion, weak-pulse, motion, and dropout bins.
+
+For both PPG targets, timing metrics compare adjacent pulse intervals when both
+endpoints are matched. Reports include interval count, MAE, RMS and maximum
+error, plus ground-truth/detected mean pulse rate and absolute rate error.
+Missing-pulse opportunities remain explicit and are not converted into
+fabricated fiducials.
+
+The `ppg_benchmark_v1` pack provides isolated clean-delay, variable-PTT,
+respiratory, perfusion, motion, dropout/saturation, weak/missing, and combined
+wearable cases. These are engineering QA scenarios, not physiological or
+clinical performance claims.

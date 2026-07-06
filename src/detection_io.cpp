@@ -506,7 +506,7 @@ namespace
         if (document.schema_version != 1)
             add_message(result, signal_synth::detection_io_range, "$.schema_version", "only schema version 1 is supported");
         if (!valid_target_name(document.target_name))
-            add_message(result, signal_synth::detection_io_range, "$.target", "target must be r_peak, ppg_systolic_peak, or ecg_beat_classification");
+            add_message(result, signal_synth::detection_io_range, "$.target", "target must be r_peak, ppg_systolic_peak, ppg_pulse_onset, or ecg_beat_classification");
         document.has_compare_target = signal_synth::detection_compare_target_from_name(document.target_name, document.compare_target);
         if (document.events.empty())
             add_message(result, signal_synth::detection_io_range, "$.events", "at least one detection event is required");
@@ -588,6 +588,11 @@ namespace signal_synth
         if (name == "ppg_systolic_peak" || name == "ppg_peak" || name == "ppg-peaks" || name == "ppg-systolic-peak")
         {
             target = ecg_compare_ppg_systolic_peak;
+            return true;
+        }
+        if (name == "ppg_pulse_onset" || name == "ppg_onset" || name == "ppg-onsets" || name == "ppg-pulse-onset")
+        {
+            target = ecg_compare_ppg_pulse_onset;
             return true;
         }
         if (name == "ecg_beat_classification" || name == "beat_classification" || name == "beat-classes")

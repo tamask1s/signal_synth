@@ -17,6 +17,7 @@ namespace
         double time_seconds;
         bool in_artifact_interval;
         bool in_motion_artifact_interval;
+        bool in_dropout_artifact_interval;
         bool low_perfusion;
         bool weak_pulse;
     };
@@ -27,6 +28,7 @@ namespace
         double time_seconds;
         bool in_artifact_interval;
         bool in_motion_artifact_interval;
+        bool in_dropout_artifact_interval;
         bool low_perfusion;
         bool weak_pulse;
         bool missing_pulse_window;
@@ -100,7 +102,7 @@ namespace
 
     bool artifact_affects_target(const signal_synth::signal_quality_artifact_interval& artifact, signal_synth::ecg_compare_target target)
     {
-        if (target == signal_synth::ecg_compare_ppg_systolic_peak)
+        if (target == signal_synth::ecg_compare_ppg_systolic_peak || target == signal_synth::ecg_compare_ppg_pulse_onset)
             return artifact.ppg;
         for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead)
             if (artifact.ecg_leads[lead])
@@ -121,12 +123,25 @@ namespace
 
     bool in_motion_artifact_interval(const signal_synth::ecg_render_bundle& render, signal_synth::ecg_compare_target target, double time_seconds)
     {
-        if (target != signal_synth::ecg_compare_ppg_systolic_peak)
+        if (target != signal_synth::ecg_compare_ppg_systolic_peak && target != signal_synth::ecg_compare_ppg_pulse_onset)
             return false;
         for (std::size_t i = 0; i < render.signal_quality.artifacts.size(); ++i)
         {
             const signal_synth::signal_quality_artifact_interval& artifact = render.signal_quality.artifacts[i];
             if (signal_synth::signal_quality_artifact_is_motion(artifact.type) && time_seconds >= artifact.start_seconds && time_seconds < artifact.end_seconds)
+                return true;
+        }
+        return false;
+    }
+
+    bool in_dropout_artifact_interval(const signal_synth::ecg_render_bundle& render, signal_synth::ecg_compare_target target, double time_seconds)
+    {
+        if (target != signal_synth::ecg_compare_ppg_systolic_peak && target != signal_synth::ecg_compare_ppg_pulse_onset)
+            return false;
+        for (std::size_t i = 0; i < render.signal_quality.artifacts.size(); ++i)
+        {
+            const signal_synth::signal_quality_artifact_interval& artifact = render.signal_quality.artifacts[i];
+            if (artifact.type == signal_synth::signal_quality_ppg_dropout && time_seconds >= artifact.start_seconds && time_seconds < artifact.end_seconds)
                 return true;
         }
         return false;
@@ -174,6 +189,7 @@ namespace
                     event.time_seconds = beat.r_peak_time_seconds;
                     event.in_artifact_interval = in_artifact_interval(render, target, event.time_seconds);
                     event.in_motion_artifact_interval = false;
+                    event.in_dropout_artifact_interval = false;
                     event.low_perfusion = false;
                     event.weak_pulse = false;
                     truth.push_back(event);
@@ -181,7 +197,7 @@ namespace
             }
             return true;
         }
-        if (target == signal_synth::ecg_compare_ppg_systolic_peak)
+        if (target == signal_synth::ecg_compare_ppg_systolic_peak || target == signal_synth::ecg_compare_ppg_pulse_onset)
         {
             if (!render.ppg.sample_count())
             {
@@ -191,13 +207,15 @@ namespace
             for (unsigned int i = 0; i < render.ppg.annotation_count(); ++i)
             {
                 const signal_synth::ppg_annotation& annotation = render.ppg.annotations()[i];
-                if (annotation.kind == signal_synth::ppg_systolic_peak && annotation.source == signal_synth::ppg_fiducial_measurement && finite_non_negative(annotation.time_seconds))
+                const signal_synth::ppg_fiducial_kind expected_kind = target == signal_synth::ecg_compare_ppg_systolic_peak ? signal_synth::ppg_systolic_peak : signal_synth::ppg_pulse_onset;
+                if (annotation.kind == expected_kind && annotation.source == signal_synth::ppg_fiducial_measurement && finite_non_negative(annotation.time_seconds))
                 {
                     truth_event event;
                     event.index = static_cast<unsigned int>(truth.size());
                     event.time_seconds = annotation.time_seconds;
                     event.in_artifact_interval = in_artifact_interval(render, target, event.time_seconds);
                     event.in_motion_artifact_interval = in_motion_artifact_interval(render, target, event.time_seconds);
+                    event.in_dropout_artifact_interval = in_dropout_artifact_interval(render, target, event.time_seconds);
                     const signal_synth::ppg_pulse_annotation* pulse = ppg_pulse_for_beat(render, annotation.ecg_beat_index);
                     event.low_perfusion = pulse && pulse->low_perfusion;
                     event.weak_pulse = pulse && pulse->state == signal_synth::ppg_pulse_weak;
@@ -296,16 +314,21 @@ namespace signal_synth
     }
 
     ecg_compare_match::ecg_compare_match()
-        : ground_truth_index(0), detection_index(0), ground_truth_time_seconds(0.0), detection_time_seconds(0.0), error_seconds(0.0), in_artifact_interval(false), in_motion_artifact_interval(false), low_perfusion(false), weak_pulse(false)
+        : ground_truth_index(0), detection_index(0), ground_truth_time_seconds(0.0), detection_time_seconds(0.0), error_seconds(0.0), in_artifact_interval(false), in_motion_artifact_interval(false), in_dropout_artifact_interval(false), low_perfusion(false), weak_pulse(false)
     {
     }
 
     ecg_compare_unmatched_event::ecg_compare_unmatched_event()
-        : index(0), time_seconds(0.0), in_artifact_interval(false), in_motion_artifact_interval(false), low_perfusion(false), weak_pulse(false), missing_pulse_window(false)
+        : index(0), time_seconds(0.0), in_artifact_interval(false), in_motion_artifact_interval(false), in_dropout_artifact_interval(false), low_perfusion(false), weak_pulse(false), missing_pulse_window(false)
     {
     }
 
-    ecg_compare_result::ecg_compare_result() : success(false), target_name(), tolerance_seconds(0.0), total(), clean(), artifact(), motion(), low_perfusion(), weak(), missing_pulse_opportunity_count(0), detections_in_missing_pulse_windows(0), matches(), false_positives(), false_negatives(), messages()
+    ppg_pulse_timing_metrics::ppg_pulse_timing_metrics()
+        : ground_truth_interval_count(0), detection_interval_count(0), matched_interval_count(0), mean_absolute_interval_error_seconds(0.0), rms_interval_error_seconds(0.0), max_absolute_interval_error_seconds(0.0), ground_truth_mean_pulse_rate_bpm(0.0), detection_mean_pulse_rate_bpm(0.0), absolute_pulse_rate_error_bpm(0.0)
+    {
+    }
+
+    ecg_compare_result::ecg_compare_result() : success(false), target_name(), tolerance_seconds(0.0), total(), clean(), artifact(), motion(), dropout(), low_perfusion(), weak(), pulse_timing(), missing_pulse_opportunity_count(0), detections_in_missing_pulse_windows(0), matches(), false_positives(), false_negatives(), messages()
     {
     }
 
@@ -323,6 +346,7 @@ namespace signal_synth
         case ecg_compare_r_peak: return "r_peak";
         case ecg_compare_ppg_systolic_peak: return "ppg_systolic_peak";
         case ecg_compare_beat_classification: return "ecg_beat_classification";
+        case ecg_compare_ppg_pulse_onset: return "ppg_pulse_onset";
         }
         return "unknown";
     }
@@ -372,14 +396,16 @@ namespace signal_synth
             event.time_seconds = detections[i].time_seconds;
             event.in_artifact_interval = in_artifact_interval(render, options.target, event.time_seconds);
             event.in_motion_artifact_interval = in_motion_artifact_interval(render, options.target, event.time_seconds);
-            const ppg_pulse_annotation* pulse = options.target == ecg_compare_ppg_systolic_peak ? ppg_pulse_at_time(render, event.time_seconds) : 0;
+            event.in_dropout_artifact_interval = in_dropout_artifact_interval(render, options.target, event.time_seconds);
+            const bool ppg_target = options.target == ecg_compare_ppg_systolic_peak || options.target == ecg_compare_ppg_pulse_onset;
+            const ppg_pulse_annotation* pulse = ppg_target ? ppg_pulse_at_time(render, event.time_seconds) : 0;
             event.low_perfusion = pulse && pulse->low_perfusion;
             event.weak_pulse = pulse && pulse->state == ppg_pulse_weak;
             event.missing_pulse_window = pulse && pulse->state == ppg_pulse_missing;
             sorted_detections.push_back(event);
         }
         std::sort(sorted_detections.begin(), sorted_detections.end(), detection_less);
-        if (options.target == ecg_compare_ppg_systolic_peak)
+        if (options.target == ecg_compare_ppg_systolic_peak || options.target == ecg_compare_ppg_pulse_onset)
             for (unsigned int i = 0; i < render.ppg.pulse_count(); ++i)
                 if (render.ppg.pulses()[i].state == ppg_pulse_missing)
                     ++fresh.missing_pulse_opportunity_count;
@@ -404,7 +430,8 @@ namespace signal_synth
 
         std::vector<bool> truth_matched(truth.size(), false);
         std::vector<bool> detection_matched(sorted_detections.size(), false);
-        std::vector<double> total_errors, clean_errors, artifact_errors, motion_errors, low_perfusion_errors, weak_errors;
+        std::vector<double> matched_detection_times(truth.size(), 0.0);
+        std::vector<double> total_errors, clean_errors, artifact_errors, motion_errors, dropout_errors, low_perfusion_errors, weak_errors;
         for (std::size_t i = 0; i < candidates.size(); ++i)
         {
             const candidate_match& candidate = candidates[i];
@@ -412,6 +439,7 @@ namespace signal_synth
                 continue;
             truth_matched[candidate.truth_index] = true;
             detection_matched[candidate.detection_sorted_index] = true;
+            matched_detection_times[candidate.truth_index] = sorted_detections[candidate.detection_sorted_index].time_seconds;
 
             const truth_event& truth_event_ref = truth[candidate.truth_index];
             const detection_event& detection_event_ref = sorted_detections[candidate.detection_sorted_index];
@@ -423,6 +451,7 @@ namespace signal_synth
             match.error_seconds = detection_event_ref.time_seconds - truth_event_ref.time_seconds;
             match.in_artifact_interval = truth_event_ref.in_artifact_interval;
             match.in_motion_artifact_interval = truth_event_ref.in_motion_artifact_interval;
+            match.in_dropout_artifact_interval = truth_event_ref.in_dropout_artifact_interval;
             match.low_perfusion = truth_event_ref.low_perfusion;
             match.weak_pulse = truth_event_ref.weak_pulse;
             fresh.matches.push_back(match);
@@ -449,6 +478,11 @@ namespace signal_synth
                 ++fresh.motion.true_positive_count;
                 motion_errors.push_back(std::fabs(match.error_seconds));
             }
+            if (match.in_dropout_artifact_interval)
+            {
+                ++fresh.dropout.true_positive_count;
+                dropout_errors.push_back(std::fabs(match.error_seconds));
+            }
             if (match.weak_pulse)
             {
                 ++fresh.weak.true_positive_count;
@@ -466,6 +500,8 @@ namespace signal_synth
                 ++fresh.clean.ground_truth_count;
             if (truth[i].in_motion_artifact_interval)
                 ++fresh.motion.ground_truth_count;
+            if (truth[i].in_dropout_artifact_interval)
+                ++fresh.dropout.ground_truth_count;
             if (truth[i].low_perfusion)
                 ++fresh.low_perfusion.ground_truth_count;
             if (truth[i].weak_pulse)
@@ -477,6 +513,7 @@ namespace signal_synth
                 event.time_seconds = truth[i].time_seconds;
                 event.in_artifact_interval = truth[i].in_artifact_interval;
                 event.in_motion_artifact_interval = truth[i].in_motion_artifact_interval;
+                event.in_dropout_artifact_interval = truth[i].in_dropout_artifact_interval;
                 event.low_perfusion = truth[i].low_perfusion;
                 event.weak_pulse = truth[i].weak_pulse;
                 fresh.false_negatives.push_back(event);
@@ -491,6 +528,8 @@ namespace signal_synth
                     ++fresh.weak.false_negative_count;
                 if (event.in_motion_artifact_interval)
                     ++fresh.motion.false_negative_count;
+                if (event.in_dropout_artifact_interval)
+                    ++fresh.dropout.false_negative_count;
             }
         }
         for (std::size_t i = 0; i < sorted_detections.size(); ++i)
@@ -501,6 +540,8 @@ namespace signal_synth
                 ++fresh.clean.detection_count;
             if (sorted_detections[i].in_motion_artifact_interval)
                 ++fresh.motion.detection_count;
+            if (sorted_detections[i].in_dropout_artifact_interval)
+                ++fresh.dropout.detection_count;
             if (sorted_detections[i].low_perfusion)
                 ++fresh.low_perfusion.detection_count;
             if (sorted_detections[i].weak_pulse)
@@ -514,6 +555,7 @@ namespace signal_synth
                 event.time_seconds = sorted_detections[i].time_seconds;
                 event.in_artifact_interval = sorted_detections[i].in_artifact_interval;
                 event.in_motion_artifact_interval = sorted_detections[i].in_motion_artifact_interval;
+                event.in_dropout_artifact_interval = sorted_detections[i].in_dropout_artifact_interval;
                 event.low_perfusion = sorted_detections[i].low_perfusion;
                 event.weak_pulse = sorted_detections[i].weak_pulse;
                 event.missing_pulse_window = sorted_detections[i].missing_pulse_window;
@@ -529,14 +571,46 @@ namespace signal_synth
                     ++fresh.weak.false_positive_count;
                 if (event.in_motion_artifact_interval)
                     ++fresh.motion.false_positive_count;
+                if (event.in_dropout_artifact_interval)
+                    ++fresh.dropout.false_positive_count;
             }
         }
         finalize_metrics(fresh.total, total_errors);
         finalize_metrics(fresh.clean, clean_errors);
         finalize_metrics(fresh.artifact, artifact_errors);
         finalize_metrics(fresh.motion, motion_errors);
+        finalize_metrics(fresh.dropout, dropout_errors);
         finalize_metrics(fresh.low_perfusion, low_perfusion_errors);
         finalize_metrics(fresh.weak, weak_errors);
+        if (options.target == ecg_compare_ppg_systolic_peak || options.target == ecg_compare_ppg_pulse_onset)
+        {
+            fresh.pulse_timing.ground_truth_interval_count = truth.size() > 1u ? static_cast<unsigned int>(truth.size() - 1u) : 0u;
+            fresh.pulse_timing.detection_interval_count = sorted_detections.size() > 1u ? static_cast<unsigned int>(sorted_detections.size() - 1u) : 0u;
+            if (truth.size() > 1u && truth.back().time_seconds > truth.front().time_seconds)
+                fresh.pulse_timing.ground_truth_mean_pulse_rate_bpm = 60.0 * (truth.size() - 1u) / (truth.back().time_seconds - truth.front().time_seconds);
+            if (sorted_detections.size() > 1u && sorted_detections.back().time_seconds > sorted_detections.front().time_seconds)
+                fresh.pulse_timing.detection_mean_pulse_rate_bpm = 60.0 * (sorted_detections.size() - 1u) / (sorted_detections.back().time_seconds - sorted_detections.front().time_seconds);
+            fresh.pulse_timing.absolute_pulse_rate_error_bpm = std::fabs(fresh.pulse_timing.detection_mean_pulse_rate_bpm - fresh.pulse_timing.ground_truth_mean_pulse_rate_bpm);
+            double absolute_sum = 0.0, squared_sum = 0.0, maximum = 0.0;
+            for (std::size_t i = 1; i < truth.size(); ++i)
+            {
+                if (!truth_matched[i - 1u] || !truth_matched[i])
+                    continue;
+                const double truth_interval = truth[i].time_seconds - truth[i - 1u].time_seconds;
+                const double detection_interval = matched_detection_times[i] - matched_detection_times[i - 1u];
+                const double error = std::fabs(detection_interval - truth_interval);
+                absolute_sum += error;
+                squared_sum += error * error;
+                maximum = std::max(maximum, error);
+                ++fresh.pulse_timing.matched_interval_count;
+            }
+            if (fresh.pulse_timing.matched_interval_count)
+            {
+                fresh.pulse_timing.mean_absolute_interval_error_seconds = absolute_sum / fresh.pulse_timing.matched_interval_count;
+                fresh.pulse_timing.rms_interval_error_seconds = std::sqrt(squared_sum / fresh.pulse_timing.matched_interval_count);
+                fresh.pulse_timing.max_absolute_interval_error_seconds = maximum;
+            }
+        }
         fresh.success = true;
         result = fresh;
         return true;
@@ -564,12 +638,23 @@ namespace signal_synth
         write_metrics_json(output, result.artifact);
         output << ",\"motion\":";
         write_metrics_json(output, result.motion);
+        output << ",\"dropout\":";
+        write_metrics_json(output, result.dropout);
         output << ",\"low_perfusion\":";
         write_metrics_json(output, result.low_perfusion);
         output << ",\"weak\":";
         write_metrics_json(output, result.weak);
         output << ",\"missing_pulse\":{\"opportunity_count\":" << result.missing_pulse_opportunity_count
                << ",\"detection_count\":" << result.detections_in_missing_pulse_windows << '}';
+        output << ",\"pulse_timing\":{\"ground_truth_interval_count\":" << result.pulse_timing.ground_truth_interval_count
+               << ",\"detection_interval_count\":" << result.pulse_timing.detection_interval_count
+               << ",\"matched_interval_count\":" << result.pulse_timing.matched_interval_count
+               << ",\"mean_absolute_interval_error_seconds\":" << result.pulse_timing.mean_absolute_interval_error_seconds
+               << ",\"rms_interval_error_seconds\":" << result.pulse_timing.rms_interval_error_seconds
+               << ",\"max_absolute_interval_error_seconds\":" << result.pulse_timing.max_absolute_interval_error_seconds
+               << ",\"ground_truth_mean_pulse_rate_bpm\":" << result.pulse_timing.ground_truth_mean_pulse_rate_bpm
+               << ",\"detection_mean_pulse_rate_bpm\":" << result.pulse_timing.detection_mean_pulse_rate_bpm
+               << ",\"absolute_pulse_rate_error_bpm\":" << result.pulse_timing.absolute_pulse_rate_error_bpm << '}';
         output << "},\"matches\":[";
         for (std::size_t i = 0; i < result.matches.size(); ++i)
         {
@@ -581,6 +666,7 @@ namespace signal_synth
                    << ",\"error_seconds\":" << match.error_seconds
                    << ",\"in_artifact_interval\":" << boolean(match.in_artifact_interval)
                    << ",\"in_motion_artifact_interval\":" << boolean(match.in_motion_artifact_interval)
+                   << ",\"in_dropout_artifact_interval\":" << boolean(match.in_dropout_artifact_interval)
                    << ",\"low_perfusion\":" << boolean(match.low_perfusion)
                    << ",\"weak_pulse\":" << boolean(match.weak_pulse) << '}';
         }
@@ -592,6 +678,7 @@ namespace signal_synth
                    << ",\"time_seconds\":" << event.time_seconds
                    << ",\"in_artifact_interval\":" << boolean(event.in_artifact_interval)
                    << ",\"in_motion_artifact_interval\":" << boolean(event.in_motion_artifact_interval)
+                   << ",\"in_dropout_artifact_interval\":" << boolean(event.in_dropout_artifact_interval)
                    << ",\"low_perfusion\":" << boolean(event.low_perfusion)
                    << ",\"weak_pulse\":" << boolean(event.weak_pulse)
                    << ",\"missing_pulse_window\":" << boolean(event.missing_pulse_window) << '}';
@@ -604,6 +691,7 @@ namespace signal_synth
                    << ",\"time_seconds\":" << event.time_seconds
                    << ",\"in_artifact_interval\":" << boolean(event.in_artifact_interval)
                    << ",\"in_motion_artifact_interval\":" << boolean(event.in_motion_artifact_interval)
+                   << ",\"in_dropout_artifact_interval\":" << boolean(event.in_dropout_artifact_interval)
                    << ",\"low_perfusion\":" << boolean(event.low_perfusion)
                    << ",\"weak_pulse\":" << boolean(event.weak_pulse) << '}';
         }
@@ -621,6 +709,7 @@ namespace signal_synth
         write_metrics_row(output, "clean", result.clean);
         write_metrics_row(output, "artifact", result.artifact);
         write_metrics_row(output, "motion", result.motion);
+        write_metrics_row(output, "dropout", result.dropout);
         write_metrics_row(output, "low_perfusion", result.low_perfusion);
         write_metrics_row(output, "weak", result.weak);
         output << "metrics,missing_pulse,,,,,," << result.missing_pulse_opportunity_count << ',' << result.detections_in_missing_pulse_windows
@@ -628,20 +717,20 @@ namespace signal_synth
         for (std::size_t i = 0; i < result.matches.size(); ++i)
         {
             const ecg_compare_match& match = result.matches[i];
-            const char* bin = match.in_motion_artifact_interval ? "motion" : match.in_artifact_interval ? "artifact" : match.weak_pulse ? "weak" : match.low_perfusion ? "low_perfusion" : "clean";
+            const char* bin = match.in_motion_artifact_interval ? "motion" : match.in_dropout_artifact_interval ? "dropout" : match.in_artifact_interval ? "artifact" : match.weak_pulse ? "weak" : match.low_perfusion ? "low_perfusion" : "clean";
             output << "match," << bin << ',' << match.ground_truth_index << ',' << match.detection_index << ','
                    << match.ground_truth_time_seconds << ',' << match.detection_time_seconds << ',' << match.error_seconds << ",,,,,,,,,,,,\n";
         }
         for (std::size_t i = 0; i < result.false_positives.size(); ++i)
         {
             const ecg_compare_unmatched_event& event = result.false_positives[i];
-            const char* bin = event.in_motion_artifact_interval ? "motion" : event.in_artifact_interval ? "artifact" : event.missing_pulse_window ? "missing_pulse" : event.weak_pulse ? "weak" : event.low_perfusion ? "low_perfusion" : "clean";
+            const char* bin = event.in_motion_artifact_interval ? "motion" : event.in_dropout_artifact_interval ? "dropout" : event.in_artifact_interval ? "artifact" : event.missing_pulse_window ? "missing_pulse" : event.weak_pulse ? "weak" : event.low_perfusion ? "low_perfusion" : "clean";
             output << "false_positive," << bin << ",," << event.index << ",," << event.time_seconds << ",,,,,,,,,,,,,\n";
         }
         for (std::size_t i = 0; i < result.false_negatives.size(); ++i)
         {
             const ecg_compare_unmatched_event& event = result.false_negatives[i];
-            const char* bin = event.in_motion_artifact_interval ? "motion" : event.in_artifact_interval ? "artifact" : event.weak_pulse ? "weak" : event.low_perfusion ? "low_perfusion" : "clean";
+            const char* bin = event.in_motion_artifact_interval ? "motion" : event.in_dropout_artifact_interval ? "dropout" : event.in_artifact_interval ? "artifact" : event.weak_pulse ? "weak" : event.low_perfusion ? "low_perfusion" : "clean";
             output << "false_negative," << bin << ',' << event.index << ",," << event.time_seconds << ",,,,,,,,,,,,,,\n";
         }
         return output.str();
@@ -667,9 +756,9 @@ namespace signal_synth
                << "</td></tr><tr><th>Target</th><td>" << html_text(result.target_name)
                << "</td></tr><tr><th>Tolerance</th><td>" << result.tolerance_seconds << " s</td></tr></table>"
                << "<h2>Metrics</h2><table><tr><th>Bin</th><th>GT</th><th>Detections</th><th>TP</th><th>FP</th><th>FN</th><th>Sensitivity</th><th>PPV</th><th>F1</th><th>Mean abs error</th><th>RMS error</th></tr>";
-        const ecg_compare_bin_metrics* metrics[] = {&result.total, &result.clean, &result.artifact, &result.motion, &result.low_perfusion, &result.weak};
-        const char* names[] = {"total", "clean", "artifact", "motion", "low perfusion", "weak pulse"};
-        for (unsigned int i = 0; i < 6; ++i)
+        const ecg_compare_bin_metrics* metrics[] = {&result.total, &result.clean, &result.artifact, &result.motion, &result.dropout, &result.low_perfusion, &result.weak};
+        const char* names[] = {"total", "clean", "artifact", "motion", "dropout", "low perfusion", "weak pulse"};
+        for (unsigned int i = 0; i < 7; ++i)
         {
             output << "<tr><td>" << names[i] << "</td><td>" << metrics[i]->ground_truth_count
                    << "</td><td>" << metrics[i]->detection_count
@@ -684,13 +773,16 @@ namespace signal_synth
         }
         output << "</table><p>Missing-pulse opportunities: " << result.missing_pulse_opportunity_count
                << "; detections inside missing-pulse windows: " << result.detections_in_missing_pulse_windows
+               << ".</p><p>Matched pulse intervals: " << result.pulse_timing.matched_interval_count
+               << "; interval MAE: " << result.pulse_timing.mean_absolute_interval_error_seconds
+               << " s; pulse-rate error: " << result.pulse_timing.absolute_pulse_rate_error_bpm << " bpm"
                << ".</p><h2>Unmatched Events</h2><table><tr><th>Type</th><th>Index</th><th>Time</th><th>Bin</th></tr>";
         for (std::size_t i = 0; i < result.false_positives.size(); ++i)
             output << "<tr><td>false positive</td><td>" << result.false_positives[i].index << "</td><td>" << result.false_positives[i].time_seconds << "</td><td>"
-                   << (result.false_positives[i].in_motion_artifact_interval ? "motion" : result.false_positives[i].in_artifact_interval ? "artifact" : result.false_positives[i].missing_pulse_window ? "missing pulse" : result.false_positives[i].weak_pulse ? "weak pulse" : result.false_positives[i].low_perfusion ? "low perfusion" : "clean") << "</td></tr>";
+                   << (result.false_positives[i].in_motion_artifact_interval ? "motion" : result.false_positives[i].in_dropout_artifact_interval ? "dropout" : result.false_positives[i].in_artifact_interval ? "artifact" : result.false_positives[i].missing_pulse_window ? "missing pulse" : result.false_positives[i].weak_pulse ? "weak pulse" : result.false_positives[i].low_perfusion ? "low perfusion" : "clean") << "</td></tr>";
         for (std::size_t i = 0; i < result.false_negatives.size(); ++i)
             output << "<tr><td>false negative</td><td>" << result.false_negatives[i].index << "</td><td>" << result.false_negatives[i].time_seconds << "</td><td>"
-                   << (result.false_negatives[i].in_motion_artifact_interval ? "motion" : result.false_negatives[i].in_artifact_interval ? "artifact" : result.false_negatives[i].weak_pulse ? "weak pulse" : result.false_negatives[i].low_perfusion ? "low perfusion" : "clean") << "</td></tr>";
+                   << (result.false_negatives[i].in_motion_artifact_interval ? "motion" : result.false_negatives[i].in_dropout_artifact_interval ? "dropout" : result.false_negatives[i].in_artifact_interval ? "artifact" : result.false_negatives[i].weak_pulse ? "weak pulse" : result.false_negatives[i].low_perfusion ? "low perfusion" : "clean") << "</td></tr>";
         if (result.false_positives.empty() && result.false_negatives.empty())
             output << "<tr><td colspan=\"4\">No unmatched events.</td></tr>";
         output << "</table><h2>Artifacts</h2><p>comparison.json, comparison.csv, comparison_report.html</p></body></html>";

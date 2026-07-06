@@ -8,7 +8,8 @@ namespace signal_synth
     enum synsigra_compare_target
     {
         synsigra_compare_r_peak = 0,
-        synsigra_compare_ppg_systolic_peak = 1
+        synsigra_compare_ppg_systolic_peak = 1,
+        synsigra_compare_ppg_pulse_onset = 2
     };
 
     struct synsigra_message
@@ -96,6 +97,21 @@ namespace signal_synth
         double max_absolute_error_seconds;
     };
 
+    struct synsigra_ppg_timing_metrics
+    {
+        synsigra_ppg_timing_metrics();
+
+        unsigned int ground_truth_interval_count;
+        unsigned int detection_interval_count;
+        unsigned int matched_interval_count;
+        double mean_absolute_interval_error_seconds;
+        double rms_interval_error_seconds;
+        double max_absolute_interval_error_seconds;
+        double ground_truth_mean_pulse_rate_bpm;
+        double detection_mean_pulse_rate_bpm;
+        double absolute_pulse_rate_error_bpm;
+    };
+
     struct synsigra_compare_result
     {
         synsigra_compare_result();
@@ -107,6 +123,11 @@ namespace signal_synth
         synsigra_compare_metrics total;
         synsigra_compare_metrics clean;
         synsigra_compare_metrics artifact;
+        synsigra_compare_metrics motion;
+        synsigra_compare_metrics dropout;
+        synsigra_compare_metrics low_perfusion;
+        synsigra_compare_metrics weak;
+        synsigra_ppg_timing_metrics pulse_timing;
         std::vector<synsigra_artifact> artifacts;
         std::vector<synsigra_message> messages;
 

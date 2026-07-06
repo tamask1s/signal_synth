@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "pack_id": "ppg_benchmark_v1",
+  "name": "PPG Detection Benchmark v1",
+  "version": "1.0",
+  "description": "Curated green-PPG onset, peak, pulse-interval and pulse-rate algorithm QA cases.",
+  "targets": ["ppg_systolic_peak", "ppg_pulse_onset"],
+  "scenarios": [
+    {"id": "clean_delay", "path": "../scenarios/packs/ppg_delay_180.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
+    {"id": "variable_ptt", "path": "../scenarios/ppg_variable_ptt_v4.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
+    {"id": "respiratory_modulation", "path": "../scenarios/ppg_respiratory_modulation_v4.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
+    {"id": "perfusion_drop", "path": "../scenarios/ppg_perfusion_drop_v4.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
+    {"id": "motion_and_saturation", "path": "../scenarios/ppg_motion_accelerometer_v4.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
+    {"id": "dropout", "path": "../scenarios/ppg_dropout_saturation_v4.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
+    {"id": "weak_and_missing", "path": "../scenarios/ppg_weak_missing_v4.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
+    {"id": "combined_wearable", "path": "../scenarios/packs/wearable_cardiorespiratory_stress_v3.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]}
+  ]
+}

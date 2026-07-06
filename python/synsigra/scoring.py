@@ -52,6 +52,10 @@ def compare_ppg_peaks(case, detections, out_dir=None, cli_path=None, tolerance_m
     return _compare("ppg-peaks", case, detections, out_dir, cli_path, tolerance_ms)
 
 
+def compare_ppg_onsets(case, detections, out_dir=None, cli_path=None, tolerance_ms=None):
+    return _compare("ppg-onsets", case, detections, out_dir, cli_path, tolerance_ms)
+
+
 def compare_beat_classes(case, detections, out_dir=None, cli_path=None, tolerance_ms=None):
     return _compare("beat-classes", case, detections, out_dir, cli_path, tolerance_ms)
 

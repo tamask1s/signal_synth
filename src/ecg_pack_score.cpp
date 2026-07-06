@@ -10,7 +10,7 @@
 
 namespace
 {
-    const char* scoring_version = "pack_score_v1";
+    const char* scoring_version = "pack_score_v2";
 
     std::string json_string(const std::string& value)
     {
@@ -82,7 +82,7 @@ namespace
         output.false_negative_count += input.false_negative_count;
     }
 
-    void add_error(std::vector<double>& total_errors, std::vector<double>& clean_errors, std::vector<double>& artifact_errors, const signal_synth::ecg_compare_match& match)
+    void add_error(std::vector<double>& total_errors, std::vector<double>& clean_errors, std::vector<double>& artifact_errors, std::vector<double>& motion_errors, std::vector<double>& dropout_errors, std::vector<double>& low_perfusion_errors, const signal_synth::ecg_compare_match& match)
     {
         const double absolute_error = std::fabs(match.error_seconds);
         total_errors.push_back(absolute_error);
@@ -90,6 +90,12 @@ namespace
             artifact_errors.push_back(absolute_error);
         else
             clean_errors.push_back(absolute_error);
+        if (match.in_motion_artifact_interval)
+            motion_errors.push_back(absolute_error);
+        if (match.in_dropout_artifact_interval)
+            dropout_errors.push_back(absolute_error);
+        if (match.low_perfusion)
+            low_perfusion_errors.push_back(absolute_error);
     }
 
     void finalize_metrics(signal_synth::ecg_compare_bin_metrics& metrics, const std::vector<double>& absolute_errors)
@@ -161,7 +167,7 @@ namespace
 namespace signal_synth
 {
     ecg_pack_score_case::ecg_pack_score_case() : case_id(), scenario_id(), scenario_path(), document_fingerprint(), render_identity(), detection_input_id(), detection_algorithm_name(), detection_algorithm_version(), comparison() {}
-    ecg_pack_score_target::ecg_pack_score_target() : target_name(), total(), clean(), artifact(), case_count(0) {}
+    ecg_pack_score_target::ecg_pack_score_target() : target_name(), total(), clean(), artifact(), motion(), dropout(), low_perfusion(), case_count(0) {}
     ecg_pack_score_summary::ecg_pack_score_summary() : success(false), pack_id(), pack_name(), pack_version(), pack_fingerprint(), scoring_version(), cases(), targets(), messages() {}
 
     bool build_ecg_pack_score_summary(const ecg_pack_manifest& manifest, const std::string& pack_fingerprint, const std::vector<ecg_pack_score_case>& cases, ecg_pack_score_summary& summary)
@@ -189,6 +195,9 @@ namespace signal_synth
         std::vector<std::vector<double> > total_errors;
         std::vector<std::vector<double> > clean_errors;
         std::vector<std::vector<double> > artifact_errors;
+        std::vector<std::vector<double> > motion_errors;
+        std::vector<std::vector<double> > dropout_errors;
+        std::vector<std::vector<double> > low_perfusion_errors;
         for (std::size_t i = 0; i < fresh.cases.size(); ++i)
         {
             const ecg_pack_score_case& score_case = fresh.cases[i];
@@ -199,19 +208,28 @@ namespace signal_synth
                 total_errors.push_back(std::vector<double>());
                 clean_errors.push_back(std::vector<double>());
                 artifact_errors.push_back(std::vector<double>());
+                motion_errors.push_back(std::vector<double>());
+                dropout_errors.push_back(std::vector<double>());
+                low_perfusion_errors.push_back(std::vector<double>());
             }
             add_counts(target->total, score_case.comparison.total);
             add_counts(target->clean, score_case.comparison.clean);
             add_counts(target->artifact, score_case.comparison.artifact);
+            add_counts(target->motion, score_case.comparison.motion);
+            add_counts(target->dropout, score_case.comparison.dropout);
+            add_counts(target->low_perfusion, score_case.comparison.low_perfusion);
             ++target->case_count;
             for (std::size_t match = 0; match < score_case.comparison.matches.size(); ++match)
-                add_error(total_errors[target_index], clean_errors[target_index], artifact_errors[target_index], score_case.comparison.matches[match]);
+                add_error(total_errors[target_index], clean_errors[target_index], artifact_errors[target_index], motion_errors[target_index], dropout_errors[target_index], low_perfusion_errors[target_index], score_case.comparison.matches[match]);
         }
         for (std::size_t i = 0; i < fresh.targets.size(); ++i)
         {
             finalize_metrics(fresh.targets[i].total, total_errors[i]);
             finalize_metrics(fresh.targets[i].clean, clean_errors[i]);
             finalize_metrics(fresh.targets[i].artifact, artifact_errors[i]);
+            finalize_metrics(fresh.targets[i].motion, motion_errors[i]);
+            finalize_metrics(fresh.targets[i].dropout, dropout_errors[i]);
+            finalize_metrics(fresh.targets[i].low_perfusion, low_perfusion_errors[i]);
         }
         fresh.success = true;
         summary = fresh;
@@ -239,6 +257,12 @@ namespace signal_synth
             write_metrics_json(output, target.clean);
             output << ",\"artifact\":";
             write_metrics_json(output, target.artifact);
+            output << ",\"motion\":";
+            write_metrics_json(output, target.motion);
+            output << ",\"dropout\":";
+            write_metrics_json(output, target.dropout);
+            output << ",\"low_perfusion\":";
+            write_metrics_json(output, target.low_perfusion);
             output << "}";
         }
         output << "],\"cases\":[";
@@ -260,6 +284,12 @@ namespace signal_synth
             write_metrics_json(output, item.comparison.clean);
             output << ",\"artifact\":";
             write_metrics_json(output, item.comparison.artifact);
+            output << ",\"motion\":";
+            write_metrics_json(output, item.comparison.motion);
+            output << ",\"dropout\":";
+            write_metrics_json(output, item.comparison.dropout);
+            output << ",\"low_perfusion\":";
+            write_metrics_json(output, item.comparison.low_perfusion);
             output << "}";
         }
         output << "]}";
@@ -276,6 +306,9 @@ namespace signal_synth
             write_metric_csv_row(output, "target_summary", summary.targets[i].target_name, "total", summary.targets[i].total);
             write_metric_csv_row(output, "target_summary", summary.targets[i].target_name, "clean", summary.targets[i].clean);
             write_metric_csv_row(output, "target_summary", summary.targets[i].target_name, "artifact", summary.targets[i].artifact);
+            write_metric_csv_row(output, "target_summary", summary.targets[i].target_name, "motion", summary.targets[i].motion);
+            write_metric_csv_row(output, "target_summary", summary.targets[i].target_name, "dropout", summary.targets[i].dropout);
+            write_metric_csv_row(output, "target_summary", summary.targets[i].target_name, "low_perfusion", summary.targets[i].low_perfusion);
         }
         for (std::size_t i = 0; i < summary.cases.size(); ++i)
         {
@@ -304,9 +337,9 @@ namespace signal_synth
         for (std::size_t i = 0; i < summary.targets.size(); ++i)
         {
             const ecg_pack_score_target& target = summary.targets[i];
-            const ecg_compare_bin_metrics* metrics[] = {&target.total, &target.clean, &target.artifact};
-            const char* bins[] = {"total","clean","artifact"};
-            for (unsigned int bin = 0; bin < 3; ++bin)
+            const ecg_compare_bin_metrics* metrics[] = {&target.total, &target.clean, &target.artifact, &target.motion, &target.dropout, &target.low_perfusion};
+            const char* bins[] = {"total","clean","artifact","motion","dropout","low perfusion"};
+            for (unsigned int bin = 0; bin < 6; ++bin)
                 output << "<tr><td>" << html_text(target.target_name) << "</td><td>" << bins[bin] << "</td><td>" << metrics[bin]->ground_truth_count
                        << "</td><td>" << metrics[bin]->detection_count << "</td><td>" << metrics[bin]->true_positive_count
                        << "</td><td>" << metrics[bin]->false_positive_count << "</td><td>" << metrics[bin]->false_negative_count

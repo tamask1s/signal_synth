@@ -14,7 +14,9 @@ the generated 12-lead signal. `ecg_scenario_json` provides strict schema-v1
 through schema-v4 JSON parsing, canonical serialization, and SHA-256 document
 identity. `ppg_model` generates a linked optical pulse channel with variable
 PTT, morphology, modulation, perfusion, weak-pulse, and missing-pulse ground
-truth from the exact ECG ventricular timeline.
+truth from the exact ECG ventricular timeline. PPG QA includes deterministic
+motion/sensor artifacts, an accelerometer reference, peak/onset event scoring,
+and pulse-interval/rate metrics.
 
 ## ECG model status
 

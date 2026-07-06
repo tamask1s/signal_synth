@@ -11,7 +11,8 @@ namespace signal_synth
     {
         ecg_compare_r_peak = 0,
         ecg_compare_ppg_systolic_peak = 1,
-        ecg_compare_beat_classification = 2
+        ecg_compare_beat_classification = 2,
+        ecg_compare_ppg_pulse_onset = 3
     };
 
     struct ecg_detected_event
@@ -61,6 +62,7 @@ namespace signal_synth
         double error_seconds;
         bool in_artifact_interval;
         bool in_motion_artifact_interval;
+        bool in_dropout_artifact_interval;
         bool low_perfusion;
         bool weak_pulse;
     };
@@ -73,9 +75,25 @@ namespace signal_synth
         double time_seconds;
         bool in_artifact_interval;
         bool in_motion_artifact_interval;
+        bool in_dropout_artifact_interval;
         bool low_perfusion;
         bool weak_pulse;
         bool missing_pulse_window;
+    };
+
+    struct ppg_pulse_timing_metrics
+    {
+        ppg_pulse_timing_metrics();
+
+        unsigned int ground_truth_interval_count;
+        unsigned int detection_interval_count;
+        unsigned int matched_interval_count;
+        double mean_absolute_interval_error_seconds;
+        double rms_interval_error_seconds;
+        double max_absolute_interval_error_seconds;
+        double ground_truth_mean_pulse_rate_bpm;
+        double detection_mean_pulse_rate_bpm;
+        double absolute_pulse_rate_error_bpm;
     };
 
     struct ecg_compare_result
@@ -89,8 +107,10 @@ namespace signal_synth
         ecg_compare_bin_metrics clean;
         ecg_compare_bin_metrics artifact;
         ecg_compare_bin_metrics motion;
+        ecg_compare_bin_metrics dropout;
         ecg_compare_bin_metrics low_perfusion;
         ecg_compare_bin_metrics weak;
+        ppg_pulse_timing_metrics pulse_timing;
         unsigned int missing_pulse_opportunity_count;
         unsigned int detections_in_missing_pulse_windows;
         std::vector<ecg_compare_match> matches;

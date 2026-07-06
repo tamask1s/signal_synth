@@ -12,7 +12,7 @@
 
 namespace
 {
-    const char* metadata_version = "synsigra_authoring_v4";
+    const char* metadata_version = "synsigra_authoring_v5";
     const char* template_version = "synsigra_templates_v3";
 
     struct field_definition
@@ -135,9 +135,9 @@ namespace
 
     bool target_compatible(const std::string& target, const signal_synth::ecg_scenario_document& document, std::string& message)
     {
-        if (target == "ppg_systolic_peak" && !document.ppg.enabled)
+        if ((target == "ppg_systolic_peak" || target == "ppg_pulse_onset") && !document.ppg.enabled)
         {
-            message = "PPG systolic-peak scoring requires ppg.enabled=true.";
+            message = "PPG event scoring requires ppg.enabled=true.";
             return false;
         }
         if (target == "ecg_ppg_alignment" && !document.ppg.enabled)
@@ -223,7 +223,7 @@ namespace signal_synth
 
     scenario_target_support scenario_target_support_for_name(const std::string& target)
     {
-        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ecg_beat_classification" || target == "hrv")
+        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset" || target == "ecg_beat_classification" || target == "hrv")
             return scenario_target_local_scoring;
         if (target == "signal_quality" || target == "morphology_assertions" || target == "ecg_ppg_alignment")
             return scenario_target_reference_only;
@@ -371,6 +371,7 @@ namespace signal_synth
         output << "],\"targets\":["
                << "{\"name\":\"r_peak\",\"support\":\"local_scoring\",\"requires\":[]},"
                << "{\"name\":\"ppg_systolic_peak\",\"support\":\"local_scoring\",\"requires\":[\"ppg.enabled\"]},"
+               << "{\"name\":\"ppg_pulse_onset\",\"support\":\"local_scoring\",\"requires\":[\"ppg.enabled\"]},"
                << "{\"name\":\"ecg_beat_classification\",\"support\":\"local_scoring\",\"requires\":[]},"
                << "{\"name\":\"hrv\",\"support\":\"local_scoring\",\"requires\":[\"hrv.enabled\",\"duration_seconds>=300\"]},"
                << "{\"name\":\"signal_quality\",\"support\":\"reference_only\",\"requires\":[\"artifacts.length>0\"]},"

@@ -135,6 +135,7 @@ int main()
     ok &= check(!signal_synth::parse_detection_json_v1(unknown_json_field, parsed_json, result) && !result.messages.empty(), "reject_unknown_json_field");
     signal_synth::ecg_compare_target target;
     ok &= check(signal_synth::detection_compare_target_from_name("ppg_systolic_peak", target) && target == signal_synth::ecg_compare_ppg_systolic_peak, "target_parse");
+    ok &= check(signal_synth::detection_compare_target_from_name("ppg_pulse_onset", target) && target == signal_synth::ecg_compare_ppg_pulse_onset, "onset_target_parse");
     ok &= check(signal_synth::detection_compare_target_from_name("ecg_beat_classification", target) && target == signal_synth::ecg_compare_beat_classification, "beat_classification_target_parse");
 
     return ok ? 0 : 1;

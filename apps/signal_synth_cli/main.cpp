@@ -71,7 +71,7 @@ namespace
     {
         std::cerr << "usage: signal-synth <validate|fingerprint> <scenario.json|->\n"
                   << "       signal-synth render <scenario.json|-> --out <new-directory>\n"
-                  << "       signal-synth compare <rpeaks|ppg-peaks|beat-classes> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
+                  << "       signal-synth compare <rpeaks|ppg-peaks|ppg-onsets|beat-classes> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack analyze <pack.json>\n"
@@ -417,6 +417,8 @@ namespace
             command_name = "compare rpeaks";
         else if (compare_target == signal_synth::ecg_compare_ppg_systolic_peak)
             command_name = "compare ppg-peaks";
+        else if (compare_target == signal_synth::ecg_compare_ppg_pulse_onset)
+            command_name = "compare ppg-onsets";
         else
         {
             score_type = "classification";
@@ -761,6 +763,11 @@ namespace
             target = signal_synth::ecg_compare_ppg_systolic_peak;
             return true;
         }
+        if (value == "ppg-onsets" || value == "ppg_onset" || value == "ppg-pulse-onset")
+        {
+            target = signal_synth::ecg_compare_ppg_pulse_onset;
+            return true;
+        }
         if (value == "beat-classes" || value == "beat_classification" || value == "ecg_beat_classification")
         {
             target = signal_synth::ecg_compare_beat_classification;
@@ -918,7 +925,7 @@ int main(int argc, char** argv)
             signal_synth::ecg_compare_target target;
             if (!parse_compare_target(argv[2], target))
             {
-                std::cerr << "error=COMPARE_TARGET_FAILED path=$ message=target must be rpeaks, ppg-peaks, or beat-classes\n";
+                std::cerr << "error=COMPARE_TARGET_FAILED path=$ message=target must be rpeaks, ppg-peaks, ppg-onsets, or beat-classes\n";
                 return 2;
             }
             if (std::string(argv[3]) == "-" && std::string(argv[4]) == "-")

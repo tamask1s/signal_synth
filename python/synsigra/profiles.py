@@ -76,6 +76,7 @@ PROFILE_SCHEMA = {
 }
 PROFILE_SCHEMA["r_peak"] = PROFILE_SCHEMA["event_detection"]
 PROFILE_SCHEMA["ppg_systolic_peak"] = PROFILE_SCHEMA["event_detection"]
+PROFILE_SCHEMA["ppg_pulse_onset"] = PROFILE_SCHEMA["event_detection"]
 
 
 def load_threshold_profile(profile="regression"):

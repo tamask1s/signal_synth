@@ -22,7 +22,7 @@ Current PPG strengths:
 - explicit low-perfusion, weak-pulse and missing-pulse state;
 - construction and measured onset/peak/offset annotations;
 - deterministic motion/sensor artifact generation with motion reference;
-- PPG peak event scoring with clean, artifact, motion and perfusion bins.
+- PPG peak/onset, pulse-interval and pulse-rate scoring with quality bins.
 
 The current model is useful but still simple. The next work should improve
 wearable QA relevance while keeping exact ground truth.
@@ -93,6 +93,6 @@ At minimum, create PPG packs for:
 - PPG physiology v2 with variable PTT and modulation (implemented by #50);
 - PPG motion artifact with accelerometer reference (implemented by #51);
 - PPG perfusion/dropout/weak-pulse scenarios (implemented by #52);
-- PPG detection JSON/CSV scoring expansion;
-- PPG benchmark pack;
+- PPG detection JSON/CSV scoring expansion (implemented by #53);
+- PPG benchmark pack (implemented by #53);
 - optional red/IR PPG extension.

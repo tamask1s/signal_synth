@@ -32,6 +32,9 @@ namespace signal_synth
         ecg_compare_bin_metrics total;
         ecg_compare_bin_metrics clean;
         ecg_compare_bin_metrics artifact;
+        ecg_compare_bin_metrics motion;
+        ecg_compare_bin_metrics dropout;
+        ecg_compare_bin_metrics low_perfusion;
         unsigned int case_count;
     };
 

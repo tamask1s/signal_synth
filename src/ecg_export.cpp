@@ -853,7 +853,7 @@ namespace signal_synth
 
     const char* signal_synth_generator_version()
     {
-        return "0.4.0-dev";
+        return "0.5.0-dev";
     }
 
     bool render_ecg_document(const ecg_scenario_document& document, ecg_render_bundle& output, ecg_export_result& result)

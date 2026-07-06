@@ -1,4 +1,5 @@
 #include "../src/ecg_export.h"
+#include "../src/ecg_compare.h"
 #include "../src/ecg_pack.h"
 #include "../src/ecg_scenario_json.h"
 
@@ -76,9 +77,10 @@ int main()
         "../examples/packs/hrv_v1.json",
         "../examples/packs/ppg_alignment_v1.json",
         "../examples/packs/signal_quality_v1.json",
-        "../examples/packs/combined_worst_case_v1.json"
+        "../examples/packs/combined_worst_case_v1.json",
+        "../examples/packs/ppg_benchmark_v1.json"
     };
-    const unsigned int expected_scenario_counts[] = {4, 9, 4, 5, 4};
+    const unsigned int expected_scenario_counts[] = {4, 9, 4, 5, 4, 8};
     unsigned int total_pack_scenarios = 0;
     unsigned int rendered_scenarios = 0;
     unsigned int artifact_scenarios = 0;
@@ -108,9 +110,34 @@ int main()
                 ++artifact_scenarios;
             if (render.metrics.ppg_pulse_count)
                 ++ppg_scenarios;
+            if (pack.pack_id == "ppg_benchmark_v1")
+            {
+                const signal_synth::ppg_fiducial_kind kinds[] = {signal_synth::ppg_systolic_peak, signal_synth::ppg_pulse_onset};
+                const signal_synth::ecg_compare_target targets[] = {signal_synth::ecg_compare_ppg_systolic_peak, signal_synth::ecg_compare_ppg_pulse_onset};
+                for (unsigned int target_index = 0; target_index < 2u; ++target_index)
+                {
+                    std::vector<signal_synth::ecg_detected_event> detections;
+                    for (unsigned int annotation_index = 0; annotation_index < render.ppg.annotation_count(); ++annotation_index)
+                    {
+                        const signal_synth::ppg_annotation& annotation = render.ppg.annotations()[annotation_index];
+                        if (annotation.kind == kinds[target_index] && annotation.source == signal_synth::ppg_fiducial_measurement)
+                        {
+                            signal_synth::ecg_detected_event event;
+                            event.time_seconds = annotation.time_seconds;
+                            detections.push_back(event);
+                        }
+                    }
+                    signal_synth::ecg_compare_options options;
+                    options.target = targets[target_index];
+                    signal_synth::ecg_compare_result comparison;
+                    ok &= check(signal_synth::compare_detections_to_render(render, detections, options, comparison)
+                        && comparison.total.f1_score == 1.0
+                        && comparison.pulse_timing.matched_interval_count == comparison.pulse_timing.ground_truth_interval_count, "ppg_benchmark_case_scores");
+                }
+            }
         }
     }
-    ok &= check(total_pack_scenarios >= 26 && rendered_scenarios == total_pack_scenarios, "curated_pack_has_26_rendered_scenarios");
+    ok &= check(total_pack_scenarios >= 34 && rendered_scenarios == total_pack_scenarios, "curated_pack_has_34_rendered_scenarios");
     ok &= check(artifact_scenarios >= 5 && ppg_scenarios >= 5, "curated_pack_covers_artifacts_and_ppg");
 
     std::ifstream script("../examples/databrowser/076_ECG_Scenario_Pack_Batch_QA.txt");

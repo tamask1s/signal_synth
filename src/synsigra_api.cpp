@@ -68,7 +68,11 @@ namespace
 
     signal_synth::ecg_compare_target to_internal_target(signal_synth::synsigra_compare_target target)
     {
-        return target == signal_synth::synsigra_compare_ppg_systolic_peak ? signal_synth::ecg_compare_ppg_systolic_peak : signal_synth::ecg_compare_r_peak;
+        if (target == signal_synth::synsigra_compare_ppg_systolic_peak)
+            return signal_synth::ecg_compare_ppg_systolic_peak;
+        if (target == signal_synth::synsigra_compare_ppg_pulse_onset)
+            return signal_synth::ecg_compare_ppg_pulse_onset;
+        return signal_synth::ecg_compare_r_peak;
     }
 
     void copy_metrics(const signal_synth::ecg_compare_bin_metrics& source, signal_synth::synsigra_compare_metrics& output)
@@ -137,8 +141,13 @@ namespace signal_synth
     {
     }
 
+    synsigra_ppg_timing_metrics::synsigra_ppg_timing_metrics()
+        : ground_truth_interval_count(0), detection_interval_count(0), matched_interval_count(0), mean_absolute_interval_error_seconds(0.0), rms_interval_error_seconds(0.0), max_absolute_interval_error_seconds(0.0), ground_truth_mean_pulse_rate_bpm(0.0), detection_mean_pulse_rate_bpm(0.0), absolute_pulse_rate_error_bpm(0.0)
+    {
+    }
+
     synsigra_compare_result::synsigra_compare_result()
-        : success(false), identity(), target_name(), tolerance_seconds(0.0), total(), clean(), artifact(), artifacts(), messages()
+        : success(false), identity(), target_name(), tolerance_seconds(0.0), total(), clean(), artifact(), motion(), dropout(), low_perfusion(), weak(), pulse_timing(), artifacts(), messages()
     {
     }
 
@@ -152,7 +161,7 @@ namespace signal_synth
 
     const char* synsigra_api_version()
     {
-        return "0.1.0";
+        return "0.2.0";
     }
 
     double synsigra_default_compare_tolerance_seconds(synsigra_compare_target target)
@@ -263,6 +272,19 @@ namespace signal_synth
         copy_metrics(compare_result.total, fresh.total);
         copy_metrics(compare_result.clean, fresh.clean);
         copy_metrics(compare_result.artifact, fresh.artifact);
+        copy_metrics(compare_result.motion, fresh.motion);
+        copy_metrics(compare_result.dropout, fresh.dropout);
+        copy_metrics(compare_result.low_perfusion, fresh.low_perfusion);
+        copy_metrics(compare_result.weak, fresh.weak);
+        fresh.pulse_timing.ground_truth_interval_count = compare_result.pulse_timing.ground_truth_interval_count;
+        fresh.pulse_timing.detection_interval_count = compare_result.pulse_timing.detection_interval_count;
+        fresh.pulse_timing.matched_interval_count = compare_result.pulse_timing.matched_interval_count;
+        fresh.pulse_timing.mean_absolute_interval_error_seconds = compare_result.pulse_timing.mean_absolute_interval_error_seconds;
+        fresh.pulse_timing.rms_interval_error_seconds = compare_result.pulse_timing.rms_interval_error_seconds;
+        fresh.pulse_timing.max_absolute_interval_error_seconds = compare_result.pulse_timing.max_absolute_interval_error_seconds;
+        fresh.pulse_timing.ground_truth_mean_pulse_rate_bpm = compare_result.pulse_timing.ground_truth_mean_pulse_rate_bpm;
+        fresh.pulse_timing.detection_mean_pulse_rate_bpm = compare_result.pulse_timing.detection_mean_pulse_rate_bpm;
+        fresh.pulse_timing.absolute_pulse_rate_error_bpm = compare_result.pulse_timing.absolute_pulse_rate_error_bpm;
         add_compare_artifact(fresh.artifacts, "comparison.json", "application/json", ecg_compare_result_json(render, compare_result));
         add_compare_artifact(fresh.artifacts, "comparison.csv", "text/csv", ecg_compare_result_csv(compare_result));
         add_compare_artifact(fresh.artifacts, "comparison_report.html", "text/html", ecg_compare_report_html(render, compare_result));

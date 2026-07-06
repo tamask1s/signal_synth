@@ -9,7 +9,7 @@ from .challenge import ChallengeCase, ChallengeIntegrityError, ChallengePackage,
 from .detections import DetectionDocument, DetectionEvent, load_detections
 from .local_verify import VerificationError, VerificationReport, verify_package
 from .profiles import ThresholdProfileError, load_threshold_profile, threshold_profile_names
-from .scoring import ScoreReport, compare_beat_classes, compare_ppg_peaks, compare_rpeaks, score_hrv, score_pack
+from .scoring import ScoreReport, compare_beat_classes, compare_ppg_onsets, compare_ppg_peaks, compare_rpeaks, score_hrv, score_pack
 
 __all__ = [
     "ChallengeCase",
@@ -24,6 +24,7 @@ __all__ = [
     "WaveformTable",
     "compare_beat_classes",
     "compare_ppg_peaks",
+    "compare_ppg_onsets",
     "compare_rpeaks",
     "load_challenge",
     "load_detections",
