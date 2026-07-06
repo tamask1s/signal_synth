@@ -189,6 +189,237 @@ namespace
             output << (i ? "," : "") << json_string(values[i]);
         output << ']';
     }
+
+    bool contains_string(const std::vector<std::string>& values, const std::string& value)
+    {
+        return std::find(values.begin(), values.end(), value) != values.end();
+    }
+
+    bool target_is_scoreable(const signal_synth::scenario_pack_target_analysis& target)
+    {
+        return target.support == signal_synth::scenario_target_local_scoring;
+    }
+
+    std::vector<std::string> case_ids_for_target(const signal_synth::scenario_pack_analysis& analysis, const std::string& target)
+    {
+        std::vector<std::string> output;
+        for (std::size_t i = 0; i < analysis.cases.size(); ++i)
+            if (contains_string(analysis.cases[i].targets, target))
+                output.push_back(analysis.cases[i].case_id);
+        return output;
+    }
+
+    std::vector<std::string> targets_by_support(const std::vector<std::string>& targets, const signal_synth::scenario_pack_analysis& analysis, signal_synth::scenario_target_support support)
+    {
+        std::vector<std::string> output;
+        for (std::size_t i = 0; i < targets.size(); ++i)
+            for (std::size_t target_index = 0; target_index < analysis.targets.size(); ++target_index)
+                if (analysis.targets[target_index].target == targets[i] && analysis.targets[target_index].support == support)
+                    output.push_back(targets[i]);
+        return output;
+    }
+
+    const char* target_score_type(const std::string& target)
+    {
+        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset")
+            return "event_detection";
+        if (target == "ecg_beat_classification")
+            return "classification";
+        if (target == "hrv")
+            return "hrv_metrics";
+        return "generated_reference_only";
+    }
+
+    const char* target_primary_metric(const std::string& target)
+    {
+        if (target == "ecg_beat_classification")
+            return "micro_f1_score";
+        if (target == "hrv")
+            return "metric_pass_fraction";
+        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset")
+            return "f1_score";
+        return "";
+    }
+
+    double target_default_tolerance_seconds(const std::string& target)
+    {
+        if (target == "ppg_systolic_peak")
+            return 0.08;
+        if (target == "ecg_beat_classification")
+            return 0.075;
+        if (target == "r_peak" || target == "ppg_pulse_onset")
+            return 0.05;
+        return 0.0;
+    }
+
+    std::vector<std::string> target_detector_output_schemas(const std::string& target)
+    {
+        std::vector<std::string> output;
+        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset" || target == "ecg_beat_classification")
+        {
+            output.push_back("detection_json_v1");
+            output.push_back("detection_csv_v2");
+        }
+        else if (target == "hrv")
+            output.push_back("hrv_json_v1");
+        return output;
+    }
+
+    std::vector<std::string> target_reference_artifacts(const std::string& target)
+    {
+        std::vector<std::string> output;
+        if (target == "signal_quality")
+        {
+            output.push_back("artifact_intervals");
+            output.push_back("waveform_channels");
+            output.push_back("annotations_json");
+            output.push_back("case_summary_json");
+        }
+        else if (target == "morphology_assertions")
+        {
+            output.push_back("conditions");
+            output.push_back("fiducials");
+            output.push_back("annotations_json");
+            output.push_back("case_summary_json");
+        }
+        else if (target == "ecg_ppg_alignment")
+        {
+            output.push_back("ecg_ppg_timing");
+            output.push_back("ppg_fiducials");
+            output.push_back("annotations_json");
+            output.push_back("case_summary_json");
+        }
+        else
+        {
+            output.push_back("annotations_json");
+            output.push_back("case_summary_json");
+        }
+        return output;
+    }
+
+    std::string analysis_scoring_mode(const signal_synth::scenario_pack_analysis& analysis)
+    {
+        bool has_scoreable = false;
+        bool has_reference = false;
+        for (std::size_t i = 0; i < analysis.targets.size(); ++i)
+        {
+            has_scoreable = has_scoreable || analysis.targets[i].support == signal_synth::scenario_target_local_scoring;
+            has_reference = has_reference || analysis.targets[i].support == signal_synth::scenario_target_reference_only;
+        }
+        if (has_scoreable && has_reference)
+            return "mixed";
+        if (has_scoreable)
+            return "local";
+        if (has_reference)
+            return "reference_only";
+        return "unsupported";
+    }
+
+    std::string recommended_profile_for_analysis(const signal_synth::scenario_pack_analysis& analysis)
+    {
+        for (std::size_t i = 0; i < analysis.targets.size(); ++i)
+            if (analysis.targets[i].target == "hrv")
+                return "benchmark";
+        for (std::size_t i = 0; i < analysis.targets.size(); ++i)
+            if (analysis.targets[i].support == signal_synth::scenario_target_reference_only)
+                return "stress";
+        for (std::size_t i = 0; i < analysis.targets.size(); ++i)
+            if (analysis.targets[i].target == "ecg_beat_classification")
+                return "regression";
+        return analysis.case_count > 1 ? "stress" : "smoke";
+    }
+
+    void append_unique(std::vector<std::string>& values, const std::string& value)
+    {
+        if (!contains_string(values, value))
+            values.push_back(value);
+    }
+
+    void write_target_contract(std::ostringstream& output, const signal_synth::scenario_pack_analysis& analysis, const signal_synth::scenario_pack_target_analysis& target)
+    {
+        const bool scoreable = target_is_scoreable(target);
+        output << "{\"target\":" << json_string(target.target)
+               << ",\"support\":" << json_string(signal_synth::scenario_target_support_name(target.support))
+               << ",\"scoreable\":" << (scoreable ? "true" : "false")
+               << ",\"score_type\":" << json_string(target_score_type(target.target))
+               << ",\"case_count\":" << target.case_count
+               << ",\"case_ids\":";
+        write_string_array(output, case_ids_for_target(analysis, target.target));
+        if (scoreable)
+        {
+            output << ",\"detector_output_schemas\":";
+            write_string_array(output, target_detector_output_schemas(target.target));
+            output << ",\"primary_metric\":" << json_string(target_primary_metric(target.target));
+            const double tolerance = target_default_tolerance_seconds(target.target);
+            if (tolerance > 0.0)
+                output << ",\"default_tolerance_seconds\":" << tolerance;
+        }
+        else
+        {
+            output << ",\"reference_artifacts\":";
+            write_string_array(output, target_reference_artifacts(target.target));
+        }
+        output << '}';
+    }
+
+    void write_target_contract_array(std::ostringstream& output, const signal_synth::scenario_pack_analysis& analysis, bool scoreable)
+    {
+        output << '[';
+        bool first = true;
+        for (std::size_t i = 0; i < analysis.targets.size(); ++i)
+        {
+            if (scoreable && !target_is_scoreable(analysis.targets[i]))
+                continue;
+            if (!scoreable && analysis.targets[i].support != signal_synth::scenario_target_reference_only)
+                continue;
+            output << (first ? "" : ",");
+            write_target_contract(output, analysis, analysis.targets[i]);
+            first = false;
+        }
+        output << ']';
+    }
+
+    void write_detector_output_schemas(std::ostringstream& output, const signal_synth::scenario_pack_analysis& analysis)
+    {
+        std::vector<std::string> schemas;
+        for (std::size_t i = 0; i < analysis.targets.size(); ++i)
+        {
+            if (!target_is_scoreable(analysis.targets[i]))
+                continue;
+            const std::vector<std::string> target_schemas = target_detector_output_schemas(analysis.targets[i].target);
+            for (std::size_t schema_index = 0; schema_index < target_schemas.size(); ++schema_index)
+                append_unique(schemas, target_schemas[schema_index]);
+        }
+        write_string_array(output, schemas);
+    }
+
+    void write_output_artifacts(std::ostringstream& output, const signal_synth::scenario_pack_analysis& analysis)
+    {
+        output << "[{\"role\":\"manifest_json\",\"required\":true},"
+               << "{\"role\":\"scoring_manifest_json\",\"required\":true},"
+               << "{\"role\":\"case_summary_json\",\"required\":true},"
+               << "{\"role\":\"annotations_json\",\"required\":true},"
+               << "{\"role\":\"waveform_csv\",\"required\":true},"
+               << "{\"role\":\"wfdb\",\"required\":true},"
+               << "{\"role\":\"edf_bdf\",\"required\":true}";
+        bool has_hrv = false;
+        std::vector<std::string> reference_targets;
+        for (std::size_t i = 0; i < analysis.targets.size(); ++i)
+        {
+            has_hrv = has_hrv || analysis.targets[i].target == "hrv";
+            if (analysis.targets[i].support == signal_synth::scenario_target_reference_only)
+                reference_targets.push_back(analysis.targets[i].target);
+        }
+        if (has_hrv)
+            output << ",{\"role\":\"hrv_metrics_json\",\"required\":true},{\"role\":\"rr_tachogram_csv\",\"required\":true}";
+        if (!reference_targets.empty())
+        {
+            output << ",{\"role\":\"reference_ground_truth\",\"required\":true,\"targets\":";
+            write_string_array(output, reference_targets);
+            output << '}';
+        }
+        output << ']';
+    }
 }
 
 namespace signal_synth
@@ -493,13 +724,25 @@ namespace signal_synth
         output.imbue(std::locale::classic());
         output << std::setprecision(std::numeric_limits<double>::max_digits10)
                << "{\"schema_version\":1,\"analysis_version\":\"synsigra_pack_analysis_v1\",\"success\":" << (analysis.success ? "true" : "false")
+               << ",\"metadata_type\":\"synsigra_pack_analysis\""
                << ",\"pack_id\":" << json_string(analysis.pack_id)
                << ",\"pack_version\":" << json_string(analysis.pack_version)
+               << ",\"scoring_mode\":" << json_string(analysis_scoring_mode(analysis))
+               << ",\"recommended_verifier_profile\":" << json_string(recommended_profile_for_analysis(analysis))
+               << ",\"generator_compatibility\":{\"pack_schema_version\":1,\"scenario_schema_versions\":[2,3,4],\"challenge_package_contract\":\"synsigra_challenge_package_v1\",\"scoring_manifest_contract\":\"synsigra_scoring_manifest_v1\"}"
                << ",\"summary\":{\"case_count\":" << analysis.case_count
                << ",\"total_duration_seconds\":" << analysis.total_duration_seconds
                << ",\"total_sample_count\":" << analysis.total_sample_count
                << ",\"estimated_package_bytes\":" << analysis.estimated_package_bytes
-               << ",\"estimated_peak_memory_bytes\":" << analysis.estimated_peak_memory_bytes << "},\"targets\":[";
+               << ",\"estimated_peak_memory_bytes\":" << analysis.estimated_peak_memory_bytes << "},\"scoreable_targets\":";
+        write_target_contract_array(output, analysis, true);
+        output << ",\"reference_only_targets\":";
+        write_target_contract_array(output, analysis, false);
+        output << ",\"detector_output_schemas\":";
+        write_detector_output_schemas(output, analysis);
+        output << ",\"output_artifacts\":";
+        write_output_artifacts(output, analysis);
+        output << ",\"targets\":[";
         for (std::size_t i = 0; i < analysis.targets.size(); ++i)
             output << (i ? "," : "") << "{\"target\":" << json_string(analysis.targets[i].target)
                    << ",\"support\":" << json_string(scenario_target_support_name(analysis.targets[i].support))
@@ -520,6 +763,10 @@ namespace signal_synth
                    << ",\"estimated_peak_memory_bytes\":" << item.estimated_peak_memory_bytes
                    << ",\"targets\":";
             write_string_array(output, item.targets);
+            output << ",\"scoreable_targets\":";
+            write_string_array(output, targets_by_support(item.targets, analysis, scenario_target_local_scoring));
+            output << ",\"reference_only_targets\":";
+            write_string_array(output, targets_by_support(item.targets, analysis, scenario_target_reference_only));
             output << '}';
         }
         output << "],\"messages\":[";

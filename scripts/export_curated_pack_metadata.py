@@ -81,6 +81,47 @@ TARGET_CONTRACTS = {
     },
 }
 
+LOCAL_VERIFIER_SMOKE_TESTS = {
+    "r_peak": [
+        {
+            "test_id": "TEST-GOLDEN-CHALLENGE-001",
+            "scope": "golden challenge package compatibility and R-peak scoring fixture",
+        },
+        {
+            "test_id": "TEST-PYTHON-SCORING-001",
+            "scope": "local event-detection scoring smoke test",
+        },
+    ],
+    "ppg_systolic_peak": [
+        {
+            "test_id": "TEST-PYTHON-SCORING-001",
+            "scope": "local PPG event-detection scoring smoke test",
+        }
+    ],
+    "ppg_pulse_onset": [
+        {
+            "test_id": "TEST-PYTHON-SCORING-001",
+            "scope": "local PPG onset event-detection scoring smoke test",
+        }
+    ],
+    "ecg_beat_classification": [
+        {
+            "test_id": "TEST-PYTHON-SCORING-001",
+            "scope": "local beat-classification scoring smoke test",
+        }
+    ],
+    "hrv": [
+        {
+            "test_id": "TEST-HRV-SCORING-001",
+            "scope": "core HRV metric scoring smoke test",
+        },
+        {
+            "test_id": "TEST-PYTHON-SCORING-001",
+            "scope": "local HRV user-output scoring smoke test",
+        },
+    ],
+}
+
 
 def read_json(path):
     with open(path, "r") as handle:
@@ -246,6 +287,21 @@ def detector_output_schemas(scoreable_targets):
     return schemas
 
 
+def local_verifier_smoke_tests(scoreable_targets):
+    tests = []
+    seen = set()
+    for target in scoreable_targets:
+        for item in LOCAL_VERIFIER_SMOKE_TESTS.get(target["target"], []):
+            key = (item["test_id"], item["scope"])
+            if key in seen:
+                continue
+            seen.add(key)
+            enriched = dict(item)
+            enriched["target"] = target["target"]
+            tests.append(enriched)
+    return tests
+
+
 def case_metadata(case, scoreable_targets, reference_targets):
     targets = list(case.get("targets", []))
     return {
@@ -309,6 +365,7 @@ def pack_metadata(catalog_path, source_root, entry, pack, analysis, validate_inf
         "scoreable_targets": scoreable_targets,
         "reference_only_targets": reference_targets,
         "detector_output_schemas": detector_output_schemas(scoreable_targets),
+        "local_verifier_smoke_tests": local_verifier_smoke_tests(scoreable_targets),
         "threshold_profile_contract": {
             "supported_profiles": supported_threshold_profiles,
             "recommended_profile": entry.get("recommended_profile"),
@@ -370,6 +427,8 @@ def export_metadata(catalog_path, cli, pack_ids, source_root):
         "schema_version": 1,
         "metadata_type": METADATA_TYPE,
         "metadata_version": EXPORTER_VERSION,
+        "release_set_id": "synsigra_curated_release_2026_07_06",
+        "release_set_status": "beta",
         "catalog_id": catalog.get("catalog_id", ""),
         "catalog_version": catalog.get("version", ""),
         "product": catalog.get("product", ""),

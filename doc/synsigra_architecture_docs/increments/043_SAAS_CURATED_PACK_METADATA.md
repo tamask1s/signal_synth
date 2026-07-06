@@ -78,9 +78,13 @@ reference-only signal-quality ground truth for one case.
 
 The original catalog value remains available as `catalog_scoring_mode`.
 
-## 3. Current Beta Pack
+## 3. Initial Beta Pack
 
-`r_peak_stress_v1` now has complete product-facing metadata:
+Issue #68 first completed this contract for `r_peak_stress_v1`. Issue #70
+extends the same contract to the full beta release set in
+`044_SAAS_RELEASE_SET_EXPORT.md`.
+
+`r_peak_stress_v1` has complete product-facing metadata:
 
 - release status: `beta`;
 - release date: `2026-07-06`;
@@ -138,5 +142,5 @@ None. No DataBrowser API or script is added.
 - `signal-synth pack analyze`.
 
 The test fails if the committed SaaS metadata snapshot drifts from the current
-core definitions. It also checks the complete `r_peak_stress_v1` metadata
-contract required by issue #68.
+core definitions. It checks the complete beta release-set metadata contract
+added after issue #68.

@@ -1,6 +1,6 @@
 {
   "catalog_id": "synsigra_verification_packs",
-  "catalog_version": "1.2",
+  "catalog_version": "1.3",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "metadata_type": "synsigra_curated_pack_catalog",
   "metadata_version": "synsigra_curated_pack_metadata_export_v1",
@@ -175,6 +175,18 @@
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
         "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
       },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "golden challenge package compatibility and R-peak scoring fixture",
+          "target": "r_peak",
+          "test_id": "TEST-GOLDEN-CHALLENGE-001"
+        },
+        {
+          "scope": "local event-detection scoring smoke test",
+          "target": "r_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
       "messages": [
         {
           "code": "REFERENCE_ONLY_TARGET",
@@ -517,7 +529,15 @@
         }
       ],
       "catalog_scoring_mode": "local",
-      "changelog": [],
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta curated HRV pack with time-domain, Poincare, spectral and exclusion-policy cases."
+          ],
+          "date": "2026-07-06",
+          "version": "1.0"
+        }
+      ],
       "channels": {
         "families": [
           {
@@ -589,6 +609,18 @@
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
         "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
       },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "core HRV metric scoring smoke test",
+          "target": "hrv",
+          "test_id": "TEST-HRV-SCORING-001"
+        },
+        {
+          "scope": "local HRV user-output scoring smoke test",
+          "target": "hrv",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
       "messages": [
         {
           "code": "REFERENCE_ONLY_TARGET",
@@ -603,7 +635,12 @@
         "ECG"
       ],
       "name": "HRV Benchmark Pack v1",
-      "not_recommended_for": [],
+      "not_recommended_for": [
+        "R-peak detector timing validation without a separate detector output",
+        "Patient-derived HRV norm claims",
+        "Clinical autonomic function validation",
+        "PPG-only pulse interval validation"
+      ],
       "output_artifacts": [
         {
           "required": true,
@@ -650,7 +687,12 @@
         }
       ],
       "pack_id": "hrv_v1",
-      "recommended_for": [],
+      "recommended_for": [
+        "HRV metric implementation checks against exact synthetic RR ground truth",
+        "LF/HF, SDNN, RMSSD, pNN50, SD1 and SD2 regression gates",
+        "Ectopy and artifact exclusion policy tests",
+        "Five-minute benchmark windows with deterministic replay"
+      ],
       "recommended_profile": "benchmark",
       "reference_only_targets": [
         {
@@ -671,7 +713,7 @@
           "target": "signal_quality"
         }
       ],
-      "release_date": "",
+      "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
         100
@@ -848,7 +890,15 @@
         }
       ],
       "catalog_scoring_mode": "local",
-      "changelog": [],
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta curated beat-classification pack with normal, PAC, PVC and paced cases."
+          ],
+          "date": "2026-07-06",
+          "version": "1.0"
+        }
+      ],
       "channels": {
         "families": [
           {
@@ -918,6 +968,13 @@
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
         "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
       },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "local beat-classification scoring smoke test",
+          "target": "ecg_beat_classification",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
       "messages": [],
       "metadata_type": "synsigra_curated_pack_metadata",
       "metadata_version": "synsigra_curated_pack_metadata_export_v1",
@@ -925,7 +982,12 @@
         "ECG"
       ],
       "name": "ECG Beat Classification Pack v1",
-      "not_recommended_for": [],
+      "not_recommended_for": [
+        "Full rhythm-diagnosis validation",
+        "Morphology interpretation claims",
+        "Clinical beat labeling certification",
+        "PPG pulse classification"
+      ],
       "output_artifacts": [
         {
           "required": true,
@@ -957,10 +1019,15 @@
         }
       ],
       "pack_id": "ecg_beat_classification_v1",
-      "recommended_for": [],
+      "recommended_for": [
+        "Beat classifier smoke and regression tests",
+        "PAC/PVC/paced label handling checks",
+        "Beat-class output schema integration tests",
+        "CI gates that need exact beat timing and class labels"
+      ],
       "recommended_profile": "regression",
       "reference_only_targets": [],
-      "release_date": "",
+      "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
         500
@@ -1210,7 +1277,15 @@
         }
       ],
       "catalog_scoring_mode": "local",
-      "changelog": [],
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta curated rhythm pack with arrhythmia, transition, ectopy and pacing cases."
+          ],
+          "date": "2026-07-06",
+          "version": "1.0"
+        }
+      ],
       "channels": {
         "families": [
           {
@@ -1285,6 +1360,23 @@
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
         "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
       },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "golden challenge package compatibility and R-peak scoring fixture",
+          "target": "r_peak",
+          "test_id": "TEST-GOLDEN-CHALLENGE-001"
+        },
+        {
+          "scope": "local event-detection scoring smoke test",
+          "target": "r_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
+          "scope": "local beat-classification scoring smoke test",
+          "target": "ecg_beat_classification",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
       "messages": [],
       "metadata_type": "synsigra_curated_pack_metadata",
       "metadata_version": "synsigra_curated_pack_metadata_export_v1",
@@ -1292,7 +1384,12 @@
         "ECG"
       ],
       "name": "ECG Rhythm and Transition Pack v1",
-      "not_recommended_for": [],
+      "not_recommended_for": [
+        "Clinical rhythm diagnosis validation claims",
+        "ST-T or ischemia morphology validation",
+        "Standalone HRV spectral validation",
+        "PPG-only algorithm QA"
+      ],
       "output_artifacts": [
         {
           "required": true,
@@ -1324,10 +1421,15 @@
         }
       ],
       "pack_id": "ecg_rhythm_v1",
-      "recommended_for": [],
+      "recommended_for": [
+        "R-peak and beat-classifier stress tests across rhythm transitions",
+        "AFib, flutter, SVT, pause, ectopy and pacing scenario coverage",
+        "Detector robustness checks around abrupt rate changes",
+        "Regression packs for rhythm-sensitive wearable algorithms"
+      ],
       "recommended_profile": "stress",
       "reference_only_targets": [],
-      "release_date": "",
+      "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
         500
@@ -1532,8 +1634,16 @@
           ]
         }
       ],
-      "catalog_scoring_mode": "reference_only",
-      "changelog": [],
+      "catalog_scoring_mode": "mixed",
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta reference-only signal-quality pack with baseline, powerline, dropout, saturation and lead-fault cases."
+          ],
+          "date": "2026-07-06",
+          "version": "1.0"
+        }
+      ],
       "channels": {
         "families": [
           {
@@ -1559,7 +1669,8 @@
         "minimum_channel_count": 12
       },
       "declared_targets": [
-        "signal_quality"
+        "signal_quality",
+        "ppg_systolic_peak"
       ],
       "deprecation_message": "",
       "description": "ECG/PPG acquisition artifact scenarios with explicit interval ground truth.",
@@ -1604,6 +1715,13 @@
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
         "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
       },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "local PPG event-detection scoring smoke test",
+          "target": "ppg_systolic_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
       "messages": [
         {
           "code": "REFERENCE_ONLY_TARGET",
@@ -1618,7 +1736,12 @@
         "ECG"
       ],
       "name": "Signal Quality Pack v1",
-      "not_recommended_for": [],
+      "not_recommended_for": [
+        "Local automated scoring without a project-specific quality metric",
+        "Clinical signal-quality certification",
+        "Clean detector smoke tests",
+        "Morphology-only validation"
+      ],
       "output_artifacts": [
         {
           "required": true,
@@ -1657,8 +1780,13 @@
         }
       ],
       "pack_id": "signal_quality_v1",
-      "recommended_for": [],
-      "recommended_profile": null,
+      "recommended_for": [
+        "Signal-quality interval inspection and reference export",
+        "Artifact-aware detector stress scenario generation",
+        "Manual QA of artifact timing, channels and labels",
+        "Downstream scoring development that needs exact synthetic artifact intervals"
+      ],
+      "recommended_profile": "stress",
       "reference_only_targets": [
         {
           "case_count": 5,
@@ -1682,7 +1810,7 @@
           "target": "signal_quality"
         }
       ],
-      "release_date": "",
+      "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
         500
@@ -1710,15 +1838,14 @@
       "scoring_mode": "mixed",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
-        "pack_fingerprint": "sha256:9f98a54ef159c45b7b4b8d636aee2281a9bb9b85eba9fa2ca2379afd68cdbe0c",
+        "pack_fingerprint": "sha256:e06bf835eb6ab7a718ce0d50a37227915964d669cfddf79c312c193d3834ebac",
         "pack_path": "../packs/signal_quality_v1.json",
-        "source_content_sha256": "sha256:c120932545234881746dca6043c73400578e53513815d36f6bbb1e73d849a6ce"
+        "source_content_sha256": "sha256:ce2cba471a33fc3f3ad97c07485505c609064456aa49839820ac0c11b6c1d253"
       },
       "supported_threshold_profiles": [
         "smoke",
         "regression",
-        "stress",
-        "benchmark"
+        "stress"
       ],
       "targets": [
         "signal_quality",
@@ -1726,12 +1853,11 @@
       ],
       "threshold_profile_contract": {
         "policy_failure_exit_code": 1,
-        "recommended_profile": null,
+        "recommended_profile": "stress",
         "supported_profiles": [
           "smoke",
           "regression",
-          "stress",
-          "benchmark"
+          "stress"
         ]
       },
       "ui": {
@@ -1853,7 +1979,15 @@
         }
       ],
       "catalog_scoring_mode": "reference_only",
-      "changelog": [],
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta reference-only ECG morphology pack with condition assertions and signal-quality references."
+          ],
+          "date": "2026-07-06",
+          "version": "1.0"
+        }
+      ],
       "channels": {
         "families": [
           {
@@ -1923,6 +2057,7 @@
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
         "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
       },
+      "local_verifier_smoke_tests": [],
       "messages": [
         {
           "code": "REFERENCE_ONLY_TARGET",
@@ -1943,7 +2078,12 @@
         "ECG"
       ],
       "name": "ECG Morphology Stress Pack v1",
-      "not_recommended_for": [],
+      "not_recommended_for": [
+        "Automated local morphology scoring in the current release",
+        "Diagnostic ECG interpretation claims",
+        "Clinical ischemia or infarction validation",
+        "Pure HRV or PPG tests"
+      ],
       "output_artifacts": [
         {
           "required": true,
@@ -1983,7 +2123,12 @@
         }
       ],
       "pack_id": "ecg_morphology_stress_v1",
-      "recommended_for": [],
+      "recommended_for": [
+        "Reference morphology and condition assertion export",
+        "Visual QA of conduction, ST-T, hypertrophy and infarction phenotypes",
+        "Stress input generation for morphology-sensitive algorithms",
+        "Future morphology-scoring contract development"
+      ],
       "recommended_profile": null,
       "reference_only_targets": [
         {
@@ -2024,7 +2169,7 @@
           "target": "signal_quality"
         }
       ],
-      "release_date": "",
+      "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
         500
@@ -2159,7 +2304,15 @@
         }
       ],
       "catalog_scoring_mode": "mixed",
-      "changelog": [],
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta PPG alignment pack with systolic-peak scoring and ECG/PPG timing references."
+          ],
+          "date": "2026-07-06",
+          "version": "1.0"
+        }
+      ],
       "channels": {
         "families": [
           {
@@ -2234,6 +2387,13 @@
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
         "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
       },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "local PPG event-detection scoring smoke test",
+          "target": "ppg_systolic_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
       "messages": [
         {
           "code": "REFERENCE_ONLY_TARGET",
@@ -2255,7 +2415,12 @@
         "PPG"
       ],
       "name": "PPG Alignment Pack v1",
-      "not_recommended_for": [],
+      "not_recommended_for": [
+        "Standalone ECG rhythm validation",
+        "HRV benchmark scoring",
+        "Clinical pulse transit time claims",
+        "Motion-heavy PPG stress coverage"
+      ],
       "output_artifacts": [
         {
           "required": true,
@@ -2295,7 +2460,12 @@
         }
       ],
       "pack_id": "ppg_alignment_v1",
-      "recommended_for": [],
+      "recommended_for": [
+        "PPG systolic peak smoke testing",
+        "ECG-to-PPG timing and pulse-transit-delay reference checks",
+        "Multimodal pipeline integration tests",
+        "Detector tests that need linked ECG and PPG channels"
+      ],
       "recommended_profile": "smoke",
       "reference_only_targets": [
         {
@@ -2335,7 +2505,7 @@
           "target": "signal_quality"
         }
       ],
-      "release_date": "",
+      "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
         500
@@ -2372,9 +2542,7 @@
       },
       "supported_threshold_profiles": [
         "smoke",
-        "regression",
-        "stress",
-        "benchmark"
+        "regression"
       ],
       "targets": [
         "ppg_systolic_peak",
@@ -2386,9 +2554,7 @@
         "recommended_profile": "smoke",
         "supported_profiles": [
           "smoke",
-          "regression",
-          "stress",
-          "benchmark"
+          "regression"
         ]
       },
       "ui": {
@@ -2494,7 +2660,15 @@
         }
       ],
       "catalog_scoring_mode": "mixed",
-      "changelog": [],
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta combined stress pack spanning ECG, PPG, HRV and signal-quality targets."
+          ],
+          "date": "2026-07-06",
+          "version": "1.0"
+        }
+      ],
       "channels": {
         "families": [
           {
@@ -2574,6 +2748,33 @@
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
         "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
       },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "golden challenge package compatibility and R-peak scoring fixture",
+          "target": "r_peak",
+          "test_id": "TEST-GOLDEN-CHALLENGE-001"
+        },
+        {
+          "scope": "local event-detection scoring smoke test",
+          "target": "r_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
+          "scope": "core HRV metric scoring smoke test",
+          "target": "hrv",
+          "test_id": "TEST-HRV-SCORING-001"
+        },
+        {
+          "scope": "local HRV user-output scoring smoke test",
+          "target": "hrv",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
+          "scope": "local PPG event-detection scoring smoke test",
+          "target": "ppg_systolic_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
       "messages": [
         {
           "code": "REFERENCE_ONLY_TARGET",
@@ -2589,7 +2790,12 @@
         "PPG"
       ],
       "name": "Combined Worst-case Pack v1",
-      "not_recommended_for": [],
+      "not_recommended_for": [
+        "First-time API integration smoke tests",
+        "Small package size constraints",
+        "Single-target benchmark claims",
+        "Clinical multimodal validation claims"
+      ],
       "output_artifacts": [
         {
           "required": true,
@@ -2636,7 +2842,12 @@
         }
       ],
       "pack_id": "combined_worst_case_v1",
-      "recommended_for": [],
+      "recommended_for": [
+        "End-to-end wearable algorithm stress testing",
+        "Combined ECG, PPG, HRV and signal-quality workflow checks",
+        "Robustness tests across artifact, dropout and timing disturbances",
+        "Release-candidate smoke tests for integrated verification tooling"
+      ],
       "recommended_profile": "stress",
       "reference_only_targets": [
         {
@@ -2657,7 +2868,7 @@
           "target": "signal_quality"
         }
       ],
-      "release_date": "",
+      "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
         500,
@@ -2817,7 +3028,15 @@
         }
       ],
       "catalog_scoring_mode": "mixed",
-      "changelog": [],
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta wearable stress pack with cardiorespiratory, activity, timing and compact long-duration cases."
+          ],
+          "date": "2026-07-06",
+          "version": "1.0"
+        }
+      ],
       "channels": {
         "families": [
           {
@@ -2902,6 +3121,33 @@
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
         "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
       },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "golden challenge package compatibility and R-peak scoring fixture",
+          "target": "r_peak",
+          "test_id": "TEST-GOLDEN-CHALLENGE-001"
+        },
+        {
+          "scope": "local event-detection scoring smoke test",
+          "target": "r_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
+          "scope": "local PPG event-detection scoring smoke test",
+          "target": "ppg_systolic_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
+          "scope": "core HRV metric scoring smoke test",
+          "target": "hrv",
+          "test_id": "TEST-HRV-SCORING-001"
+        },
+        {
+          "scope": "local HRV user-output scoring smoke test",
+          "target": "hrv",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
       "messages": [
         {
           "code": "REFERENCE_ONLY_TARGET",
@@ -2917,7 +3163,12 @@
         "PPG"
       ],
       "name": "Wearable ECG/PPG Stress Pack v1",
-      "not_recommended_for": [],
+      "not_recommended_for": [
+        "Minimal first-run examples",
+        "Clinical wearable performance claims",
+        "Standalone morphology diagnosis testing",
+        "PPG onset-specific benchmark scoring"
+      ],
       "output_artifacts": [
         {
           "required": true,
@@ -2964,7 +3215,12 @@
         }
       ],
       "pack_id": "wearable_stress_v1",
-      "recommended_for": [],
+      "recommended_for": [
+        "Wearable ECG/PPG algorithm stress and benchmark tests",
+        "Cardiorespiratory, activity and synchronization robustness checks",
+        "Long-duration compact challenge-package generation",
+        "R-peak, PPG peak and HRV workflow integration"
+      ],
       "recommended_profile": "stress",
       "reference_only_targets": [
         {
@@ -2986,7 +3242,7 @@
           "target": "ecg_ppg_alignment"
         }
       ],
-      "release_date": "",
+      "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
         250,
@@ -3271,7 +3527,15 @@
         }
       ],
       "catalog_scoring_mode": "local",
-      "changelog": [],
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta PPG benchmark pack with systolic-peak and pulse-onset scoring cases."
+          ],
+          "date": "2026-07-06",
+          "version": "1.0"
+        }
+      ],
       "channels": {
         "families": [
           {
@@ -3364,6 +3628,18 @@
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
         "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
       },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "local PPG event-detection scoring smoke test",
+          "target": "ppg_systolic_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
+          "scope": "local PPG onset event-detection scoring smoke test",
+          "target": "ppg_pulse_onset",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
       "messages": [],
       "metadata_type": "synsigra_curated_pack_metadata",
       "metadata_version": "synsigra_curated_pack_metadata_export_v1",
@@ -3372,7 +3648,12 @@
         "PPG"
       ],
       "name": "PPG Detection Benchmark v1",
-      "not_recommended_for": [],
+      "not_recommended_for": [
+        "ECG-only algorithm validation",
+        "HRV metric benchmark scoring",
+        "Clinical PPG performance claims",
+        "Blood pressure or oxygen saturation validation"
+      ],
       "output_artifacts": [
         {
           "required": true,
@@ -3404,10 +3685,15 @@
         }
       ],
       "pack_id": "ppg_benchmark_v1",
-      "recommended_for": [],
+      "recommended_for": [
+        "PPG systolic peak and pulse onset benchmark tests",
+        "Pulse interval, pulse rate and PTT-related detector QA",
+        "Perfusion, motion, dropout, saturation and missing-pulse stress tests",
+        "Wearable PPG regression and benchmark gates"
+      ],
       "recommended_profile": "benchmark",
       "reference_only_targets": [],
-      "release_date": "",
+      "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
         500,
@@ -3506,6 +3792,8 @@
     }
   ],
   "product": "Synsigra Testbench",
+  "release_set_id": "synsigra_curated_release_2026_07_06",
+  "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:6929bdeccb77f84b7232cf84bf8642324721de46ad7de4f1b4fda9a0d2e199ba"
+  "source_catalog_sha256": "sha256:c42dd1950bbd60df378b63026708b868391fee235bcb40ab0f5895bc308a1847"
 }

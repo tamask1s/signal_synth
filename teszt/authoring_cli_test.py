@@ -75,12 +75,32 @@ def main():
         pack_path = os.path.normpath(os.path.join(os.path.dirname(catalog_path), entry["path"]))
         analysis = run_json([cli, "pack", "analyze", pack_path])
         assert analysis["success"]
+        assert analysis["metadata_type"] == "synsigra_pack_analysis"
         assert analysis["pack_id"] == entry["pack_id"]
+        assert analysis["pack_version"] == "1.0"
+        assert analysis["scoring_mode"] in ("local", "mixed", "reference_only")
+        assert analysis["recommended_verifier_profile"] in ("smoke", "regression", "stress", "benchmark")
+        assert analysis["generator_compatibility"]["challenge_package_contract"] == "synsigra_challenge_package_v1"
         assert analysis["summary"]["case_count"] > 0
         assert analysis["summary"]["total_duration_seconds"] > 0
         assert analysis["summary"]["estimated_package_bytes"] > 0
+        if analysis["scoreable_targets"]:
+            assert analysis["detector_output_schemas"]
+        else:
+            assert analysis["scoring_mode"] == "reference_only"
+        for target in analysis["scoreable_targets"]:
+            assert target["scoreable"] is True
+            assert target["support"] == "local_scoring"
+            assert target["case_ids"]
+        for target in analysis["reference_only_targets"]:
+            assert target["scoreable"] is False
+            assert target["support"] == "reference_only"
+            assert target["reference_artifacts"]
         for target in analysis["targets"]:
             assert target["support"] in ("local_scoring", "reference_only")
+        for case in analysis["cases"]:
+            assert set(case["scoreable_targets"]).issubset(set(case["targets"]))
+            assert set(case["reference_only_targets"]).issubset(set(case["targets"]))
 
     print("authoring_cli_test=passed")
     return 0

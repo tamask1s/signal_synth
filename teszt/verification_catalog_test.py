@@ -26,7 +26,7 @@ def main():
     catalog = load_json(catalog_path)
     assert catalog["schema_version"] == 1
     assert catalog["catalog_id"] == "synsigra_verification_packs"
-    assert catalog["version"] == "1.2"
+    assert catalog["version"] == "1.3"
     assert "clinical validation" in catalog["not_for"].lower()
 
     expected = set([
@@ -41,6 +41,15 @@ def main():
         seen.add(pack_id)
         assert entry["modality"] and entry["targets"] and entry["difficulty"] and entry["feature_tags"]
         assert entry["scoring_mode"] in ("local", "mixed", "reference_only")
+        assert entry["release_status"] == "beta"
+        assert entry["release_date"] == "2026-07-06"
+        assert "deprecation_message" in entry
+        assert entry["recommended_for"] and entry["not_recommended_for"] and entry["changelog"]
+        if entry["scoring_mode"] == "reference_only":
+            assert entry["recommended_profile"] is None
+            assert entry["supported_threshold_profiles"] == []
+        else:
+            assert entry["supported_threshold_profiles"]
         if entry["scoring_mode"] == "local":
             assert entry["recommended_profile"] in ("smoke", "regression", "stress", "benchmark")
         if pack_id == "r_peak_stress_v1":

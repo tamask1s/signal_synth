@@ -28,6 +28,69 @@ def pack(document, pack_id):
     raise AssertionError("pack not found: %s" % pack_id)
 
 
+RELEASE_PACK_IDS = [
+    "r_peak_stress_v1",
+    "hrv_v1",
+    "ecg_beat_classification_v1",
+    "ecg_rhythm_v1",
+    "signal_quality_v1",
+    "ecg_morphology_stress_v1",
+    "ppg_alignment_v1",
+    "combined_worst_case_v1",
+    "wearable_stress_v1",
+    "ppg_benchmark_v1",
+]
+
+
+def assert_release_pack_metadata(item):
+    assert item["schema_version"] == 1
+    assert item["metadata_type"] == "synsigra_curated_pack_metadata"
+    assert item["version"] == "1.0"
+    assert item["release_status"] == "beta"
+    assert item["release_date"] == "2026-07-06"
+    assert item["recommended_for"] and item["not_recommended_for"] and item["changelog"]
+    assert item["source"]["pack_fingerprint"].startswith("sha256:")
+    assert item["source"]["source_content_sha256"].startswith("sha256:")
+    assert item["generator_compatibility"]["challenge_package_contract"] == "synsigra_challenge_package_v1"
+    assert item["generator_compatibility"]["scoring_manifest_contract"] == "synsigra_scoring_manifest_v1"
+    assert item["case_count"] == len(item["case_ids"]) == len(item["cases"])
+    assert item["duration"]["total_seconds"] > 0
+    assert item["sampling_rates_hz"]
+    assert item["channels"]["minimum_channel_count"] >= 1
+    assert item["channels"]["maximum_channel_count"] >= item["channels"]["minimum_channel_count"]
+    assert item["estimated_package"]["bytes"] > 0
+    assert item["estimated_package"]["size_class"] in ("small", "medium", "large", "very_large")
+    assert item["output_artifacts"]
+    assert item["declared_targets"]
+    assert item["targets"]
+    assert item["scoring_mode"] in ("local", "mixed", "reference_only")
+    assert bool(item["scoreable_targets"]) == item["ui"]["scoreable_before_job"]
+    assert bool(item["reference_only_targets"]) == item["ui"]["reference_only_before_job"]
+    if item["scoreable_targets"]:
+        assert item["detector_output_schemas"]
+        assert item["supported_threshold_profiles"]
+        assert item["local_verifier_smoke_tests"]
+        for target in item["scoreable_targets"]:
+            assert target["scoreable"] is True
+            assert target["case_count"] == len(target["case_ids"])
+            assert target["case_ids"]
+            assert target["support"] == "local_scoring"
+            assert target["score_type"] in ("event_detection", "classification", "hrv_metrics")
+    else:
+        assert not item["detector_output_schemas"]
+        assert not item["supported_threshold_profiles"]
+        assert not item["local_verifier_smoke_tests"]
+    for target in item["reference_only_targets"]:
+        assert target["scoreable"] is False
+        assert target["support"] == "reference_only"
+        assert target["reference_artifacts"]
+    for case in item["cases"]:
+        assert case["case_id"] in item["case_ids"]
+        assert case["targets"]
+        assert set(case["scoreable_targets"]).issubset(set(item["targets"]))
+        assert set(case["reference_only_targets"]).issubset(set(item["targets"]))
+
+
 def assert_rpeak_metadata(item):
     assert item["schema_version"] == 1
     assert item["metadata_type"] == "synsigra_curated_pack_metadata"
@@ -48,6 +111,7 @@ def assert_rpeak_metadata(item):
     assert item["estimated_package"]["bytes"] > 0
     assert item["estimated_package"]["size_class"] == "medium"
     assert item["supported_threshold_profiles"] == ["smoke", "regression", "stress", "benchmark"]
+    assert item["local_verifier_smoke_tests"]
     assert item["threshold_profile_contract"]["policy_failure_exit_code"] == 1
     assert item["detector_output_schemas"] == ["detection_json_v1", "detection_csv_v2"]
     assert item["recommended_for"] and item["not_recommended_for"] and item["changelog"]
@@ -86,9 +150,14 @@ def main():
         assert generated["schema_version"] == 1
         assert generated["metadata_type"] == "synsigra_curated_pack_catalog"
         assert generated["metadata_version"] == "synsigra_curated_pack_metadata_export_v1"
+        assert generated["release_set_id"] == "synsigra_curated_release_2026_07_06"
+        assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
-        assert generated["catalog_version"] == "1.2"
+        assert generated["catalog_version"] == "1.3"
         assert generated["pack_count"] == 10
+        assert [item["pack_id"] for item in generated["packs"]] == RELEASE_PACK_IDS
+        for pack_id in RELEASE_PACK_IDS:
+            assert_release_pack_metadata(pack(generated, pack_id))
         assert_rpeak_metadata(pack(generated, "r_peak_stress_v1"))
 
         filtered_path = os.path.join(work_dir, "rpeak_only.json")
