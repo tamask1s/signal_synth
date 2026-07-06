@@ -8,6 +8,7 @@
 #include <iostream>
 #include <limits>
 #include <string>
+#include <vector>
 
 namespace
 {
@@ -96,6 +97,14 @@ int main()
     ok &= check(same_record(first, second), "ppg_is_deterministic");
     ok &= check(first.sample_count() == ecg.sample_count() && std::string(first.channel_name()) == "ppg_green" && std::string(first.unit()) == "a.u.", "ppg_public_contract");
     ok &= check(first.annotation_count() > 0 && first.annotation_count() % 5 == 0, "construction_and_measured_annotations");
+    std::vector<double> modified(first.samples(), first.samples() + first.sample_count());
+    const unsigned long long first_beat = first.annotations()[0].ecg_beat_index;
+    const signal_synth::ppg_annotation* first_onset = find_annotation(first, first_beat, signal_synth::ppg_pulse_onset, signal_synth::ppg_fiducial_construction);
+    const unsigned long long forced_peak = first_onset ? first_onset->sample_index + 1u : 0u;
+    if (forced_peak < modified.size())
+        modified[static_cast<std::size_t>(forced_peak)] = 100.0;
+    ok &= check(first_onset && signal_synth::remeasure_ppg_systolic_peaks(modified.data(), static_cast<unsigned int>(modified.size()), first)
+        && find_annotation(first, first_beat, signal_synth::ppg_systolic_peak, signal_synth::ppg_fiducial_measurement)->sample_index == forced_peak, "remeasure_final_waveform_peak");
 
     signal_synth::ppg_config disabled = config;
     disabled.enabled = false;

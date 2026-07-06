@@ -38,6 +38,7 @@ namespace signal_synth
         unsigned long long estimated_waveform_csv_bytes;
         unsigned long long estimated_binary_signal_bytes;
         unsigned long long estimated_package_bytes;
+        unsigned long long estimated_peak_memory_bytes;
         std::vector<std::string> targets;
     };
 
@@ -61,6 +62,7 @@ namespace signal_synth
         double total_duration_seconds;
         unsigned long long total_sample_count;
         unsigned long long estimated_package_bytes;
+        unsigned long long estimated_peak_memory_bytes;
         std::vector<scenario_pack_case_analysis> cases;
         std::vector<scenario_pack_target_analysis> targets;
         std::vector<scenario_pack_analysis_message> messages;

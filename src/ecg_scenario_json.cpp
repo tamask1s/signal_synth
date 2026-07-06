@@ -741,7 +741,12 @@ namespace
             && config.baseline_au == defaults.baseline_au
             && config.dicrotic_delay_ms == defaults.dicrotic_delay_ms
             && config.dicrotic_width_ms == defaults.dicrotic_width_ms
-            && config.dicrotic_amplitude_ratio == defaults.dicrotic_amplitude_ratio;
+            && config.dicrotic_amplitude_ratio == defaults.dicrotic_amplitude_ratio
+            && config.pulse_delay_variation_ms == defaults.pulse_delay_variation_ms
+            && config.pulse_delay_variation_hz == defaults.pulse_delay_variation_hz
+            && config.missing_pulse_every_n_beats == defaults.missing_pulse_every_n_beats
+            && config.clock_drift_ppm == defaults.clock_drift_ppm
+            && config.seed == defaults.seed;
     }
 
     bool default_hrv_config(const signal_synth::hrv_scenario_config& config)
@@ -794,20 +799,119 @@ namespace
         return duration_seconds >= 300.0;
     }
 
+    bool default_v3_config(const signal_synth::ecg_scenario_document& document)
+    {
+        const signal_synth::scenario_randomization_config randomization;
+        const signal_synth::physiology_coupling_config physiology;
+        const signal_synth::scenario_output_config output;
+        const signal_synth::ppg_config ppg;
+        return document.ppg.pulse_delay_variation_ms == ppg.pulse_delay_variation_ms
+            && document.ppg.pulse_delay_variation_hz == ppg.pulse_delay_variation_hz
+            && document.ppg.missing_pulse_every_n_beats == ppg.missing_pulse_every_n_beats
+            && document.ppg.clock_drift_ppm == ppg.clock_drift_ppm
+            && document.ppg.seed == ppg.seed
+            && document.randomization.enabled == randomization.enabled
+            && document.randomization.seed == randomization.seed
+            && document.randomization.envelopes.empty()
+            && document.physiology.respiration_frequency_hz == physiology.respiration_frequency_hz
+            && document.physiology.respiratory_rr_amplitude_seconds == physiology.respiratory_rr_amplitude_seconds
+            && document.physiology.ecg_baseline_amplitude_mv == physiology.ecg_baseline_amplitude_mv
+            && document.physiology.ppg_amplitude_modulation_ratio == physiology.ppg_amplitude_modulation_ratio
+            && document.physiology.activity_start_seconds == physiology.activity_start_seconds
+            && document.physiology.activity_duration_seconds == physiology.activity_duration_seconds
+            && document.physiology.activity_intensity == physiology.activity_intensity
+            && document.physiology.seed == physiology.seed
+            && document.output.compact == output.compact
+            && document.output.retain_source_channels == output.retain_source_channels
+            && document.output.include_waveform_csv == output.include_waveform_csv
+            && document.output.include_edf_bdf == output.include_edf_bdf;
+    }
+
+    bool randomization_parameter_bounds(const std::string& parameter, double& minimum, double& maximum)
+    {
+        if (parameter == "ecg.heart_rate_bpm") { minimum = 10.0; maximum = 400.0; return true; }
+        if (parameter == "ecg.rr_variability_seconds") { minimum = 0.0; maximum = 2.0; return true; }
+        if (parameter == "ppg.pulse_delay_ms") { minimum = 0.0; maximum = 2000.0; return true; }
+        if (parameter == "ppg.amplitude_au") { minimum = 0.000001; maximum = 100.0; return true; }
+        if (parameter == "hrv.target_sdnn_seconds") { minimum = 0.0; maximum = 2.0; return true; }
+        if (parameter == "hrv.lf_hf_ratio") { minimum = 0.0; maximum = 100.0; return true; }
+        if (parameter == "physiology.activity_intensity") { minimum = 0.0; maximum = 1.0; return true; }
+        return false;
+    }
+
+    bool valid_v3_config(const signal_synth::ecg_scenario_document& document)
+    {
+        const signal_synth::scenario_randomization_config& randomization = document.randomization;
+        if (!randomization.enabled && !randomization.envelopes.empty())
+            return false;
+        if (randomization.enabled && (randomization.envelopes.empty() || randomization.envelopes.size() > 32u))
+            return false;
+        std::set<std::string> parameters;
+        for (std::size_t i = 0; i < randomization.envelopes.size(); ++i)
+        {
+            const signal_synth::scenario_randomization_envelope& envelope = randomization.envelopes[i];
+            double minimum = 0.0, maximum = 0.0;
+            if (!randomization_parameter_bounds(envelope.parameter, minimum, maximum) || !parameters.insert(envelope.parameter).second
+                || !std::isfinite(envelope.minimum) || !std::isfinite(envelope.maximum) || envelope.minimum > envelope.maximum
+                || envelope.minimum < minimum || envelope.maximum > maximum)
+                return false;
+        }
+        if (document.hrv.enabled)
+            for (std::size_t i = 0; i < randomization.envelopes.size(); ++i)
+                if (randomization.envelopes[i].parameter == "ecg.heart_rate_bpm" || randomization.envelopes[i].parameter == "ecg.rr_variability_seconds")
+                    return false;
+        const signal_synth::physiology_coupling_config& physiology = document.physiology;
+        const double activity_end = physiology.activity_start_seconds + physiology.activity_duration_seconds;
+        if (!std::isfinite(physiology.respiration_frequency_hz) || physiology.respiration_frequency_hz <= 0.0 || physiology.respiration_frequency_hz > 1.0
+            || !std::isfinite(physiology.respiratory_rr_amplitude_seconds) || physiology.respiratory_rr_amplitude_seconds < 0.0 || physiology.respiratory_rr_amplitude_seconds > 2.0
+            || !std::isfinite(physiology.ecg_baseline_amplitude_mv) || physiology.ecg_baseline_amplitude_mv < 0.0 || physiology.ecg_baseline_amplitude_mv > 5.0
+            || !std::isfinite(physiology.ppg_amplitude_modulation_ratio) || physiology.ppg_amplitude_modulation_ratio < 0.0 || physiology.ppg_amplitude_modulation_ratio > 1.0
+            || !std::isfinite(physiology.activity_start_seconds) || physiology.activity_start_seconds < 0.0
+            || !std::isfinite(physiology.activity_duration_seconds) || physiology.activity_duration_seconds < 0.0
+            || !std::isfinite(physiology.activity_intensity) || physiology.activity_intensity < 0.0 || physiology.activity_intensity > 1.0
+            || !std::isfinite(activity_end) || activity_end > document.duration_seconds)
+            return false;
+        if (physiology.activity_intensity > 0.0 && physiology.activity_duration_seconds <= 0.0)
+            return false;
+        if (physiology.activity_intensity > 0.0 && (document.ecg.has_condition(signal_synth::ecg_condition_afib) || document.ecg.has_condition(signal_synth::ecg_condition_aflt)
+            || document.ecg.has_condition(signal_synth::ecg_condition_svtac) || document.ecg.has_condition(signal_synth::ecg_condition_pace)
+            || document.ecg.has_condition(signal_synth::ecg_condition_psvt) || document.ecg.has_condition(signal_synth::ecg_condition_svarr)
+            || document.ecg.has_condition(signal_synth::ecg_condition_1avb) || document.ecg.has_condition(signal_synth::ecg_condition_2avb) || document.ecg.has_condition(signal_synth::ecg_condition_3avb)))
+            return false;
+        if ((physiology.ppg_amplitude_modulation_ratio > 0.0 || document.ppg.pulse_delay_variation_ms > 0.0 || document.ppg.missing_pulse_every_n_beats > 0 || document.ppg.clock_drift_ppm != 0.0) && !document.ppg.enabled)
+            return false;
+        double minimum_pulse_delay_ms = document.ppg.pulse_delay_ms;
+        for (std::size_t i = 0; i < randomization.envelopes.size(); ++i)
+            if (randomization.envelopes[i].parameter == "ppg.pulse_delay_ms")
+                minimum_pulse_delay_ms = randomization.envelopes[i].minimum;
+        minimum_pulse_delay_ms -= document.ppg.pulse_delay_variation_ms;
+        if (document.ppg.clock_drift_ppm < 0.0)
+            minimum_pulse_delay_ms += document.duration_seconds * document.ppg.clock_drift_ppm * 0.001;
+        if (minimum_pulse_delay_ms < 0.0)
+            return false;
+        if (document.output.compact && (document.output.retain_source_channels || document.output.include_waveform_csv || document.output.include_edf_bdf))
+            return false;
+        return true;
+    }
+
     bool validate_document(const signal_synth::ecg_scenario_document& document, signal_synth::ecg_scenario_json_result& result, std::vector<std::string>& sorted_tags)
     {
-        if (document.schema_version < 1 || document.schema_version > 2)
-            add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema versions 1 and 2 are supported");
+        if (document.schema_version < 1 || document.schema_version > 3)
+            add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema versions 1, 2, and 3 are supported");
         if (document.schema_version == 1 && !default_ppg_config(document.ppg))
             add_message(result, signal_synth::ecg_json_semantic, "$.ppg", "schema version 1 cannot represent PPG configuration");
         if (document.schema_version == 1 && !default_hrv_config(document.hrv))
             add_message(result, signal_synth::ecg_json_semantic, "$.hrv", "schema version 1 cannot represent HRV configuration");
-        if (document.schema_version == 2 && !valid_hrv_config(document.hrv, document.duration_seconds))
+        if (document.schema_version >= 2 && !valid_hrv_config(document.hrv, document.duration_seconds))
             add_message(result, signal_synth::ecg_json_range, "$.hrv", "invalid HRV configuration or unsupported short HRV window");
         if (document.schema_version == 1 && !document.signal_quality.artifacts.empty())
             add_message(result, signal_synth::ecg_json_semantic, "$.artifacts", "schema version 1 cannot represent acquisition artifacts");
-        if (document.schema_version == 2 && !signal_synth::ppg_generator(document.ppg).valid())
+        if (document.schema_version >= 2 && !signal_synth::ppg_generator(document.ppg).valid())
             add_message(result, signal_synth::ecg_json_range, "$.ppg", "invalid PPG configuration");
+        if (document.schema_version < 3 && !default_v3_config(document))
+            add_message(result, signal_synth::ecg_json_semantic, "$", "randomization, physiology, output, and PPG stress controls require schema version 3");
+        if (document.schema_version == 3 && !valid_v3_config(document))
+            add_message(result, signal_synth::ecg_json_range, "$", "invalid schema-v3 randomization, physiology, output, or PPG stress configuration");
         if (!signal_synth::validate_signal_quality_config(document.signal_quality, document.duration_seconds, document.ecg.sampling_rate_hz(), document.ppg.enabled))
             add_message(result, signal_synth::ecg_json_range, "$.artifacts", "invalid artifact configuration");
         if (!safe_identifier(document.scenario_id))
@@ -913,8 +1017,38 @@ namespace
                    << ",\"baseline_au\":" << format_double(document.ppg.baseline_au)
                    << ",\"dicrotic_delay_ms\":" << format_double(document.ppg.dicrotic_delay_ms)
                    << ",\"dicrotic_width_ms\":" << format_double(document.ppg.dicrotic_width_ms)
-                   << ",\"dicrotic_amplitude_ratio\":" << format_double(document.ppg.dicrotic_amplitude_ratio)
-                   << '}';
+                   << ",\"dicrotic_amplitude_ratio\":" << format_double(document.ppg.dicrotic_amplitude_ratio);
+            if (document.schema_version >= 3)
+                output << ",\"pulse_delay_variation_ms\":" << format_double(document.ppg.pulse_delay_variation_ms)
+                       << ",\"pulse_delay_variation_hz\":" << format_double(document.ppg.pulse_delay_variation_hz)
+                       << ",\"missing_pulse_every_n_beats\":" << document.ppg.missing_pulse_every_n_beats
+                       << ",\"clock_drift_ppm\":" << format_double(document.ppg.clock_drift_ppm)
+                       << ",\"seed\":" << document.ppg.seed;
+            output << '}';
+        }
+        if (document.schema_version >= 3)
+        {
+            std::vector<signal_synth::scenario_randomization_envelope> envelopes = document.randomization.envelopes;
+            std::sort(envelopes.begin(), envelopes.end(), [](const signal_synth::scenario_randomization_envelope& left, const signal_synth::scenario_randomization_envelope& right) { return left.parameter < right.parameter; });
+            output << ",\"randomization\":{\"enabled\":" << (document.randomization.enabled ? "true" : "false")
+                   << ",\"seed\":" << document.randomization.seed
+                   << ",\"envelopes\":[";
+            for (std::size_t i = 0; i < envelopes.size(); ++i)
+                output << (i ? "," : "") << "{\"parameter\":" << escape_json(envelopes[i].parameter)
+                       << ",\"minimum\":" << format_double(envelopes[i].minimum)
+                       << ",\"maximum\":" << format_double(envelopes[i].maximum) << '}';
+            output << "]},\"physiology\":{\"respiration_frequency_hz\":" << format_double(document.physiology.respiration_frequency_hz)
+                   << ",\"respiratory_rr_amplitude_seconds\":" << format_double(document.physiology.respiratory_rr_amplitude_seconds)
+                   << ",\"ecg_baseline_amplitude_mv\":" << format_double(document.physiology.ecg_baseline_amplitude_mv)
+                   << ",\"ppg_amplitude_modulation_ratio\":" << format_double(document.physiology.ppg_amplitude_modulation_ratio)
+                   << ",\"activity_start_seconds\":" << format_double(document.physiology.activity_start_seconds)
+                   << ",\"activity_duration_seconds\":" << format_double(document.physiology.activity_duration_seconds)
+                   << ",\"activity_intensity\":" << format_double(document.physiology.activity_intensity)
+                   << ",\"seed\":" << document.physiology.seed
+                   << "},\"output\":{\"compact\":" << (document.output.compact ? "true" : "false")
+                   << ",\"retain_source_channels\":" << (document.output.retain_source_channels ? "true" : "false")
+                   << ",\"include_waveform_csv\":" << (document.output.include_waveform_csv ? "true" : "false")
+                   << ",\"include_edf_bdf\":" << (document.output.include_edf_bdf ? "true" : "false") << '}';
         }
         if (!document.signal_quality.artifacts.empty())
         {
@@ -960,6 +1094,21 @@ namespace signal_synth
 {
     hrv_scenario_config::hrv_scenario_config()
         : enabled(false), target_mean_hr_bpm(60.0), target_sdnn_seconds(0.0), lf_hf_ratio(1.0), lf_center_hz(0.10), lf_bandwidth_hz(0.04), hf_center_hz(0.25), hf_bandwidth_hz(0.12), respiratory_frequency_hz(0.25), respiratory_amplitude_seconds(0.0), minimum_rr_seconds(0.25), maximum_rr_seconds(3.0), seed(0x4852565343454e31ULL)
+    {
+    }
+
+    scenario_randomization_config::scenario_randomization_config()
+        : enabled(false), seed(0x52414e444f4d5631ULL), envelopes()
+    {
+    }
+
+    physiology_coupling_config::physiology_coupling_config()
+        : respiration_frequency_hz(0.25), respiratory_rr_amplitude_seconds(0.0), ecg_baseline_amplitude_mv(0.0), ppg_amplitude_modulation_ratio(0.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), seed(0x50485953494f5631ULL)
+    {
+    }
+
+    scenario_output_config::scenario_output_config()
+        : compact(false), retain_source_channels(true), include_waveform_csv(true), include_edf_bdf(true)
     {
     }
 
@@ -1036,7 +1185,7 @@ namespace signal_synth
             return false;
         }
 
-        const char* top_fields[] = {"schema_version","scenario_id","name","description","author","tags","duration_seconds","sample_rate_hz","seed","ecg","hrv","ppg","artifacts"};
+        const char* top_fields[] = {"schema_version","scenario_id","name","description","author","tags","duration_seconds","sample_rate_hz","seed","ecg","hrv","ppg","randomization","physiology","output","artifacts"};
         if (!allowed_fields(root, top_fields, sizeof(top_fields) / sizeof(top_fields[0]), "$", fresh_result))
         {
             result = fresh_result;
@@ -1060,8 +1209,8 @@ namespace signal_synth
         }
 
         unsigned long long integer = 0;
-        if (!integral_number(*schema, 2, integer) || integer < 1 || integer > 2)
-            add_message(fresh_result, ecg_json_schema_version, "$.schema_version", "only schema versions 1 and 2 are supported");
+        if (!integral_number(*schema, 3, integer) || integer < 1 || integer > 3)
+            add_message(fresh_result, ecg_json_schema_version, "$.schema_version", "only schema versions 1, 2, and 3 are supported");
         ecg_scenario_document document;
         document.schema_version = static_cast<unsigned int>(integer);
         document.ecg.clear_conditions();
@@ -1323,7 +1472,7 @@ namespace signal_synth
         const json_value* ppg = member(root, "ppg");
         if (document.schema_version == 1 && ppg)
             add_message(fresh_result, ecg_json_unknown_field, "$.ppg", "PPG requires schema version 2");
-        if (document.schema_version == 2)
+        if (document.schema_version >= 2)
         {
             if (!ppg)
                 add_message(fresh_result, ecg_json_missing_field, "$.ppg", "required field is missing");
@@ -1331,8 +1480,8 @@ namespace signal_synth
                 add_message(fresh_result, ecg_json_type, "$.ppg", "field has the wrong JSON type");
             else
             {
-                const char* ppg_fields[] = {"enabled","pulse_delay_ms","rise_time_ms","decay_time_ms","amplitude_au","baseline_au","dicrotic_delay_ms","dicrotic_width_ms","dicrotic_amplitude_ratio"};
-                allowed_fields(*ppg, ppg_fields, sizeof(ppg_fields) / sizeof(ppg_fields[0]), "$.ppg", fresh_result);
+                const char* ppg_fields[] = {"enabled","pulse_delay_ms","rise_time_ms","decay_time_ms","amplitude_au","baseline_au","dicrotic_delay_ms","dicrotic_width_ms","dicrotic_amplitude_ratio","pulse_delay_variation_ms","pulse_delay_variation_hz","missing_pulse_every_n_beats","clock_drift_ppm","seed"};
+                allowed_fields(*ppg, ppg_fields, document.schema_version >= 3 ? sizeof(ppg_fields) / sizeof(ppg_fields[0]) : 9u, "$.ppg", fresh_result);
                 const json_value* enabled = required(*ppg, "enabled", json_value::bool_kind, "$.ppg", fresh_result);
                 const json_value* pulse_delay = required(*ppg, "pulse_delay_ms", json_value::number_kind, "$.ppg", fresh_result);
                 const json_value* rise = required(*ppg, "rise_time_ms", json_value::number_kind, "$.ppg", fresh_result);
@@ -1342,6 +1491,19 @@ namespace signal_synth
                 const json_value* dicrotic_delay = required(*ppg, "dicrotic_delay_ms", json_value::number_kind, "$.ppg", fresh_result);
                 const json_value* dicrotic_width = required(*ppg, "dicrotic_width_ms", json_value::number_kind, "$.ppg", fresh_result);
                 const json_value* dicrotic_amplitude = required(*ppg, "dicrotic_amplitude_ratio", json_value::number_kind, "$.ppg", fresh_result);
+                const json_value* delay_variation = member(*ppg, "pulse_delay_variation_ms");
+                const json_value* delay_frequency = member(*ppg, "pulse_delay_variation_hz");
+                const json_value* missing_pulse = member(*ppg, "missing_pulse_every_n_beats");
+                const json_value* clock_drift = member(*ppg, "clock_drift_ppm");
+                const json_value* ppg_seed = member(*ppg, "seed");
+                if (document.schema_version >= 3)
+                {
+                    delay_variation = required(*ppg, "pulse_delay_variation_ms", json_value::number_kind, "$.ppg", fresh_result);
+                    delay_frequency = required(*ppg, "pulse_delay_variation_hz", json_value::number_kind, "$.ppg", fresh_result);
+                    missing_pulse = required(*ppg, "missing_pulse_every_n_beats", json_value::number_kind, "$.ppg", fresh_result);
+                    clock_drift = required(*ppg, "clock_drift_ppm", json_value::number_kind, "$.ppg", fresh_result);
+                    ppg_seed = required(*ppg, "seed", json_value::number_kind, "$.ppg", fresh_result);
+                }
                 if (enabled) document.ppg.enabled = enabled->boolean;
                 if (pulse_delay) document.ppg.pulse_delay_ms = pulse_delay->number;
                 if (rise) document.ppg.rise_time_ms = rise->number;
@@ -1351,15 +1513,159 @@ namespace signal_synth
                 if (dicrotic_delay) document.ppg.dicrotic_delay_ms = dicrotic_delay->number;
                 if (dicrotic_width) document.ppg.dicrotic_width_ms = dicrotic_width->number;
                 if (dicrotic_amplitude) document.ppg.dicrotic_amplitude_ratio = dicrotic_amplitude->number;
+                if (delay_variation)
+                {
+                    if (delay_variation->type != json_value::number_kind)
+                        add_message(fresh_result, ecg_json_type, "$.ppg.pulse_delay_variation_ms", "field has the wrong JSON type");
+                    else
+                        document.ppg.pulse_delay_variation_ms = delay_variation->number;
+                }
+                if (delay_frequency)
+                {
+                    if (delay_frequency->type != json_value::number_kind)
+                        add_message(fresh_result, ecg_json_type, "$.ppg.pulse_delay_variation_hz", "field has the wrong JSON type");
+                    else
+                        document.ppg.pulse_delay_variation_hz = delay_frequency->number;
+                }
+                if (missing_pulse)
+                {
+                    if (missing_pulse->type != json_value::number_kind || !integral_number(*missing_pulse, std::numeric_limits<unsigned int>::max(), integer))
+                        add_message(fresh_result, ecg_json_range, "$.ppg.missing_pulse_every_n_beats", "field must be an unsigned integer");
+                    else
+                        document.ppg.missing_pulse_every_n_beats = static_cast<unsigned int>(integer);
+                }
+                if (clock_drift)
+                {
+                    if (clock_drift->type != json_value::number_kind)
+                        add_message(fresh_result, ecg_json_type, "$.ppg.clock_drift_ppm", "field has the wrong JSON type");
+                    else
+                        document.ppg.clock_drift_ppm = clock_drift->number;
+                }
+                if (ppg_seed)
+                {
+                    if (ppg_seed->type != json_value::number_kind || !integral_number(*ppg_seed, std::numeric_limits<unsigned long long>::max(), integer))
+                        add_message(fresh_result, ecg_json_range, "$.ppg.seed", "seed must be an unsigned 64-bit decimal integer");
+                    else
+                        document.ppg.seed = integer;
+                }
                 if (!ppg_generator(document.ppg).valid())
                     add_message(fresh_result, ecg_json_range, "$.ppg", "invalid PPG configuration");
+            }
+        }
+
+        const json_value* randomization = member(root, "randomization");
+        const json_value* physiology = member(root, "physiology");
+        const json_value* output_config = member(root, "output");
+        if (document.schema_version < 3 && (randomization || physiology || output_config))
+            add_message(fresh_result, ecg_json_unknown_field, "$", "randomization, physiology, and output require schema version 3");
+        if (document.schema_version == 3)
+        {
+            if (!randomization || !physiology || !output_config)
+                add_message(fresh_result, ecg_json_missing_field, "$", "schema version 3 requires randomization, physiology, and output");
+            if (randomization)
+            {
+                if (randomization->type != json_value::object_kind)
+                    add_message(fresh_result, ecg_json_type, "$.randomization", "field has the wrong JSON type");
+                else
+                {
+                    const char* fields[] = {"enabled","seed","envelopes"};
+                    allowed_fields(*randomization, fields, 3, "$.randomization", fresh_result);
+                    const json_value* enabled = required(*randomization, "enabled", json_value::bool_kind, "$.randomization", fresh_result);
+                    const json_value* random_seed = required(*randomization, "seed", json_value::number_kind, "$.randomization", fresh_result);
+                    const json_value* envelopes = required(*randomization, "envelopes", json_value::array_kind, "$.randomization", fresh_result);
+                    if (enabled) document.randomization.enabled = enabled->boolean;
+                    if (random_seed)
+                    {
+                        if (!integral_number(*random_seed, std::numeric_limits<unsigned long long>::max(), integer))
+                            add_message(fresh_result, ecg_json_range, "$.randomization.seed", "seed must be an unsigned 64-bit decimal integer");
+                        else
+                            document.randomization.seed = integer;
+                    }
+                    if (envelopes)
+                    {
+                        for (std::size_t i = 0; i < envelopes->array.size(); ++i)
+                        {
+                            const std::string path = "$.randomization.envelopes[" + json_index(i) + "]";
+                            const json_value& item = envelopes->array[i];
+                            if (item.type != json_value::object_kind)
+                            {
+                                add_message(fresh_result, ecg_json_type, path, "envelope must be an object");
+                                continue;
+                            }
+                            const char* envelope_fields[] = {"parameter","minimum","maximum"};
+                            allowed_fields(item, envelope_fields, 3, path, fresh_result);
+                            const json_value* parameter = required(item, "parameter", json_value::string_kind, path, fresh_result);
+                            const json_value* minimum = required(item, "minimum", json_value::number_kind, path, fresh_result);
+                            const json_value* maximum = required(item, "maximum", json_value::number_kind, path, fresh_result);
+                            if (parameter && minimum && maximum)
+                            {
+                                scenario_randomization_envelope envelope;
+                                envelope.parameter = parameter->string;
+                                envelope.minimum = minimum->number;
+                                envelope.maximum = maximum->number;
+                                document.randomization.envelopes.push_back(envelope);
+                            }
+                        }
+                    }
+                }
+            }
+            if (physiology)
+            {
+                if (physiology->type != json_value::object_kind)
+                    add_message(fresh_result, ecg_json_type, "$.physiology", "field has the wrong JSON type");
+                else
+                {
+                    const char* fields[] = {"respiration_frequency_hz","respiratory_rr_amplitude_seconds","ecg_baseline_amplitude_mv","ppg_amplitude_modulation_ratio","activity_start_seconds","activity_duration_seconds","activity_intensity","seed"};
+                    allowed_fields(*physiology, fields, 8, "$.physiology", fresh_result);
+                    const json_value* values[7] = {
+                        required(*physiology, fields[0], json_value::number_kind, "$.physiology", fresh_result),
+                        required(*physiology, fields[1], json_value::number_kind, "$.physiology", fresh_result),
+                        required(*physiology, fields[2], json_value::number_kind, "$.physiology", fresh_result),
+                        required(*physiology, fields[3], json_value::number_kind, "$.physiology", fresh_result),
+                        required(*physiology, fields[4], json_value::number_kind, "$.physiology", fresh_result),
+                        required(*physiology, fields[5], json_value::number_kind, "$.physiology", fresh_result),
+                        required(*physiology, fields[6], json_value::number_kind, "$.physiology", fresh_result)};
+                    const json_value* physiology_seed = required(*physiology, fields[7], json_value::number_kind, "$.physiology", fresh_result);
+                    if (values[0]) document.physiology.respiration_frequency_hz = values[0]->number;
+                    if (values[1]) document.physiology.respiratory_rr_amplitude_seconds = values[1]->number;
+                    if (values[2]) document.physiology.ecg_baseline_amplitude_mv = values[2]->number;
+                    if (values[3]) document.physiology.ppg_amplitude_modulation_ratio = values[3]->number;
+                    if (values[4]) document.physiology.activity_start_seconds = values[4]->number;
+                    if (values[5]) document.physiology.activity_duration_seconds = values[5]->number;
+                    if (values[6]) document.physiology.activity_intensity = values[6]->number;
+                    if (physiology_seed)
+                    {
+                        if (!integral_number(*physiology_seed, std::numeric_limits<unsigned long long>::max(), integer))
+                            add_message(fresh_result, ecg_json_range, "$.physiology.seed", "seed must be an unsigned 64-bit decimal integer");
+                        else
+                            document.physiology.seed = integer;
+                    }
+                }
+            }
+            if (output_config)
+            {
+                if (output_config->type != json_value::object_kind)
+                    add_message(fresh_result, ecg_json_type, "$.output", "field has the wrong JSON type");
+                else
+                {
+                    const char* fields[] = {"compact","retain_source_channels","include_waveform_csv","include_edf_bdf"};
+                    allowed_fields(*output_config, fields, 4, "$.output", fresh_result);
+                    const json_value* compact = required(*output_config, fields[0], json_value::bool_kind, "$.output", fresh_result);
+                    const json_value* retain = required(*output_config, fields[1], json_value::bool_kind, "$.output", fresh_result);
+                    const json_value* csv = required(*output_config, fields[2], json_value::bool_kind, "$.output", fresh_result);
+                    const json_value* edf = required(*output_config, fields[3], json_value::bool_kind, "$.output", fresh_result);
+                    if (compact) document.output.compact = compact->boolean;
+                    if (retain) document.output.retain_source_channels = retain->boolean;
+                    if (csv) document.output.include_waveform_csv = csv->boolean;
+                    if (edf) document.output.include_edf_bdf = edf->boolean;
+                }
             }
         }
 
         const json_value* artifacts = member(root, "artifacts");
         if (document.schema_version == 1 && artifacts)
             add_message(fresh_result, ecg_json_unknown_field, "$.artifacts", "artifacts require schema version 2");
-        if (document.schema_version == 2 && artifacts)
+        if (document.schema_version >= 2 && artifacts)
         {
             if (artifacts->type != json_value::array_kind)
                 add_message(fresh_result, ecg_json_type, "$.artifacts", "field has the wrong JSON type");

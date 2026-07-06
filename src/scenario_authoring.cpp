@@ -4,6 +4,7 @@
 #include "signal_quality.h"
 
 #include <algorithm>
+#include <cmath>
 #include <iomanip>
 #include <limits>
 #include <locale>
@@ -11,8 +12,8 @@
 
 namespace
 {
-    const char* metadata_version = "synsigra_authoring_v1";
-    const char* template_version = "synsigra_templates_v1";
+    const char* metadata_version = "synsigra_authoring_v2";
+    const char* template_version = "synsigra_templates_v2";
 
     struct field_definition
     {
@@ -157,13 +158,28 @@ namespace
         return true;
     }
 
-    unsigned long long estimate_case_package_bytes(unsigned int sample_count, unsigned int channel_count, unsigned long long& csv_bytes, unsigned long long& binary_bytes)
+    unsigned long long estimate_case_package_bytes(const signal_synth::ecg_scenario_document& document, unsigned int channel_count, unsigned long long& csv_bytes, unsigned long long& binary_bytes)
     {
-        const unsigned long long samples = sample_count;
+        const unsigned long long samples = document.sample_count();
         const unsigned long long channels = channel_count;
-        csv_bytes = 256u + samples * (channels + 1u) * 18u;
-        binary_bytes = samples * channels * 7u;
-        return csv_bytes + binary_bytes + 262144u;
+        double maximum_heart_rate = document.hrv.enabled ? document.hrv.target_mean_hr_bpm : document.ecg.heart_rate_bpm();
+        for (std::size_t i = 0; i < document.randomization.envelopes.size(); ++i)
+            if (document.randomization.envelopes[i].parameter == "ecg.heart_rate_bpm")
+                maximum_heart_rate = std::max(maximum_heart_rate, document.randomization.envelopes[i].maximum);
+        maximum_heart_rate += document.physiology.activity_intensity * 40.0;
+        const unsigned long long estimated_beats = static_cast<unsigned long long>(std::ceil(document.duration_seconds * maximum_heart_rate / 60.0)) + 4u;
+        const unsigned long long annotation_bytes = estimated_beats * (document.output.compact ? 1800u : 17000u);
+        csv_bytes = document.output.include_waveform_csv ? 256u + samples * (channels + 1u) * 18u : 0u;
+        binary_bytes = samples * channels * (document.output.include_edf_bdf ? 7u : 2u);
+        return csv_bytes + binary_bytes + annotation_bytes + 262144u;
+    }
+
+    unsigned long long estimate_case_peak_memory_bytes(const signal_synth::ecg_scenario_document& document)
+    {
+        const unsigned long long samples = document.sample_count();
+        const unsigned long long generation_double_channels = document.output.retain_source_channels ? 60u : 36u;
+        const unsigned long long ppg_double_channels = document.ppg.enabled ? 2u : 0u;
+        return samples * (generation_double_channels + ppg_double_channels) * sizeof(double) + 1048576u;
     }
 
     void write_string_array(std::ostringstream& output, const std::vector<std::string>& values)
@@ -179,10 +195,10 @@ namespace signal_synth
 {
     scenario_pack_analysis_message::scenario_pack_analysis_message() : error(false), code(), path(), message() {}
     scenario_pack_case_analysis::scenario_pack_case_analysis()
-        : case_id(), scenario_id(), duration_seconds(0.0), sampling_rate_hz(0), sample_count(0), channel_count(0), estimated_waveform_csv_bytes(0), estimated_binary_signal_bytes(0), estimated_package_bytes(0), targets() {}
+        : case_id(), scenario_id(), duration_seconds(0.0), sampling_rate_hz(0), sample_count(0), channel_count(0), estimated_waveform_csv_bytes(0), estimated_binary_signal_bytes(0), estimated_package_bytes(0), estimated_peak_memory_bytes(0), targets() {}
     scenario_pack_target_analysis::scenario_pack_target_analysis() : target(), support(scenario_target_unsupported), case_count(0) {}
     scenario_pack_analysis::scenario_pack_analysis()
-        : success(false), pack_id(), pack_version(), case_count(0), total_duration_seconds(0.0), total_sample_count(0), estimated_package_bytes(0), cases(), targets(), messages() {}
+        : success(false), pack_id(), pack_version(), case_count(0), total_duration_seconds(0.0), total_sample_count(0), estimated_package_bytes(0), estimated_peak_memory_bytes(0), cases(), targets(), messages() {}
 
     const char* scenario_authoring_metadata_version()
     {
@@ -261,15 +277,37 @@ namespace signal_synth
             {"$.ppg.dicrotic_delay_ms","Dicrotic delay","ppg","number","number","180","0","1000","1","ms",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
             {"$.ppg.dicrotic_width_ms","Dicrotic width","ppg","number","number","80","1","500","1","ms",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
             {"$.ppg.dicrotic_amplitude_ratio","Dicrotic amplitude","ppg","number","number","0.15","0","1","0.01","ratio",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
+            {"$.ppg.pulse_delay_variation_ms","Pulse-delay variation","ppg_stress","number","number","0","0","2000","1","ms",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
+            {"$.ppg.pulse_delay_variation_hz","Pulse-delay variation frequency","ppg_stress","number","number","0.1","0.000001","1","0.01","Hz",0,"{\"path\":\"$.ppg.pulse_delay_variation_ms\",\"greater_than\":0}",true},
+            {"$.ppg.missing_pulse_every_n_beats","Missing-pulse cadence","ppg_stress","integer","number","0","0","1000000","1","beats",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
+            {"$.ppg.clock_drift_ppm","PPG clock drift","ppg_stress","number","number","0","-100000","100000","1","ppm",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
+            {"$.ppg.seed","PPG stress seed","ppg_stress","uint64_string","text","\"5787213827044626759\"",0,0,0,"",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
+            {"$.randomization.enabled","Controlled randomization","randomization","boolean","toggle","false",0,0,0,"",0,0,true},
+            {"$.randomization.seed","Randomization seed","randomization","uint64_string","text","\"5927117558752822833\"",0,0,0,"",0,"{\"path\":\"$.randomization.enabled\",\"equals\":true}",true},
+            {"$.randomization.envelopes","Parameter envelopes","randomization","randomization_envelope_array","envelope_editor","[]","1","32",0,"items",0,"{\"path\":\"$.randomization.enabled\",\"equals\":true}",true},
+            {"$.physiology.respiration_frequency_hz","Respiration frequency","physiology","number","number","0.25","0.000001","1","0.01","Hz",0,0,true},
+            {"$.physiology.respiratory_rr_amplitude_seconds","Respiratory RR modulation","physiology","number","number","0","0","2","0.001","s",0,0,true},
+            {"$.physiology.ecg_baseline_amplitude_mv","Respiratory ECG baseline","physiology","number","number","0","0","5","0.01","mV",0,0,true},
+            {"$.physiology.ppg_amplitude_modulation_ratio","Respiratory PPG amplitude modulation","physiology","number","number","0","0","1","0.01","ratio",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
+            {"$.physiology.activity_start_seconds","Activity start","physiology","number","number","0","0","86400","0.1","s",0,0,true},
+            {"$.physiology.activity_duration_seconds","Activity duration","physiology","number","number","0","0","86400","0.1","s",0,0,true},
+            {"$.physiology.activity_intensity","Activity intensity","physiology","number","slider","0","0","1","0.01","ratio",0,0,true},
+            {"$.physiology.seed","Physiology seed","physiology","uint64_string","text","\"5784961499917731377\"",0,0,0,"",0,0,true},
+            {"$.output.compact","Compact long-duration output","output","boolean","toggle","false",0,0,0,"",0,0,true},
+            {"$.output.retain_source_channels","Retain internal source channels","output","boolean","toggle","true",0,0,0,"",0,0,true},
+            {"$.output.include_waveform_csv","Include waveform CSV","output","boolean","toggle","true",0,0,0,"",0,0,true},
+            {"$.output.include_edf_bdf","Include EDF/BDF","output","boolean","toggle","true",0,0,0,"",0,0,true},
             {"$.artifacts","Artifacts","artifacts","artifact_array","artifact_editor","[]","0","128",0,"items",0,0,true}
         };
 
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << "{\"schema_version\":1,\"metadata_version\":" << json_string(metadata_version)
-               << ",\"scenario_schema_version\":2,\"groups\":["
+               << ",\"scenario_schema_version\":3,\"groups\":["
                << "{\"id\":\"identity\",\"label\":\"Identity\"},{\"id\":\"render\",\"label\":\"Render\"},{\"id\":\"ecg\",\"label\":\"ECG\"},"
-               << "{\"id\":\"episode\",\"label\":\"Episode\"},{\"id\":\"hrv\",\"label\":\"HRV\"},{\"id\":\"ppg\",\"label\":\"PPG\"},{\"id\":\"artifacts\",\"label\":\"Artifacts\"}],\"fields\":[";
+               << "{\"id\":\"episode\",\"label\":\"Episode\"},{\"id\":\"hrv\",\"label\":\"HRV\"},{\"id\":\"ppg\",\"label\":\"PPG\"},"
+               << "{\"id\":\"ppg_stress\",\"label\":\"PPG Timing Stress\"},{\"id\":\"randomization\",\"label\":\"Randomization\"},"
+               << "{\"id\":\"physiology\",\"label\":\"Physiology\"},{\"id\":\"output\",\"label\":\"Output\"},{\"id\":\"artifacts\",\"label\":\"Artifacts\"}],\"fields\":[";
         for (std::size_t i = 0; i < sizeof(fields) / sizeof(fields[0]); ++i)
         {
             if (i) output << ',';
@@ -278,6 +316,10 @@ namespace signal_synth
         output << "],\"condition_item_fields\":["
                << "{\"name\":\"code\",\"value_type\":\"string\",\"control\":\"condition_select\"},"
                << "{\"name\":\"severity\",\"value_type\":\"number\",\"control\":\"slider\",\"minimum\":0.000001,\"maximum\":1,\"step\":0.01,\"default\":1,\"enabled_when\":\"selected condition has variable_severity=true\"}],"
+               << "\"randomization_envelope_item_fields\":["
+               << "{\"name\":\"parameter\",\"value_type\":\"string\",\"control\":\"select\",\"options\":[\"ecg.heart_rate_bpm\",\"ecg.rr_variability_seconds\",\"ppg.pulse_delay_ms\",\"ppg.amplitude_au\",\"hrv.target_sdnn_seconds\",\"hrv.lf_hf_ratio\",\"physiology.activity_intensity\"]},"
+               << "{\"name\":\"minimum\",\"value_type\":\"number\",\"control\":\"number\"},"
+               << "{\"name\":\"maximum\",\"value_type\":\"number\",\"control\":\"number\"}],"
                << "\"conditions\":[";
         const ecg_condition_info* conditions = ecg_condition_catalog();
         for (unsigned int i = 0; i < ecg_condition_catalog_size(); ++i)
@@ -327,7 +369,10 @@ namespace signal_synth
                << "{\"id\":\"ppg_width\",\"expression\":\"ppg.rise_time_ms + ppg.decay_time_ms <= 5000\",\"message\":\"Combined PPG rise and decay time cannot exceed 5000 ms.\"},"
                << "{\"id\":\"ppg_dicrotic\",\"expression\":\"ppg.dicrotic_delay_ms <= ppg.decay_time_ms\",\"message\":\"Dicrotic delay cannot exceed decay time.\"},"
                << "{\"id\":\"episode_bounds\",\"expression\":\"ecg.episode_type == 'none' || ecg.episode_start_seconds + ecg.episode_duration_seconds <= duration_seconds\",\"message\":\"Episode must fit inside the rendered duration.\"},"
-               << "{\"id\":\"artifact_bounds\",\"expression\":\"forall artifact: start_seconds + duration_seconds <= duration_seconds\",\"message\":\"Every artifact must fit inside the scenario.\"}"
+               << "{\"id\":\"artifact_bounds\",\"expression\":\"forall artifact: start_seconds + duration_seconds <= duration_seconds\",\"message\":\"Every artifact must fit inside the scenario.\"},"
+               << "{\"id\":\"activity_bounds\",\"expression\":\"physiology.activity_start_seconds + physiology.activity_duration_seconds <= duration_seconds\",\"message\":\"Activity interval must fit inside the scenario.\"},"
+               << "{\"id\":\"ppg_stress_requires_ppg\",\"expression\":\"ppg.enabled || (ppg.pulse_delay_variation_ms == 0 && ppg.missing_pulse_every_n_beats == 0 && ppg.clock_drift_ppm == 0 && physiology.ppg_amplitude_modulation_ratio == 0)\",\"message\":\"PPG stress controls require an enabled PPG channel.\"},"
+               << "{\"id\":\"compact_output\",\"expression\":\"!output.compact || (!output.retain_source_channels && !output.include_waveform_csv && !output.include_edf_bdf)\",\"message\":\"Compact output omits source channels, waveform CSV, EDF and BDF.\"}"
                << "]}";
         return output.str();
     }
@@ -340,7 +385,8 @@ namespace signal_synth
             "{\"template_id\":\"ecg_hrv_benchmark\",\"name\":\"Five-minute HRV benchmark\",\"description\":\"Balanced deterministic LF/HF and respiratory RR modulation.\",\"difficulty\":\"benchmark\",\"feature_tags\":[\"ecg\",\"hrv\",\"lf_hf\",\"respiration\"],\"targets\":[\"hrv\",\"r_peak\"],\"editable_paths\":[\"$.duration_seconds\",\"$.sample_rate_hz\",\"$.seed\",\"$.hrv\"],\"scenario\":{\"schema_version\":2,\"scenario_id\":\"ecg_hrv_benchmark\",\"name\":\"Five-minute HRV benchmark\",\"description\":\"Template-generated HRV benchmark.\",\"author\":\"Synsigra\",\"tags\":[\"template\",\"hrv\",\"benchmark\"],\"duration_seconds\":300,\"sample_rate_hz\":100,\"seed\":7103,\"ecg\":{\"heart_rate_bpm\":60,\"rr_variability_seconds\":0.05,\"ectopic_every_n_beats\":0,\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\",\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,\"episode_rate_bpm\":170,\"flutter_conduction_pattern\":\"fixed\",\"pacing_mode\":\"ventricular\",\"pacing_non_capture_every_n_beats\":0,\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]},\"hrv\":{\"enabled\":true,\"target_mean_hr_bpm\":60,\"target_sdnn_seconds\":0.05,\"lf_hf_ratio\":1,\"lf_center_hz\":0.1,\"lf_bandwidth_hz\":0.04,\"hf_center_hz\":0.25,\"hf_bandwidth_hz\":0.12,\"respiratory_frequency_hz\":0.25,\"respiratory_amplitude_seconds\":0.03,\"minimum_rr_seconds\":0.5,\"maximum_rr_seconds\":1.5,\"seed\":7103},\"ppg\":{\"enabled\":false,\"pulse_delay_ms\":180,\"rise_time_ms\":120,\"decay_time_ms\":300,\"amplitude_au\":1,\"baseline_au\":0,\"dicrotic_delay_ms\":180,\"dicrotic_width_ms\":80,\"dicrotic_amplitude_ratio\":0.15}}}",
             "{\"template_id\":\"ecg_beat_ectopy\",\"name\":\"PAC/PVC beat classification\",\"description\":\"Periodic ectopy template for beat detector and classifier QA.\",\"difficulty\":\"regression\",\"feature_tags\":[\"ecg\",\"beat_classification\",\"ectopy\"],\"targets\":[\"r_peak\",\"ecg_beat_classification\"],\"editable_paths\":[\"$.duration_seconds\",\"$.seed\",\"$.ecg.ectopic_every_n_beats\",\"$.ecg.conditions\"],\"scenario\":{\"schema_version\":2,\"scenario_id\":\"ecg_beat_ectopy\",\"name\":\"PVC beat classification\",\"description\":\"Template-generated periodic PVC case.\",\"author\":\"Synsigra\",\"tags\":[\"template\",\"beat_classification\",\"pvc\"],\"duration_seconds\":30,\"sample_rate_hz\":500,\"seed\":7104,\"ecg\":{\"heart_rate_bpm\":72,\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":5,\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\",\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,\"episode_rate_bpm\":170,\"flutter_conduction_pattern\":\"fixed\",\"pacing_mode\":\"ventricular\",\"pacing_non_capture_every_n_beats\":0,\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"PVC\",\"severity\":0.8}]},\"ppg\":{\"enabled\":false,\"pulse_delay_ms\":180,\"rise_time_ms\":120,\"decay_time_ms\":300,\"amplitude_au\":1,\"baseline_au\":0,\"dicrotic_delay_ms\":180,\"dicrotic_width_ms\":80,\"dicrotic_amplitude_ratio\":0.15}}}",
             "{\"template_id\":\"ecg_ppg_peak\",\"name\":\"Linked ECG/PPG peaks\",\"description\":\"Clean linked ECG and green PPG for peak and timing QA.\",\"difficulty\":\"smoke\",\"feature_tags\":[\"ecg\",\"ppg\",\"peak\",\"timing\"],\"targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ecg_ppg_alignment\"],\"editable_paths\":[\"$.duration_seconds\",\"$.sample_rate_hz\",\"$.seed\",\"$.ppg\"],\"scenario\":{\"schema_version\":2,\"scenario_id\":\"ecg_ppg_peak\",\"name\":\"Linked ECG PPG peaks\",\"description\":\"Template-generated linked ECG and PPG.\",\"author\":\"Synsigra\",\"tags\":[\"template\",\"ecg\",\"ppg\"],\"duration_seconds\":30,\"sample_rate_hz\":500,\"seed\":7105,\"ecg\":{\"heart_rate_bpm\":70,\"rr_variability_seconds\":0.015,\"ectopic_every_n_beats\":0,\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\",\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,\"episode_rate_bpm\":170,\"flutter_conduction_pattern\":\"fixed\",\"pacing_mode\":\"ventricular\",\"pacing_non_capture_every_n_beats\":0,\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]},\"ppg\":{\"enabled\":true,\"pulse_delay_ms\":180,\"rise_time_ms\":120,\"decay_time_ms\":300,\"amplitude_au\":1,\"baseline_au\":0,\"dicrotic_delay_ms\":180,\"dicrotic_width_ms\":80,\"dicrotic_amplitude_ratio\":0.15}}}",
-            "{\"template_id\":\"ecg_psvt_transition\",\"name\":\"PSVT transition episode\",\"description\":\"Sinus baseline with explicit PSVT onset and offset ground truth.\",\"difficulty\":\"stress\",\"feature_tags\":[\"ecg\",\"rhythm\",\"psvt\",\"transition\"],\"targets\":[\"r_peak\",\"ecg_beat_classification\"],\"editable_paths\":[\"$.duration_seconds\",\"$.seed\",\"$.ecg.episode_start_seconds\",\"$.ecg.episode_duration_seconds\",\"$.ecg.episode_rate_bpm\"],\"scenario\":{\"schema_version\":2,\"scenario_id\":\"ecg_psvt_transition\",\"name\":\"PSVT transition episode\",\"description\":\"Template-generated PSVT episode.\",\"author\":\"Synsigra\",\"tags\":[\"template\",\"rhythm\",\"psvt\",\"transition\"],\"duration_seconds\":30,\"sample_rate_hz\":500,\"seed\":7106,\"ecg\":{\"heart_rate_bpm\":72,\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":0,\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\",\"episode_type\":\"psvt\",\"episode_start_seconds\":10,\"episode_duration_seconds\":10,\"episode_rate_bpm\":180,\"flutter_conduction_pattern\":\"fixed\",\"pacing_mode\":\"ventricular\",\"pacing_non_capture_every_n_beats\":0,\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"PSVT\",\"severity\":1}]},\"ppg\":{\"enabled\":false,\"pulse_delay_ms\":180,\"rise_time_ms\":120,\"decay_time_ms\":300,\"amplitude_au\":1,\"baseline_au\":0,\"dicrotic_delay_ms\":180,\"dicrotic_width_ms\":80,\"dicrotic_amplitude_ratio\":0.15}}}"
+            "{\"template_id\":\"ecg_psvt_transition\",\"name\":\"PSVT transition episode\",\"description\":\"Sinus baseline with explicit PSVT onset and offset ground truth.\",\"difficulty\":\"stress\",\"feature_tags\":[\"ecg\",\"rhythm\",\"psvt\",\"transition\"],\"targets\":[\"r_peak\",\"ecg_beat_classification\"],\"editable_paths\":[\"$.duration_seconds\",\"$.seed\",\"$.ecg.episode_start_seconds\",\"$.ecg.episode_duration_seconds\",\"$.ecg.episode_rate_bpm\"],\"scenario\":{\"schema_version\":2,\"scenario_id\":\"ecg_psvt_transition\",\"name\":\"PSVT transition episode\",\"description\":\"Template-generated PSVT episode.\",\"author\":\"Synsigra\",\"tags\":[\"template\",\"rhythm\",\"psvt\",\"transition\"],\"duration_seconds\":30,\"sample_rate_hz\":500,\"seed\":7106,\"ecg\":{\"heart_rate_bpm\":72,\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":0,\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\",\"episode_type\":\"psvt\",\"episode_start_seconds\":10,\"episode_duration_seconds\":10,\"episode_rate_bpm\":180,\"flutter_conduction_pattern\":\"fixed\",\"pacing_mode\":\"ventricular\",\"pacing_non_capture_every_n_beats\":0,\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"PSVT\",\"severity\":1}]},\"ppg\":{\"enabled\":false,\"pulse_delay_ms\":180,\"rise_time_ms\":120,\"decay_time_ms\":300,\"amplitude_au\":1,\"baseline_au\":0,\"dicrotic_delay_ms\":180,\"dicrotic_width_ms\":80,\"dicrotic_amplitude_ratio\":0.15}}}",
+            "{\"template_id\":\"wearable_ecg_ppg_stress\",\"name\":\"Wearable ECG/PPG stress\",\"description\":\"Reproducible cardiorespiratory, activity and ECG/PPG synchronization stress.\",\"difficulty\":\"stress\",\"feature_tags\":[\"ecg\",\"ppg\",\"wearable\",\"respiration\",\"activity\",\"timing\"],\"targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ecg_ppg_alignment\"],\"editable_paths\":[\"$.duration_seconds\",\"$.sample_rate_hz\",\"$.randomization\",\"$.physiology\",\"$.ppg\"],\"scenario\":{\"schema_version\":3,\"scenario_id\":\"wearable_ecg_ppg_stress\",\"name\":\"Wearable ECG PPG stress\",\"description\":\"Template-generated multimodal wearable stress case.\",\"author\":\"Synsigra\",\"tags\":[\"activity\",\"ppg\",\"respiration\",\"template\",\"wearable\"],\"duration_seconds\":60,\"sample_rate_hz\":250,\"seed\":7107,\"ecg\":{\"heart_rate_bpm\":72,\"rr_variability_seconds\":0.025,\"ectopic_every_n_beats\":0,\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\",\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,\"episode_rate_bpm\":170,\"flutter_conduction_pattern\":\"fixed\",\"pacing_mode\":\"ventricular\",\"pacing_non_capture_every_n_beats\":0,\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]},\"ppg\":{\"enabled\":true,\"pulse_delay_ms\":180,\"rise_time_ms\":120,\"decay_time_ms\":300,\"amplitude_au\":1,\"baseline_au\":0,\"dicrotic_delay_ms\":180,\"dicrotic_width_ms\":80,\"dicrotic_amplitude_ratio\":0.15,\"pulse_delay_variation_ms\":25,\"pulse_delay_variation_hz\":0.1,\"missing_pulse_every_n_beats\":9,\"clock_drift_ppm\":250,\"seed\":71071},\"randomization\":{\"enabled\":true,\"seed\":71072,\"envelopes\":[{\"parameter\":\"ecg.heart_rate_bpm\",\"minimum\":65,\"maximum\":85},{\"parameter\":\"ppg.pulse_delay_ms\",\"minimum\":150,\"maximum\":230}]},\"physiology\":{\"respiration_frequency_hz\":0.22,\"respiratory_rr_amplitude_seconds\":0.035,\"ecg_baseline_amplitude_mv\":0.08,\"ppg_amplitude_modulation_ratio\":0.18,\"activity_start_seconds\":20,\"activity_duration_seconds\":25,\"activity_intensity\":0.5,\"seed\":71073},\"output\":{\"compact\":false,\"retain_source_channels\":true,\"include_waveform_csv\":true,\"include_edf_bdf\":true}}}"
         };
         std::ostringstream output;
         output << "{\"schema_version\":1,\"catalog_version\":" << json_string(template_version)
@@ -383,10 +429,12 @@ namespace signal_synth
             item.sample_count = document.sample_count();
             item.channel_count = clinical_lead_count + (document.ppg.enabled ? 1u : 0u);
             item.targets = pack_case.targets;
-            item.estimated_package_bytes = estimate_case_package_bytes(item.sample_count, item.channel_count, item.estimated_waveform_csv_bytes, item.estimated_binary_signal_bytes);
+            item.estimated_package_bytes = estimate_case_package_bytes(document, item.channel_count, item.estimated_waveform_csv_bytes, item.estimated_binary_signal_bytes);
+            item.estimated_peak_memory_bytes = estimate_case_peak_memory_bytes(document);
             fresh.total_duration_seconds += item.duration_seconds;
             fresh.total_sample_count += item.sample_count;
             fresh.estimated_package_bytes += item.estimated_package_bytes;
+            fresh.estimated_peak_memory_bytes = std::max(fresh.estimated_peak_memory_bytes, item.estimated_peak_memory_bytes);
             for (std::size_t target_index = 0; target_index < item.targets.size(); ++target_index)
             {
                 const std::string& target_name = item.targets[target_index];
@@ -427,7 +475,8 @@ namespace signal_synth
                << ",\"summary\":{\"case_count\":" << analysis.case_count
                << ",\"total_duration_seconds\":" << analysis.total_duration_seconds
                << ",\"total_sample_count\":" << analysis.total_sample_count
-               << ",\"estimated_package_bytes\":" << analysis.estimated_package_bytes << "},\"targets\":[";
+               << ",\"estimated_package_bytes\":" << analysis.estimated_package_bytes
+               << ",\"estimated_peak_memory_bytes\":" << analysis.estimated_peak_memory_bytes << "},\"targets\":[";
         for (std::size_t i = 0; i < analysis.targets.size(); ++i)
             output << (i ? "," : "") << "{\"target\":" << json_string(analysis.targets[i].target)
                    << ",\"support\":" << json_string(scenario_target_support_name(analysis.targets[i].support))
@@ -445,6 +494,7 @@ namespace signal_synth
                    << ",\"estimated_waveform_csv_bytes\":" << item.estimated_waveform_csv_bytes
                    << ",\"estimated_binary_signal_bytes\":" << item.estimated_binary_signal_bytes
                    << ",\"estimated_package_bytes\":" << item.estimated_package_bytes
+                   << ",\"estimated_peak_memory_bytes\":" << item.estimated_peak_memory_bytes
                    << ",\"targets\":";
             write_string_array(output, item.targets);
             output << '}';

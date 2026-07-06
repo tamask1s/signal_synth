@@ -74,7 +74,7 @@ int main()
     ok &= check(rejects_without_mutation("[]", signal_synth::ecg_json_type), "reject_root_type");
     ok &= check(rejects_without_mutation("{", signal_synth::ecg_json_syntax), "reject_truncated_json");
     ok &= check(rejects_without_mutation(input + "x", signal_synth::ecg_json_syntax), "reject_trailing_data");
-    ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":3"), signal_synth::ecg_json_schema_version), "reject_schema_version");
+    ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":4"), signal_synth::ecg_json_schema_version), "reject_schema_version");
     ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":1,\"schema_version\":1"), signal_synth::ecg_json_duplicate_key), "reject_duplicate_key");
     ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":1,\"unknown\":0"), signal_synth::ecg_json_unknown_field), "reject_unknown_field");
     ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"name\":\"Clean ECG\","), 19, ""), signal_synth::ecg_json_missing_field), "reject_missing_field");
@@ -155,6 +155,9 @@ int main()
     multimodal_roundtrip.ppg.pulse_delay_ms += 1.0;
     signal_synth::ecg_scenario_json_result changed_ppg;
     ok &= check(signal_synth::write_ecg_scenario_json(multimodal_roundtrip, changed_ppg) && changed_ppg.document_fingerprint != multimodal_result.document_fingerprint && changed_ppg.generation_fingerprint == multimodal_result.generation_fingerprint, "ppg_changes_document_not_ecg_fingerprint");
+    multimodal_roundtrip.ppg.clock_drift_ppm = 10.0;
+    signal_synth::ecg_scenario_json_result invalid_v2_stress;
+    ok &= check(!signal_synth::write_ecg_scenario_json(multimodal_roundtrip, invalid_v2_stress), "schema_v2_rejects_v3_ppg_stress");
 
     const std::string hrv_input =
         "{"

@@ -27,7 +27,20 @@ namespace
             && finite(config.dicrotic_delay_ms) && config.dicrotic_delay_ms >= 0.0 && config.dicrotic_delay_ms <= 1000.0
             && config.dicrotic_delay_ms <= config.decay_time_ms
             && finite(config.dicrotic_width_ms) && config.dicrotic_width_ms >= 1.0 && config.dicrotic_width_ms <= 500.0
-            && finite(config.dicrotic_amplitude_ratio) && config.dicrotic_amplitude_ratio >= 0.0 && config.dicrotic_amplitude_ratio <= 1.0;
+            && finite(config.dicrotic_amplitude_ratio) && config.dicrotic_amplitude_ratio >= 0.0 && config.dicrotic_amplitude_ratio <= 1.0
+            && finite(config.pulse_delay_variation_ms) && config.pulse_delay_variation_ms >= 0.0 && config.pulse_delay_variation_ms <= 1000.0
+            && finite(config.pulse_delay_variation_hz) && config.pulse_delay_variation_hz >= 0.0 && config.pulse_delay_variation_hz <= 10.0
+            && finite(config.clock_drift_ppm) && std::fabs(config.clock_drift_ppm) <= 100000.0;
+    }
+
+    double deterministic_unit(unsigned long long seed)
+    {
+        seed ^= seed >> 33;
+        seed *= 0xff51afd7ed558ccdULL;
+        seed ^= seed >> 33;
+        seed *= 0xc4ceb9fe1a85ec53ULL;
+        seed ^= seed >> 33;
+        return static_cast<double>(seed >> 11) * (1.0 / 9007199254740992.0);
     }
 
     unsigned long long sample_at_or_after(double time_seconds, unsigned int sampling_rate_hz)
@@ -82,12 +95,13 @@ namespace signal_synth
         unsigned int sampling_rate_hz;
         std::vector<double> samples;
         std::vector<ppg_annotation> annotations;
+        std::vector<ppg_pulse_annotation> pulses;
 
         implementation() : sampling_rate_hz(0) {}
     };
 
     ppg_config::ppg_config()
-        : enabled(false), pulse_delay_ms(180.0), rise_time_ms(120.0), decay_time_ms(300.0), amplitude_au(1.0), baseline_au(0.0), dicrotic_delay_ms(180.0), dicrotic_width_ms(80.0), dicrotic_amplitude_ratio(0.15)
+        : enabled(false), pulse_delay_ms(180.0), rise_time_ms(120.0), decay_time_ms(300.0), amplitude_au(1.0), baseline_au(0.0), dicrotic_delay_ms(180.0), dicrotic_width_ms(80.0), dicrotic_amplitude_ratio(0.15), pulse_delay_variation_ms(0.0), pulse_delay_variation_hz(0.0), missing_pulse_every_n_beats(0), clock_drift_ppm(0.0), seed(0x5050475f53545253ULL)
     {
     }
 
@@ -118,6 +132,8 @@ namespace signal_synth
     const double* ppg_record::samples() const { return implementation_->samples.empty() ? 0 : &implementation_->samples[0]; }
     unsigned int ppg_record::annotation_count() const { return static_cast<unsigned int>(implementation_->annotations.size()); }
     const ppg_annotation* ppg_record::annotations() const { return implementation_->annotations.empty() ? 0 : &implementation_->annotations[0]; }
+    unsigned int ppg_record::pulse_count() const { return static_cast<unsigned int>(implementation_->pulses.size()); }
+    const ppg_pulse_annotation* ppg_record::pulses() const { return implementation_->pulses.empty() ? 0 : &implementation_->pulses[0]; }
 
     ppg_generator::ppg_generator() : config_(), valid_(valid_config(config_))
     {
@@ -155,13 +171,25 @@ namespace signal_synth
         {
             fresh.implementation_->samples.assign(timeline.sample_count(), config_.baseline_au);
             const double record_end = static_cast<double>(timeline.sample_count() - 1) / timeline.sampling_rate_hz();
+            const double variation_phase = 2.0 * pi * deterministic_unit(config_.seed);
             for (unsigned int beat_index = 0; beat_index < timeline.beat_count(); ++beat_index)
             {
                 const clinical_beat_annotation& beat = timeline.beats()[beat_index];
-                const double onset = beat.r_peak_time_seconds + config_.pulse_delay_ms / 1000.0;
+                const double variable_delay_ms = config_.pulse_delay_variation_ms * std::sin(2.0 * pi * config_.pulse_delay_variation_hz * beat.r_peak_time_seconds + variation_phase);
+                const double drift_seconds = beat.r_peak_time_seconds * config_.clock_drift_ppm * 1e-6;
+                const double pulse_delay_seconds = (config_.pulse_delay_ms + variable_delay_ms) / 1000.0 + drift_seconds;
+                const double onset = beat.r_peak_time_seconds + pulse_delay_seconds;
                 const double peak = onset + config_.rise_time_ms / 1000.0;
                 const double offset = peak + config_.decay_time_ms / 1000.0;
-                if (onset < 0.0 || offset > record_end)
+                ppg_pulse_annotation pulse;
+                pulse.ecg_beat_index = beat.beat_index;
+                pulse.ecg_r_time_seconds = beat.r_peak_time_seconds;
+                pulse.pulse_delay_seconds = pulse_delay_seconds;
+                pulse.expected_onset_time_seconds = onset;
+                pulse.intentionally_missing = config_.missing_pulse_every_n_beats != 0 && (beat_index + 1u) % config_.missing_pulse_every_n_beats == 0;
+                pulse.generated = !pulse.intentionally_missing && onset >= 0.0 && offset <= record_end;
+                fresh.implementation_->pulses.push_back(pulse);
+                if (!pulse.generated)
                     continue;
                 const unsigned long long first = sample_at_or_after(onset, timeline.sampling_rate_hz());
                 const unsigned long long last = sample_at_or_after(offset, timeline.sampling_rate_hz());
@@ -192,6 +220,46 @@ namespace signal_synth
             return false;
         }
         output = fresh;
+        return true;
+    }
+
+    bool remeasure_ppg_systolic_peaks(const double* samples, unsigned int sample_count, ppg_record& record)
+    {
+        if (!samples || sample_count != record.sample_count() || !record.sampling_rate_hz())
+            return false;
+        for (std::size_t i = 0; i < record.implementation_->annotations.size(); ++i)
+        {
+            ppg_annotation& measured = record.implementation_->annotations[i];
+            if (measured.kind != ppg_systolic_peak || measured.source != ppg_fiducial_measurement)
+                continue;
+            const ppg_annotation* onset = 0;
+            const ppg_annotation* offset = 0;
+            for (std::size_t j = i; j > 0; --j)
+            {
+                const ppg_annotation& candidate = record.implementation_->annotations[j - 1u];
+                if (candidate.ecg_beat_index != measured.ecg_beat_index)
+                    break;
+                if (candidate.source != ppg_fiducial_construction)
+                    continue;
+                if (candidate.kind == ppg_pulse_onset)
+                    onset = &candidate;
+                else if (candidate.kind == ppg_pulse_offset)
+                    offset = &candidate;
+            }
+            if (!onset || !offset)
+                return false;
+            const unsigned long long first = std::min<unsigned long long>(onset->sample_index, sample_count - 1u);
+            const unsigned long long last = std::min<unsigned long long>(offset->sample_index, sample_count - 1u);
+            if (last < first)
+                return false;
+            unsigned long long peak = first;
+            for (unsigned long long sample = first + 1u; sample <= last; ++sample)
+                if (samples[sample] > samples[peak])
+                    peak = sample;
+            measured.sample_index = peak;
+            measured.time_seconds = static_cast<double>(peak) / record.sampling_rate_hz();
+            measured.value_au = samples[peak];
+        }
         return true;
     }
 }

@@ -179,6 +179,10 @@ namespace
 
     void add_ppg_metrics(const signal_synth::ppg_record& ppg, signal_synth::ecg_ground_truth_metrics& metrics)
     {
+        metrics.ppg_expected_pulse_count = ppg.pulse_count();
+        for (unsigned int i = 0; i < ppg.pulse_count(); ++i)
+            if (ppg.pulses()[i].intentionally_missing)
+                ++metrics.ppg_missing_pulse_count;
         double onset_delay = 0.0;
         double peak_delay = 0.0;
         unsigned int peak_count = 0;
@@ -406,7 +410,8 @@ namespace
                    << ",\"linked_ventricular_index\":" << event.linked_ventricular_index << '}';
         }
         output << "],\"fiducials\":[";
-        for (unsigned int i = 0; i < render.record.fiducial_count(); ++i)
+        const bool detailed_annotations = !render.resolved_document.output.compact;
+        for (unsigned int i = 0; detailed_annotations && i < render.record.fiducial_count(); ++i)
         {
             if (i)
                 output << ',';
@@ -421,7 +426,8 @@ namespace
                    << ",\"amplitude_mv\":" << fiducial.amplitude_mv
                    << ",\"present\":" << boolean(fiducial.present) << '}';
         }
-        output << "],\"pacing_events\":[";
+        output << "],\"fiducial_detail\":" << json_string(detailed_annotations ? "full" : "omitted_in_compact_output")
+               << ",\"pacing_events\":[";
         for (unsigned int i = 0; i < render.record.pacing_event_count(); ++i)
         {
             if (i)
@@ -478,10 +484,38 @@ namespace
                        << ",\"time_seconds\":" << annotation.time_seconds
                        << ",\"value_au\":" << annotation.value_au << '}';
             }
+            output << "],\"ppg_pulses\":[";
+            for (unsigned int i = 0; i < render.ppg.pulse_count(); ++i)
+            {
+                if (i)
+                    output << ',';
+                const signal_synth::ppg_pulse_annotation& pulse = render.ppg.pulses()[i];
+                output << "{\"ecg_beat_index\":" << pulse.ecg_beat_index
+                       << ",\"ecg_r_time_seconds\":" << pulse.ecg_r_time_seconds
+                       << ",\"pulse_delay_seconds\":" << pulse.pulse_delay_seconds
+                       << ",\"expected_onset_time_seconds\":" << pulse.expected_onset_time_seconds
+                       << ",\"generated\":" << boolean(pulse.generated)
+                       << ",\"intentionally_missing\":" << boolean(pulse.intentionally_missing) << '}';
+            }
             output << ']';
         }
+        if (render.document.schema_version >= 3)
+            output << ",\"randomization\":{\"seed\":" << render.document.randomization.seed
+                   << ",\"draw_count\":" << render.parameter_draws.size()
+                   << ",\"resolved_document_fingerprint\":" << json_string(render.resolved_document_identity.document_fingerprint)
+                   << "},\"physiology\":{\"respiration_frequency_hz\":" << render.resolved_document.physiology.respiration_frequency_hz
+                   << ",\"respiratory_rr_amplitude_seconds\":" << render.resolved_document.physiology.respiratory_rr_amplitude_seconds
+                   << ",\"ecg_baseline_amplitude_mv\":" << render.resolved_document.physiology.ecg_baseline_amplitude_mv
+                   << ",\"ppg_amplitude_modulation_ratio\":" << render.resolved_document.physiology.ppg_amplitude_modulation_ratio
+                   << ",\"activity_start_seconds\":" << render.resolved_document.physiology.activity_start_seconds
+                   << ",\"activity_duration_seconds\":" << render.resolved_document.physiology.activity_duration_seconds
+                   << ",\"activity_intensity\":" << render.resolved_document.physiology.activity_intensity << '}';
         output << ",\"rr_tachogram\":";
-        write_rr_tachogram_json(output, render.hrv);
+        if (detailed_annotations)
+            write_rr_tachogram_json(output, render.hrv);
+        else
+            output << "[]";
+        output << ",\"rr_tachogram_reference\":\"rr_tachogram.csv\"";
         output << ",\"artifact_intervals\":[";
         for (std::size_t i = 0; i < render.signal_quality.artifacts.size(); ++i)
         {
@@ -562,6 +596,8 @@ namespace
         output << ']';
         if (render.document.schema_version >= 2)
             output << ",\"ppg\":{\"pulse_count\":" << metrics.ppg_pulse_count
+                   << ",\"expected_pulse_count\":" << metrics.ppg_expected_pulse_count
+                   << ",\"intentionally_missing_pulse_count\":" << metrics.ppg_missing_pulse_count
                    << ",\"mean_onset_delay_seconds\":" << metrics.mean_ppg_onset_delay_seconds
                    << ",\"mean_measured_peak_delay_seconds\":" << metrics.mean_ppg_peak_delay_seconds << '}';
         output << '}';
@@ -592,11 +628,13 @@ namespace
                << "},\"scenario\":{\"id\":" << json_string(render.document.scenario_id)
                << ",\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint)
                << ",\"generation_fingerprint\":" << render.document_identity.generation_fingerprint
+               << ",\"resolved_document_fingerprint\":" << json_string(render.resolved_document_identity.document_fingerprint)
+               << ",\"resolved_generation_fingerprint\":" << render.resolved_document_identity.generation_fingerprint
                << ",\"render_identity\":" << json_string(render.render_identity)
                << ",\"ecg_run_fingerprint\":" << render.scenario_report.run_fingerprint()
                << ",\"scenario_schema_version\":" << render.document.schema_version
                << ",\"engine_version\":" << render.scenario_report.engine_version()
-               << ",\"seed\":" << render.document.ecg.seed()
+               << ",\"seed\":" << render.resolved_document.ecg.seed()
                << "},\"render\":{\"sample_rate_hz\":" << render.record.sampling_rate_hz()
                << ",\"sample_count\":" << render.record.sample_count()
                << ",\"duration_seconds\":" << std::setprecision(std::numeric_limits<double>::max_digits10) << render.document.duration_seconds
@@ -611,6 +649,8 @@ namespace
         if (render.ppg.sample_count())
             output << ",{\"name\":\"ppg_green\",\"unit\":\"a.u.\"}";
         output << "],\"timestamp_policy\":\"not_recorded_for_deterministic_local_export\""
+               << ",\"compact_output\":" << (render.resolved_document.output.compact ? "true" : "false")
+               << ",\"source_channels_retained\":" << (render.resolved_document.output.retain_source_channels ? "true" : "false")
                << "},\"intended_use\":\"synthetic engineering algorithm testing and QA\","
                << "\"not_for\":\"diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment\"}";
         return output.str();
@@ -761,7 +801,7 @@ namespace
 namespace signal_synth
 {
     ecg_ground_truth_metrics::ecg_ground_truth_metrics()
-        : beat_count(0), atrial_event_count(0), fiducial_count(0), episode_count(0), artifact_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), hrv_accepted_interval_count(0), hrv_excluded_interval_count(0), hrv_ectopic_interval_count(0), hrv_artifact_overlap_interval_count(0), sd1_seconds(0.0), sd2_seconds(0.0), sd1_sd2_ratio(0.0), lf_power_seconds2(0.0), hf_power_seconds2(0.0), lf_hf_ratio(0.0), total_power_seconds2(0.0), ppg_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0), total_artifact_seconds(0.0), ppg_artifact_seconds(0.0)
+        : beat_count(0), atrial_event_count(0), fiducial_count(0), episode_count(0), artifact_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), hrv_accepted_interval_count(0), hrv_excluded_interval_count(0), hrv_ectopic_interval_count(0), hrv_artifact_overlap_interval_count(0), sd1_seconds(0.0), sd2_seconds(0.0), sd1_sd2_ratio(0.0), lf_power_seconds2(0.0), hf_power_seconds2(0.0), lf_hf_ratio(0.0), total_power_seconds2(0.0), ppg_pulse_count(0), ppg_expected_pulse_count(0), ppg_missing_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0), total_artifact_seconds(0.0), ppg_artifact_seconds(0.0)
     {
         for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
             ecg_artifact_seconds[lead] = 0.0;
@@ -781,7 +821,7 @@ namespace signal_synth
 
     const char* signal_synth_generator_version()
     {
-        return "0.1.0-dev";
+        return "0.2.0-dev";
     }
 
     bool render_ecg_document(const ecg_scenario_document& document, ecg_render_bundle& output, ecg_export_result& result)
@@ -795,7 +835,20 @@ namespace signal_synth
             result = fresh_result;
             return false;
         }
-        if (!ecg_scenario_engine().generate(document.ecg, document.sample_count(), fresh.record, fresh.scenario_report))
+        std::vector<std::string> resolution_messages;
+        if (!resolve_scenario_controls(document, fresh.resolved_document, fresh.parameter_draws, resolution_messages))
+        {
+            fresh_result.messages = resolution_messages;
+            result = fresh_result;
+            return false;
+        }
+        if (!write_ecg_scenario_json(fresh.resolved_document, fresh.resolved_document_identity))
+        {
+            fresh_result.messages.push_back("resolved scenario validation failed");
+            result = fresh_result;
+            return false;
+        }
+        if (!ecg_scenario_engine().generate(fresh.resolved_document.ecg, fresh.resolved_document.sample_count(), fresh.record, fresh.scenario_report))
         {
             if (fresh.scenario_report.issue_count())
                 fresh_result.messages.push_back(std::string("ECG scenario generation failed: ") + fresh.scenario_report.issue_message(0));
@@ -806,29 +859,44 @@ namespace signal_synth
         }
         {
             std::ostringstream identity;
-            identity << fresh.document_identity.document_fingerprint << ":ecg-run-" << fresh.scenario_report.run_fingerprint();
+            identity << fresh.document_identity.document_fingerprint;
+            if (fresh.document.schema_version >= 3)
+                identity << ":resolved-" << fresh.resolved_document_identity.document_fingerprint;
+            identity << ":ecg-run-" << fresh.scenario_report.run_fingerprint();
             fresh.render_identity = identity.str();
         }
-        if (!measure_ecg_morphology(fresh.record, fresh.morphology))
+        if (!fresh.resolved_document.output.compact && !measure_ecg_morphology(fresh.record, fresh.morphology))
         {
             fresh_result.messages.push_back("ECG morphology measurement failed");
             result = fresh_result;
             return false;
         }
-        if (!ppg_generator(document.ppg).generate(fresh.record, fresh.ppg))
+        if (!ppg_generator(fresh.resolved_document.ppg).generate(fresh.record, fresh.ppg))
         {
             fresh_result.messages.push_back("PPG generation failed");
             result = fresh_result;
             return false;
         }
-        fresh.metrics = calculate_metrics(fresh.record);
-        add_ppg_metrics(fresh.ppg, fresh.metrics);
-        if (!apply_signal_quality_artifacts(document.signal_quality, fresh.record, fresh.ppg, fresh.signal_quality))
+        if (!apply_signal_quality_artifacts(fresh.resolved_document.signal_quality, fresh.record, fresh.ppg, fresh.signal_quality))
         {
             fresh_result.messages.push_back("signal quality artifact application failed");
             result = fresh_result;
             return false;
         }
+        if (!apply_physiology_coupling(fresh.resolved_document.physiology, fresh.resolved_document.ppg.baseline_au, fresh.record.sampling_rate_hz(), fresh.signal_quality))
+        {
+            fresh_result.messages.push_back("physiology coupling failed");
+            result = fresh_result;
+            return false;
+        }
+        if (fresh.ppg.sample_count() && !remeasure_ppg_systolic_peaks(fresh.signal_quality.ppg.data(), static_cast<unsigned int>(fresh.signal_quality.ppg.size()), fresh.ppg))
+        {
+            fresh_result.messages.push_back("final PPG peak measurement failed");
+            result = fresh_result;
+            return false;
+        }
+        fresh.metrics = calculate_metrics(fresh.record);
+        add_ppg_metrics(fresh.ppg, fresh.metrics);
         if (!analyze_hrv_from_ecg(fresh.record, &fresh.signal_quality, fresh.hrv))
         {
             fresh_result.messages.push_back("HRV analysis failed");
@@ -854,8 +922,14 @@ namespace signal_synth
             return false;
         }
         add_artifact(fresh, "scenario.json", "application/json", render.document_identity.canonical_json);
+        if (render.document.schema_version >= 3)
+        {
+            add_artifact(fresh, "resolved_scenario.json", "application/json", render.resolved_document_identity.canonical_json);
+            add_artifact(fresh, "randomization.json", "application/json", scenario_parameter_draws_json(render.document, render.resolved_document, render.parameter_draws));
+        }
         add_artifact(fresh, "metadata.json", "application/json", metadata_json(render));
-        add_artifact(fresh, "waveform.csv", "text/csv", waveform_csv(render));
+        if (render.resolved_document.output.include_waveform_csv)
+            add_artifact(fresh, "waveform.csv", "text/csv", waveform_csv(render));
         add_artifact(fresh, "annotations.json", "application/json", annotations_json(render));
         add_artifact(fresh, "rr_tachogram.csv", "text/csv", rr_tachogram_csv(render));
         add_artifact(fresh, "hrv_metrics.json", "application/json", hrv_metrics_json(render));
@@ -871,11 +945,14 @@ namespace signal_synth
             return false;
         for (std::size_t i = 0; i < wfdb.artifacts.size(); ++i)
             add_artifact(fresh, wfdb.artifacts[i].name.c_str(), wfdb.artifacts[i].media_type.c_str(), wfdb.artifacts[i].content);
-        edf_bdf_export_bundle edf_bdf;
-        if (!build_edf_bdf_export_bundle(render, "synsigra", edf_bdf, fresh_result))
-            return false;
-        for (std::size_t i = 0; i < edf_bdf.artifacts.size(); ++i)
-            add_artifact(fresh, edf_bdf.artifacts[i].name.c_str(), edf_bdf.artifacts[i].media_type.c_str(), edf_bdf.artifacts[i].content);
+        if (render.resolved_document.output.include_edf_bdf)
+        {
+            edf_bdf_export_bundle edf_bdf;
+            if (!build_edf_bdf_export_bundle(render, "synsigra", edf_bdf, fresh_result))
+                return false;
+            for (std::size_t i = 0; i < edf_bdf.artifacts.size(); ++i)
+                add_artifact(fresh, edf_bdf.artifacts[i].name.c_str(), edf_bdf.artifacts[i].media_type.c_str(), edf_bdf.artifacts[i].content);
+        }
         fresh_result.success = true;
         output = fresh;
         result = fresh_result;

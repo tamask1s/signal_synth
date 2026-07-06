@@ -108,7 +108,7 @@ int main()
     second.add_condition(signal_synth::ecg_condition_pvc, 0.8);
     second.set_heart_rate_bpm(72.0);
     second.set_seed(1234);
-    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 2 && signal_synth::ecg_scenario_engine_version() == 12, "fingerprint_is_order_independent_and_versioned");
+    ok &= check(first.fingerprint() == second.fingerprint() && first.schema_version() == 2 && signal_synth::ecg_scenario_engine_version() == 13, "fingerprint_is_order_independent_and_versioned");
     signal_synth::ecg_qa_scenario changed = first;
     changed.set_seed(1235);
     ok &= check(first.fingerprint() != changed.fingerprint(), "fingerprint_covers_generation_seed");

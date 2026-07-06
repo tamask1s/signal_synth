@@ -31,6 +31,11 @@ namespace signal_synth
         double dicrotic_delay_ms;
         double dicrotic_width_ms;
         double dicrotic_amplitude_ratio;
+        double pulse_delay_variation_ms;
+        double pulse_delay_variation_hz;
+        unsigned int missing_pulse_every_n_beats;
+        double clock_drift_ppm;
+        unsigned long long seed;
     };
 
     struct ppg_annotation
@@ -42,6 +47,16 @@ namespace signal_synth
         unsigned long long sample_index;
         double time_seconds;
         double value_au;
+    };
+
+    struct ppg_pulse_annotation
+    {
+        unsigned long long ecg_beat_index;
+        double ecg_r_time_seconds;
+        double pulse_delay_seconds;
+        double expected_onset_time_seconds;
+        bool generated;
+        bool intentionally_missing;
     };
 
     class ppg_record
@@ -59,11 +74,14 @@ namespace signal_synth
         const double* samples() const;
         unsigned int annotation_count() const;
         const ppg_annotation* annotations() const;
+        unsigned int pulse_count() const;
+        const ppg_pulse_annotation* pulses() const;
 
     private:
         struct implementation;
         implementation* implementation_;
         friend class ppg_generator;
+        friend bool remeasure_ppg_systolic_peaks(const double* samples, unsigned int sample_count, ppg_record& record);
     };
 
     class ppg_generator
@@ -81,4 +99,6 @@ namespace signal_synth
         ppg_config config_;
         bool valid_;
     };
+
+    bool remeasure_ppg_systolic_peaks(const double* samples, unsigned int sample_count, ppg_record& record);
 }

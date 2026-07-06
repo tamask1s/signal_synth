@@ -16,7 +16,7 @@ namespace signal_synth
     namespace
     {
         const unsigned int SCENARIO_SCHEMA_VERSION = 2;
-        const unsigned int SCENARIO_ENGINE_VERSION = 12;
+        const unsigned int SCENARIO_ENGINE_VERSION = 13;
         const unsigned long long DEFAULT_SEED = 0x5343454e4152494fULL;
         const ecg_condition_code NO_CONDITION = ecg_condition_count;
 
@@ -438,6 +438,10 @@ namespace signal_synth
         double hrv_hf_bandwidth_hz;
         double hrv_respiratory_frequency_hz;
         double hrv_respiratory_amplitude_seconds;
+        double activity_start_seconds;
+        double activity_duration_seconds;
+        double activity_intensity;
+        bool retain_source_channels;
         unsigned int ectopic_every_n_beats;
         ecg_second_degree_av_pattern second_degree_pattern;
         ecg_q_wave_territory q_wave_territory;
@@ -451,7 +455,7 @@ namespace signal_synth
         ecg_scenario_fidelity_policy fidelity_policy;
 
         implementation()
-            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), flutter_conduction_pattern(ecg_flutter_fixed), pacing_mode(ecg_pacing_ventricular), pacing_non_capture_every_n_beats(0), fidelity_policy(ecg_fidelity_allow_parameterized)
+            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), retain_source_channels(true), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), flutter_conduction_pattern(ecg_flutter_fixed), pacing_mode(ecg_pacing_ventricular), pacing_non_capture_every_n_beats(0), fidelity_policy(ecg_fidelity_allow_parameterized)
         {
         }
     };
@@ -1043,6 +1047,10 @@ namespace signal_synth
             config.rhythm.hrv_hf_bandwidth_hz = scenario.hrv_hf_bandwidth_hz;
             config.rhythm.hrv_respiratory_frequency_hz = scenario.hrv_respiratory_frequency_hz;
             config.rhythm.hrv_respiratory_amplitude_seconds = scenario.hrv_respiratory_amplitude_seconds;
+            config.rhythm.activity_start_seconds = scenario.activity_start_seconds;
+            config.rhythm.activity_duration_seconds = scenario.activity_duration_seconds;
+            config.rhythm.activity_intensity = scenario.activity_intensity;
+            config.retain_source_channels = scenario.retain_source_channels;
             if (scenario.minimum_rr_seconds > 0.0)
                 config.rhythm.minimum_rr_seconds = scenario.minimum_rr_seconds;
             if (scenario.maximum_rr_seconds > 0.0)
@@ -2526,6 +2534,24 @@ namespace signal_synth
         return true;
     }
 
+    bool ecg_qa_scenario::set_activity_modulation(double start_seconds, double duration_seconds, double intensity)
+    {
+        if (!std::isfinite(start_seconds) || !std::isfinite(duration_seconds) || !std::isfinite(intensity)
+            || start_seconds < 0.0 || duration_seconds < 0.0 || intensity < 0.0 || intensity > 1.0
+            || (intensity > 0.0 && duration_seconds <= 0.0))
+            return false;
+        implementation_->activity_start_seconds = start_seconds;
+        implementation_->activity_duration_seconds = duration_seconds;
+        implementation_->activity_intensity = intensity;
+        return true;
+    }
+
+    double ecg_qa_scenario::activity_start_seconds() const { return implementation_->activity_start_seconds; }
+    double ecg_qa_scenario::activity_duration_seconds() const { return implementation_->activity_duration_seconds; }
+    double ecg_qa_scenario::activity_intensity() const { return implementation_->activity_intensity; }
+    void ecg_qa_scenario::set_retain_source_channels(bool value) { implementation_->retain_source_channels = value; }
+    bool ecg_qa_scenario::retain_source_channels() const { return implementation_->retain_source_channels; }
+
     bool ecg_qa_scenario::set_ectopic_every_n_beats(unsigned int value)
     {
         implementation_->ectopic_every_n_beats = value;
@@ -2690,6 +2716,10 @@ namespace signal_synth
             hash_u64(hash, quantize(implementation_->hrv_hf_bandwidth_hz, 1000000.0));
             hash_u64(hash, quantize(implementation_->hrv_respiratory_frequency_hz, 1000000.0));
             hash_u64(hash, quantize(implementation_->hrv_respiratory_amplitude_seconds, 1000000.0));
+            hash_u64(hash, quantize(implementation_->activity_start_seconds, 1000000.0));
+            hash_u64(hash, quantize(implementation_->activity_duration_seconds, 1000000.0));
+            hash_u64(hash, quantize(implementation_->activity_intensity, 1000000.0));
+            hash_u64(hash, implementation_->retain_source_channels ? 1u : 0u);
         }
         if (implementation_->minimum_rr_seconds > 0.0 || implementation_->maximum_rr_seconds > 0.0)
         {

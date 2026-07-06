@@ -19,6 +19,7 @@
 #include <signal_synth/ppg_model.h>
 #include <signal_synth/signal_quality.h>
 #include <signal_synth/scenario_authoring.h>
+#include <signal_synth/scenario_stress.h>
 #include <signal_synth/synsigra_api.h>
 
 #include <string>
@@ -56,6 +57,7 @@ int main()
     signal_synth::hrv_score_result hrv_score;
     signal_synth::ecg_beat_classification_result beat_classification;
     signal_synth::scenario_pack_analysis authoring_analysis;
+    signal_synth::scenario_parameter_draw parameter_draw;
 
     if (legacy.amplitude_r <= 0.0 || !signal_synth::ecg_model(model).valid() || !signal_synth::clinical_ecg_generator(clinical).valid())
         return 1;
@@ -99,6 +101,8 @@ int main()
         return 11;
     if (authoring_analysis.success || std::string(signal_synth::scenario_authoring_metadata_version()).empty())
         return 20;
+    if (!parameter_draw.parameter.empty())
+        return 21;
     if (!wfdb_bundle.artifacts.empty() || !edf_bdf_bundle.artifacts.empty())
         return 15;
     if (hrv_analysis.metric_definition_version.empty() || hrv_analysis.interpolation_rate_hz <= 0.0)

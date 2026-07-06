@@ -28,6 +28,46 @@ namespace signal_synth
         unsigned long long seed;
     };
 
+    struct scenario_randomization_envelope
+    {
+        std::string parameter;
+        double minimum;
+        double maximum;
+    };
+
+    struct scenario_randomization_config
+    {
+        scenario_randomization_config();
+
+        bool enabled;
+        unsigned long long seed;
+        std::vector<scenario_randomization_envelope> envelopes;
+    };
+
+    struct physiology_coupling_config
+    {
+        physiology_coupling_config();
+
+        double respiration_frequency_hz;
+        double respiratory_rr_amplitude_seconds;
+        double ecg_baseline_amplitude_mv;
+        double ppg_amplitude_modulation_ratio;
+        double activity_start_seconds;
+        double activity_duration_seconds;
+        double activity_intensity;
+        unsigned long long seed;
+    };
+
+    struct scenario_output_config
+    {
+        scenario_output_config();
+
+        bool compact;
+        bool retain_source_channels;
+        bool include_waveform_csv;
+        bool include_edf_bdf;
+    };
+
     enum ecg_scenario_json_message_code
     {
         ecg_json_syntax = 0,
@@ -66,6 +106,9 @@ namespace signal_synth
         ecg_qa_scenario ecg;
         hrv_scenario_config hrv;
         ppg_config ppg;
+        scenario_randomization_config randomization;
+        physiology_coupling_config physiology;
+        scenario_output_config output;
         signal_quality_config signal_quality;
 
         unsigned int sample_count() const;

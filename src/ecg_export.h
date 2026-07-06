@@ -6,6 +6,7 @@
 #include "hrv_metrics.h"
 #include "ppg_model.h"
 #include "signal_quality.h"
+#include "scenario_stress.h"
 
 #include <string>
 #include <vector>
@@ -39,6 +40,8 @@ namespace signal_synth
         double lf_hf_ratio;
         double total_power_seconds2;
         unsigned int ppg_pulse_count;
+        unsigned int ppg_expected_pulse_count;
+        unsigned int ppg_missing_pulse_count;
         double mean_ppg_onset_delay_seconds;
         double mean_ppg_peak_delay_seconds;
         double total_artifact_seconds;
@@ -50,6 +53,9 @@ namespace signal_synth
     {
         ecg_scenario_document document;
         ecg_scenario_json_result document_identity;
+        ecg_scenario_document resolved_document;
+        ecg_scenario_json_result resolved_document_identity;
+        std::vector<scenario_parameter_draw> parameter_draws;
         std::string render_identity;
         clinical_ecg_record record;
         ecg_scenario_report scenario_report;

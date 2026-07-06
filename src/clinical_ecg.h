@@ -207,6 +207,9 @@ namespace signal_synth
         double hrv_hf_bandwidth_hz;
         double hrv_respiratory_frequency_hz;
         double hrv_respiratory_amplitude_seconds;
+        double activity_start_seconds;
+        double activity_duration_seconds;
+        double activity_intensity;
         double first_degree_pr_ms;
         unsigned int mobitz_cycle_length;
         double wenckebach_pr_increment_ms;
@@ -262,6 +265,7 @@ namespace signal_synth
         clinical_scenario_config scenario;
         clinical_lead_config leads;
         clinical_source_config sources;
+        bool retain_source_channels;
     };
 
     struct clinical_atrial_event

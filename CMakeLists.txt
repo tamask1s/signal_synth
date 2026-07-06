@@ -24,6 +24,7 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/challenge_package.h
     src/challenge_assembly.h
     src/scenario_authoring.h
+    src/scenario_stress.h
     src/signal_quality.h
     src/ecg_pack.h
     src/ecg_pack_score.h)
@@ -50,6 +51,7 @@ add_library(
     src/challenge_package.cpp
     src/challenge_assembly.cpp
     src/scenario_authoring.cpp
+    src/scenario_stress.cpp
     src/signal_quality.cpp
     src/ecg_pack.cpp
     src/ecg_pack_score.cpp)

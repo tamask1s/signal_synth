@@ -206,7 +206,7 @@ namespace signal_synth
                 return false;
             const double timing_values[] = {config.timing.p_duration_ms, config.timing.pr_interval_ms, config.timing.qrs_duration_ms, config.timing.qrs_q_fraction, config.timing.qrs_r_fraction, config.timing.qrs_s_fraction, config.timing.t_duration_ms, config.timing.t_peak_fraction, config.timing.qt_interval_ms, config.timing.qtc_ms};
             const double morphology_values[] = {config.morphology.p_amplitude_mv, config.morphology.q_amplitude_mv, config.morphology.r_amplitude_mv, config.morphology.s_amplitude_mv, config.morphology.t_amplitude_mv, config.morphology.st_j_amplitude_mv, config.morphology.st_slope_mv_per_second, config.morphology.p_axis_degrees, config.morphology.qrs_axis_degrees, config.morphology.t_axis_degrees, config.morphology.p_elevation_degrees, config.morphology.qrs_elevation_degrees, config.morphology.t_elevation_degrees, config.morphology.presence_threshold_mv};
-            const double rhythm_values[] = {config.rhythm.heart_rate_bpm, config.rhythm.atrial_rate_bpm, config.rhythm.ventricular_escape_rate_bpm, config.rhythm.rr_variability_seconds, config.rhythm.minimum_rr_seconds, config.rhythm.maximum_rr_seconds, config.rhythm.hrv_lf_hf_ratio, config.rhythm.hrv_lf_center_hz, config.rhythm.hrv_lf_bandwidth_hz, config.rhythm.hrv_hf_center_hz, config.rhythm.hrv_hf_bandwidth_hz, config.rhythm.hrv_respiratory_frequency_hz, config.rhythm.hrv_respiratory_amplitude_seconds, config.rhythm.first_degree_pr_ms, config.rhythm.wenckebach_pr_increment_ms};
+            const double rhythm_values[] = {config.rhythm.heart_rate_bpm, config.rhythm.atrial_rate_bpm, config.rhythm.ventricular_escape_rate_bpm, config.rhythm.rr_variability_seconds, config.rhythm.minimum_rr_seconds, config.rhythm.maximum_rr_seconds, config.rhythm.hrv_lf_hf_ratio, config.rhythm.hrv_lf_center_hz, config.rhythm.hrv_lf_bandwidth_hz, config.rhythm.hrv_hf_center_hz, config.rhythm.hrv_hf_bandwidth_hz, config.rhythm.hrv_respiratory_frequency_hz, config.rhythm.hrv_respiratory_amplitude_seconds, config.rhythm.activity_start_seconds, config.rhythm.activity_duration_seconds, config.rhythm.activity_intensity, config.rhythm.first_degree_pr_ms, config.rhythm.wenckebach_pr_increment_ms};
             const double scenario_values[] = {config.scenario.premature_coupling_ratio, config.scenario.compensatory_pause_ratio, config.scenario.sinus_pause_ratio, config.scenario.episode_start_seconds, config.scenario.episode_duration_seconds, config.scenario.episode_rate_bpm};
             for (double value : timing_values)
                 if (!finite(value))
@@ -239,6 +239,8 @@ namespace signal_synth
             if (config.rhythm.rr_variability_seconds < 0.0 || config.rhythm.minimum_rr_seconds <= 0.0 || config.rhythm.maximum_rr_seconds <= config.rhythm.minimum_rr_seconds || config.rhythm.first_degree_pr_ms < config.timing.p_duration_ms || config.rhythm.wenckebach_pr_increment_ms < 0.0 || config.morphology.presence_threshold_mv < 0.0 || config.rhythm.mobitz_cycle_length < 2 || config.rhythm.flutter_conduction_ratio < 1)
                 return false;
             if (config.rhythm.hrv_modulation_enabled && (config.rhythm.hrv_lf_hf_ratio < 0.0 || config.rhythm.hrv_lf_hf_ratio > 100.0 || config.rhythm.hrv_lf_center_hz <= 0.0 || config.rhythm.hrv_lf_center_hz > 1.0 || config.rhythm.hrv_lf_bandwidth_hz <= 0.0 || config.rhythm.hrv_lf_bandwidth_hz > 1.0 || config.rhythm.hrv_hf_center_hz <= 0.0 || config.rhythm.hrv_hf_center_hz > 1.0 || config.rhythm.hrv_hf_bandwidth_hz <= 0.0 || config.rhythm.hrv_hf_bandwidth_hz > 1.0 || config.rhythm.hrv_respiratory_frequency_hz <= 0.0 || config.rhythm.hrv_respiratory_frequency_hz > 1.0 || config.rhythm.hrv_respiratory_amplitude_seconds < 0.0 || config.rhythm.hrv_respiratory_amplitude_seconds > std::sqrt(2.0) * config.rhythm.rr_variability_seconds))
+                return false;
+            if (config.rhythm.activity_start_seconds < 0.0 || config.rhythm.activity_duration_seconds < 0.0 || config.rhythm.activity_intensity < 0.0 || config.rhythm.activity_intensity > 1.0 || (config.rhythm.activity_intensity > 0.0 && config.rhythm.activity_duration_seconds <= 0.0))
                 return false;
             if (config.scenario.premature_coupling_ratio <= 0.0 || config.scenario.premature_coupling_ratio >= 1.0 || config.scenario.compensatory_pause_ratio < 1.0 || config.scenario.sinus_pause_ratio <= 1.0)
                 return false;
@@ -342,6 +344,17 @@ namespace signal_synth
             return config.scenario.pacing_non_capture_every_n_beats > 0 && (pacing_cycle_index + 1) % config.scenario.pacing_non_capture_every_n_beats == 0;
         }
 
+        double activity_level(const clinical_rhythm_config& rhythm, double time_seconds)
+        {
+            if (rhythm.activity_intensity <= 0.0 || time_seconds < rhythm.activity_start_seconds || time_seconds >= rhythm.activity_start_seconds + rhythm.activity_duration_seconds)
+                return 0.0;
+            const double position = time_seconds - rhythm.activity_start_seconds;
+            const double remaining = rhythm.activity_duration_seconds - position;
+            const double taper = std::min(2.0, 0.2 * rhythm.activity_duration_seconds);
+            const double edge = taper > 0.0 ? std::min(1.0, std::min(position, remaining) / taper) : 1.0;
+            return rhythm.activity_intensity * (0.5 - 0.5 * std::cos(PI * edge));
+        }
+
         void generate_sequential_timeline(const clinical_ecg_config& config, double duration_seconds, generated_clinical_data& output)
         {
             const double nominal_rr = 60.0 / config.rhythm.heart_rate_bpm;
@@ -360,20 +373,24 @@ namespace signal_synth
                     origin = clinical_origin_paced;
                 if (beat_index > 0)
                 {
+                    const double activity = activity_level(config.rhythm, previous_r);
+                    const double effective_nominal_rr = 60.0 / (config.rhythm.heart_rate_bpm + 40.0 * activity);
+                    rr = effective_nominal_rr;
                     rr += config.rhythm.hrv_modulation_enabled ? hrv_rr_modulation(config.rhythm, previous_r) : config.rhythm.rr_variability_seconds * deterministic_normal(config.rhythm.seed, beat_index);
+                    rr += 0.025 * activity * deterministic_normal(config.rhythm.seed ^ 0x4143544956495459ULL, beat_index);
                     if (previous_premature)
                     {
-                        rr = nominal_rr * config.scenario.compensatory_pause_ratio;
+                        rr = effective_nominal_rr * config.scenario.compensatory_pause_ratio;
                         previous_premature = false;
                     }
                     else if (config.scenario.premature_every_n_beats > 0 && (beat_index + 1) % config.scenario.premature_every_n_beats == 0)
                     {
-                        rr = nominal_rr * config.scenario.premature_coupling_ratio;
+                        rr = effective_nominal_rr * config.scenario.premature_coupling_ratio;
                         origin = config.scenario.premature_origin;
                         previous_premature = true;
                     }
                     else if (config.scenario.sinus_pause_every_n_beats > 0 && (beat_index + 1) % config.scenario.sinus_pause_every_n_beats == 0)
-                        rr = nominal_rr * config.scenario.sinus_pause_ratio;
+                        rr = effective_nominal_rr * config.scenario.sinus_pause_ratio;
                     const double unclipped_rr = rr;
                     rr = std::max(config.rhythm.minimum_rr_seconds, std::min(config.rhythm.maximum_rr_seconds, rr));
                     rr_was_clipped = rr != unclipped_rr;
@@ -902,22 +919,27 @@ namespace signal_synth
         void combine_sources(const clinical_ecg_config& config, const std::vector<vec3> raw_sources[clinical_source_count], generated_clinical_data& output, std::vector<vec3>& total)
         {
             total.assign(output.sample_count, vec3{0.0, 0.0, 0.0});
-            for (int source = 0; source < clinical_source_count; ++source)
+            if (config.retain_source_channels)
+            {
+                for (int source = 0; source < clinical_source_count; ++source)
+                    for (int axis = 0; axis < clinical_axis_count; ++axis)
+                        output.sources[source][axis].assign(output.sample_count, 0.0);
                 for (int axis = 0; axis < clinical_axis_count; ++axis)
-                    output.sources[source][axis].assign(output.sample_count, 0.0);
-            for (int axis = 0; axis < clinical_axis_count; ++axis)
-                output.vcg[axis].assign(output.sample_count, 0.0);
+                    output.vcg[axis].assign(output.sample_count, 0.0);
+            }
             for (unsigned int sample = 0; sample < output.sample_count; ++sample)
             {
                 for (int source = 0; source < clinical_source_count; ++source)
                 {
                     const vec3 oriented = rotate_vector(raw_sources[source][sample], config.leads);
                     total[sample] = add(total[sample], oriented);
-                    for (int axis = 0; axis < clinical_axis_count; ++axis)
-                        output.sources[source][axis][sample] = axis_value(oriented, axis);
+                    if (config.retain_source_channels)
+                        for (int axis = 0; axis < clinical_axis_count; ++axis)
+                            output.sources[source][axis][sample] = axis_value(oriented, axis);
                 }
-                for (int axis = 0; axis < clinical_axis_count; ++axis)
-                    output.vcg[axis][sample] = axis_value(total[sample], axis);
+                if (config.retain_source_channels)
+                    for (int axis = 0; axis < clinical_axis_count; ++axis)
+                        output.vcg[axis][sample] = axis_value(total[sample], axis);
             }
         }
 
@@ -1109,7 +1131,7 @@ namespace signal_synth
     }
 
     clinical_rhythm_config::clinical_rhythm_config()
-        : rhythm(clinical_rhythm_sinus), av_conduction(clinical_av_normal), intraventricular_conduction(clinical_iv_normal), preexcitation(clinical_preexcitation_none), pacing_mode(clinical_pacing_ventricular), heart_rate_bpm(60.0), atrial_rate_bpm(75.0), ventricular_escape_rate_bpm(35.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.25), maximum_rr_seconds(3.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), first_degree_pr_ms(240.0), mobitz_cycle_length(4), wenckebach_pr_increment_ms(40.0), flutter_conduction_ratio(2), flutter_conduction_pattern(clinical_flutter_fixed), seed(0x434c494e4943414cULL)
+        : rhythm(clinical_rhythm_sinus), av_conduction(clinical_av_normal), intraventricular_conduction(clinical_iv_normal), preexcitation(clinical_preexcitation_none), pacing_mode(clinical_pacing_ventricular), heart_rate_bpm(60.0), atrial_rate_bpm(75.0), ventricular_escape_rate_bpm(35.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.25), maximum_rr_seconds(3.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), first_degree_pr_ms(240.0), mobitz_cycle_length(4), wenckebach_pr_increment_ms(40.0), flutter_conduction_ratio(2), flutter_conduction_pattern(clinical_flutter_fixed), seed(0x434c494e4943414cULL)
     {
     }
 
@@ -1136,7 +1158,7 @@ namespace signal_synth
     }
 
     clinical_ecg_config::clinical_ecg_config()
-        : sampling_rate_hz(500)
+        : sampling_rate_hz(500), retain_source_channels(true)
     {
     }
 

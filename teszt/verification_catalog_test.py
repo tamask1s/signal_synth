@@ -32,6 +32,7 @@ def main():
     expected = set([
         "r_peak_stress_v1", "hrv_v1", "ecg_beat_classification_v1", "ecg_rhythm_v1",
         "signal_quality_v1", "ecg_morphology_stress_v1", "ppg_alignment_v1", "combined_worst_case_v1",
+        "wearable_stress_v1",
     ])
     seen = set()
     for entry in catalog["packs"]:

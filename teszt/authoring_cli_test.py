@@ -36,7 +36,7 @@ def main():
     source_dir = os.environ["SIGNAL_SYNTH_SOURCE_DIR"]
     schema = run_json([cli, "authoring", "schema"])
     assert schema["schema_version"] == 1
-    assert schema["scenario_schema_version"] == 2
+    assert schema["scenario_schema_version"] == 3
     assert len(schema["fields"]) >= 40
     assert len(schema["conditions"]) == 71
     assert len(schema["artifacts"]) == 15

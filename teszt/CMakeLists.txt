@@ -54,6 +54,7 @@ signal_synth_add_test(detection_io_test detection_io_test.cpp TEST-DETECTION-IO-
 signal_synth_add_test(synsigra_api_test synsigra_api_test.cpp TEST-FACADE-001)
 signal_synth_add_test(challenge_package_test challenge_package_test.cpp TEST-CHALLENGE-PACKAGE-001)
 signal_synth_add_test(scenario_authoring_test scenario_authoring_test.cpp TEST-AUTHORING-001)
+signal_synth_add_test(scenario_stress_test scenario_stress_test.cpp TEST-SCENARIO-STRESS-001)
 
 add_test(
     NAME TEST-BUILD-001

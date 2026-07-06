@@ -110,12 +110,14 @@ Issue map:
       multi-wavelength channels, motion artifact, low perfusion, baseline
       drift, saturation/clipping, and contact loss.
 - [ ] Add ECG/PPG synchronization scenarios with pulse transit time variation,
-      arrhythmia-linked missing pulses, and sensor delay/clock drift.
-- [ ] Add respiration and activity modulation hooks that affect ECG baseline,
+      arrhythmia-linked missing pulses, and sensor delay/clock drift. Basic
+      variable delay, deterministic missing-pulse cadence, sensor delay, and
+      clock drift are implemented; arrhythmia-linked pulse loss remains.
+- [x] Add respiration and activity modulation hooks that affect ECG baseline,
       PPG amplitude, and HRV together.
-- [ ] Add controlled randomization envelopes with reproducible seeds and
+- [x] Add controlled randomization envelopes with reproducible seeds and
       recorded parameter draws.
-- [ ] Add longer-duration generation paths for HRV and wearable endurance
+- [x] Add longer-duration generation paths for HRV and wearable endurance
       tests without excessive memory or package size.
 
 ## 7. Developer And Release Quality
