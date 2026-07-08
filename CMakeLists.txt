@@ -67,6 +67,21 @@ target_include_directories(
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
         $<INSTALL_INTERFACE:include>)
 
+find_package(Git QUIET)
+set(SIGNAL_SYNTH_GIT_COMMIT "unknown")
+if(GIT_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --verify HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE SIGNAL_SYNTH_GIT_COMMIT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+endif()
+if(NOT SIGNAL_SYNTH_GIT_COMMIT)
+    set(SIGNAL_SYNTH_GIT_COMMIT "unknown")
+endif()
+target_compile_definitions(signal_synth PRIVATE SIGNAL_SYNTH_GIT_COMMIT="${SIGNAL_SYNTH_GIT_COMMIT}")
+
 if(MSVC)
     target_compile_options(signal_synth PRIVATE /W4)
 else()

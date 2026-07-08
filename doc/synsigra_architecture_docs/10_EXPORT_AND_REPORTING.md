@@ -17,18 +17,22 @@ synsigra_export_<scenario_id>_<fingerprint>/
   README.txt
   scenario.json
   metadata.json
+  provenance.json
   waveform.csv
   annotations.json
   rr_tachogram.csv
   hrv_metrics.json
   ground_truth_metrics.json
   warnings.json
+  ENGINEERING_CLAIM_BOUNDARY.txt
   report.html
   synsigra.hea
   synsigra.dat
   synsigra.atr
+  wfdb_metadata.json
   synsigra.edf
   synsigra.bdf
+  edf_bdf_metadata.json
 ```
 
 Later:
@@ -91,7 +95,8 @@ Required fields:
     "name": "signal_synth",
     "product": "Synsigra Testbench",
     "version": "0.1.0",
-    "git_commit": "unknown"
+    "git_commit": "unknown",
+    "build_identity": "signal_synth/unknown"
   },
   "scenario": {
     "id": "hrv_clean_lfhf_001",
@@ -101,7 +106,12 @@ Required fields:
   "render": {
     "sample_rate_hz": 500,
     "duration_seconds": 300,
-    "created_at": "2026-07-01T00:00:00Z"
+    "timestamp_policy": "not_recorded_for_deterministic_local_export"
+  },
+  "contracts": {
+    "package_contract_version": "synsigra_challenge_package_v1",
+    "scoring_manifest_contract_version": "synsigra_scoring_manifest_v1",
+    "verifier_version": "0.5.0-dev"
   },
   "license": {
     "export_id": "exp_...",
@@ -162,6 +172,10 @@ Report sections:
 Use:
 
 > This report describes synthetic engineering test signals generated from the specified scenario. It is intended for research, development, software testing and algorithm QA. It is not a clinical validation certificate, not a diagnostic result, and not standalone evidence of medical-device conformity.
+
+Generated packages must also include `provenance.json` and
+`ENGINEERING_CLAIM_BOUNDARY.txt` so archived artifacts retain generator
+identity, contract versions and the exact engineering QA claim boundary.
 
 ## 9. Watermarking
 

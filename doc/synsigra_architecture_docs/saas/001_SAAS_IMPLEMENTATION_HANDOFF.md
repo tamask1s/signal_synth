@@ -241,12 +241,16 @@ Already satisfied for initial SaaS implementation:
 - WFDB and EDF+/BDF+ exports have deterministic writer tests and native-reader
   smoke tests;
 - CLI has stable stdout/stderr and exit-code smoke coverage;
-- generator version is recorded in the package manifest.
+- generator version is recorded in the package manifest;
+- package-level `provenance.json` records generator git commit when available,
+  build identity, package contract, scoring contract and verifier version;
+- package-level and per-case `ENGINEERING_CLAIM_BOUNDARY.txt` files record the
+  deterministic engineering QA boundary.
 
 Still required in the SaaS service layer:
 
-- capture generator git commit or container image digest outside the package
-  manifest as audit metadata;
+- index generator git commit or container image digest from package provenance
+  and worker metadata as searchable audit metadata;
 - store the package fingerprint and manifest hash as immutable object metadata;
 - decide archive format and object-storage key convention;
 - enforce organization/user authorization for package download;

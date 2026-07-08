@@ -75,7 +75,7 @@ namespace signal_synth
     {
         if (artifact_name == "scenario.json")
             return challenge_file_scenario_json;
-        if (artifact_name == "metadata.json" || artifact_name == "resolved_scenario.json" || artifact_name == "randomization.json" || artifact_name == "warnings.json" || artifact_name == "wfdb_metadata.json" || artifact_name == "edf_bdf_metadata.json" || artifact_name == "case_summary.json" || artifact_name == "scoring_manifest.json")
+        if (artifact_name == "metadata.json" || artifact_name == "provenance.json" || artifact_name == "resolved_scenario.json" || artifact_name == "randomization.json" || artifact_name == "warnings.json" || artifact_name == "wfdb_metadata.json" || artifact_name == "edf_bdf_metadata.json" || artifact_name == "case_summary.json" || artifact_name == "scoring_manifest.json")
             return challenge_file_metadata_json;
         if (artifact_name == "waveform.csv")
             return challenge_file_waveform_csv;
@@ -85,7 +85,7 @@ namespace signal_synth
             return challenge_file_ground_truth_metrics_json;
         if (artifact_name == "report.html")
             return challenge_file_report_html;
-        if (artifact_name == "README.txt")
+        if (artifact_name == "README.txt" || artifact_name == "ENGINEERING_CLAIM_BOUNDARY.txt")
             return challenge_file_readme;
         if (artifact_name == "synsigra.hea")
             return challenge_file_wfdb_header;

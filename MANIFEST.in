@@ -1,4 +1,6 @@
 include README.md
+include RELEASE_NOTES.md
+include PROVENANCE_BUNDLE.md
 include DATA_LICENSES.md
 include LEGAL_PROVENANCE.md
 include python/README.md

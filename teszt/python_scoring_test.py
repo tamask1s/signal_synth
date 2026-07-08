@@ -144,6 +144,15 @@ def main():
     challenge = ss.load_challenge(challenge_dir)
     assert challenge.package_id == "python_scoring_challenge"
     assert challenge.case_ids() == ["clean_ecg", "ppg_clean", "ppg_stress", "ppg_motion", "hrv_mild"]
+    provenance = read_json(os.path.join(challenge_dir, "provenance.json"))
+    assert provenance["metadata_type"] == "synsigra_package_provenance"
+    assert provenance["generator"]["version"] == "0.5.0-dev"
+    assert provenance["verifier"]["package_contract_version"] == "synsigra_challenge_package_v1"
+    assert "clinical validation" in provenance["claim_boundary"]["not_for"]
+    assert os.path.exists(os.path.join(challenge_dir, "ENGINEERING_CLAIM_BOUNDARY.txt"))
+    case_provenance = read_json(os.path.join(challenge_dir, "cases", "clean_ecg", "provenance.json"))
+    assert case_provenance["metadata_type"] == "synsigra_export_provenance"
+    assert case_provenance["scenario"]["id"] == "ecg_clean_001"
     assert len(challenge.case("clean_ecg").waveform()) > 0
     assert "II_mv" in challenge.case("clean_ecg").waveform().columns
     integrity = challenge.verify_integrity()

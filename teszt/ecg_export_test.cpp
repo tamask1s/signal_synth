@@ -78,9 +78,9 @@ int main()
 
     signal_synth::ecg_export_bundle bundle;
     ok &= check(signal_synth::build_ecg_export_bundle(render, bundle, result) && result.success, "build_export_bundle");
-    const char* expected[] = {"scenario.json","metadata.json","waveform.csv","annotations.json","rr_tachogram.csv","hrv_metrics.json","ground_truth_metrics.json","warnings.json","report.html","README.txt","synsigra.hea","synsigra.dat","synsigra.atr","wfdb_metadata.json","synsigra.edf","synsigra.bdf","edf_bdf_metadata.json"};
-    ok &= check(bundle.artifacts.size() == 17, "artifact_count");
-    for (unsigned int i = 0; i < 17; ++i)
+    const char* expected[] = {"scenario.json","metadata.json","provenance.json","waveform.csv","annotations.json","rr_tachogram.csv","hrv_metrics.json","ground_truth_metrics.json","warnings.json","ENGINEERING_CLAIM_BOUNDARY.txt","report.html","README.txt","synsigra.hea","synsigra.dat","synsigra.atr","wfdb_metadata.json","synsigra.edf","synsigra.bdf","edf_bdf_metadata.json"};
+    ok &= check(bundle.artifacts.size() == 19, "artifact_count");
+    for (unsigned int i = 0; i < 19; ++i)
         ok &= check(bundle.artifacts[i].name == expected[i] && !bundle.artifacts[i].content.empty(), "artifact_order_and_content");
 
     const signal_synth::ecg_text_artifact* csv = bundle.find("waveform.csv");
@@ -90,6 +90,9 @@ int main()
     const signal_synth::ecg_text_artifact* metrics = bundle.find("ground_truth_metrics.json");
     const signal_synth::ecg_text_artifact* report = bundle.find("report.html");
     const signal_synth::ecg_text_artifact* metadata = bundle.find("metadata.json");
+    const signal_synth::ecg_text_artifact* provenance = bundle.find("provenance.json");
+    const signal_synth::ecg_text_artifact* claim_boundary = bundle.find("ENGINEERING_CLAIM_BOUNDARY.txt");
+    const signal_synth::ecg_text_artifact* readme = bundle.find("README.txt");
     const signal_synth::ecg_text_artifact* wfdb_header = bundle.find("synsigra.hea");
     const signal_synth::ecg_text_artifact* wfdb_signal = bundle.find("synsigra.dat");
     const signal_synth::ecg_text_artifact* wfdb_annotations = bundle.find("synsigra.atr");
@@ -102,9 +105,12 @@ int main()
     ok &= check(tachogram && tachogram->content.find("beat_index,beat_time_seconds,rr_seconds,clipped,ectopic,artifact_overlap,excluded\n") == 0 && line_count(tachogram->content) == render.record.beat_count() + 1, "rr_tachogram_contract");
     ok &= check(hrv_metrics && hrv_metrics->content.find("\"definition_version\":\"synsigra_hrv_metrics_v1\"") != std::string::npos && hrv_metrics->content.find("\"tachogram\":[") != std::string::npos, "hrv_metrics_contract");
     ok &= check(metrics && metrics->content.find("\"sd1_seconds\":") != std::string::npos && metrics->content.find("\"lf_hf_ratio\":") != std::string::npos && metrics->content.find("\"assertions\":[") != std::string::npos, "metrics_contract");
-    ok &= check(metadata && metadata->content.find("\"channels\":[{\"name\":\"I\",\"unit\":\"mV\"}") != std::string::npos && metadata->content.find("{\"name\":\"V6\",\"unit\":\"mV\"}]") != std::string::npos, "channel_metadata_contract");
+    ok &= check(metadata && metadata->content.find("\"channels\":[{\"name\":\"I\",\"unit\":\"mV\"}") != std::string::npos && metadata->content.find("{\"name\":\"V6\",\"unit\":\"mV\"}]") != std::string::npos && metadata->content.find("\"git_commit\":") != std::string::npos, "channel_metadata_contract");
+    ok &= check(provenance && provenance->content.find("\"metadata_type\":\"synsigra_export_provenance\"") != std::string::npos && provenance->content.find("\"git_commit\":") != std::string::npos && provenance->content.find("\"package_contract_version\":\"synsigra_challenge_package_v1\"") != std::string::npos && provenance->content.find("\"scoring_manifest_contract_version\":\"synsigra_scoring_manifest_v1\"") != std::string::npos, "provenance_contract");
+    ok &= check(claim_boundary && claim_boundary->content.find("engineering QA and algorithm verification") != std::string::npos && claim_boundary->content.find("clinical validation certification") != std::string::npos, "claim_boundary_contract");
+    ok &= check(readme && readme->content.find("provenance.json") != std::string::npos && readme->content.find("ENGINEERING_CLAIM_BOUNDARY.txt") != std::string::npos, "readme_provenance_pointer");
     ok &= check(report && report->content.find("&lt;Export &amp; Report&gt;") != std::string::npos && report->content.find("<polyline") != std::string::npos, "html_escape_and_actual_plot");
-    ok &= check(report && report->content.find("not a clinical validation certificate") != std::string::npos && report->content.find("clinically validated") == std::string::npos, "controlled_report_claims");
+    ok &= check(report && report->content.find("not a clinical validation certificate") != std::string::npos && report->content.find("provenance.json") != std::string::npos && report->content.find("clinically validated") == std::string::npos, "controlled_report_claims");
     ok &= check(csv && csv->content.find("ppg_green_au") == std::string::npos && annotations && annotations->content.find("\"ppg_fiducials\"") == std::string::npos, "schema_v1_export_remains_ecg_only");
     ok &= check(wfdb_header && wfdb_header->content.find(wfdb_record_line("synsigra", 12, render.record)) == 0 && wfdb_header->content.find("synsigra.dat 16 1000(0)/mV 16 0") != std::string::npos, "wfdb_header_contract");
     ok &= check(wfdb_signal && wfdb_signal->media_type == "application/octet-stream" && wfdb_signal->content.size() == render.record.sample_count() * render.record.lead_count() * 2u, "wfdb_signal_size");
@@ -125,8 +131,9 @@ int main()
 
     signal_synth::ecg_render_bundle incomplete;
     signal_synth::ecg_export_bundle preserved_export = bundle;
-    ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 17, "failed_export_is_transactional");
+    ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 19, "failed_export_is_transactional");
     ok &= check(std::string(signal_synth::signal_synth_generator_version()) == "0.5.0-dev", "runtime_generator_version");
+    ok &= check(std::string(signal_synth::signal_synth_package_contract_version()) == "synsigra_challenge_package_v1" && std::string(signal_synth::signal_synth_scoring_manifest_contract_version()) == "synsigra_scoring_manifest_v1" && std::string(signal_synth::signal_synth_verifier_version()) == "0.5.0-dev", "runtime_contract_versions");
 
     signal_synth::ecg_scenario_document paced_document = document;
     paced_document.schema_version = 2;

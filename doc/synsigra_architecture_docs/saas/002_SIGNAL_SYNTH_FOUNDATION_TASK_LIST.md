@@ -85,7 +85,7 @@ Issue map:
 - [ ] Add per-case `case_summary.json` with concise user-facing facts:
       duration, channels, sampling rate, targets, artifact intervals, and
       compatible scoring modes.
-- [ ] Add package-level provenance fields for generator git commit/container
+- [x] Add package-level provenance fields for generator git commit/container
       digest, not only generator version where available.
 - [ ] Add optional package signing or at least detached manifest checksum for
       long-lived release artifacts.

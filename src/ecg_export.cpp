@@ -10,6 +10,10 @@
 #include <locale>
 #include <sstream>
 
+#ifndef SIGNAL_SYNTH_GIT_COMMIT
+#define SIGNAL_SYNTH_GIT_COMMIT "unknown"
+#endif
+
 namespace
 {
     std::string json_string(const std::string& value)
@@ -665,6 +669,8 @@ namespace
         output.imbue(std::locale::classic());
         output << "{\"schema_version\":1,\"generator\":{\"name\":\"signal_synth\",\"product\":\"Synsigra Testbench\",\"version\":"
                << json_string(signal_synth::signal_synth_generator_version())
+               << ",\"git_commit\":" << json_string(signal_synth::signal_synth_generator_git_commit())
+               << ",\"build_identity\":" << json_string(signal_synth::signal_synth_build_identity())
                << "},\"scenario\":{\"id\":" << json_string(render.document.scenario_id)
                << ",\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint)
                << ",\"generation_fingerprint\":" << render.document_identity.generation_fingerprint
@@ -695,6 +701,56 @@ namespace
                << ",\"source_channels_retained\":" << (render.resolved_document.output.retain_source_channels ? "true" : "false")
                << "},\"intended_use\":\"synthetic engineering algorithm testing and QA\","
                << "\"not_for\":\"diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment\"}";
+        return output.str();
+    }
+
+    std::string provenance_json(const signal_synth::ecg_render_bundle& render)
+    {
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << std::setprecision(std::numeric_limits<double>::max_digits10)
+               << "{\"schema_version\":1,\"metadata_type\":\"synsigra_export_provenance\""
+               << ",\"generator\":{\"name\":\"signal_synth\",\"product\":\"Synsigra Testbench\",\"version\":"
+               << json_string(signal_synth::signal_synth_generator_version())
+               << ",\"git_commit\":" << json_string(signal_synth::signal_synth_generator_git_commit())
+               << ",\"build_identity\":" << json_string(signal_synth::signal_synth_build_identity()) << '}'
+               << ",\"verifier\":{\"name\":\"synsigra\",\"version\":"
+               << json_string(signal_synth::signal_synth_verifier_version())
+               << ",\"package_contract_version\":" << json_string(signal_synth::signal_synth_package_contract_version())
+               << ",\"scoring_manifest_contract_version\":" << json_string(signal_synth::signal_synth_scoring_manifest_contract_version()) << '}'
+               << ",\"scenario\":{\"id\":" << json_string(render.document.scenario_id)
+               << ",\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint)
+               << ",\"generation_fingerprint\":" << render.document_identity.generation_fingerprint
+               << ",\"resolved_document_fingerprint\":" << json_string(render.resolved_document_identity.document_fingerprint)
+               << ",\"resolved_generation_fingerprint\":" << render.resolved_document_identity.generation_fingerprint
+               << ",\"render_identity\":" << json_string(render.render_identity)
+               << ",\"ecg_run_fingerprint\":" << render.scenario_report.run_fingerprint()
+               << ",\"scenario_schema_version\":" << render.document.schema_version
+               << ",\"engine_version\":" << render.scenario_report.engine_version()
+               << ",\"seed\":" << render.resolved_document.ecg.seed() << '}'
+               << ",\"render\":{\"sample_rate_hz\":" << render.record.sampling_rate_hz()
+               << ",\"sample_count\":" << render.record.sample_count()
+               << ",\"duration_seconds\":" << render.document.duration_seconds
+               << ",\"lead_count\":" << render.record.lead_count()
+               << ",\"has_ppg\":" << (render.ppg.sample_count() ? "true" : "false")
+               << ",\"has_motion_reference\":" << (render.signal_quality.accelerometer.empty() ? "false" : "true") << '}'
+               << ",\"provenance_checklist\":["
+               << "{\"item\":\"scenario_json\",\"artifact\":\"scenario.json\",\"required\":true},"
+               << "{\"item\":\"metadata_json\",\"artifact\":\"metadata.json\",\"required\":true},"
+               << "{\"item\":\"provenance_json\",\"artifact\":\"provenance.json\",\"required\":true},"
+               << "{\"item\":\"waveform_samples\",\"artifact\":\"waveform.csv or native waveform exports\",\"required\":true},"
+               << "{\"item\":\"annotations\",\"artifact\":\"annotations.json\",\"required\":true},"
+               << "{\"item\":\"ground_truth_metrics\",\"artifact\":\"ground_truth_metrics.json\",\"required\":true},"
+               << "{\"item\":\"hrv_metrics\",\"artifact\":\"hrv_metrics.json\",\"required\":true},"
+               << "{\"item\":\"warnings\",\"artifact\":\"warnings.json\",\"required\":true},"
+               << "{\"item\":\"claim_boundary\",\"artifact\":\"ENGINEERING_CLAIM_BOUNDARY.txt\",\"required\":true},"
+               << "{\"item\":\"human_report\",\"artifact\":\"report.html\",\"required\":true}"
+               << "]"
+               << ",\"claim_boundary\":{\"intended_use\":\"deterministic synthetic biosignal engineering QA and algorithm verification\""
+               << ",\"verifies\":\"Package files are internally consistent with the generated synthetic scenario, ground-truth annotations and scoring contract.\""
+               << ",\"does_not_verify\":\"Patient physiology, diagnostic performance on real populations, clinical safety, clinical effectiveness, or regulatory conformity.\""
+               << ",\"not_for\":\"diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment\"}"
+               << ",\"determinism\":{\"byte_stable_export\":true,\"timestamp_policy\":\"not_recorded_for_deterministic_local_export\"}}";
         return output.str();
     }
 
@@ -775,13 +831,18 @@ namespace
                << "</style></head><body><h1>Synthetic Scenario Performance Report</h1>"
                << "<p class=\"notice\">This report describes synthetic engineering test signals generated from the specified scenario. "
                << "It is intended for research, development, software testing and algorithm QA. It is not a clinical validation certificate, "
-               << "not a diagnostic result, and not standalone evidence of medical-device conformity.</p>"
+               << "not a diagnostic result, and not standalone evidence of medical-device conformity. See provenance.json and "
+               << "ENGINEERING_CLAIM_BOUNDARY.txt for generator identity and the auditable engineering QA claim boundary.</p>"
                << "<h2>Identity</h2><table><tr><th>Scenario</th><td>" << html_text(render.document.scenario_id)
                << "</td></tr><tr><th>Document fingerprint</th><td>" << html_text(render.document_identity.document_fingerprint)
                << "</td></tr><tr><th>Generation fingerprint</th><td>" << render.document_identity.generation_fingerprint
                << "</td></tr><tr><th>Render identity</th><td>" << html_text(render.render_identity)
                << "</td></tr><tr><th>ECG run fingerprint</th><td>" << render.scenario_report.run_fingerprint()
                << "</td></tr><tr><th>Generator</th><td>" << signal_synth::signal_synth_generator_version()
+               << "</td></tr><tr><th>Generator git commit</th><td>" << html_text(signal_synth::signal_synth_generator_git_commit())
+               << "</td></tr><tr><th>Build identity</th><td>" << html_text(signal_synth::signal_synth_build_identity())
+               << "</td></tr><tr><th>Package contract</th><td>" << signal_synth::signal_synth_package_contract_version()
+               << "</td></tr><tr><th>Verifier</th><td>" << signal_synth::signal_synth_verifier_version()
                << "</td></tr></table><h2>Lead II Preview</h2>" << svg_preview(render)
                << (render.ppg.sample_count() ? "<h2>PPG Preview</h2>" + ppg_svg_preview(render) : "")
                << "<h2>Ground Truth Summary</h2><table><tr><th>Beats</th><td>" << render.metrics.beat_count
@@ -825,8 +886,8 @@ namespace
             output << "<li>" << html_text(render.scenario_report.issue_message(i)) << "</li>";
         output << "<li>The compact cardiac phantom is not population-fitted clinical evidence.</li>"
                << (render.signal_quality.artifacts.empty() ? "<li>No acquisition artifacts are present in this scenario.</li>" : "<li>Acquisition artifacts corrupt waveform samples but do not change construction ground truth.</li>") << "</ul>"
-               << "<h2>Artifacts</h2><p>scenario.json, metadata.json, waveform.csv, annotations.json, "
-               << "rr_tachogram.csv, hrv_metrics.json, ground_truth_metrics.json, warnings.json, report.html, README.txt, synsigra.hea, synsigra.dat, synsigra.atr, wfdb_metadata.json, synsigra.edf, synsigra.bdf, edf_bdf_metadata.json</p></body></html>";
+               << "<h2>Artifacts</h2><p>scenario.json, metadata.json, provenance.json, waveform.csv, annotations.json, "
+               << "rr_tachogram.csv, hrv_metrics.json, ground_truth_metrics.json, warnings.json, ENGINEERING_CLAIM_BOUNDARY.txt, report.html, README.txt, synsigra.hea, synsigra.dat, synsigra.atr, wfdb_metadata.json, synsigra.edf, synsigra.bdf, edf_bdf_metadata.json</p></body></html>";
         return output.str();
     }
 
@@ -864,6 +925,42 @@ namespace signal_synth
     const char* signal_synth_generator_version()
     {
         return "0.5.0-dev";
+    }
+
+    const char* signal_synth_generator_git_commit()
+    {
+        return SIGNAL_SYNTH_GIT_COMMIT;
+    }
+
+    const char* signal_synth_build_identity()
+    {
+        return "signal_synth/" SIGNAL_SYNTH_GIT_COMMIT;
+    }
+
+    const char* signal_synth_package_contract_version()
+    {
+        return "synsigra_challenge_package_v1";
+    }
+
+    const char* signal_synth_scoring_manifest_contract_version()
+    {
+        return "synsigra_scoring_manifest_v1";
+    }
+
+    const char* signal_synth_verifier_version()
+    {
+        return signal_synth_generator_version();
+    }
+
+    const char* signal_synth_engineering_claim_boundary_text()
+    {
+        return
+            "Synsigra engineering QA claim boundary\n"
+            "\n"
+            "Intended use: deterministic synthetic biosignal engineering QA and algorithm verification.\n"
+            "Verifies: package files are internally consistent with the generated synthetic scenario, ground-truth annotations, metrics, native waveform exports, and scoring contract.\n"
+            "Does not verify: patient physiology, diagnostic performance on real populations, clinical safety, clinical effectiveness, MDR compliance, FDA compliance, or regulatory conformity.\n"
+            "Not for: diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment.\n";
     }
 
     bool render_ecg_document(const ecg_scenario_document& document, ecg_render_bundle& output, ecg_export_result& result)
@@ -970,6 +1067,7 @@ namespace signal_synth
             add_artifact(fresh, "randomization.json", "application/json", scenario_parameter_draws_json(render.document, render.resolved_document, render.parameter_draws));
         }
         add_artifact(fresh, "metadata.json", "application/json", metadata_json(render));
+        add_artifact(fresh, "provenance.json", "application/json", provenance_json(render));
         if (render.resolved_document.output.include_waveform_csv)
             add_artifact(fresh, "waveform.csv", "text/csv", waveform_csv(render));
         add_artifact(fresh, "annotations.json", "application/json", annotations_json(render));
@@ -977,10 +1075,13 @@ namespace signal_synth
         add_artifact(fresh, "hrv_metrics.json", "application/json", hrv_metrics_json(render));
         add_artifact(fresh, "ground_truth_metrics.json", "application/json", metrics_json(render));
         add_artifact(fresh, "warnings.json", "application/json", warnings_json(render));
+        add_artifact(fresh, "ENGINEERING_CLAIM_BOUNDARY.txt", "text/plain", signal_synth_engineering_claim_boundary_text());
         add_artifact(fresh, "report.html", "text/html", report_html(render));
         add_artifact(fresh, "README.txt", "text/plain",
             "Synsigra deterministic synthetic ECG engineering evidence package.\n"
             "Intended for research, development, software testing, and algorithm QA.\n"
+            "See provenance.json for generator, build, scenario and package-contract identity.\n"
+            "See ENGINEERING_CLAIM_BOUNDARY.txt for the exact engineering QA claim boundary.\n"
             "Not for diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment.\n");
         wfdb_export_bundle wfdb;
         if (!build_wfdb_export_bundle(render, "synsigra", wfdb, fresh_result))

@@ -63,6 +63,7 @@ threshold_profile_contract
 cases
 estimated_package
 generator_compatibility
+output_artifacts
 ```
 
 `declared_targets` comes from the pack manifest. `targets` is the effective
@@ -77,6 +78,8 @@ reference-only signal-quality ground truth for one case.
 - `mixed`: both scoreable and reference-only targets.
 
 The original catalog value remains available as `catalog_scoring_mode`.
+`output_artifacts` includes required provenance and engineering claim-boundary
+roles so the SaaS can display the expected audit files before generation.
 
 ## 3. Initial Beta Pack
 

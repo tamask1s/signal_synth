@@ -263,6 +263,8 @@ def output_artifacts(scoreable_targets, reference_targets):
     artifacts = [
         {"role": "manifest_json", "required": True},
         {"role": "scoring_manifest_json", "required": True},
+        {"role": "provenance_json", "required": True},
+        {"role": "engineering_claim_boundary_txt", "required": True},
         {"role": "case_summary_json", "required": True},
         {"role": "annotations_json", "required": True},
         {"role": "waveform_csv", "required": True},

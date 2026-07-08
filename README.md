@@ -115,10 +115,17 @@ See `SCENARIO_AUTHORING.md` for the JSON and C++ integration contract.
 Use `-DSIGNAL_SYNTH_BUILD_CLI=OFF` for a library-only build.
 
 The render command creates deterministic scenario, metadata, waveform,
-annotation, metric, warning, HTML, WFDB, EDF+, and BDF+ artifacts. Compact
-schema-v3/v4 scenarios retain WFDB while omitting redundant large waveform
-formats. Reports and exports are synthetic engineering test evidence, not
-clinical validation.
+annotation, metric, warning, provenance, claim-boundary, HTML, WFDB, EDF+,
+and BDF+ artifacts. Compact schema-v3/v4 scenarios retain WFDB while omitting
+redundant large waveform formats. Reports and exports are deterministic
+synthetic engineering verification evidence, not clinical validation.
+
+Release and package provenance is documented in `RELEASE_NOTES.md` and
+`PROVENANCE_BUNDLE.md`. Generated packages include `provenance.json` and
+`ENGINEERING_CLAIM_BOUNDARY.txt` so archived challenge bundles retain
+generator version, git commit when available, build identity, package
+contract version, verifier version, fingerprint and engineering QA claim
+boundary.
 
 GitHub Actions runs the behavioral `TEST-*` suites and installed package smoke
 suite on Linux, and preserves the CTest logs as finite-retention artifacts.

@@ -94,6 +94,12 @@ namespace signal_synth
     };
 
     const char* signal_synth_generator_version();
+    const char* signal_synth_generator_git_commit();
+    const char* signal_synth_build_identity();
+    const char* signal_synth_package_contract_version();
+    const char* signal_synth_scoring_manifest_contract_version();
+    const char* signal_synth_verifier_version();
+    const char* signal_synth_engineering_claim_boundary_text();
     bool render_ecg_document(const ecg_scenario_document& document, ecg_render_bundle& output, ecg_export_result& result);
     bool build_ecg_export_bundle(const ecg_render_bundle& render, ecg_export_bundle& output, ecg_export_result& result);
 }

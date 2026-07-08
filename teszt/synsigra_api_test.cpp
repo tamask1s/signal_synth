@@ -93,7 +93,7 @@ int main()
     signal_synth::synsigra_render_result render;
     ok &= check(signal_synth::synsigra_render_scenario_json(scenario, render) && render.success, "render_success");
     ok &= check(render.identity.render_identity.find(render.identity.document_fingerprint + ":ecg-run-") == 0, "render_identity");
-    ok &= check(render.artifacts.size() == 17 && render.find_artifact("waveform.csv") && render.find_artifact("annotations.json") && render.find_artifact("rr_tachogram.csv") && render.find_artifact("hrv_metrics.json") && render.find_artifact("report.html") && render.find_artifact("synsigra.hea") && render.find_artifact("synsigra.edf") && render.find_artifact("synsigra.bdf"), "render_artifacts");
+    ok &= check(render.artifacts.size() == 19 && render.find_artifact("waveform.csv") && render.find_artifact("annotations.json") && render.find_artifact("rr_tachogram.csv") && render.find_artifact("hrv_metrics.json") && render.find_artifact("provenance.json") && render.find_artifact("ENGINEERING_CLAIM_BOUNDARY.txt") && render.find_artifact("report.html") && render.find_artifact("synsigra.hea") && render.find_artifact("synsigra.edf") && render.find_artifact("synsigra.bdf"), "render_artifacts");
     ok &= check(render.find_artifact("waveform.csv")->content.find("ppg_green_au") != std::string::npos, "render_ppg_channel");
 
     std::vector<signal_synth::synsigra_detection_event> detections;

@@ -397,6 +397,8 @@ namespace
     {
         output << "[{\"role\":\"manifest_json\",\"required\":true},"
                << "{\"role\":\"scoring_manifest_json\",\"required\":true},"
+               << "{\"role\":\"provenance_json\",\"required\":true},"
+               << "{\"role\":\"engineering_claim_boundary_txt\",\"required\":true},"
                << "{\"role\":\"case_summary_json\",\"required\":true},"
                << "{\"role\":\"annotations_json\",\"required\":true},"
                << "{\"role\":\"waveform_csv\",\"required\":true},"

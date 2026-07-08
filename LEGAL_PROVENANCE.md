@@ -56,6 +56,12 @@ Synthetic annotations are ground truth by construction for the configured
 model events. They are not clinical truth and do not establish that a signal
 is physiologically representative of a patient population.
 
+Generated `provenance.json`, `ENGINEERING_CLAIM_BOUNDARY.txt` and
+`RELEASE_NOTES.md` records are engineering audit artifacts. They help identify
+the generator build, package contract, verifier contract and intended QA
+claim boundary, but they do not replace legal review, clinical validation,
+tool qualification, regulatory submission evidence, or conformity assessment.
+
 ## References
 
 - Paper: https://doi.org/10.1109/TBME.2003.808805

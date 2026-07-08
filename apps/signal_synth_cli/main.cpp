@@ -573,6 +573,9 @@ namespace
                << ",\"pack_version\":" << json_text(manifest.version)
                << ",\"pack_fingerprint\":" << json_text(identity.pack_fingerprint)
                << ",\"generator_version\":" << json_text(signal_synth::signal_synth_generator_version())
+               << ",\"generator_git_commit\":" << json_text(signal_synth::signal_synth_generator_git_commit())
+               << ",\"package_contract_version\":" << json_text(signal_synth::signal_synth_package_contract_version())
+               << ",\"scoring_manifest_contract_version\":" << json_text(signal_synth::signal_synth_scoring_manifest_contract_version())
                << ",\"detection_directory\":\"detections\""
                << ",\"verification_output_directory\":\"verification\""
                << ",\"targets\":[";
@@ -622,6 +625,47 @@ namespace
             output << '}';
         }
         output << "],\"limitations\":{\"not_for\":\"diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment\"}}";
+        return output.str();
+    }
+
+    std::string package_provenance_json(const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_json_result& identity, const std::vector<pack_render_row>& rows)
+    {
+        std::vector<std::string> targets;
+        for (std::size_t i = 0; i < rows.size(); ++i)
+            for (std::size_t target = 0; target < rows[i].targets.size(); ++target)
+                add_unique_string(targets, rows[i].targets[target]);
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << "{\"schema_version\":1,\"metadata_type\":\"synsigra_package_provenance\""
+               << ",\"package\":{\"package_id\":" << json_text(manifest.pack_id)
+               << ",\"name\":" << json_text(manifest.name)
+               << ",\"version\":" << json_text(manifest.version)
+               << ",\"pack_fingerprint\":" << json_text(identity.pack_fingerprint)
+               << ",\"case_count\":" << rows.size() << ",\"targets\":";
+        write_json_string_array(output, targets);
+        output << "}"
+               << ",\"generator\":{\"name\":\"signal_synth\",\"product\":\"Synsigra Testbench\",\"version\":"
+               << json_text(signal_synth::signal_synth_generator_version())
+               << ",\"git_commit\":" << json_text(signal_synth::signal_synth_generator_git_commit())
+               << ",\"build_identity\":" << json_text(signal_synth::signal_synth_build_identity()) << '}'
+               << ",\"verifier\":{\"name\":\"synsigra\",\"version\":"
+               << json_text(signal_synth::signal_synth_verifier_version())
+               << ",\"package_contract_version\":" << json_text(signal_synth::signal_synth_package_contract_version())
+               << ",\"scoring_manifest_contract_version\":" << json_text(signal_synth::signal_synth_scoring_manifest_contract_version()) << '}'
+               << ",\"provenance_checklist\":["
+               << "{\"item\":\"manifest_json\",\"artifact\":\"manifest.json\",\"required\":true},"
+               << "{\"item\":\"pack_manifest\",\"artifact\":\"pack.json\",\"required\":true},"
+               << "{\"item\":\"scoring_manifest\",\"artifact\":\"scoring_manifest.json\",\"required\":true},"
+               << "{\"item\":\"package_provenance\",\"artifact\":\"provenance.json\",\"required\":true},"
+               << "{\"item\":\"claim_boundary\",\"artifact\":\"ENGINEERING_CLAIM_BOUNDARY.txt\",\"required\":true},"
+               << "{\"item\":\"per_case_provenance\",\"artifact\":\"cases/<case_id>/provenance.json\",\"required\":true},"
+               << "{\"item\":\"per_case_ground_truth\",\"artifact\":\"cases/<case_id>/annotations.json and ground_truth_metrics.json\",\"required\":true}"
+               << "]"
+               << ",\"claim_boundary\":{\"intended_use\":\"deterministic synthetic biosignal engineering QA and algorithm verification\""
+               << ",\"verifies\":\"Package files are internally consistent with the curated synthetic scenario pack, case ground truth and scoring contract.\""
+               << ",\"does_not_verify\":\"Patient physiology, diagnostic performance on real populations, clinical safety, clinical effectiveness, or regulatory conformity.\""
+               << ",\"not_for\":\"diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment\"}"
+               << ",\"determinism\":{\"byte_stable_export\":true,\"timestamp_policy\":\"not_recorded_for_deterministic_local_export\"}}";
         return output.str();
     }
 
@@ -1357,6 +1401,8 @@ int main(int argc, char** argv)
                 options.package_type = signal_synth::challenge_package_scenario_pack;
                 options.generator_version = signal_synth::signal_synth_generator_version();
                 options.package_files.push_back(make_challenge_file("pack.json", signal_synth::challenge_file_pack_json, "application/json", pack_result.canonical_json));
+                options.package_files.push_back(make_challenge_file("provenance.json", signal_synth::challenge_file_metadata_json, "application/json", package_provenance_json(manifest, pack_result, rows)));
+                options.package_files.push_back(make_challenge_file("ENGINEERING_CLAIM_BOUNDARY.txt", signal_synth::challenge_file_readme, "text/plain", signal_synth::signal_synth_engineering_claim_boundary_text()));
                 options.package_files.push_back(make_challenge_file("summary.json", signal_synth::challenge_file_metadata_json, "application/json", summary_json));
                 options.package_files.push_back(make_challenge_file("summary.csv", signal_synth::challenge_file_other, "text/csv", summary_csv));
                 options.package_files.push_back(make_challenge_file("index.html", signal_synth::challenge_file_readme, "text/html", index_html));

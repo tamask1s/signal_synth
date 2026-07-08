@@ -134,6 +134,8 @@ Implementation increment designs:
   set export.
 - `increments/045_ARRHYTHMIA_LINKED_PPG_PULSE_LOSS.md` defines ECG beat-origin
   linked PPG pulse attenuation and missing-pulse contracts.
+- `increments/046_RELEASE_PROVENANCE_BUNDLE.md` defines release provenance,
+  package identity and engineering QA claim-boundary artifacts.
 
 Traceability demonstration:
 

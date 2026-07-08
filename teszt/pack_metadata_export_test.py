@@ -61,6 +61,9 @@ def assert_release_pack_metadata(item):
     assert item["estimated_package"]["bytes"] > 0
     assert item["estimated_package"]["size_class"] in ("small", "medium", "large", "very_large")
     assert item["output_artifacts"]
+    artifact_roles = [artifact["role"] for artifact in item["output_artifacts"]]
+    assert "provenance_json" in artifact_roles
+    assert "engineering_claim_boundary_txt" in artifact_roles
     assert item["declared_targets"]
     assert item["targets"]
     assert item["scoring_mode"] in ("local", "mixed", "reference_only")
