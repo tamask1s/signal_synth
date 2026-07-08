@@ -114,6 +114,26 @@ Implementation increment designs:
   full verification and manual Windows smoke policy.
 - `increments/035_SAAS_CHALLENGE_PACKAGE_ASSEMBLY.md` defines the C++ and CLI
   surface that emits SaaS-ready offline challenge packages.
+- `increments/036_REPRODUCIBLE_WEARABLE_STRESS_CONTROLS.md` defines wearable
+  cardiorespiratory, activity, timing and compact-output stress controls.
+- `increments/037_PPG_PHYSIOLOGY_V2.md` defines beat-level PTT jitter,
+  morphology variation and low-frequency PPG amplitude modulation.
+- `increments/038_PPG_PERFUSION_AND_PULSE_STATE.md` defines low-perfusion,
+  weak-pulse and missing-pulse ground-truth states.
+- `increments/039_PPG_MOTION_AND_SENSOR_ARTIFACTS.md` defines PPG motion,
+  ambient-light and saturation artifact contracts.
+- `increments/040_PPG_SCORING_AND_BENCHMARK_PACK.md` defines PPG peak/onset
+  scoring and the PPG benchmark pack.
+- `increments/041_PYTHON_SDK_DISTRIBUTION.md` defines the local Python
+  verifier distribution.
+- `increments/042_GOLDEN_CHALLENGE_COMPATIBILITY.md` defines golden challenge
+  compatibility checks.
+- `increments/043_SAAS_CURATED_PACK_METADATA.md` defines SaaS-ingestable pack
+  metadata export.
+- `increments/044_SAAS_RELEASE_SET_EXPORT.md` defines the beta curated release
+  set export.
+- `increments/045_ARRHYTHMIA_LINKED_PPG_PULSE_LOSS.md` defines ECG beat-origin
+  linked PPG pulse attenuation and missing-pulse contracts.
 
 Traceability demonstration:
 

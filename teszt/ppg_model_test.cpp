@@ -44,7 +44,8 @@ namespace
                 || a.expected_peak_time_seconds != b.expected_peak_time_seconds || a.expected_offset_time_seconds != b.expected_offset_time_seconds
                 || a.effective_amplitude_au != b.effective_amplitude_au || a.effective_rise_time_seconds != b.effective_rise_time_seconds
                 || a.effective_decay_time_seconds != b.effective_decay_time_seconds || a.state != b.state
-                || a.low_perfusion != b.low_perfusion || a.valid_for_peak_scoring != b.valid_for_peak_scoring
+                || a.low_perfusion != b.low_perfusion || a.arrhythmia_linked != b.arrhythmia_linked || a.arrhythmia_amplitude_scale != b.arrhythmia_amplitude_scale
+                || a.valid_for_peak_scoring != b.valid_for_peak_scoring
                 || a.generated != b.generated || a.intentionally_missing != b.intentionally_missing)
                 return false;
         }
@@ -144,6 +145,40 @@ int main()
     invalid.decay_time_ms = 6000.0;
     ok &= check(!reconfigured.configure(invalid) && reconfigured.valid() && reconfigured.config().decay_time_ms == config.decay_time_ms, "invalid_reconfigure_is_transactional");
     ok &= check(run_rate(250) && run_rate(500) && run_rate(1000), "timing_and_peaks_across_sample_rates");
+
+    signal_synth::clinical_ecg_config ectopic_config;
+    ectopic_config.scenario.premature_every_n_beats = 3;
+    ectopic_config.scenario.premature_origin = signal_synth::clinical_origin_pvc;
+    signal_synth::clinical_ecg_record ectopic_ecg;
+    signal_synth::ppg_config pulse_loss_config;
+    pulse_loss_config.enabled = true;
+    pulse_loss_config.pvc_pulse_amplitude_scale = 0.0;
+    signal_synth::ppg_record pulse_loss;
+    ok &= check(signal_synth::clinical_ecg_generator(ectopic_config).generate(10000, ectopic_ecg)
+        && signal_synth::ppg_generator(pulse_loss_config).generate(ectopic_ecg, pulse_loss), "arrhythmia_timeline_ppg_generation");
+    unsigned int linked_missing = 0;
+    bool linked_has_fiducial = false;
+    for (unsigned int i = 0; i < pulse_loss.pulse_count(); ++i)
+    {
+        const signal_synth::ppg_pulse_annotation& pulse = pulse_loss.pulses()[i];
+        if (!pulse.arrhythmia_linked)
+            continue;
+        linked_missing += pulse.state == signal_synth::ppg_pulse_missing && pulse.intentionally_missing && !pulse.generated && pulse.arrhythmia_amplitude_scale == 0.0 ? 1u : 0u;
+        for (unsigned int annotation = 0; annotation < pulse_loss.annotation_count(); ++annotation)
+            linked_has_fiducial = linked_has_fiducial || pulse_loss.annotations()[annotation].ecg_beat_index == pulse.ecg_beat_index;
+    }
+    ok &= check(linked_missing > 0u && !linked_has_fiducial, "pvc_linked_missing_pulses");
+    signal_synth::ppg_config weak_pvc_config = pulse_loss_config;
+    weak_pvc_config.pvc_pulse_amplitude_scale = 0.35;
+    signal_synth::ppg_record weak_pvc;
+    ok &= check(signal_synth::ppg_generator(weak_pvc_config).generate(ectopic_ecg, weak_pvc), "weak_pvc_ppg_generation");
+    bool saw_weak_pvc = false;
+    for (unsigned int i = 0; i < weak_pvc.pulse_count(); ++i)
+        saw_weak_pvc = saw_weak_pvc || (weak_pvc.pulses()[i].arrhythmia_linked && weak_pvc.pulses()[i].state == signal_synth::ppg_pulse_weak && weak_pvc.pulses()[i].generated);
+    ok &= check(saw_weak_pvc, "pvc_linked_weak_pulses");
+    invalid = config;
+    invalid.pvc_pulse_amplitude_scale = -0.01;
+    ok &= check(!signal_synth::ppg_generator(invalid).valid(), "invalid_arrhythmia_pulse_scale");
 
     signal_synth::ppg_record copied = first;
     ok &= check(same_record(copied, first), "record_copy");

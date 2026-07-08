@@ -45,7 +45,7 @@ RELEASE_PACK_IDS = [
 def assert_release_pack_metadata(item):
     assert item["schema_version"] == 1
     assert item["metadata_type"] == "synsigra_curated_pack_metadata"
-    assert item["version"] == "1.0"
+    assert isinstance(item["version"], str) and item["version"]
     assert item["release_status"] == "beta"
     assert item["release_date"] == "2026-07-06"
     assert item["recommended_for"] and item["not_recommended_for"] and item["changelog"]
@@ -134,6 +134,19 @@ def assert_rpeak_metadata(item):
     assert item["ui"]["reference_only_before_job"]
 
 
+def assert_ppg_benchmark_metadata(item):
+    assert item["pack_id"] == "ppg_benchmark_v1"
+    assert item["version"] == "1.1"
+    assert item["case_count"] == 9
+    assert "arrhythmia_pulse_loss" in item["case_ids"]
+    assert "arrhythmia_linked_pulse_loss" in item["feature_tags"]
+    assert item["scoring_mode"] == "local"
+    assert sorted(target["target"] for target in item["scoreable_targets"]) == ["ppg_pulse_onset", "ppg_systolic_peak"]
+    case = [case for case in item["cases"] if case["case_id"] == "arrhythmia_pulse_loss"][0]
+    assert case["scoreable_targets"] == ["ppg_systolic_peak", "ppg_pulse_onset"]
+    assert case["reference_only_targets"] == []
+
+
 def main():
     source_dir = os.environ["SIGNAL_SYNTH_SOURCE_DIR"]
     cli = os.environ["SIGNAL_SYNTH_CLI"]
@@ -153,12 +166,13 @@ def main():
         assert generated["release_set_id"] == "synsigra_curated_release_2026_07_06"
         assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
-        assert generated["catalog_version"] == "1.3"
+        assert generated["catalog_version"] == "1.4"
         assert generated["pack_count"] == 10
         assert [item["pack_id"] for item in generated["packs"]] == RELEASE_PACK_IDS
         for pack_id in RELEASE_PACK_IDS:
             assert_release_pack_metadata(pack(generated, pack_id))
         assert_rpeak_metadata(pack(generated, "r_peak_stress_v1"))
+        assert_ppg_benchmark_metadata(pack(generated, "ppg_benchmark_v1"))
 
         filtered_path = os.path.join(work_dir, "rpeak_only.json")
         run([sys.executable, script, "--cli", cli, "--catalog", catalog, "--source-root", source_dir, "--pack-id", "r_peak_stress_v1", "--out", filtered_path])

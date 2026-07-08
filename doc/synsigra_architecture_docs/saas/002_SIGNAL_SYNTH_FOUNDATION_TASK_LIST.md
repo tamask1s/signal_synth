@@ -109,10 +109,10 @@ Issue map:
 - [ ] Improve PPG morphology and sensor realism for wearable algorithm tests:
       multi-wavelength channels, motion artifact, low perfusion, baseline
       drift, saturation/clipping, and contact loss.
-- [ ] Add ECG/PPG synchronization scenarios with pulse transit time variation,
+- [x] Add ECG/PPG synchronization scenarios with pulse transit time variation,
       arrhythmia-linked missing pulses, and sensor delay/clock drift. Basic
-      variable delay, deterministic missing-pulse cadence, sensor delay, and
-      clock drift are implemented; arrhythmia-linked pulse loss remains.
+      variable delay, deterministic missing-pulse cadence, sensor delay, clock
+      drift, and arrhythmia-linked pulse loss are implemented.
 - [x] Add respiration and activity modulation hooks that affect ECG baseline,
       PPG amplitude, and HRV together.
 - [x] Add controlled randomization envelopes with reproducible seeds and

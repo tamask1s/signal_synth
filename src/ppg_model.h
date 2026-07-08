@@ -66,6 +66,9 @@ namespace signal_synth
         double low_frequency_amplitude_modulation_hz;
         double rise_time_variation_ratio;
         double decay_time_variation_ratio;
+        double pac_pulse_amplitude_scale;
+        double pvc_pulse_amplitude_scale;
+        double paced_pulse_amplitude_scale;
         unsigned long long seed;
         std::vector<ppg_perfusion_episode_config> perfusion_episodes;
     };
@@ -94,6 +97,8 @@ namespace signal_synth
         double effective_decay_time_seconds;
         ppg_pulse_state state;
         bool low_perfusion;
+        bool arrhythmia_linked;
+        double arrhythmia_amplitude_scale;
         bool valid_for_peak_scoring;
         bool generated;
         bool intentionally_missing;

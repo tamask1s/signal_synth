@@ -761,6 +761,9 @@ namespace
             && config.low_frequency_amplitude_modulation_hz == defaults.low_frequency_amplitude_modulation_hz
             && config.rise_time_variation_ratio == defaults.rise_time_variation_ratio
             && config.decay_time_variation_ratio == defaults.decay_time_variation_ratio
+            && config.pac_pulse_amplitude_scale == defaults.pac_pulse_amplitude_scale
+            && config.pvc_pulse_amplitude_scale == defaults.pvc_pulse_amplitude_scale
+            && config.paced_pulse_amplitude_scale == defaults.paced_pulse_amplitude_scale
             && config.seed == defaults.seed
             && config.perfusion_episodes.empty();
     }
@@ -863,6 +866,9 @@ namespace
             && document.ppg.low_frequency_amplitude_modulation_hz == ppg.low_frequency_amplitude_modulation_hz
             && document.ppg.rise_time_variation_ratio == ppg.rise_time_variation_ratio
             && document.ppg.decay_time_variation_ratio == ppg.decay_time_variation_ratio
+            && document.ppg.pac_pulse_amplitude_scale == ppg.pac_pulse_amplitude_scale
+            && document.ppg.pvc_pulse_amplitude_scale == ppg.pvc_pulse_amplitude_scale
+            && document.ppg.paced_pulse_amplitude_scale == ppg.paced_pulse_amplitude_scale
             && document.ppg.perfusion_episodes.empty();
     }
 
@@ -927,7 +933,8 @@ namespace
             return false;
         if ((!document.ppg.perfusion_episodes.empty() || document.ppg.pulse_delay_jitter_ms > 0.0
             || document.ppg.low_frequency_amplitude_modulation_ratio > 0.0 || document.ppg.rise_time_variation_ratio > 0.0
-            || document.ppg.decay_time_variation_ratio > 0.0) && !document.ppg.enabled)
+            || document.ppg.decay_time_variation_ratio > 0.0 || document.ppg.pac_pulse_amplitude_scale != 1.0
+            || document.ppg.pvc_pulse_amplitude_scale != 1.0 || document.ppg.paced_pulse_amplitude_scale != 1.0) && !document.ppg.enabled)
             return false;
         double minimum_pulse_delay_ms = document.ppg.pulse_delay_ms;
         for (std::size_t i = 0; i < document.randomization.envelopes.size(); ++i)
@@ -1090,6 +1097,9 @@ namespace
                        << ",\"low_frequency_amplitude_modulation_hz\":" << format_double(document.ppg.low_frequency_amplitude_modulation_hz)
                        << ",\"rise_time_variation_ratio\":" << format_double(document.ppg.rise_time_variation_ratio)
                        << ",\"decay_time_variation_ratio\":" << format_double(document.ppg.decay_time_variation_ratio)
+                       << ",\"pac_pulse_amplitude_scale\":" << format_double(document.ppg.pac_pulse_amplitude_scale)
+                       << ",\"pvc_pulse_amplitude_scale\":" << format_double(document.ppg.pvc_pulse_amplitude_scale)
+                       << ",\"paced_pulse_amplitude_scale\":" << format_double(document.ppg.paced_pulse_amplitude_scale)
                        << ",\"perfusion_episodes\":[";
                 for (std::size_t i = 0; i < episodes.size(); ++i)
                     output << (i ? "," : "") << "{\"start_seconds\":" << format_double(episodes[i].start_seconds)
@@ -1558,7 +1568,7 @@ namespace signal_synth
                 add_message(fresh_result, ecg_json_type, "$.ppg", "field has the wrong JSON type");
             else
             {
-                const char* ppg_fields[] = {"enabled","pulse_delay_ms","rise_time_ms","decay_time_ms","amplitude_au","baseline_au","dicrotic_delay_ms","dicrotic_width_ms","dicrotic_amplitude_ratio","pulse_delay_variation_ms","pulse_delay_variation_hz","missing_pulse_every_n_beats","clock_drift_ppm","seed","pulse_delay_jitter_ms","low_frequency_amplitude_modulation_ratio","low_frequency_amplitude_modulation_hz","rise_time_variation_ratio","decay_time_variation_ratio","perfusion_episodes"};
+                const char* ppg_fields[] = {"enabled","pulse_delay_ms","rise_time_ms","decay_time_ms","amplitude_au","baseline_au","dicrotic_delay_ms","dicrotic_width_ms","dicrotic_amplitude_ratio","pulse_delay_variation_ms","pulse_delay_variation_hz","missing_pulse_every_n_beats","clock_drift_ppm","seed","pulse_delay_jitter_ms","low_frequency_amplitude_modulation_ratio","low_frequency_amplitude_modulation_hz","rise_time_variation_ratio","decay_time_variation_ratio","pac_pulse_amplitude_scale","pvc_pulse_amplitude_scale","paced_pulse_amplitude_scale","perfusion_episodes"};
                 const std::size_t ppg_field_count = document.schema_version >= 4 ? sizeof(ppg_fields) / sizeof(ppg_fields[0]) : document.schema_version >= 3 ? 14u : 9u;
                 allowed_fields(*ppg, ppg_fields, ppg_field_count, "$.ppg", fresh_result);
                 const json_value* enabled = required(*ppg, "enabled", json_value::bool_kind, "$.ppg", fresh_result);
@@ -1580,6 +1590,9 @@ namespace signal_synth
                 const json_value* lf_frequency = member(*ppg, "low_frequency_amplitude_modulation_hz");
                 const json_value* rise_variation = member(*ppg, "rise_time_variation_ratio");
                 const json_value* decay_variation = member(*ppg, "decay_time_variation_ratio");
+                const json_value* pac_scale = member(*ppg, "pac_pulse_amplitude_scale");
+                const json_value* pvc_scale = member(*ppg, "pvc_pulse_amplitude_scale");
+                const json_value* paced_scale = member(*ppg, "paced_pulse_amplitude_scale");
                 const json_value* perfusion_episodes = member(*ppg, "perfusion_episodes");
                 if (document.schema_version >= 3)
                 {
@@ -1647,6 +1660,27 @@ namespace signal_synth
                 if (lf_frequency && lf_frequency->type == json_value::number_kind) document.ppg.low_frequency_amplitude_modulation_hz = lf_frequency->number;
                 if (rise_variation && rise_variation->type == json_value::number_kind) document.ppg.rise_time_variation_ratio = rise_variation->number;
                 if (decay_variation && decay_variation->type == json_value::number_kind) document.ppg.decay_time_variation_ratio = decay_variation->number;
+                if (pac_scale)
+                {
+                    if (pac_scale->type != json_value::number_kind)
+                        add_message(fresh_result, ecg_json_type, "$.ppg.pac_pulse_amplitude_scale", "field has the wrong JSON type");
+                    else
+                        document.ppg.pac_pulse_amplitude_scale = pac_scale->number;
+                }
+                if (pvc_scale)
+                {
+                    if (pvc_scale->type != json_value::number_kind)
+                        add_message(fresh_result, ecg_json_type, "$.ppg.pvc_pulse_amplitude_scale", "field has the wrong JSON type");
+                    else
+                        document.ppg.pvc_pulse_amplitude_scale = pvc_scale->number;
+                }
+                if (paced_scale)
+                {
+                    if (paced_scale->type != json_value::number_kind)
+                        add_message(fresh_result, ecg_json_type, "$.ppg.paced_pulse_amplitude_scale", "field has the wrong JSON type");
+                    else
+                        document.ppg.paced_pulse_amplitude_scale = paced_scale->number;
+                }
                 if (perfusion_episodes && perfusion_episodes->type == json_value::array_kind)
                 {
                     for (std::size_t i = 0; i < perfusion_episodes->array.size(); ++i)

@@ -73,11 +73,12 @@ def main():
     catalog = read_json(catalog_path)
     for entry in catalog["packs"]:
         pack_path = os.path.normpath(os.path.join(os.path.dirname(catalog_path), entry["path"]))
+        pack = read_json(pack_path)
         analysis = run_json([cli, "pack", "analyze", pack_path])
         assert analysis["success"]
         assert analysis["metadata_type"] == "synsigra_pack_analysis"
         assert analysis["pack_id"] == entry["pack_id"]
-        assert analysis["pack_version"] == "1.0"
+        assert analysis["pack_version"] == pack["version"]
         assert analysis["scoring_mode"] in ("local", "mixed", "reference_only")
         assert analysis["recommended_verifier_profile"] in ("smoke", "regression", "stress", "benchmark")
         assert analysis["generator_compatibility"]["challenge_package_contract"] == "synsigra_challenge_package_v1"

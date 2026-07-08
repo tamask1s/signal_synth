@@ -122,6 +122,7 @@ int main()
     document.duration_seconds = 40.0;
     document.ecg.set_sampling_rate_hz(250);
     document.ppg = config;
+    document.ppg.pac_pulse_amplitude_scale = 0.6;
     document.physiology.respiration_frequency_hz = 0.22;
     document.physiology.ppg_amplitude_modulation_ratio = 0.15;
     signal_synth::ecg_scenario_json_result identity;
@@ -130,7 +131,8 @@ int main()
     ok &= check(signal_synth::write_ecg_scenario_json(document, identity)
         && signal_synth::parse_ecg_scenario_json(identity.canonical_json, parsed, repeated_identity)
         && identity.document_fingerprint == repeated_identity.document_fingerprint
-        && parsed.ppg.perfusion_episodes.size() == 1u, "schema_v4_roundtrip");
+        && parsed.ppg.perfusion_episodes.size() == 1u
+        && parsed.ppg.pac_pulse_amplitude_scale == 0.6, "schema_v4_roundtrip");
     signal_synth::ecg_scenario_document changed_identity_document = document;
     ++changed_identity_document.ppg.seed;
     signal_synth::ecg_scenario_json_result changed_identity;
@@ -218,6 +220,25 @@ int main()
     ok &= check(signal_synth::compare_detections_to_render(render, detections, compare_options, comparison)
         && comparison.detections_in_missing_pulse_windows == 1u
         && comparison.total.false_positive_count == 1u, "missing_pulse_detection_scoring");
+
+    signal_synth::ecg_scenario_document arrhythmia_document = document;
+    arrhythmia_document.scenario_id = "ppg_arrhythmia_pulse_loss";
+    arrhythmia_document.ecg.clear_conditions();
+    arrhythmia_document.ecg.add_condition(signal_synth::ecg_condition_pvc, 0.8);
+    arrhythmia_document.ecg.set_ectopic_every_n_beats(4);
+    arrhythmia_document.ppg.perfusion_episodes.clear();
+    arrhythmia_document.ppg.pac_pulse_amplitude_scale = 1.0;
+    arrhythmia_document.ppg.pvc_pulse_amplitude_scale = 0.0;
+    signal_synth::ecg_render_bundle arrhythmia_render;
+    ok &= check(signal_synth::render_ecg_document(arrhythmia_document, arrhythmia_render, result)
+        && arrhythmia_render.metrics.ppg_arrhythmia_linked_pulse_count > 0u
+        && arrhythmia_render.metrics.ppg_arrhythmia_linked_missing_pulse_count == arrhythmia_render.metrics.ppg_arrhythmia_linked_pulse_count, "arrhythmia_linked_render_metrics");
+    signal_synth::ecg_export_bundle arrhythmia_export;
+    ok &= check(signal_synth::build_ecg_export_bundle(arrhythmia_render, arrhythmia_export, result)
+        && arrhythmia_export.find("annotations.json")
+        && arrhythmia_export.find("annotations.json")->content.find("\"arrhythmia_linked\":true") != std::string::npos
+        && arrhythmia_export.find("annotations.json")->content.find("\"arrhythmia_amplitude_scale\":0") != std::string::npos
+        && arrhythmia_export.find("ground_truth_metrics.json")->content.find("\"arrhythmia_linked_missing_pulse_count\":") != std::string::npos, "arrhythmia_linked_export_contract");
 
     if (!ok)
         return 1;

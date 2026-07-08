@@ -93,6 +93,7 @@ Recommended implementation order:
 | PPG motion artifact with accelerometer | `TRC-PPG-MOT-001` | [#51](https://github.com/tamask1s/signal_synth/issues/51) |
 | PPG perfusion, weak pulse, missed pulse scenarios | `TRC-PPG-PERF-001` | [#52](https://github.com/tamask1s/signal_synth/issues/52) |
 | PPG scoring and benchmark pack | `TRC-PPG-SCORE-001` | [#53](https://github.com/tamask1s/signal_synth/issues/53) |
+| Arrhythmia-linked ECG-to-PPG pulse loss | `TRC-PPG-ARR-001` | [#67](https://github.com/tamask1s/signal_synth/issues/67) |
 | Optional red/IR multi-channel PPG | `TRC-PPG-MCH-001` | [#54](https://github.com/tamask1s/signal_synth/issues/54) |
 
 Recommended implementation order:
@@ -101,7 +102,8 @@ Recommended implementation order:
 2. `#51` motion artifact and accelerometer reference.
 3. `#52` perfusion and weak/missed pulse semantics.
 4. `#53` scoring and benchmark pack.
-5. `#54` only after single-channel PPG is stable.
+5. `#67` arrhythmia-linked PPG pulse loss.
+6. `#54` only after single-channel PPG is stable.
 
 ## 7. Recommended Overall Next Step
 

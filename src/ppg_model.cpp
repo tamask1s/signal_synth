@@ -36,6 +36,9 @@ namespace
             && finite(config.low_frequency_amplitude_modulation_hz) && config.low_frequency_amplitude_modulation_hz > 0.0 && config.low_frequency_amplitude_modulation_hz <= 1.0
             && finite(config.rise_time_variation_ratio) && config.rise_time_variation_ratio >= 0.0 && config.rise_time_variation_ratio <= 0.9
             && finite(config.decay_time_variation_ratio) && config.decay_time_variation_ratio >= 0.0 && config.decay_time_variation_ratio <= 0.9
+            && finite(config.pac_pulse_amplitude_scale) && config.pac_pulse_amplitude_scale >= 0.0 && config.pac_pulse_amplitude_scale <= 1.0
+            && finite(config.pvc_pulse_amplitude_scale) && config.pvc_pulse_amplitude_scale >= 0.0 && config.pvc_pulse_amplitude_scale <= 1.0
+            && finite(config.paced_pulse_amplitude_scale) && config.paced_pulse_amplitude_scale >= 0.0 && config.paced_pulse_amplitude_scale <= 1.0
             && config.pulse_delay_ms >= config.pulse_delay_variation_ms + config.pulse_delay_jitter_ms
             && config.perfusion_episodes.size() <= 64u))
             return false;
@@ -140,6 +143,26 @@ namespace
                 return static_cast<int>(i);
         return -1;
     }
+
+    double arrhythmia_pulse_scale(const signal_synth::ppg_config& config, const signal_synth::clinical_beat_annotation& beat)
+    {
+        switch (beat.origin)
+        {
+        case signal_synth::clinical_origin_pac:
+            return config.pac_pulse_amplitude_scale;
+        case signal_synth::clinical_origin_pvc:
+        case signal_synth::clinical_origin_ventricular_escape:
+        case signal_synth::clinical_origin_vt:
+            return config.pvc_pulse_amplitude_scale;
+        case signal_synth::clinical_origin_paced:
+        case signal_synth::clinical_origin_atrial_paced:
+            return config.paced_pulse_amplitude_scale;
+        case signal_synth::clinical_origin_conducted:
+        case signal_synth::clinical_origin_junctional_escape:
+            break;
+        }
+        return 1.0;
+    }
 }
 
 namespace signal_synth
@@ -172,7 +195,7 @@ namespace signal_synth
     }
 
     ppg_config::ppg_config()
-        : enabled(false), pulse_delay_ms(180.0), rise_time_ms(120.0), decay_time_ms(300.0), amplitude_au(1.0), baseline_au(0.0), dicrotic_delay_ms(180.0), dicrotic_width_ms(80.0), dicrotic_amplitude_ratio(0.15), pulse_delay_variation_ms(0.0), pulse_delay_variation_hz(0.0), missing_pulse_every_n_beats(0), clock_drift_ppm(0.0), pulse_delay_jitter_ms(0.0), low_frequency_amplitude_modulation_ratio(0.0), low_frequency_amplitude_modulation_hz(0.1), rise_time_variation_ratio(0.0), decay_time_variation_ratio(0.0), seed(0x5050475f53545253ULL), perfusion_episodes()
+        : enabled(false), pulse_delay_ms(180.0), rise_time_ms(120.0), decay_time_ms(300.0), amplitude_au(1.0), baseline_au(0.0), dicrotic_delay_ms(180.0), dicrotic_width_ms(80.0), dicrotic_amplitude_ratio(0.15), pulse_delay_variation_ms(0.0), pulse_delay_variation_hz(0.0), missing_pulse_every_n_beats(0), clock_drift_ppm(0.0), pulse_delay_jitter_ms(0.0), low_frequency_amplitude_modulation_ratio(0.0), low_frequency_amplitude_modulation_hz(0.1), rise_time_variation_ratio(0.0), decay_time_variation_ratio(0.0), pac_pulse_amplitude_scale(1.0), pvc_pulse_amplitude_scale(1.0), paced_pulse_amplitude_scale(1.0), seed(0x5050475f53545253ULL), perfusion_episodes()
     {
     }
 
@@ -257,6 +280,10 @@ namespace signal_synth
                 const bool globally_missing = config_.missing_pulse_every_n_beats != 0 && (beat_index + 1u) % config_.missing_pulse_every_n_beats == 0;
                 const bool episode_missing = perfusion && perfusion->missing_pulse_every_n_beats != 0 && episode_pulse_index % perfusion->missing_pulse_every_n_beats == 0;
                 const bool weak = perfusion && perfusion->weak_pulse_every_n_beats != 0 && episode_pulse_index % perfusion->weak_pulse_every_n_beats == 0;
+                const double arrhythmia_scale = arrhythmia_pulse_scale(config_, beat);
+                const bool arrhythmia_linked = arrhythmia_scale < 1.0;
+                const bool arrhythmia_missing = arrhythmia_scale == 0.0;
+                const bool arrhythmia_weak = arrhythmia_scale > 0.0 && arrhythmia_scale < 1.0;
                 const double variable_delay_ms = config_.pulse_delay_variation_ms * std::sin(2.0 * pi * config_.pulse_delay_variation_hz * beat.r_peak_time_seconds + variation_phase);
                 const double jitter_ms = config_.pulse_delay_jitter_ms * deterministic_signed(config_.seed, beat_index, 0x5054545f4a495454ULL);
                 const double drift_seconds = beat.r_peak_time_seconds * config_.clock_drift_ppm * 1e-6;
@@ -266,7 +293,7 @@ namespace signal_synth
                 const double low_frequency_scale = std::max(0.0, 1.0 + config_.low_frequency_amplitude_modulation_ratio * std::sin(2.0 * pi * config_.low_frequency_amplitude_modulation_hz * beat.r_peak_time_seconds + amplitude_phase));
                 const double perfusion_amplitude_scale = perfusion ? perfusion->amplitude_scale : 1.0;
                 const double weak_amplitude_scale = weak ? perfusion->weak_pulse_amplitude_scale : 1.0;
-                const double effective_amplitude = config_.amplitude_au * low_frequency_scale * perfusion_amplitude_scale * weak_amplitude_scale;
+                const double effective_amplitude = config_.amplitude_au * low_frequency_scale * perfusion_amplitude_scale * weak_amplitude_scale * arrhythmia_scale;
                 const double rise_variation = 1.0 + config_.rise_time_variation_ratio * deterministic_signed(config_.seed, beat_index, 0x524953455f564152ULL);
                 const double decay_variation = 1.0 + config_.decay_time_variation_ratio * deterministic_signed(config_.seed, beat_index, 0x44454341595f5641ULL);
                 const double rise_seconds = config_.rise_time_ms / 1000.0 * rise_variation * (perfusion ? perfusion->rise_time_scale : 1.0);
@@ -285,9 +312,11 @@ namespace signal_synth
                 pulse.effective_rise_time_seconds = rise_seconds;
                 pulse.effective_decay_time_seconds = decay_seconds;
                 pulse.low_perfusion = perfusion != 0;
-                pulse.intentionally_missing = globally_missing || episode_missing;
+                pulse.arrhythmia_linked = arrhythmia_linked;
+                pulse.arrhythmia_amplitude_scale = arrhythmia_scale;
+                pulse.intentionally_missing = globally_missing || episode_missing || arrhythmia_missing;
                 pulse.generated = !pulse.intentionally_missing && onset >= 0.0 && offset <= record_end;
-                pulse.state = pulse.intentionally_missing ? ppg_pulse_missing : pulse.generated ? (weak ? ppg_pulse_weak : ppg_pulse_valid) : ppg_pulse_out_of_record;
+                pulse.state = pulse.intentionally_missing ? ppg_pulse_missing : pulse.generated ? ((weak || arrhythmia_weak) ? ppg_pulse_weak : ppg_pulse_valid) : ppg_pulse_out_of_record;
                 pulse.valid_for_peak_scoring = pulse.generated;
                 fresh.implementation_->pulses.push_back(pulse);
                 if (!pulse.generated)

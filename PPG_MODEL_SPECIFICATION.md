@@ -52,6 +52,25 @@ A non-overlapping perfusion episode has exact half-open time bounds and can:
 Weak and missing cadence starts at the first pulse in each episode. These are
 physiological engineering states, distinct from acquisition dropout.
 
+## Arrhythmia-linked pulse response
+
+The PPG generator can attenuate or omit pulses for selected ECG beat origins
+without changing the ECG rhythm timeline:
+
+- PAC beats use `pac_pulse_amplitude_scale`;
+- PVC, ventricular escape and VT beats use `pvc_pulse_amplitude_scale`;
+- paced and atrial-paced beats use `paced_pulse_amplitude_scale`.
+
+Each scale is in `[0, 1]` and defaults to `1`. A scale of `0` makes the pulse
+intentionally missing; a scale between `0` and `1` makes the generated pulse
+weak. Pulse annotations export `arrhythmia_linked` and
+`arrhythmia_amplitude_scale` so package consumers do not need to infer the
+cause from ECG beat class alone.
+
+This is a deterministic engineering pulse-response stress feature. It is not
+a validated hemodynamic model and must not be used as a clinical physiology
+claim.
+
 ## Ground truth
 
 Construction annotations identify:
@@ -72,8 +91,9 @@ ECG R time.
 
 Every expected pulse also records effective delay, onset/peak/offset,
 amplitude, rise/decay duration, low-perfusion flag, state (`valid`, `weak`,
-`missing`, or `out_of_record`), and peak-scoring validity. Missing and boundary
-pulses never receive fabricated measured fiducials.
+`missing`, or `out_of_record`), arrhythmia-linked pulse response when present,
+and peak-scoring validity. Missing and boundary pulses never receive fabricated
+measured fiducials.
 
 ## Determinism and limits
 
@@ -110,6 +130,6 @@ Missing-pulse opportunities remain explicit and are not converted into
 fabricated fiducials.
 
 The `ppg_benchmark_v1` pack provides isolated clean-delay, variable-PTT,
-respiratory, perfusion, motion, dropout/saturation, weak/missing, and combined
-wearable cases. These are engineering QA scenarios, not physiological or
-clinical performance claims.
+respiratory, perfusion, motion, dropout/saturation, weak/missing,
+arrhythmia-linked pulse-loss, and combined wearable cases. These are
+engineering QA scenarios, not physiological or clinical performance claims.

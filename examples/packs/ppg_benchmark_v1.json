@@ -2,7 +2,7 @@
   "schema_version": 1,
   "pack_id": "ppg_benchmark_v1",
   "name": "PPG Detection Benchmark v1",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Curated green-PPG onset, peak, pulse-interval and pulse-rate algorithm QA cases.",
   "targets": ["ppg_systolic_peak", "ppg_pulse_onset"],
   "scenarios": [
@@ -13,6 +13,7 @@
     {"id": "motion_and_saturation", "path": "../scenarios/ppg_motion_accelerometer_v4.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
     {"id": "dropout", "path": "../scenarios/ppg_dropout_saturation_v4.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
     {"id": "weak_and_missing", "path": "../scenarios/ppg_weak_missing_v4.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
+    {"id": "arrhythmia_pulse_loss", "path": "../scenarios/ppg_arrhythmia_pulse_loss_v4.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
     {"id": "combined_wearable", "path": "../scenarios/packs/wearable_cardiorespiratory_stress_v3.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]}
   ]
 }

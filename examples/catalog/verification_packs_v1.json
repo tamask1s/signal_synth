@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "1.3",
+  "version": "1.4",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -338,7 +338,7 @@
       "recommended_profile": "benchmark",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
       "scoring_mode": "local",
-      "feature_tags": ["onset", "peak", "pulse_interval", "pulse_rate", "ptt", "respiration", "perfusion", "motion", "dropout", "saturation", "weak_pulse", "missing_pulse"],
+      "feature_tags": ["onset", "peak", "pulse_interval", "pulse_rate", "ptt", "respiration", "perfusion", "motion", "dropout", "saturation", "weak_pulse", "missing_pulse", "arrhythmia_linked_pulse_loss"],
       "release_status": "beta",
       "release_date": "2026-07-06",
       "deprecation_message": "",
@@ -360,6 +360,13 @@
           "date": "2026-07-06",
           "changes": [
             "Initial beta PPG benchmark pack with systolic-peak and pulse-onset scoring cases."
+          ]
+        },
+        {
+          "version": "1.1",
+          "date": "2026-07-08",
+          "changes": [
+            "Arrhythmia-linked pulse-loss cases are deterministic engineering QA scenarios and are not clinical physiology validation claims."
           ]
         }
       ]

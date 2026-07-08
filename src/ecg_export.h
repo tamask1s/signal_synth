@@ -44,6 +44,8 @@ namespace signal_synth
         unsigned int ppg_missing_pulse_count;
         unsigned int ppg_weak_pulse_count;
         unsigned int ppg_low_perfusion_pulse_count;
+        unsigned int ppg_arrhythmia_linked_pulse_count;
+        unsigned int ppg_arrhythmia_linked_missing_pulse_count;
         unsigned int ppg_out_of_record_pulse_count;
         double mean_ppg_onset_delay_seconds;
         double mean_ppg_peak_delay_seconds;

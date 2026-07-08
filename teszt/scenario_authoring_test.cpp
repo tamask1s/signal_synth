@@ -35,12 +35,13 @@ int main()
     bool ok = true;
     const std::string metadata = signal_synth::scenario_authoring_metadata_json();
     const std::string templates = signal_synth::scenario_template_catalog_json();
-    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v5"
+    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v6"
         && metadata.find("\"condition_count\"") == std::string::npos
         && metadata.find("\"code\":\"NORM\"") != std::string::npos
         && metadata.find("\"path\":\"$.hrv.target_sdnn_seconds\"") != std::string::npos
         && metadata.find("\"path\":\"$.randomization.envelopes\"") != std::string::npos
         && metadata.find("\"path\":\"$.ppg.perfusion_episodes\"") != std::string::npos
+        && metadata.find("\"path\":\"$.ppg.pvc_pulse_amplitude_scale\"") != std::string::npos
         && metadata.find("\"path\":\"$.output.compact\"") != std::string::npos
         && metadata.find("\"type\":\"ppg_motion_periodic\"") != std::string::npos
         && metadata.find("\"type\":\"ppg_sensor_saturation\"") != std::string::npos
@@ -51,6 +52,7 @@ int main()
         && templates.find("\"template_id\":\"ecg_hrv_benchmark\"") != std::string::npos
         && templates.find("\"template_id\":\"wearable_ecg_ppg_stress\"") != std::string::npos
         && templates.find("\"template_id\":\"ppg_perfusion_stress\"") != std::string::npos
+        && templates.find("\"template_id\":\"ppg_arrhythmia_pulse_loss\"") != std::string::npos
         && templates.find("\"difficulty_values\"") != std::string::npos, "template_contract");
     ok &= check(signal_synth::scenario_target_support_for_name("r_peak") == signal_synth::scenario_target_local_scoring
         && signal_synth::scenario_target_support_for_name("ppg_pulse_onset") == signal_synth::scenario_target_local_scoring

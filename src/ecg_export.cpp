@@ -188,6 +188,12 @@ namespace
                 ++metrics.ppg_weak_pulse_count;
             if (ppg.pulses()[i].low_perfusion)
                 ++metrics.ppg_low_perfusion_pulse_count;
+            if (ppg.pulses()[i].arrhythmia_linked)
+            {
+                ++metrics.ppg_arrhythmia_linked_pulse_count;
+                if (ppg.pulses()[i].state == signal_synth::ppg_pulse_missing)
+                    ++metrics.ppg_arrhythmia_linked_missing_pulse_count;
+            }
             if (ppg.pulses()[i].state == signal_synth::ppg_pulse_out_of_record)
                 ++metrics.ppg_out_of_record_pulse_count;
         }
@@ -520,6 +526,8 @@ namespace
                        << ",\"effective_decay_time_seconds\":" << pulse.effective_decay_time_seconds
                        << ",\"state\":" << json_string(signal_synth::ppg_pulse_state_name(pulse.state))
                        << ",\"low_perfusion\":" << boolean(pulse.low_perfusion)
+                       << ",\"arrhythmia_linked\":" << boolean(pulse.arrhythmia_linked)
+                       << ",\"arrhythmia_amplitude_scale\":" << pulse.arrhythmia_amplitude_scale
                        << ",\"valid_for_peak_scoring\":" << boolean(pulse.valid_for_peak_scoring)
                        << ",\"generated\":" << boolean(pulse.generated)
                        << ",\"intentionally_missing\":" << boolean(pulse.intentionally_missing) << '}';
@@ -627,6 +635,8 @@ namespace
                    << ",\"intentionally_missing_pulse_count\":" << metrics.ppg_missing_pulse_count
                    << ",\"weak_pulse_count\":" << metrics.ppg_weak_pulse_count
                    << ",\"low_perfusion_pulse_count\":" << metrics.ppg_low_perfusion_pulse_count
+                   << ",\"arrhythmia_linked_pulse_count\":" << metrics.ppg_arrhythmia_linked_pulse_count
+                   << ",\"arrhythmia_linked_missing_pulse_count\":" << metrics.ppg_arrhythmia_linked_missing_pulse_count
                    << ",\"out_of_record_pulse_count\":" << metrics.ppg_out_of_record_pulse_count
                    << ",\"mean_onset_delay_seconds\":" << metrics.mean_ppg_onset_delay_seconds
                    << ",\"mean_measured_peak_delay_seconds\":" << metrics.mean_ppg_peak_delay_seconds << '}';
@@ -833,7 +843,7 @@ namespace
 namespace signal_synth
 {
     ecg_ground_truth_metrics::ecg_ground_truth_metrics()
-        : beat_count(0), atrial_event_count(0), fiducial_count(0), episode_count(0), artifact_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), hrv_accepted_interval_count(0), hrv_excluded_interval_count(0), hrv_ectopic_interval_count(0), hrv_artifact_overlap_interval_count(0), sd1_seconds(0.0), sd2_seconds(0.0), sd1_sd2_ratio(0.0), lf_power_seconds2(0.0), hf_power_seconds2(0.0), lf_hf_ratio(0.0), total_power_seconds2(0.0), ppg_pulse_count(0), ppg_expected_pulse_count(0), ppg_missing_pulse_count(0), ppg_weak_pulse_count(0), ppg_low_perfusion_pulse_count(0), ppg_out_of_record_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0), total_artifact_seconds(0.0), ppg_artifact_seconds(0.0)
+        : beat_count(0), atrial_event_count(0), fiducial_count(0), episode_count(0), artifact_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), hrv_accepted_interval_count(0), hrv_excluded_interval_count(0), hrv_ectopic_interval_count(0), hrv_artifact_overlap_interval_count(0), sd1_seconds(0.0), sd2_seconds(0.0), sd1_sd2_ratio(0.0), lf_power_seconds2(0.0), hf_power_seconds2(0.0), lf_hf_ratio(0.0), total_power_seconds2(0.0), ppg_pulse_count(0), ppg_expected_pulse_count(0), ppg_missing_pulse_count(0), ppg_weak_pulse_count(0), ppg_low_perfusion_pulse_count(0), ppg_arrhythmia_linked_pulse_count(0), ppg_arrhythmia_linked_missing_pulse_count(0), ppg_out_of_record_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0), total_artifact_seconds(0.0), ppg_artifact_seconds(0.0)
     {
         for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
             ecg_artifact_seconds[lead] = 0.0;

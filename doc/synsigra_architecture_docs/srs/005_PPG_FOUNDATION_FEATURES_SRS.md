@@ -95,4 +95,5 @@ At minimum, create PPG packs for:
 - PPG perfusion/dropout/weak-pulse scenarios (implemented by #52);
 - PPG detection JSON/CSV scoring expansion (implemented by #53);
 - PPG benchmark pack (implemented by #53);
+- arrhythmia-linked ECG-to-PPG pulse-loss scenarios (implemented by #67);
 - optional red/IR PPG extension.
