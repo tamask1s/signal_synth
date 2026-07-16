@@ -142,6 +142,8 @@ Implementation increment designs:
 - `increments/048_DYNAMIC_REPOLARIZATION_EPISODES.md` defines smooth
   time-varying QT/ST/T episode rendering and dynamic repolarization
   ground-truth traces.
+- `increments/049_PPG_OPTICAL_MULTICHANNEL.md` defines optional red/infrared
+  PPG waveform channels, channel metadata and multi-channel export contracts.
 
 Traceability demonstration:
 

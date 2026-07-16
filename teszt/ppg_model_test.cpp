@@ -23,17 +23,29 @@ namespace
     {
         if (left.sampling_rate_hz() != right.sampling_rate_hz()
             || left.sample_count() != right.sample_count()
+            || left.channel_count() != right.channel_count()
             || left.annotation_count() != right.annotation_count()
             || left.pulse_count() != right.pulse_count())
             return false;
-        if (left.sample_count() && std::memcmp(left.samples(), right.samples(), left.sample_count() * sizeof(double)) != 0)
-            return false;
-        for (unsigned int i = 0; i < left.annotation_count(); ++i)
+        for (unsigned int channel = 0; channel < left.channel_count(); ++channel)
         {
-            const signal_synth::ppg_annotation& a = left.annotations()[i];
-            const signal_synth::ppg_annotation& b = right.annotations()[i];
-            if (a.ecg_beat_index != b.ecg_beat_index || a.ecg_r_time_seconds != b.ecg_r_time_seconds || a.kind != b.kind || a.source != b.source || a.sample_index != b.sample_index || a.time_seconds != b.time_seconds || a.value_au != b.value_au)
+            if (left.channel_kind(channel) != right.channel_kind(channel)
+                || left.channel_annotation_count(channel) != right.channel_annotation_count(channel)
+                || left.channel_amplitude_gain(channel) != right.channel_amplitude_gain(channel)
+                || left.channel_baseline_au(channel) != right.channel_baseline_au(channel)
+                || left.channel_delay_ms(channel) != right.channel_delay_ms(channel)
+                || left.channel_noise_std_au(channel) != right.channel_noise_std_au(channel)
+                || left.channel_seed(channel) != right.channel_seed(channel))
                 return false;
+            if (left.sample_count() && std::memcmp(left.channel_samples(channel), right.channel_samples(channel), left.sample_count() * sizeof(double)) != 0)
+                return false;
+            for (unsigned int i = 0; i < left.channel_annotation_count(channel); ++i)
+            {
+                const signal_synth::ppg_annotation& a = left.channel_annotations(channel)[i];
+                const signal_synth::ppg_annotation& b = right.channel_annotations(channel)[i];
+                if (a.ecg_beat_index != b.ecg_beat_index || a.ecg_r_time_seconds != b.ecg_r_time_seconds || a.kind != b.kind || a.source != b.source || a.sample_index != b.sample_index || a.time_seconds != b.time_seconds || a.value_au != b.value_au)
+                    return false;
+            }
         }
         for (unsigned int i = 0; i < left.pulse_count(); ++i)
         {
@@ -57,6 +69,15 @@ namespace
         for (unsigned int i = 0; i < record.annotation_count(); ++i)
             if (record.annotations()[i].ecg_beat_index == beat && record.annotations()[i].kind == kind && record.annotations()[i].source == source)
                 return &record.annotations()[i];
+        return 0;
+    }
+
+    const signal_synth::ppg_annotation* find_channel_annotation(const signal_synth::ppg_record& record, unsigned int channel, unsigned long long beat, signal_synth::ppg_fiducial_kind kind, signal_synth::ppg_fiducial_source source)
+    {
+        const signal_synth::ppg_annotation* annotations = record.channel_annotations(channel);
+        for (unsigned int i = 0; i < record.channel_annotation_count(channel); ++i)
+            if (annotations[i].ecg_beat_index == beat && annotations[i].kind == kind && annotations[i].source == source)
+                return &annotations[i];
         return 0;
     }
 
@@ -114,6 +135,7 @@ int main()
     ok &= check(generator.valid() && generator.generate(ecg, first) && generator.generate(ecg, second), "ppg_generation");
     ok &= check(same_record(first, second), "ppg_is_deterministic");
     ok &= check(first.sample_count() == ecg.sample_count() && std::string(first.channel_name()) == "ppg_green" && std::string(first.unit()) == "a.u.", "ppg_public_contract");
+    ok &= check(first.channel_count() == 1u && std::string(first.channel_name(0)) == "ppg_green" && first.channel_kind(0) == signal_synth::ppg_channel_green, "green_channel_contract");
     ok &= check(first.annotation_count() > 0 && first.annotation_count() % 7 == 0, "construction_and_measured_annotations");
     std::vector<double> modified(first.samples(), first.samples() + first.sample_count());
     const unsigned long long first_beat = first.annotations()[0].ecg_beat_index;
@@ -145,6 +167,40 @@ int main()
     invalid.decay_time_ms = 6000.0;
     ok &= check(!reconfigured.configure(invalid) && reconfigured.valid() && reconfigured.config().decay_time_ms == config.decay_time_ms, "invalid_reconfigure_is_transactional");
     ok &= check(run_rate(250) && run_rate(500) && run_rate(1000), "timing_and_peaks_across_sample_rates");
+
+    signal_synth::ppg_config optical_config = config;
+    optical_config.red.enabled = true;
+    optical_config.red.amplitude_gain = 0.5;
+    optical_config.red.delay_ms = 20.0;
+    optical_config.red.baseline_au = 0.25;
+    optical_config.red.noise_std_au = 0.001;
+    optical_config.infrared.enabled = true;
+    optical_config.infrared.amplitude_gain = 1.5;
+    optical_config.infrared.delay_ms = 30.0;
+    optical_config.infrared.baseline_au = 0.35;
+    signal_synth::ppg_record optical;
+    signal_synth::ppg_record optical_repeat;
+    ok &= check(signal_synth::ppg_generator(optical_config).generate(ecg, optical)
+        && signal_synth::ppg_generator(optical_config).generate(ecg, optical_repeat)
+        && same_record(optical, optical_repeat), "optical_multichannel_generation");
+    ok &= check(optical.channel_count() == 3u
+        && std::string(optical.channel_name(1)) == "ppg_red"
+        && std::string(optical.channel_name(2)) == "ppg_infrared"
+        && optical.channel_samples(1) && optical.channel_samples(2), "optical_channel_contract");
+    const unsigned long long optical_beat = optical.annotations()[0].ecg_beat_index;
+    const signal_synth::ppg_annotation* green_peak = find_channel_annotation(optical, 0, optical_beat, signal_synth::ppg_systolic_peak, signal_synth::ppg_fiducial_measurement);
+    const signal_synth::ppg_annotation* red_peak = find_channel_annotation(optical, 1, optical_beat, signal_synth::ppg_systolic_peak, signal_synth::ppg_fiducial_measurement);
+    const signal_synth::ppg_annotation* infrared_peak = find_channel_annotation(optical, 2, optical_beat, signal_synth::ppg_systolic_peak, signal_synth::ppg_fiducial_measurement);
+    ok &= check(green_peak && red_peak && infrared_peak
+        && std::fabs((red_peak->time_seconds - green_peak->time_seconds) * 1000.0 - optical_config.red.delay_ms) <= 4.0
+        && std::fabs((infrared_peak->time_seconds - green_peak->time_seconds) * 1000.0 - optical_config.infrared.delay_ms) <= 4.0
+        && red_peak->value_au < green_peak->value_au
+        && infrared_peak->value_au > green_peak->value_au, "optical_channel_delay_gain");
+    ok &= check(red_peak && red_peak->sample_index < optical.sample_count()
+        && red_peak->value_au == optical.channel_samples(1)[red_peak->sample_index], "optical_fiducials_reference_channel_samples");
+    invalid = optical_config;
+    invalid.red.delay_ms = -1.0;
+    ok &= check(!signal_synth::ppg_generator(invalid).valid(), "invalid_red_delay");
 
     signal_synth::clinical_ecg_config ectopic_config;
     ectopic_config.scenario.premature_every_n_beats = 3;

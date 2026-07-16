@@ -491,6 +491,38 @@ namespace
         return true;
     }
 
+    void parse_ppg_optical_channel(const json_value* value, const std::string& path, signal_synth::ppg_optical_channel_config& output, signal_synth::ecg_scenario_json_result& result)
+    {
+        if (!value)
+            return;
+        if (value->type != json_value::object_kind)
+        {
+            add_message(result, signal_synth::ecg_json_type, path, "field has the wrong JSON type");
+            return;
+        }
+        const char* fields[] = {"enabled","amplitude_gain","baseline_au","delay_ms","noise_std_au","seed"};
+        allowed_fields(*value, fields, sizeof(fields) / sizeof(fields[0]), path, result);
+        const json_value* enabled = required(*value, "enabled", json_value::bool_kind, path, result);
+        const json_value* amplitude_gain = required(*value, "amplitude_gain", json_value::number_kind, path, result);
+        const json_value* baseline = required(*value, "baseline_au", json_value::number_kind, path, result);
+        const json_value* delay = required(*value, "delay_ms", json_value::number_kind, path, result);
+        const json_value* noise = required(*value, "noise_std_au", json_value::number_kind, path, result);
+        const json_value* seed = required(*value, "seed", json_value::number_kind, path, result);
+        if (enabled) output.enabled = enabled->boolean;
+        if (amplitude_gain) output.amplitude_gain = amplitude_gain->number;
+        if (baseline) output.baseline_au = baseline->number;
+        if (delay) output.delay_ms = delay->number;
+        if (noise) output.noise_std_au = noise->number;
+        if (seed)
+        {
+            unsigned long long integer = 0;
+            if (!integral_number(*seed, std::numeric_limits<unsigned long long>::max(), integer))
+                add_message(result, signal_synth::ecg_json_range, path + ".seed", "seed must be an unsigned 64-bit decimal integer");
+            else
+                output.seed = integer;
+        }
+    }
+
     bool safe_text(const std::string& value, std::size_t minimum, std::size_t maximum)
     {
         return value.size() >= minimum && value.size() <= maximum && value.find('\0') == std::string::npos && valid_utf8(value);
@@ -549,6 +581,26 @@ namespace
         output.imbue(std::locale::classic());
         output << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
         return output.str();
+    }
+
+    bool optical_channel_config_equal(const signal_synth::ppg_optical_channel_config& left, const signal_synth::ppg_optical_channel_config& right)
+    {
+        return left.enabled == right.enabled
+            && left.amplitude_gain == right.amplitude_gain
+            && left.baseline_au == right.baseline_au
+            && left.delay_ms == right.delay_ms
+            && left.noise_std_au == right.noise_std_au
+            && left.seed == right.seed;
+    }
+
+    void append_optical_channel_json(std::ostringstream& output, const char* name, const signal_synth::ppg_optical_channel_config& channel)
+    {
+        output << ",\"" << name << "\":{\"enabled\":" << (channel.enabled ? "true" : "false")
+               << ",\"amplitude_gain\":" << format_double(channel.amplitude_gain)
+               << ",\"baseline_au\":" << format_double(channel.baseline_au)
+               << ",\"delay_ms\":" << format_double(channel.delay_ms)
+               << ",\"noise_std_au\":" << format_double(channel.noise_std_au)
+               << ",\"seed\":" << channel.seed << '}';
     }
 
     const char* av_pattern_name(signal_synth::ecg_second_degree_av_pattern value)
@@ -795,6 +847,8 @@ namespace
             && config.pvc_pulse_amplitude_scale == defaults.pvc_pulse_amplitude_scale
             && config.paced_pulse_amplitude_scale == defaults.paced_pulse_amplitude_scale
             && config.seed == defaults.seed
+            && optical_channel_config_equal(config.red, defaults.red)
+            && optical_channel_config_equal(config.infrared, defaults.infrared)
             && config.perfusion_episodes.empty();
     }
 
@@ -892,6 +946,8 @@ namespace
         }
         if (parameter == "ppg.pulse_delay_ms") { minimum = 0.0; maximum = 2000.0; return true; }
         if (parameter == "ppg.amplitude_au") { minimum = 0.000001; maximum = 100.0; return true; }
+        if (parameter == "ppg.red.amplitude_gain") { minimum = 0.000001; maximum = 100.0; return true; }
+        if (parameter == "ppg.infrared.amplitude_gain") { minimum = 0.000001; maximum = 100.0; return true; }
         if (parameter == "hrv.target_sdnn_seconds") { minimum = 0.0; maximum = 2.0; return true; }
         if (parameter == "hrv.lf_hf_ratio") { minimum = 0.0; maximum = 100.0; return true; }
         if (parameter == "physiology.activity_intensity") { minimum = 0.0; maximum = 1.0; return true; }
@@ -909,6 +965,8 @@ namespace
             && document.ppg.pac_pulse_amplitude_scale == ppg.pac_pulse_amplitude_scale
             && document.ppg.pvc_pulse_amplitude_scale == ppg.pvc_pulse_amplitude_scale
             && document.ppg.paced_pulse_amplitude_scale == ppg.paced_pulse_amplitude_scale
+            && optical_channel_config_equal(document.ppg.red, ppg.red)
+            && optical_channel_config_equal(document.ppg.infrared, ppg.infrared)
             && document.ppg.perfusion_episodes.empty();
     }
 
@@ -1193,6 +1251,11 @@ namespace
                            << ",\"weak_pulse_amplitude_scale\":" << format_double(episodes[i].weak_pulse_amplitude_scale)
                            << ",\"missing_pulse_every_n_beats\":" << episodes[i].missing_pulse_every_n_beats << '}';
                 output << ']';
+                const signal_synth::ppg_config default_ppg;
+                if (!optical_channel_config_equal(document.ppg.red, default_ppg.red))
+                    append_optical_channel_json(output, "red", document.ppg.red);
+                if (!optical_channel_config_equal(document.ppg.infrared, default_ppg.infrared))
+                    append_optical_channel_json(output, "infrared", document.ppg.infrared);
             }
             output << '}';
         }
@@ -1736,7 +1799,7 @@ namespace signal_synth
                 add_message(fresh_result, ecg_json_type, "$.ppg", "field has the wrong JSON type");
             else
             {
-                const char* ppg_fields[] = {"enabled","pulse_delay_ms","rise_time_ms","decay_time_ms","amplitude_au","baseline_au","dicrotic_delay_ms","dicrotic_width_ms","dicrotic_amplitude_ratio","pulse_delay_variation_ms","pulse_delay_variation_hz","missing_pulse_every_n_beats","clock_drift_ppm","seed","pulse_delay_jitter_ms","low_frequency_amplitude_modulation_ratio","low_frequency_amplitude_modulation_hz","rise_time_variation_ratio","decay_time_variation_ratio","pac_pulse_amplitude_scale","pvc_pulse_amplitude_scale","paced_pulse_amplitude_scale","perfusion_episodes"};
+                const char* ppg_fields[] = {"enabled","pulse_delay_ms","rise_time_ms","decay_time_ms","amplitude_au","baseline_au","dicrotic_delay_ms","dicrotic_width_ms","dicrotic_amplitude_ratio","pulse_delay_variation_ms","pulse_delay_variation_hz","missing_pulse_every_n_beats","clock_drift_ppm","seed","pulse_delay_jitter_ms","low_frequency_amplitude_modulation_ratio","low_frequency_amplitude_modulation_hz","rise_time_variation_ratio","decay_time_variation_ratio","pac_pulse_amplitude_scale","pvc_pulse_amplitude_scale","paced_pulse_amplitude_scale","perfusion_episodes","red","infrared"};
                 const std::size_t ppg_field_count = document.schema_version >= 4 ? sizeof(ppg_fields) / sizeof(ppg_fields[0]) : document.schema_version >= 3 ? 14u : 9u;
                 allowed_fields(*ppg, ppg_fields, ppg_field_count, "$.ppg", fresh_result);
                 const json_value* enabled = required(*ppg, "enabled", json_value::bool_kind, "$.ppg", fresh_result);
@@ -1762,6 +1825,8 @@ namespace signal_synth
                 const json_value* pvc_scale = member(*ppg, "pvc_pulse_amplitude_scale");
                 const json_value* paced_scale = member(*ppg, "paced_pulse_amplitude_scale");
                 const json_value* perfusion_episodes = member(*ppg, "perfusion_episodes");
+                const json_value* red_channel = member(*ppg, "red");
+                const json_value* infrared_channel = member(*ppg, "infrared");
                 if (document.schema_version >= 3)
                 {
                     delay_variation = required(*ppg, "pulse_delay_variation_ms", json_value::number_kind, "$.ppg", fresh_result);
@@ -1889,6 +1954,11 @@ namespace signal_synth
                             document.ppg.perfusion_episodes.push_back(episode);
                         }
                     }
+                }
+                if (document.schema_version >= 4)
+                {
+                    parse_ppg_optical_channel(red_channel, "$.ppg.red", document.ppg.red, fresh_result);
+                    parse_ppg_optical_channel(infrared_channel, "$.ppg.infrared", document.ppg.infrared, fresh_result);
                 }
                 if (!ppg_generator(document.ppg).valid())
                     add_message(fresh_result, ecg_json_range, "$.ppg", "invalid PPG configuration");

@@ -98,6 +98,13 @@ namespace
         return render.ppg.samples();
     }
 
+    const double* rendered_ppg_channel(const signal_synth::ecg_render_bundle& render, unsigned int channel)
+    {
+        if (channel == 0)
+            return rendered_ppg(render);
+        return render.ppg.channel_samples(channel);
+    }
+
     const double* rendered_accelerometer(const signal_synth::ecg_render_bundle& render)
     {
         return render.signal_quality.accelerometer.size() == render.record.sample_count() && !render.signal_quality.accelerometer.empty()
@@ -261,9 +268,9 @@ namespace
     std::string header(const signal_synth::ecg_render_bundle& render, standard_kind kind, const std::string& record_name, const edf_record_layout& layout)
     {
         (void)record_name;
-        const bool has_ppg = render.ppg.sample_count() != 0;
+        const unsigned int ppg_count = render.ppg.channel_count();
         const bool has_accelerometer = !render.signal_quality.accelerometer.empty();
-        const unsigned int waveform_signal_count = render.record.lead_count() + (has_ppg ? 1u : 0u) + (has_accelerometer ? 1u : 0u);
+        const unsigned int waveform_signal_count = render.record.lead_count() + ppg_count + (has_accelerometer ? 1u : 0u);
         const unsigned int signal_count = waveform_signal_count + 1u;
         const unsigned int header_bytes = 256u + signal_count * 256u;
         const char* annotation_label = kind == standard_edf ? "EDF Annotations" : "BDF Annotations";
@@ -292,9 +299,9 @@ namespace
             samples_per_record.push_back(integer(layout.waveform_samples_per_record));
             signal_reserved.push_back("");
         }
-        if (has_ppg)
+        for (unsigned int channel = 0; channel < ppg_count; ++channel)
         {
-            labels.push_back("ppg_green");
+            labels.push_back(render.ppg.channel_name(channel));
             transducers.push_back("synthetic");
             dimensions.push_back("NU");
             physical_minimum.push_back(kind == standard_edf ? "-3.2768" : "-8.3886");
@@ -357,13 +364,12 @@ namespace
     std::string data_record(const signal_synth::ecg_render_bundle& render, standard_kind kind, const edf_record_layout& layout)
     {
         std::string output;
-        const bool has_ppg = render.ppg.sample_count() != 0;
+        const unsigned int ppg_count = render.ppg.channel_count();
         const bool has_accelerometer = !render.signal_quality.accelerometer.empty();
-        const unsigned int waveform_signal_count = render.record.lead_count() + (has_ppg ? 1u : 0u) + (has_accelerometer ? 1u : 0u);
+        const unsigned int waveform_signal_count = render.record.lead_count() + ppg_count + (has_accelerometer ? 1u : 0u);
         const unsigned int sample_bytes = kind == standard_edf ? 2u : 3u;
         const std::size_t bytes_per_record = static_cast<std::size_t>(waveform_signal_count) * layout.waveform_samples_per_record * sample_bytes + layout.annotation_bytes_per_record;
         output.reserve(layout.data_record_count * bytes_per_record);
-        const double* ppg = rendered_ppg(render);
         const double* accelerometer = rendered_accelerometer(render);
         for (unsigned int record = 0; record < layout.data_record_count; ++record)
         {
@@ -380,8 +386,9 @@ namespace
                         append_i24_le(output, clamp_i24(samples[sample], bdf_ecg_gain_adc_per_mv));
                 }
             }
-            if (ppg)
+            for (unsigned int ppg_channel = 0; ppg_channel < ppg_count; ++ppg_channel)
             {
+                const double* ppg = rendered_ppg_channel(render, ppg_channel);
                 for (unsigned int sample = first_sample; sample < past_sample; ++sample)
                 {
                     if (kind == standard_edf)
@@ -434,8 +441,16 @@ namespace
                    << ",\"unit\":\"mV\",\"edf_gain_adc_per_unit\":" << edf_ecg_gain_adc_per_mv
                    << ",\"bdf_gain_adc_per_unit\":" << bdf_ecg_gain_adc_per_mv << "}";
         }
-        if (render.ppg.sample_count())
-            output << ",{\"name\":\"ppg_green\",\"unit\":\"normalized_unit\",\"edf_gain_adc_per_unit\":" << edf_ppg_gain_adc_per_au << ",\"bdf_gain_adc_per_unit\":" << bdf_ppg_gain_adc_per_au << "}";
+        for (unsigned int channel = 0; channel < render.ppg.channel_count(); ++channel)
+            output << ",{\"name\":" << json_string(render.ppg.channel_name(channel))
+                   << ",\"unit\":\"normalized_unit\",\"edf_gain_adc_per_unit\":" << edf_ppg_gain_adc_per_au
+                   << ",\"bdf_gain_adc_per_unit\":" << bdf_ppg_gain_adc_per_au
+                   << ",\"role\":\"optical_ppg\""
+                   << ",\"amplitude_gain\":" << render.ppg.channel_amplitude_gain(channel)
+                   << ",\"baseline_au\":" << render.ppg.channel_baseline_au(channel)
+                   << ",\"delay_ms\":" << render.ppg.channel_delay_ms(channel)
+                   << ",\"noise_std_au\":" << render.ppg.channel_noise_std_au(channel)
+                   << ",\"seed\":" << render.ppg.channel_seed(channel) << "}";
         if (!render.signal_quality.accelerometer.empty())
             output << ",{\"name\":\"accel_motion\",\"unit\":\"g\",\"edf_gain_adc_per_unit\":" << edf_accelerometer_gain_adc_per_g << ",\"bdf_gain_adc_per_unit\":" << bdf_accelerometer_gain_adc_per_g << ",\"role\":\"motion_reference\"}";
         output << "],\"annotation_strategy\":{\"native_annotation_signal\":[\"r_peak\",\"ppg_systolic_peak\"],"

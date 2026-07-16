@@ -123,6 +123,15 @@ int main()
     document.ecg.set_sampling_rate_hz(250);
     document.ppg = config;
     document.ppg.pac_pulse_amplitude_scale = 0.6;
+    document.ppg.red.enabled = true;
+    document.ppg.red.amplitude_gain = 0.75;
+    document.ppg.red.baseline_au = 0.12;
+    document.ppg.red.delay_ms = 10.0;
+    document.ppg.red.noise_std_au = 0.0005;
+    document.ppg.infrared.enabled = true;
+    document.ppg.infrared.amplitude_gain = 1.25;
+    document.ppg.infrared.baseline_au = 0.18;
+    document.ppg.infrared.delay_ms = 16.0;
     document.physiology.respiration_frequency_hz = 0.22;
     document.physiology.ppg_amplitude_modulation_ratio = 0.15;
     signal_synth::ecg_scenario_json_result identity;
@@ -132,7 +141,9 @@ int main()
         && signal_synth::parse_ecg_scenario_json(identity.canonical_json, parsed, repeated_identity)
         && identity.document_fingerprint == repeated_identity.document_fingerprint
         && parsed.ppg.perfusion_episodes.size() == 1u
-        && parsed.ppg.pac_pulse_amplitude_scale == 0.6, "schema_v4_roundtrip");
+        && parsed.ppg.pac_pulse_amplitude_scale == 0.6
+        && parsed.ppg.red.enabled
+        && parsed.ppg.infrared.enabled, "schema_v4_roundtrip");
     signal_synth::ecg_scenario_document changed_identity_document = document;
     ++changed_identity_document.ppg.seed;
     signal_synth::ecg_scenario_json_result changed_identity;
@@ -149,7 +160,8 @@ int main()
     ok &= check(signal_synth::render_ecg_document(document, render, result)
         && render.metrics.ppg_low_perfusion_pulse_count == low_perfusion
         && render.metrics.ppg_weak_pulse_count == weak
-        && render.metrics.ppg_missing_pulse_count == missing, "rendered_state_metrics");
+        && render.metrics.ppg_missing_pulse_count == missing
+        && render.ppg.channel_count() == 3u, "rendered_state_metrics");
     signal_synth::ecg_scenario_document no_respiratory_amplitude = document;
     no_respiratory_amplitude.physiology.ppg_amplitude_modulation_ratio = 0.0;
     signal_synth::ecg_render_bundle no_respiratory_render;
@@ -166,7 +178,18 @@ int main()
     signal_synth::ecg_export_bundle export_bundle;
     ok &= check(signal_synth::build_ecg_export_bundle(render, export_bundle, result)
         && export_bundle.find("synsigra.dat") && export_bundle.find("synsigra.edf") && export_bundle.find("synsigra.bdf")
+        && export_bundle.find("waveform.csv")
         && export_bundle.find("annotations.json")
+        && export_bundle.find("metadata.json")
+        && export_bundle.find("wfdb_metadata.json")
+        && export_bundle.find("edf_bdf_metadata.json")
+        && export_bundle.find("waveform.csv")->content.find("ppg_red_au") != std::string::npos
+        && export_bundle.find("waveform.csv")->content.find("ppg_infrared_au") != std::string::npos
+        && export_bundle.find("annotations.json")->content.find("\"ppg_channel_fiducials\":[{") != std::string::npos
+        && export_bundle.find("annotations.json")->content.find("\"channel\":\"ppg_red\"") != std::string::npos
+        && export_bundle.find("metadata.json")->content.find("\"name\":\"ppg_infrared\"") != std::string::npos
+        && export_bundle.find("wfdb_metadata.json")->content.find("\"name\":\"ppg_red\"") != std::string::npos
+        && export_bundle.find("edf_bdf_metadata.json")->content.find("\"name\":\"ppg_infrared\"") != std::string::npos
         && export_bundle.find("annotations.json")->content.find("\"state\":\"weak\"") != std::string::npos
         && export_bundle.find("annotations.json")->content.find("\"state\":\"missing\"") != std::string::npos
         && export_bundle.find("ground_truth_metrics.json")->content.find("\"low_perfusion_pulse_count\":") != std::string::npos, "state_export_contract");

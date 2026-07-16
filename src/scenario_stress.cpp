@@ -115,6 +115,10 @@ namespace signal_synth
                     fresh.ppg.pulse_delay_ms = draw.value;
                 else if (draw.parameter == "ppg.amplitude_au")
                     fresh.ppg.amplitude_au = draw.value;
+                else if (draw.parameter == "ppg.red.amplitude_gain")
+                    fresh.ppg.red.amplitude_gain = draw.value;
+                else if (draw.parameter == "ppg.infrared.amplitude_gain")
+                    fresh.ppg.infrared.amplitude_gain = draw.value;
                 else if (draw.parameter == "hrv.target_sdnn_seconds")
                     fresh.hrv.target_sdnn_seconds = draw.value;
                 else if (draw.parameter == "hrv.lf_hf_ratio")

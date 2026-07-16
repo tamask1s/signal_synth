@@ -269,6 +269,13 @@ namespace
         return render.ppg.samples();
     }
 
+    const double* rendered_ppg_channel(const signal_synth::ecg_render_bundle& render, unsigned int channel)
+    {
+        if (channel == 0)
+            return rendered_ppg(render);
+        return render.ppg.channel_samples(channel);
+    }
+
     std::string waveform_csv(const signal_synth::ecg_render_bundle& render)
     {
         std::ostringstream output;
@@ -277,8 +284,8 @@ namespace
         output << "sample_index,time_seconds";
         for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
             output << ',' << render.record.lead_name(lead) << "_mv";
-        if (render.ppg.sample_count())
-            output << ",ppg_green_au";
+        for (unsigned int channel = 0; channel < render.ppg.channel_count(); ++channel)
+            output << ',' << render.ppg.channel_name(channel) << "_au";
         if (!render.signal_quality.accelerometer.empty())
             output << ",accel_motion_g";
         output << '\n';
@@ -287,8 +294,8 @@ namespace
             output << sample << ',' << static_cast<double>(sample) / render.record.sampling_rate_hz();
             for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
                 output << ',' << normalized_zero(rendered_ecg_lead(render, lead)[sample]);
-            if (render.ppg.sample_count())
-                output << ',' << normalized_zero(rendered_ppg(render)[sample]);
+            for (unsigned int channel = 0; channel < render.ppg.channel_count(); ++channel)
+                output << ',' << normalized_zero(rendered_ppg_channel(render, channel)[sample]);
             if (!render.signal_quality.accelerometer.empty())
                 output << ',' << normalized_zero(render.signal_quality.accelerometer[sample]);
             output << '\n';
@@ -536,11 +543,36 @@ namespace
                     : annotation.kind == signal_synth::ppg_dicrotic_feature ? "dicrotic_feature" : "pulse_offset";
                 output << "{\"ecg_beat_index\":" << annotation.ecg_beat_index
                        << ",\"ecg_r_time_seconds\":" << annotation.ecg_r_time_seconds
+                       << ",\"channel\":\"ppg_green\""
                        << ",\"kind\":" << json_string(kind)
                        << ",\"source\":" << json_string(annotation.source == signal_synth::ppg_fiducial_construction ? "construction" : "measurement")
                        << ",\"sample_index\":" << annotation.sample_index
                        << ",\"time_seconds\":" << annotation.time_seconds
                        << ",\"value_au\":" << annotation.value_au << '}';
+            }
+            output << "],\"ppg_channel_fiducials\":[";
+            bool first_channel_fiducial = true;
+            for (unsigned int channel = 1; channel < render.ppg.channel_count(); ++channel)
+            {
+                const signal_synth::ppg_annotation* channel_annotations = render.ppg.channel_annotations(channel);
+                for (unsigned int i = 0; i < render.ppg.channel_annotation_count(channel); ++i)
+                {
+                    if (!first_channel_fiducial)
+                        output << ',';
+                    first_channel_fiducial = false;
+                    const signal_synth::ppg_annotation& annotation = channel_annotations[i];
+                    const char* kind = annotation.kind == signal_synth::ppg_pulse_onset ? "pulse_onset"
+                        : annotation.kind == signal_synth::ppg_systolic_peak ? "systolic_peak"
+                        : annotation.kind == signal_synth::ppg_dicrotic_feature ? "dicrotic_feature" : "pulse_offset";
+                    output << "{\"ecg_beat_index\":" << annotation.ecg_beat_index
+                           << ",\"ecg_r_time_seconds\":" << annotation.ecg_r_time_seconds
+                           << ",\"channel\":" << json_string(render.ppg.channel_name(channel))
+                           << ",\"kind\":" << json_string(kind)
+                           << ",\"source\":" << json_string(annotation.source == signal_synth::ppg_fiducial_construction ? "construction" : "measurement")
+                           << ",\"sample_index\":" << annotation.sample_index
+                           << ",\"time_seconds\":" << annotation.time_seconds
+                           << ",\"value_au\":" << annotation.value_au << '}';
+                }
             }
             output << "],\"ppg_pulses\":[";
             for (unsigned int i = 0; i < render.ppg.pulse_count(); ++i)
@@ -664,6 +696,7 @@ namespace
         output << ']';
         if (render.document.schema_version >= 2)
             output << ",\"ppg\":{\"pulse_count\":" << metrics.ppg_pulse_count
+                   << ",\"channel_count\":" << render.ppg.channel_count()
                    << ",\"expected_pulse_count\":" << metrics.ppg_expected_pulse_count
                    << ",\"intentionally_missing_pulse_count\":" << metrics.ppg_missing_pulse_count
                    << ",\"weak_pulse_count\":" << metrics.ppg_weak_pulse_count
@@ -713,7 +746,7 @@ namespace
                << "},\"render\":{\"sample_rate_hz\":" << render.record.sampling_rate_hz()
                << ",\"sample_count\":" << render.record.sample_count()
                << ",\"duration_seconds\":" << std::setprecision(std::numeric_limits<double>::max_digits10) << render.document.duration_seconds
-               << ",\"channel_count\":" << render.record.lead_count() + (render.ppg.sample_count() ? 1u : 0u) + (render.signal_quality.accelerometer.empty() ? 0u : 1u)
+               << ",\"channel_count\":" << render.record.lead_count() + render.ppg.channel_count() + (render.signal_quality.accelerometer.empty() ? 0u : 1u)
                << ",\"channels\":[";
         for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
         {
@@ -721,8 +754,15 @@ namespace
                 output << ',';
             output << "{\"name\":" << json_string(render.record.lead_name(lead)) << ",\"unit\":\"mV\"}";
         }
-        if (render.ppg.sample_count())
-            output << ",{\"name\":\"ppg_green\",\"unit\":\"a.u.\"}";
+        for (unsigned int channel = 0; channel < render.ppg.channel_count(); ++channel)
+            output << ",{\"name\":" << json_string(render.ppg.channel_name(channel))
+                   << ",\"unit\":\"a.u.\""
+                   << ",\"role\":\"optical_ppg\""
+                   << ",\"amplitude_gain\":" << render.ppg.channel_amplitude_gain(channel)
+                   << ",\"baseline_au\":" << render.ppg.channel_baseline_au(channel)
+                   << ",\"delay_ms\":" << render.ppg.channel_delay_ms(channel)
+                   << ",\"noise_std_au\":" << render.ppg.channel_noise_std_au(channel)
+                   << ",\"seed\":" << render.ppg.channel_seed(channel) << '}';
         if (!render.signal_quality.accelerometer.empty())
             output << ",{\"name\":\"accel_motion\",\"unit\":\"g\",\"role\":\"motion_reference\"}";
         output << "],\"timestamp_policy\":\"not_recorded_for_deterministic_local_export\""
@@ -761,6 +801,7 @@ namespace
                << ",\"sample_count\":" << render.record.sample_count()
                << ",\"duration_seconds\":" << render.document.duration_seconds
                << ",\"lead_count\":" << render.record.lead_count()
+               << ",\"ppg_channel_count\":" << render.ppg.channel_count()
                << ",\"has_ppg\":" << (render.ppg.sample_count() ? "true" : "false")
                << ",\"has_motion_reference\":" << (render.signal_quality.accelerometer.empty() ? "false" : "true") << '}'
                << ",\"provenance_checklist\":["

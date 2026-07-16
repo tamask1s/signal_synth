@@ -28,7 +28,27 @@ namespace signal_synth
         ppg_pulse_out_of_record = 3
     };
 
+    enum ppg_channel_kind
+    {
+        ppg_channel_green = 0,
+        ppg_channel_red = 1,
+        ppg_channel_infrared = 2
+    };
+
     const char* ppg_pulse_state_name(ppg_pulse_state state);
+    const char* ppg_channel_kind_name(ppg_channel_kind kind);
+
+    struct ppg_optical_channel_config
+    {
+        ppg_optical_channel_config();
+
+        bool enabled;
+        double amplitude_gain;
+        double baseline_au;
+        double delay_ms;
+        double noise_std_au;
+        unsigned long long seed;
+    };
 
     struct ppg_perfusion_episode_config
     {
@@ -70,6 +90,8 @@ namespace signal_synth
         double pvc_pulse_amplitude_scale;
         double paced_pulse_amplitude_scale;
         unsigned long long seed;
+        ppg_optical_channel_config red;
+        ppg_optical_channel_config infrared;
         std::vector<ppg_perfusion_episode_config> perfusion_episodes;
     };
 
@@ -117,6 +139,18 @@ namespace signal_synth
         const char* channel_name() const;
         const char* unit() const;
         const double* samples() const;
+        unsigned int channel_count() const;
+        ppg_channel_kind channel_kind(unsigned int channel_index) const;
+        const char* channel_name(unsigned int channel_index) const;
+        const char* channel_unit(unsigned int channel_index) const;
+        const double* channel_samples(unsigned int channel_index) const;
+        double channel_amplitude_gain(unsigned int channel_index) const;
+        double channel_baseline_au(unsigned int channel_index) const;
+        double channel_delay_ms(unsigned int channel_index) const;
+        double channel_noise_std_au(unsigned int channel_index) const;
+        unsigned long long channel_seed(unsigned int channel_index) const;
+        unsigned int channel_annotation_count(unsigned int channel_index) const;
+        const ppg_annotation* channel_annotations(unsigned int channel_index) const;
         unsigned int annotation_count() const;
         const ppg_annotation* annotations() const;
         unsigned int pulse_count() const;

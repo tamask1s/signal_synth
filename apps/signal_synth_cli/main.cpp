@@ -485,12 +485,19 @@ namespace
     void write_case_channels(std::ostringstream& output, const signal_synth::ecg_render_bundle& render)
     {
         output << '[';
+        bool first = true;
         for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
-            output << (lead ? "," : "") << "{\"name\":" << json_text(render.record.lead_name(lead)) << ",\"unit\":\"mV\"}";
-        if (render.ppg.sample_count())
-            output << (render.record.lead_count() ? "," : "") << "{\"name\":\"ppg_green\",\"unit\":\"a.u.\"}";
+        {
+            output << (first ? "" : ",") << "{\"name\":" << json_text(render.record.lead_name(lead)) << ",\"unit\":\"mV\"}";
+            first = false;
+        }
+        for (unsigned int channel = 0; channel < render.ppg.channel_count(); ++channel)
+        {
+            output << (first ? "" : ",") << "{\"name\":" << json_text(render.ppg.channel_name(channel)) << ",\"unit\":\"a.u.\",\"role\":\"optical_ppg\"}";
+            first = false;
+        }
         if (!render.signal_quality.accelerometer.empty())
-            output << (render.record.lead_count() || render.ppg.sample_count() ? "," : "") << "{\"name\":\"accel_motion\",\"unit\":\"g\",\"role\":\"motion_reference\"}";
+            output << (first ? "" : ",") << "{\"name\":\"accel_motion\",\"unit\":\"g\",\"role\":\"motion_reference\"}";
         output << ']';
     }
 
@@ -531,7 +538,7 @@ namespace
         output << ",\"render\":{\"sample_rate_hz\":" << render.record.sampling_rate_hz()
                << ",\"sample_count\":" << render.record.sample_count()
                << ",\"duration_seconds\":" << document.duration_seconds
-               << ",\"channel_count\":" << render.record.lead_count() + (render.ppg.sample_count() ? 1u : 0u) + (render.signal_quality.accelerometer.empty() ? 0u : 1u)
+               << ",\"channel_count\":" << render.record.lead_count() + render.ppg.channel_count() + (render.signal_quality.accelerometer.empty() ? 0u : 1u)
                << ",\"channels\":";
         write_case_channels(output, render);
         output << "},\"ground_truth\":{\"beat_count\":" << render.metrics.beat_count
@@ -1379,7 +1386,7 @@ int main(int argc, char** argv)
                 row.sample_rate_hz = render.record.sampling_rate_hz();
                 row.sample_count = document.sample_count();
                 row.duration_seconds = document.duration_seconds;
-                row.channel_count = render.record.lead_count() + (render.ppg.sample_count() ? 1u : 0u) + (render.signal_quality.accelerometer.empty() ? 0u : 1u);
+                row.channel_count = render.record.lead_count() + render.ppg.channel_count() + (render.signal_quality.accelerometer.empty() ? 0u : 1u);
                 row.beat_count = render.metrics.beat_count;
                 row.artifact_count = render.metrics.artifact_count;
                 row.ppg_pulse_count = render.metrics.ppg_pulse_count;

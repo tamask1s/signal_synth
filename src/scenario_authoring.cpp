@@ -524,6 +524,18 @@ namespace signal_synth
             {"$.ppg.pvc_pulse_amplitude_scale","PVC-linked pulse amplitude","ppg_physiology","number","slider","1","0","1","0.01","ratio",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
             {"$.ppg.paced_pulse_amplitude_scale","Paced-beat pulse amplitude","ppg_physiology","number","slider","1","0","1","0.01","ratio",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
             {"$.ppg.perfusion_episodes","Perfusion episodes","ppg_physiology","ppg_perfusion_episode_array","episode_editor","[]","0","64",0,"items",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
+            {"$.ppg.red.enabled","Red PPG channel","ppg_optical","boolean","toggle","false",0,0,0,"",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
+            {"$.ppg.red.amplitude_gain","Red PPG gain","ppg_optical","number","number","0.85","0.000001","100","0.01","ratio",0,"{\"path\":\"$.ppg.red.enabled\",\"equals\":true}",true},
+            {"$.ppg.red.baseline_au","Red PPG baseline","ppg_optical","number","number","0.1","-100","100","0.01","a.u.",0,"{\"path\":\"$.ppg.red.enabled\",\"equals\":true}",true},
+            {"$.ppg.red.delay_ms","Red PPG delay offset","ppg_optical","number","number","8","0","2000","1","ms",0,"{\"path\":\"$.ppg.red.enabled\",\"equals\":true}",true},
+            {"$.ppg.red.noise_std_au","Red PPG noise","ppg_optical","number","number","0","0","100","0.001","a.u.",0,"{\"path\":\"$.ppg.red.enabled\",\"equals\":true}",true},
+            {"$.ppg.red.seed","Red PPG seed","ppg_optical","uint64_string","text","\"5787213827044626759\"",0,0,0,"",0,"{\"path\":\"$.ppg.red.enabled\",\"equals\":true}",true},
+            {"$.ppg.infrared.enabled","Infrared PPG channel","ppg_optical","boolean","toggle","false",0,0,0,"",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
+            {"$.ppg.infrared.amplitude_gain","Infrared PPG gain","ppg_optical","number","number","1.15","0.000001","100","0.01","ratio",0,"{\"path\":\"$.ppg.infrared.enabled\",\"equals\":true}",true},
+            {"$.ppg.infrared.baseline_au","Infrared PPG baseline","ppg_optical","number","number","0.2","-100","100","0.01","a.u.",0,"{\"path\":\"$.ppg.infrared.enabled\",\"equals\":true}",true},
+            {"$.ppg.infrared.delay_ms","Infrared PPG delay offset","ppg_optical","number","number","12","0","2000","1","ms",0,"{\"path\":\"$.ppg.infrared.enabled\",\"equals\":true}",true},
+            {"$.ppg.infrared.noise_std_au","Infrared PPG noise","ppg_optical","number","number","0","0","100","0.001","a.u.",0,"{\"path\":\"$.ppg.infrared.enabled\",\"equals\":true}",true},
+            {"$.ppg.infrared.seed","Infrared PPG seed","ppg_optical","uint64_string","text","\"5787213827044626759\"",0,0,0,"",0,"{\"path\":\"$.ppg.infrared.enabled\",\"equals\":true}",true},
             {"$.randomization.enabled","Controlled randomization","randomization","boolean","toggle","false",0,0,0,"",0,0,true},
             {"$.randomization.seed","Randomization seed","randomization","uint64_string","text","\"5927117558752822833\"",0,0,0,"",0,"{\"path\":\"$.randomization.enabled\",\"equals\":true}",true},
             {"$.randomization.envelopes","Parameter envelopes","randomization","randomization_envelope_array","envelope_editor","[]","1","32",0,"items",0,"{\"path\":\"$.randomization.enabled\",\"equals\":true}",true},
@@ -548,7 +560,7 @@ namespace signal_synth
                << ",\"scenario_schema_version\":4,\"groups\":["
                << "{\"id\":\"identity\",\"label\":\"Identity\"},{\"id\":\"render\",\"label\":\"Render\"},{\"id\":\"ecg\",\"label\":\"ECG\"},"
                << "{\"id\":\"episode\",\"label\":\"Episode\"},{\"id\":\"hrv\",\"label\":\"HRV\"},{\"id\":\"ppg\",\"label\":\"PPG\"},"
-               << "{\"id\":\"ppg_stress\",\"label\":\"PPG Timing Stress\"},{\"id\":\"ppg_physiology\",\"label\":\"PPG Physiology\"},{\"id\":\"randomization\",\"label\":\"Randomization\"},"
+               << "{\"id\":\"ppg_stress\",\"label\":\"PPG Timing Stress\"},{\"id\":\"ppg_physiology\",\"label\":\"PPG Physiology\"},{\"id\":\"ppg_optical\",\"label\":\"PPG Optical Channels\"},{\"id\":\"randomization\",\"label\":\"Randomization\"},"
                << "{\"id\":\"physiology\",\"label\":\"Physiology\"},{\"id\":\"output\",\"label\":\"Output\"},{\"id\":\"artifacts\",\"label\":\"Artifacts\"}],\"fields\":[";
         for (std::size_t i = 0; i < sizeof(fields) / sizeof(fields[0]); ++i)
         {
@@ -559,7 +571,7 @@ namespace signal_synth
                << "{\"name\":\"code\",\"value_type\":\"string\",\"control\":\"condition_select\"},"
                << "{\"name\":\"severity\",\"value_type\":\"number\",\"control\":\"slider\",\"minimum\":0.000001,\"maximum\":1,\"step\":0.01,\"default\":1,\"enabled_when\":\"selected condition has variable_severity=true\"}],"
                << "\"randomization_envelope_item_fields\":["
-               << "{\"name\":\"parameter\",\"value_type\":\"string\",\"control\":\"select\",\"options\":[\"ecg.heart_rate_bpm\",\"ecg.rr_variability_seconds\",\"ecg.morphology.p_amplitude_mv\",\"ecg.morphology.q_amplitude_mv\",\"ecg.morphology.r_amplitude_mv\",\"ecg.morphology.s_amplitude_mv\",\"ecg.morphology.t_amplitude_mv\",\"ecg.morphology.qrs_axis_degrees\",\"ecg.morphology.t_axis_degrees\",\"ecg.morphology.qrs_duration_ms\",\"ecg.morphology.qt_interval_ms\",\"ppg.pulse_delay_ms\",\"ppg.amplitude_au\",\"hrv.target_sdnn_seconds\",\"hrv.lf_hf_ratio\",\"physiology.activity_intensity\"]},"
+               << "{\"name\":\"parameter\",\"value_type\":\"string\",\"control\":\"select\",\"options\":[\"ecg.heart_rate_bpm\",\"ecg.rr_variability_seconds\",\"ecg.morphology.p_amplitude_mv\",\"ecg.morphology.q_amplitude_mv\",\"ecg.morphology.r_amplitude_mv\",\"ecg.morphology.s_amplitude_mv\",\"ecg.morphology.t_amplitude_mv\",\"ecg.morphology.qrs_axis_degrees\",\"ecg.morphology.t_axis_degrees\",\"ecg.morphology.qrs_duration_ms\",\"ecg.morphology.qt_interval_ms\",\"ppg.pulse_delay_ms\",\"ppg.amplitude_au\",\"ppg.red.amplitude_gain\",\"ppg.infrared.amplitude_gain\",\"hrv.target_sdnn_seconds\",\"hrv.lf_hf_ratio\",\"physiology.activity_intensity\"]},"
                << "{\"name\":\"minimum\",\"value_type\":\"number\",\"control\":\"number\"},"
                << "{\"name\":\"maximum\",\"value_type\":\"number\",\"control\":\"number\"}],"
                << "\"ppg_perfusion_episode_item_fields\":["

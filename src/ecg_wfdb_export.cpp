@@ -84,6 +84,13 @@ namespace
         return render.ppg.samples();
     }
 
+    const double* rendered_ppg_channel(const signal_synth::ecg_render_bundle& render, unsigned int channel)
+    {
+        if (channel == 0)
+            return rendered_ppg(render);
+        return render.ppg.channel_samples(channel);
+    }
+
     const double* rendered_accelerometer(const signal_synth::ecg_render_bundle& render)
     {
         return render.signal_quality.accelerometer.size() == render.record.sample_count() && !render.signal_quality.accelerometer.empty()
@@ -158,15 +165,14 @@ namespace
     std::string wfdb_dat(const signal_synth::ecg_render_bundle& render, std::vector<long>& checksums, std::vector<short>& initial_values)
     {
         const unsigned int ecg_count = render.record.lead_count();
-        const bool has_ppg = render.ppg.sample_count() != 0;
+        const unsigned int ppg_count = render.ppg.channel_count();
         const bool has_accelerometer = !render.signal_quality.accelerometer.empty();
-        const unsigned int channel_count = ecg_count + (has_ppg ? 1u : 0u) + (has_accelerometer ? 1u : 0u);
+        const unsigned int channel_count = ecg_count + ppg_count + (has_accelerometer ? 1u : 0u);
         checksums.assign(channel_count, 0);
         initial_values.assign(channel_count, 0);
 
         std::string output;
         output.reserve(static_cast<std::size_t>(render.record.sample_count()) * channel_count * 2u);
-        const double* ppg = rendered_ppg(render);
         const double* accelerometer = rendered_accelerometer(render);
         for (unsigned int sample = 0; sample < render.record.sample_count(); ++sample)
         {
@@ -178,17 +184,19 @@ namespace
                 checksums[lead] += value;
                 append_i16_le(output, value);
             }
-            if (ppg)
+            for (unsigned int ppg_channel = 0; ppg_channel < ppg_count; ++ppg_channel)
             {
+                const unsigned int channel = ecg_count + ppg_channel;
+                const double* ppg = rendered_ppg_channel(render, ppg_channel);
                 const short value = clamp_adc(ppg[sample], ppg_gain_adc_per_au);
                 if (!sample)
-                    initial_values[ecg_count] = value;
-                checksums[ecg_count] += value;
+                    initial_values[channel] = value;
+                checksums[channel] += value;
                 append_i16_le(output, value);
             }
             if (accelerometer)
             {
-                const unsigned int channel = ecg_count + (has_ppg ? 1u : 0u);
+                const unsigned int channel = ecg_count + ppg_count;
                 const short value = clamp_adc(accelerometer[sample], accelerometer_gain_adc_per_g);
                 if (!sample)
                     initial_values[channel] = value;
@@ -214,9 +222,9 @@ namespace
         std::ostringstream output;
         output.imbue(std::locale::classic());
         const unsigned int ecg_count = render.record.lead_count();
-        const bool has_ppg = render.ppg.sample_count() != 0;
+        const unsigned int ppg_count = render.ppg.channel_count();
         const bool has_accelerometer = !render.signal_quality.accelerometer.empty();
-        const unsigned int channel_count = ecg_count + (has_ppg ? 1u : 0u) + (has_accelerometer ? 1u : 0u);
+        const unsigned int channel_count = ecg_count + ppg_count + (has_accelerometer ? 1u : 0u);
         output << record_name << ' ' << channel_count << ' ' << std::setprecision(std::numeric_limits<double>::max_digits10)
                << render.record.sampling_rate_hz() << ' ' << render.record.sample_count() << '\n';
         output << "# generator=signal_synth " << signal_synth::signal_synth_generator_version() << '\n';
@@ -225,11 +233,14 @@ namespace
         output << "# render_identity=" << render.render_identity << '\n';
         for (unsigned int lead = 0; lead < ecg_count; ++lead)
             output << record_name << ".dat 16 " << ecg_gain_adc_per_mv << "(0)/mV 16 0 " << initial_values[lead] << ' ' << wfdb_checksum(checksums[lead]) << " 0 " << clinical_lead_name(lead) << '\n';
-        if (has_ppg)
-            output << record_name << ".dat 16 " << ppg_gain_adc_per_au << "(0)/NU 16 0 " << initial_values[ecg_count] << ' ' << wfdb_checksum(checksums[ecg_count]) << " 0 ppg_green\n";
+        for (unsigned int ppg_channel = 0; ppg_channel < ppg_count; ++ppg_channel)
+        {
+            const unsigned int channel = ecg_count + ppg_channel;
+            output << record_name << ".dat 16 " << ppg_gain_adc_per_au << "(0)/NU 16 0 " << initial_values[channel] << ' ' << wfdb_checksum(checksums[channel]) << " 0 " << render.ppg.channel_name(ppg_channel) << '\n';
+        }
         if (has_accelerometer)
         {
-            const unsigned int channel = ecg_count + (has_ppg ? 1u : 0u);
+            const unsigned int channel = ecg_count + ppg_count;
             output << record_name << ".dat 16 " << accelerometer_gain_adc_per_g << "(0)/g 16 0 " << initial_values[channel] << ' ' << wfdb_checksum(checksums[channel]) << " 0 accel_motion\n";
         }
         return output.str();
@@ -278,8 +289,15 @@ namespace
                    << ",\"unit\":\"mV\",\"gain_adc_per_unit\":" << ecg_gain_adc_per_mv
                    << ",\"adc_zero\":0}";
         }
-        if (render.ppg.sample_count())
-            output << ",{\"name\":\"ppg_green\",\"unit\":\"normalized_unit\",\"gain_adc_per_unit\":" << ppg_gain_adc_per_au << ",\"adc_zero\":0}";
+        for (unsigned int channel = 0; channel < render.ppg.channel_count(); ++channel)
+            output << ",{\"name\":" << json_string(render.ppg.channel_name(channel))
+                   << ",\"unit\":\"normalized_unit\",\"gain_adc_per_unit\":" << ppg_gain_adc_per_au
+                   << ",\"adc_zero\":0,\"role\":\"optical_ppg\""
+                   << ",\"amplitude_gain\":" << render.ppg.channel_amplitude_gain(channel)
+                   << ",\"baseline_au\":" << render.ppg.channel_baseline_au(channel)
+                   << ",\"delay_ms\":" << render.ppg.channel_delay_ms(channel)
+                   << ",\"noise_std_au\":" << render.ppg.channel_noise_std_au(channel)
+                   << ",\"seed\":" << render.ppg.channel_seed(channel) << '}';
         if (!render.signal_quality.accelerometer.empty())
             output << ",{\"name\":\"accel_motion\",\"unit\":\"g\",\"gain_adc_per_unit\":" << accelerometer_gain_adc_per_g << ",\"adc_zero\":0,\"role\":\"motion_reference\"}";
         output << "],\"annotation_strategy\":{\"native_wfdb_annotation\":\"r_peak_with_beat_class\",\"native_file\":" << json_string(record_name + ".atr")
