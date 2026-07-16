@@ -78,9 +78,10 @@ int main()
         "../examples/packs/ppg_alignment_v1.json",
         "../examples/packs/signal_quality_v1.json",
         "../examples/packs/combined_worst_case_v1.json",
-        "../examples/packs/ppg_benchmark_v1.json"
+        "../examples/packs/ppg_benchmark_v1.json",
+        "../examples/packs/ecg_morphology_population_v1.json"
     };
-    const unsigned int expected_scenario_counts[] = {4, 9, 4, 5, 4, 9};
+    const unsigned int expected_scenario_counts[] = {4, 9, 4, 5, 4, 9, 3};
     unsigned int total_pack_scenarios = 0;
     unsigned int rendered_scenarios = 0;
     unsigned int artifact_scenarios = 0;
@@ -137,7 +138,7 @@ int main()
             }
         }
     }
-    ok &= check(total_pack_scenarios >= 35 && rendered_scenarios == total_pack_scenarios, "curated_pack_has_35_rendered_scenarios");
+    ok &= check(total_pack_scenarios >= 38 && rendered_scenarios == total_pack_scenarios, "curated_pack_has_38_rendered_scenarios");
     ok &= check(artifact_scenarios >= 5 && ppg_scenarios >= 5, "curated_pack_covers_artifacts_and_ppg");
 
     std::ifstream script("../examples/databrowser/076_ECG_Scenario_Pack_Batch_QA.txt");

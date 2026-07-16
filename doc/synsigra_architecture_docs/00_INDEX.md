@@ -136,6 +136,9 @@ Implementation increment designs:
   linked PPG pulse attenuation and missing-pulse contracts.
 - `increments/046_RELEASE_PROVENANCE_BUNDLE.md` defines release provenance,
   package identity and engineering QA claim-boundary artifacts.
+- `increments/047_ECG_MORPHOLOGY_RANDOMIZATION.md` defines controlled,
+  replayable ECG morphology randomization for population-like engineering
+  variation packs.
 
 Traceability demonstration:
 

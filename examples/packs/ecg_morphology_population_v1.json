@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "pack_id": "ecg_morphology_population_v1",
+  "name": "ECG Morphology Population Variation",
+  "version": "1.0",
+  "description": "Replayable normal-rhythm morphology variation cases for detector and morphology-sensitive algorithm QA.",
+  "targets": ["r_peak", "morphology_assertions"],
+  "scenarios": [
+    {
+      "id": "morph_seed_101",
+      "path": "../scenarios/packs/morph_population_seed_101.json",
+      "targets": ["r_peak", "morphology_assertions"]
+    },
+    {
+      "id": "morph_seed_202",
+      "path": "../scenarios/packs/morph_population_seed_202.json",
+      "targets": ["r_peak", "morphology_assertions"]
+    },
+    {
+      "id": "morph_seed_303",
+      "path": "../scenarios/packs/morph_population_seed_303.json",
+      "targets": ["r_peak", "morphology_assertions"]
+    }
+  ]
+}

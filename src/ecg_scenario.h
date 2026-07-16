@@ -118,6 +118,29 @@ namespace signal_synth
     const ecg_condition_info* find_ecg_condition(const char* scp_code);
     bool ecg_condition_supports_variable_severity(ecg_condition_code code);
 
+    enum ecg_morphology_control
+    {
+        ecg_morphology_p_amplitude_mv = 0,
+        ecg_morphology_q_amplitude_mv = 1,
+        ecg_morphology_r_amplitude_mv = 2,
+        ecg_morphology_s_amplitude_mv = 3,
+        ecg_morphology_t_amplitude_mv = 4,
+        ecg_morphology_st_j_amplitude_mv = 5,
+        ecg_morphology_st_slope_mv_per_second = 6,
+        ecg_morphology_p_axis_degrees = 7,
+        ecg_morphology_qrs_axis_degrees = 8,
+        ecg_morphology_t_axis_degrees = 9,
+        ecg_morphology_p_duration_ms = 10,
+        ecg_morphology_qrs_duration_ms = 11,
+        ecg_morphology_qt_interval_ms = 12,
+        ecg_morphology_t_duration_ms = 13,
+        ecg_morphology_control_count = 14
+    };
+
+    const char* ecg_morphology_control_name(ecg_morphology_control control);
+    bool ecg_morphology_control_from_name(const char* name, ecg_morphology_control& control);
+    bool ecg_morphology_control_bounds(ecg_morphology_control control, double& minimum, double& maximum);
+
     enum ecg_scenario_fidelity_policy
     {
         ecg_fidelity_native_only = 0,
@@ -260,6 +283,11 @@ namespace signal_synth
         double heart_rate_bpm() const;
         bool set_rr_variability_seconds(double value);
         double rr_variability_seconds() const;
+        bool set_morphology_control(ecg_morphology_control control, double value);
+        bool clear_morphology_control(ecg_morphology_control control);
+        bool morphology_control_enabled(ecg_morphology_control control) const;
+        double morphology_control_value(ecg_morphology_control control) const;
+        bool has_morphology_controls() const;
         bool set_minimum_rr_seconds(double value);
         double minimum_rr_seconds() const;
         bool set_maximum_rr_seconds(double value);

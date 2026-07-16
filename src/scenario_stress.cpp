@@ -39,6 +39,14 @@ namespace
         return static_cast<double>(mix64(seed ^ string_hash(parameter)) >> 11) * (1.0 / 9007199254740992.0);
     }
 
+    bool morphology_parameter(const std::string& parameter, signal_synth::ecg_morphology_control& control)
+    {
+        const std::string prefix = "ecg.morphology.";
+        return parameter.size() > prefix.size()
+            && parameter.compare(0, prefix.size(), prefix) == 0
+            && signal_synth::ecg_morphology_control_from_name(parameter.c_str() + prefix.size(), control);
+    }
+
     double signed_unit(unsigned long long seed, unsigned long long index)
     {
         return 2.0 * static_cast<double>(mix64(seed ^ mix64(index)) >> 11) * (1.0 / 9007199254740992.0) - 1.0;
@@ -115,8 +123,12 @@ namespace signal_synth
                     fresh.physiology.activity_intensity = draw.value;
                 else
                 {
-                    messages.assign(1, "unsupported randomization parameter: " + draw.parameter);
-                    return false;
+                    ecg_morphology_control control = ecg_morphology_control_count;
+                    if (!morphology_parameter(draw.parameter, control) || !fresh.ecg.set_morphology_control(control, draw.value))
+                    {
+                        messages.assign(1, "unsupported randomization parameter: " + draw.parameter);
+                        return false;
+                    }
                 }
                 fresh_draws.push_back(draw);
             }

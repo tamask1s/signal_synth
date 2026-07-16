@@ -438,6 +438,8 @@ namespace signal_synth
         double hrv_hf_bandwidth_hz;
         double hrv_respiratory_frequency_hz;
         double hrv_respiratory_amplitude_seconds;
+        bool morphology_enabled[ecg_morphology_control_count];
+        double morphology_values[ecg_morphology_control_count];
         double activity_start_seconds;
         double activity_duration_seconds;
         double activity_intensity;
@@ -457,6 +459,11 @@ namespace signal_synth
         implementation()
             : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), retain_source_channels(true), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), flutter_conduction_pattern(ecg_flutter_fixed), pacing_mode(ecg_pacing_ventricular), pacing_non_capture_every_n_beats(0), fidelity_policy(ecg_fidelity_allow_parameterized)
         {
+            for (unsigned int index = 0; index < ecg_morphology_control_count; ++index)
+            {
+                morphology_enabled[index] = false;
+                morphology_values[index] = 0.0;
+            }
         }
     };
 
@@ -1034,6 +1041,8 @@ namespace signal_synth
             }
         }
 
+        void apply_morphology_controls(const ecg_qa_scenario::implementation& scenario, clinical_ecg_config& config);
+
         void compile_conditions(const ecg_qa_scenario::implementation& scenario, clinical_ecg_config& config)
         {
             config.sampling_rate_hz = scenario.sampling_rate_hz;
@@ -1057,6 +1066,7 @@ namespace signal_synth
                 config.rhythm.maximum_rr_seconds = scenario.maximum_rr_seconds;
             if (scenario.heart_rate_bpm > 0.0)
                 config.rhythm.heart_rate_bpm = scenario.heart_rate_bpm;
+            apply_morphology_controls(scenario, config);
             const bool episode_condition = has_condition(scenario.conditions, ecg_condition_psvt) || has_condition(scenario.conditions, ecg_condition_svarr);
             if (episode_condition)
             {
@@ -1248,6 +1258,34 @@ namespace signal_synth
                     config.scenario.premature_every_n_beats = 3;
                 else
                     config.scenario.premature_every_n_beats = scenario.ectopic_every_n_beats ? scenario.ectopic_every_n_beats : 5;
+            }
+        }
+
+        void apply_morphology_controls(const ecg_qa_scenario::implementation& scenario, clinical_ecg_config& config)
+        {
+            for (unsigned int index = 0; index < ecg_morphology_control_count; ++index)
+            {
+                if (!scenario.morphology_enabled[index])
+                    continue;
+                const double value = scenario.morphology_values[index];
+                switch (static_cast<ecg_morphology_control>(index))
+                {
+                case ecg_morphology_p_amplitude_mv: config.morphology.p_amplitude_mv = value; break;
+                case ecg_morphology_q_amplitude_mv: config.morphology.q_amplitude_mv = value; break;
+                case ecg_morphology_r_amplitude_mv: config.morphology.r_amplitude_mv = value; break;
+                case ecg_morphology_s_amplitude_mv: config.morphology.s_amplitude_mv = value; break;
+                case ecg_morphology_t_amplitude_mv: config.morphology.t_amplitude_mv = value; break;
+                case ecg_morphology_st_j_amplitude_mv: config.morphology.st_j_amplitude_mv = value; break;
+                case ecg_morphology_st_slope_mv_per_second: config.morphology.st_slope_mv_per_second = value; break;
+                case ecg_morphology_p_axis_degrees: config.morphology.p_axis_degrees = value; break;
+                case ecg_morphology_qrs_axis_degrees: config.morphology.qrs_axis_degrees = value; break;
+                case ecg_morphology_t_axis_degrees: config.morphology.t_axis_degrees = value; break;
+                case ecg_morphology_p_duration_ms: config.timing.p_duration_ms = value; break;
+                case ecg_morphology_qrs_duration_ms: config.timing.qrs_duration_ms = value; break;
+                case ecg_morphology_qt_interval_ms: config.timing.qt_interval_ms = value; config.timing.qtc_ms = value; config.timing.qt_correction = clinical_qt_fixed; break;
+                case ecg_morphology_t_duration_ms: config.timing.t_duration_ms = value; break;
+                case ecg_morphology_control_count: break;
+                }
             }
         }
 
@@ -2360,6 +2398,68 @@ namespace signal_synth
         return supports_variable_severity(code);
     }
 
+    const char* ecg_morphology_control_name(ecg_morphology_control control)
+    {
+        switch (control)
+        {
+        case ecg_morphology_p_amplitude_mv: return "p_amplitude_mv";
+        case ecg_morphology_q_amplitude_mv: return "q_amplitude_mv";
+        case ecg_morphology_r_amplitude_mv: return "r_amplitude_mv";
+        case ecg_morphology_s_amplitude_mv: return "s_amplitude_mv";
+        case ecg_morphology_t_amplitude_mv: return "t_amplitude_mv";
+        case ecg_morphology_st_j_amplitude_mv: return "st_j_amplitude_mv";
+        case ecg_morphology_st_slope_mv_per_second: return "st_slope_mv_per_second";
+        case ecg_morphology_p_axis_degrees: return "p_axis_degrees";
+        case ecg_morphology_qrs_axis_degrees: return "qrs_axis_degrees";
+        case ecg_morphology_t_axis_degrees: return "t_axis_degrees";
+        case ecg_morphology_p_duration_ms: return "p_duration_ms";
+        case ecg_morphology_qrs_duration_ms: return "qrs_duration_ms";
+        case ecg_morphology_qt_interval_ms: return "qt_interval_ms";
+        case ecg_morphology_t_duration_ms: return "t_duration_ms";
+        case ecg_morphology_control_count: break;
+        }
+        return "";
+    }
+
+    bool ecg_morphology_control_from_name(const char* name, ecg_morphology_control& control)
+    {
+        if (!name)
+            return false;
+        for (unsigned int index = 0; index < ecg_morphology_control_count; ++index)
+        {
+            const ecg_morphology_control candidate = static_cast<ecg_morphology_control>(index);
+            if (std::strcmp(name, ecg_morphology_control_name(candidate)) == 0)
+            {
+                control = candidate;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool ecg_morphology_control_bounds(ecg_morphology_control control, double& minimum, double& maximum)
+    {
+        switch (control)
+        {
+        case ecg_morphology_p_amplitude_mv: minimum = -0.5; maximum = 0.8; return true;
+        case ecg_morphology_q_amplitude_mv: minimum = -1.5; maximum = 0.2; return true;
+        case ecg_morphology_r_amplitude_mv: minimum = 0.05; maximum = 4.0; return true;
+        case ecg_morphology_s_amplitude_mv: minimum = -3.0; maximum = 0.5; return true;
+        case ecg_morphology_t_amplitude_mv: minimum = -1.5; maximum = 1.5; return true;
+        case ecg_morphology_st_j_amplitude_mv: minimum = -0.8; maximum = 0.8; return true;
+        case ecg_morphology_st_slope_mv_per_second: minimum = -4.0; maximum = 4.0; return true;
+        case ecg_morphology_p_axis_degrees: minimum = -180.0; maximum = 180.0; return true;
+        case ecg_morphology_qrs_axis_degrees: minimum = -180.0; maximum = 180.0; return true;
+        case ecg_morphology_t_axis_degrees: minimum = -180.0; maximum = 180.0; return true;
+        case ecg_morphology_p_duration_ms: minimum = 40.0; maximum = 150.0; return true;
+        case ecg_morphology_qrs_duration_ms: minimum = 50.0; maximum = 180.0; return true;
+        case ecg_morphology_qt_interval_ms: minimum = 260.0; maximum = 700.0; return true;
+        case ecg_morphology_t_duration_ms: minimum = 60.0; maximum = 360.0; return true;
+        case ecg_morphology_control_count: break;
+        }
+        return false;
+    }
+
     ecg_qa_scenario::ecg_qa_scenario()
         : implementation_(new implementation)
     {
@@ -2487,6 +2587,47 @@ namespace signal_synth
     double ecg_qa_scenario::rr_variability_seconds() const
     {
         return implementation_->rr_variability_seconds;
+    }
+
+    bool ecg_qa_scenario::set_morphology_control(ecg_morphology_control control, double value)
+    {
+        double minimum = 0.0, maximum = 0.0;
+        if (!ecg_morphology_control_bounds(control, minimum, maximum) || !std::isfinite(value) || value < minimum || value > maximum)
+            return false;
+        const int index = enum_value(control);
+        implementation_->morphology_enabled[index] = true;
+        implementation_->morphology_values[index] = value;
+        return true;
+    }
+
+    bool ecg_qa_scenario::clear_morphology_control(ecg_morphology_control control)
+    {
+        const int index = enum_value(control);
+        if (index < 0 || index >= ecg_morphology_control_count)
+            return false;
+        implementation_->morphology_enabled[index] = false;
+        implementation_->morphology_values[index] = 0.0;
+        return true;
+    }
+
+    bool ecg_qa_scenario::morphology_control_enabled(ecg_morphology_control control) const
+    {
+        const int index = enum_value(control);
+        return index >= 0 && index < ecg_morphology_control_count && implementation_->morphology_enabled[index];
+    }
+
+    double ecg_qa_scenario::morphology_control_value(ecg_morphology_control control) const
+    {
+        const int index = enum_value(control);
+        return index >= 0 && index < ecg_morphology_control_count && implementation_->morphology_enabled[index] ? implementation_->morphology_values[index] : 0.0;
+    }
+
+    bool ecg_qa_scenario::has_morphology_controls() const
+    {
+        for (unsigned int index = 0; index < ecg_morphology_control_count; ++index)
+            if (implementation_->morphology_enabled[index])
+                return true;
+        return false;
     }
 
     bool ecg_qa_scenario::set_minimum_rr_seconds(double value)
@@ -2706,6 +2847,18 @@ namespace signal_synth
         hash_u64(hash, implementation_->seed);
         hash_u64(hash, quantize(implementation_->heart_rate_bpm, 1000.0));
         hash_u64(hash, quantize(implementation_->rr_variability_seconds, 1000000.0));
+        if (has_morphology_controls())
+        {
+            hash_u64(hash, 0x4d4f5250484f5631ULL);
+            for (unsigned int index = 0; index < ecg_morphology_control_count; ++index)
+            {
+                if (implementation_->morphology_enabled[index])
+                {
+                    hash_u64(hash, index);
+                    hash_u64(hash, quantize(implementation_->morphology_values[index], 1000000.0));
+                }
+            }
+        }
         if (implementation_->hrv_modulation_enabled)
         {
             hash_u64(hash, 1);

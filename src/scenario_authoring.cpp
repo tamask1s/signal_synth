@@ -559,7 +559,7 @@ namespace signal_synth
                << "{\"name\":\"code\",\"value_type\":\"string\",\"control\":\"condition_select\"},"
                << "{\"name\":\"severity\",\"value_type\":\"number\",\"control\":\"slider\",\"minimum\":0.000001,\"maximum\":1,\"step\":0.01,\"default\":1,\"enabled_when\":\"selected condition has variable_severity=true\"}],"
                << "\"randomization_envelope_item_fields\":["
-               << "{\"name\":\"parameter\",\"value_type\":\"string\",\"control\":\"select\",\"options\":[\"ecg.heart_rate_bpm\",\"ecg.rr_variability_seconds\",\"ppg.pulse_delay_ms\",\"ppg.amplitude_au\",\"hrv.target_sdnn_seconds\",\"hrv.lf_hf_ratio\",\"physiology.activity_intensity\"]},"
+               << "{\"name\":\"parameter\",\"value_type\":\"string\",\"control\":\"select\",\"options\":[\"ecg.heart_rate_bpm\",\"ecg.rr_variability_seconds\",\"ecg.morphology.p_amplitude_mv\",\"ecg.morphology.q_amplitude_mv\",\"ecg.morphology.r_amplitude_mv\",\"ecg.morphology.s_amplitude_mv\",\"ecg.morphology.t_amplitude_mv\",\"ecg.morphology.qrs_axis_degrees\",\"ecg.morphology.t_axis_degrees\",\"ecg.morphology.qrs_duration_ms\",\"ecg.morphology.qt_interval_ms\",\"ppg.pulse_delay_ms\",\"ppg.amplitude_au\",\"hrv.target_sdnn_seconds\",\"hrv.lf_hf_ratio\",\"physiology.activity_intensity\"]},"
                << "{\"name\":\"minimum\",\"value_type\":\"number\",\"control\":\"number\"},"
                << "{\"name\":\"maximum\",\"value_type\":\"number\",\"control\":\"number\"}],"
                << "\"ppg_perfusion_episode_item_fields\":["

@@ -99,5 +99,5 @@ Remaining work should focus on algorithm QA value, not clinical realism claims.
 - ectopy cadence and rhythm pack expansion;
 - paced rhythm pack;
 - ECG lead/acquisition fault pack;
-- morphology population variation;
+- morphology population variation (implemented by #48);
 - dynamic QT/ST/T episodes.

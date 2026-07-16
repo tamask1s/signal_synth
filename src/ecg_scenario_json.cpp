@@ -829,6 +829,7 @@ namespace
             && document.ppg.missing_pulse_every_n_beats == ppg.missing_pulse_every_n_beats
             && document.ppg.clock_drift_ppm == ppg.clock_drift_ppm
             && document.ppg.seed == ppg.seed
+            && !document.ecg.has_morphology_controls()
             && document.randomization.enabled == randomization.enabled
             && document.randomization.seed == randomization.seed
             && document.randomization.envelopes.empty()
@@ -850,6 +851,13 @@ namespace
     {
         if (parameter == "ecg.heart_rate_bpm") { minimum = 10.0; maximum = 400.0; return true; }
         if (parameter == "ecg.rr_variability_seconds") { minimum = 0.0; maximum = 2.0; return true; }
+        const std::string morphology_prefix = "ecg.morphology.";
+        if (parameter.size() > morphology_prefix.size() && parameter.compare(0, morphology_prefix.size(), morphology_prefix) == 0)
+        {
+            signal_synth::ecg_morphology_control control = signal_synth::ecg_morphology_control_count;
+            return signal_synth::ecg_morphology_control_from_name(parameter.c_str() + morphology_prefix.size(), control)
+                && signal_synth::ecg_morphology_control_bounds(control, minimum, maximum);
+        }
         if (parameter == "ppg.pulse_delay_ms") { minimum = 0.0; maximum = 2000.0; return true; }
         if (parameter == "ppg.amplitude_au") { minimum = 0.000001; maximum = 100.0; return true; }
         if (parameter == "hrv.target_sdnn_seconds") { minimum = 0.0; maximum = 2.0; return true; }
@@ -1044,7 +1052,22 @@ namespace
                << ",\"pacing_mode\":" << escape_json(pacing_mode_name(document.ecg.pacing_mode()))
                << ",\"pacing_non_capture_every_n_beats\":" << document.ecg.pacing_non_capture_every_n_beats()
                << ",\"fidelity_policy\":" << escape_json(fidelity_name(document.ecg.fidelity_policy()))
-               << ",\"conditions\":[";
+               << (document.ecg.has_morphology_controls() ? ",\"morphology\":{" : "");
+        if (document.ecg.has_morphology_controls())
+        {
+            bool first_morphology = true;
+            for (unsigned int index = 0; index < signal_synth::ecg_morphology_control_count; ++index)
+            {
+                const signal_synth::ecg_morphology_control control = static_cast<signal_synth::ecg_morphology_control>(index);
+                if (!document.ecg.morphology_control_enabled(control))
+                    continue;
+                output << (first_morphology ? "" : ",") << escape_json(signal_synth::ecg_morphology_control_name(control))
+                       << ':' << format_double(document.ecg.morphology_control_value(control));
+                first_morphology = false;
+            }
+            output << '}';
+        }
+        output << ",\"conditions\":[";
         for (unsigned int i = 0; i < document.ecg.condition_count(); ++i)
         {
             if (i)
@@ -1328,7 +1351,7 @@ namespace signal_synth
         if (!integral_number(*seed, std::numeric_limits<unsigned long long>::max(), integer) || !document.ecg.set_seed(integer))
             add_message(fresh_result, ecg_json_range, "$.seed", "seed must be an unsigned 64-bit decimal integer");
 
-        const char* ecg_fields[] = {"heart_rate_bpm","rr_variability_seconds","ectopic_every_n_beats","second_degree_av_pattern","q_wave_territory","episode_type","episode_start_seconds","episode_duration_seconds","episode_rate_bpm","flutter_conduction_pattern","pacing_mode","pacing_non_capture_every_n_beats","fidelity_policy","conditions"};
+        const char* ecg_fields[] = {"heart_rate_bpm","rr_variability_seconds","ectopic_every_n_beats","second_degree_av_pattern","q_wave_territory","episode_type","episode_start_seconds","episode_duration_seconds","episode_rate_bpm","flutter_conduction_pattern","pacing_mode","pacing_non_capture_every_n_beats","fidelity_policy","morphology","conditions"};
         allowed_fields(*ecg, ecg_fields, sizeof(ecg_fields) / sizeof(ecg_fields[0]), "$.ecg", fresh_result);
         const json_value* heart_rate = required(*ecg, "heart_rate_bpm", json_value::number_kind, "$.ecg", fresh_result);
         const json_value* rr_variability = required(*ecg, "rr_variability_seconds", json_value::number_kind, "$.ecg", fresh_result);
@@ -1343,6 +1366,7 @@ namespace signal_synth
         const json_value* pacing_mode = member(*ecg, "pacing_mode");
         const json_value* pacing_non_capture = member(*ecg, "pacing_non_capture_every_n_beats");
         const json_value* fidelity = required(*ecg, "fidelity_policy", json_value::string_kind, "$.ecg", fresh_result);
+        const json_value* morphology = member(*ecg, "morphology");
         const json_value* conditions = required(*ecg, "conditions", json_value::array_kind, "$.ecg", fresh_result);
 
         if (heart_rate && !document.ecg.set_heart_rate_bpm(heart_rate->number))
@@ -1460,6 +1484,33 @@ namespace signal_synth
             else if (fidelity->string != "allow_parameterized")
                 add_message(fresh_result, ecg_json_range, "$.ecg.fidelity_policy", "unknown fidelity policy");
             document.ecg.set_fidelity_policy(value);
+        }
+        if (morphology)
+        {
+            if (document.schema_version < 3)
+                add_message(fresh_result, ecg_json_unknown_field, "$.ecg.morphology", "morphology controls require schema version 3");
+            else if (morphology->type != json_value::object_kind)
+                add_message(fresh_result, ecg_json_type, "$.ecg.morphology", "field has the wrong JSON type");
+            else
+            {
+                const char* morphology_fields[ecg_morphology_control_count];
+                for (unsigned int control_index = 0; control_index < ecg_morphology_control_count; ++control_index)
+                    morphology_fields[control_index] = ecg_morphology_control_name(static_cast<ecg_morphology_control>(control_index));
+                allowed_fields(*morphology, morphology_fields, ecg_morphology_control_count, "$.ecg.morphology", fresh_result);
+                for (unsigned int control_index = 0; control_index < ecg_morphology_control_count; ++control_index)
+                {
+                    const ecg_morphology_control control = static_cast<ecg_morphology_control>(control_index);
+                    const char* name = ecg_morphology_control_name(control);
+                    const json_value* value = member(*morphology, name);
+                    if (!value)
+                        continue;
+                    const std::string path = std::string("$.ecg.morphology.") + name;
+                    if (value->type != json_value::number_kind)
+                        add_message(fresh_result, ecg_json_type, path, "field has the wrong JSON type");
+                    else if (!document.ecg.set_morphology_control(control, value->number))
+                        add_message(fresh_result, ecg_json_range, path, "invalid morphology control value");
+                }
+            }
         }
 
         const json_value* hrv = member(root, "hrv");
