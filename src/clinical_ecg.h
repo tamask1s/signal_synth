@@ -87,7 +87,18 @@ namespace signal_synth
     {
         clinical_episode_none = 0,
         clinical_episode_psvt = 1,
-        clinical_episode_svarr = 2
+        clinical_episode_svarr = 2,
+        clinical_episode_repolarization = 3
+    };
+
+    enum clinical_dynamic_annotation_kind
+    {
+        clinical_dynamic_repolarization_severity = 0,
+        clinical_dynamic_qt_interval_ms = 1,
+        clinical_dynamic_qtc_ms = 2,
+        clinical_dynamic_st_j_amplitude_mv = 3,
+        clinical_dynamic_st_slope_mv_per_second = 4,
+        clinical_dynamic_t_amplitude_mv = 5
     };
 
     enum clinical_flutter_conduction_pattern
@@ -218,6 +229,29 @@ namespace signal_synth
         unsigned long long seed;
     };
 
+    const unsigned int clinical_repolarization_episode_max = 4;
+
+    struct clinical_repolarization_episode_config
+    {
+        clinical_repolarization_episode_config();
+
+        double start_seconds;
+        double duration_seconds;
+        double transition_seconds;
+        double peak_severity;
+        double target_qtc_ms;
+        double target_qt_interval_ms;
+        clinical_qt_correction target_qt_correction;
+        double target_t_duration_ms;
+        double target_t_amplitude_mv;
+        double target_st_j_amplitude_mv;
+        double target_st_slope_mv_per_second;
+        double target_repolarization_axis_offset_degrees;
+        double target_repolarization_elevation_offset_degrees;
+        double target_injury_axis_offset_degrees;
+        double target_injury_elevation_offset_degrees;
+    };
+
     struct clinical_scenario_config
     {
         clinical_scenario_config();
@@ -233,6 +267,8 @@ namespace signal_synth
         double episode_start_seconds;
         double episode_duration_seconds;
         double episode_rate_bpm;
+        unsigned int repolarization_episode_count;
+        clinical_repolarization_episode_config repolarization_episodes[clinical_repolarization_episode_max];
     };
 
     struct clinical_lead_config
@@ -331,6 +367,17 @@ namespace signal_synth
         long long linked_ventricular_index;
     };
 
+    struct clinical_dynamic_annotation
+    {
+        unsigned long long annotation_index;
+        long long beat_index;
+        clinical_dynamic_annotation_kind kind;
+        double time_seconds;
+        unsigned long long sample_index;
+        double value;
+        bool present;
+    };
+
     struct clinical_episode_annotation
     {
         clinical_episode_kind kind;
@@ -378,6 +425,8 @@ namespace signal_synth
         const clinical_pacing_event* pacing_events() const;
         unsigned int episode_count() const;
         const clinical_episode_annotation* episodes() const;
+        unsigned int dynamic_annotation_count() const;
+        const clinical_dynamic_annotation* dynamic_annotations() const;
 
     private:
         struct implementation;

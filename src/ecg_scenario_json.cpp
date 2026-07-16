@@ -585,6 +585,36 @@ namespace
         return "";
     }
 
+    const char* qt_adaptation_name(signal_synth::ecg_qt_adaptation_model value)
+    {
+        switch (value)
+        {
+        case signal_synth::ecg_qt_adaptation_fixed: return "fixed";
+        case signal_synth::ecg_qt_adaptation_bazett: return "bazett";
+        case signal_synth::ecg_qt_adaptation_fridericia: return "fridericia";
+        case signal_synth::ecg_qt_adaptation_framingham: return "framingham";
+        case signal_synth::ecg_qt_adaptation_hodges: return "hodges";
+        }
+        return "";
+    }
+
+    bool qt_adaptation_from_name(const std::string& name, signal_synth::ecg_qt_adaptation_model& output)
+    {
+        if (name == "fixed")
+            output = signal_synth::ecg_qt_adaptation_fixed;
+        else if (name == "bazett")
+            output = signal_synth::ecg_qt_adaptation_bazett;
+        else if (name == "fridericia")
+            output = signal_synth::ecg_qt_adaptation_fridericia;
+        else if (name == "framingham")
+            output = signal_synth::ecg_qt_adaptation_framingham;
+        else if (name == "hodges")
+            output = signal_synth::ecg_qt_adaptation_hodges;
+        else
+            return false;
+        return true;
+    }
+
     const char* flutter_pattern_name(signal_synth::ecg_flutter_conduction_pattern value)
     {
         switch (value)
@@ -830,6 +860,8 @@ namespace
             && document.ppg.clock_drift_ppm == ppg.clock_drift_ppm
             && document.ppg.seed == ppg.seed
             && !document.ecg.has_morphology_controls()
+            && !document.ecg.qt_adaptation_enabled()
+            && document.ecg.repolarization_episode_count() == 0
             && document.randomization.enabled == randomization.enabled
             && document.randomization.seed == randomization.seed
             && document.randomization.envelopes.empty()
@@ -932,6 +964,12 @@ namespace
             return false;
         if (document.output.compact && (document.output.retain_source_channels || document.output.include_waveform_csv || document.output.include_edf_bdf))
             return false;
+        for (unsigned int index = 0; index < document.ecg.repolarization_episode_count(); ++index)
+        {
+            signal_synth::ecg_repolarization_episode episode;
+            if (!document.ecg.repolarization_episode(index, episode) || episode.start_seconds + episode.duration_seconds > document.duration_seconds)
+                return false;
+        }
         return true;
     }
 
@@ -1052,6 +1090,27 @@ namespace
                << ",\"pacing_mode\":" << escape_json(pacing_mode_name(document.ecg.pacing_mode()))
                << ",\"pacing_non_capture_every_n_beats\":" << document.ecg.pacing_non_capture_every_n_beats()
                << ",\"fidelity_policy\":" << escape_json(fidelity_name(document.ecg.fidelity_policy()))
+               << (document.ecg.qt_adaptation_enabled() ? ",\"qt_adaptation\":{" : "");
+        if (document.ecg.qt_adaptation_enabled())
+            output << "\"model\":" << escape_json(qt_adaptation_name(document.ecg.qt_adaptation_model()))
+                   << ",\"qtc_ms\":" << format_double(document.ecg.qt_adaptation_qtc_ms()) << '}';
+        if (document.ecg.repolarization_episode_count() > 0)
+        {
+            output << ",\"repolarization_episodes\":[";
+            for (unsigned int index = 0; index < document.ecg.repolarization_episode_count(); ++index)
+            {
+                signal_synth::ecg_repolarization_episode episode;
+                document.ecg.repolarization_episode(index, episode);
+                const signal_synth::ecg_condition_info* info = signal_synth::find_ecg_condition(episode.condition);
+                output << (index ? "," : "") << "{\"condition\":" << escape_json(info ? info->scp_code : "")
+                       << ",\"start_seconds\":" << format_double(episode.start_seconds)
+                       << ",\"duration_seconds\":" << format_double(episode.duration_seconds)
+                       << ",\"transition_seconds\":" << format_double(episode.transition_seconds)
+                       << ",\"peak_severity\":" << format_double(episode.peak_severity) << '}';
+            }
+            output << ']';
+        }
+        output
                << (document.ecg.has_morphology_controls() ? ",\"morphology\":{" : "");
         if (document.ecg.has_morphology_controls())
         {
@@ -1351,7 +1410,7 @@ namespace signal_synth
         if (!integral_number(*seed, std::numeric_limits<unsigned long long>::max(), integer) || !document.ecg.set_seed(integer))
             add_message(fresh_result, ecg_json_range, "$.seed", "seed must be an unsigned 64-bit decimal integer");
 
-        const char* ecg_fields[] = {"heart_rate_bpm","rr_variability_seconds","ectopic_every_n_beats","second_degree_av_pattern","q_wave_territory","episode_type","episode_start_seconds","episode_duration_seconds","episode_rate_bpm","flutter_conduction_pattern","pacing_mode","pacing_non_capture_every_n_beats","fidelity_policy","morphology","conditions"};
+        const char* ecg_fields[] = {"heart_rate_bpm","rr_variability_seconds","ectopic_every_n_beats","second_degree_av_pattern","q_wave_territory","episode_type","episode_start_seconds","episode_duration_seconds","episode_rate_bpm","flutter_conduction_pattern","pacing_mode","pacing_non_capture_every_n_beats","fidelity_policy","qt_adaptation","repolarization_episodes","morphology","conditions"};
         allowed_fields(*ecg, ecg_fields, sizeof(ecg_fields) / sizeof(ecg_fields[0]), "$.ecg", fresh_result);
         const json_value* heart_rate = required(*ecg, "heart_rate_bpm", json_value::number_kind, "$.ecg", fresh_result);
         const json_value* rr_variability = required(*ecg, "rr_variability_seconds", json_value::number_kind, "$.ecg", fresh_result);
@@ -1366,6 +1425,8 @@ namespace signal_synth
         const json_value* pacing_mode = member(*ecg, "pacing_mode");
         const json_value* pacing_non_capture = member(*ecg, "pacing_non_capture_every_n_beats");
         const json_value* fidelity = required(*ecg, "fidelity_policy", json_value::string_kind, "$.ecg", fresh_result);
+        const json_value* qt_adaptation = member(*ecg, "qt_adaptation");
+        const json_value* repolarization_episodes = member(*ecg, "repolarization_episodes");
         const json_value* morphology = member(*ecg, "morphology");
         const json_value* conditions = required(*ecg, "conditions", json_value::array_kind, "$.ecg", fresh_result);
 
@@ -1484,6 +1545,62 @@ namespace signal_synth
             else if (fidelity->string != "allow_parameterized")
                 add_message(fresh_result, ecg_json_range, "$.ecg.fidelity_policy", "unknown fidelity policy");
             document.ecg.set_fidelity_policy(value);
+        }
+        if (qt_adaptation)
+        {
+            if (document.schema_version < 3)
+                add_message(fresh_result, ecg_json_unknown_field, "$.ecg.qt_adaptation", "QT adaptation requires schema version 3");
+            else if (qt_adaptation->type != json_value::object_kind)
+                add_message(fresh_result, ecg_json_type, "$.ecg.qt_adaptation", "field has the wrong JSON type");
+            else
+            {
+                const char* fields[] = {"model","qtc_ms"};
+                allowed_fields(*qt_adaptation, fields, 2, "$.ecg.qt_adaptation", fresh_result);
+                const json_value* model = required(*qt_adaptation, "model", json_value::string_kind, "$.ecg.qt_adaptation", fresh_result);
+                const json_value* qtc = required(*qt_adaptation, "qtc_ms", json_value::number_kind, "$.ecg.qt_adaptation", fresh_result);
+                ecg_qt_adaptation_model parsed_model = ecg_qt_adaptation_fridericia;
+                if (model && !qt_adaptation_from_name(model->string, parsed_model))
+                    add_message(fresh_result, ecg_json_range, "$.ecg.qt_adaptation.model", "unknown QT adaptation model");
+                if (model && qtc && !document.ecg.set_qt_adaptation(parsed_model, qtc->number))
+                    add_message(fresh_result, ecg_json_range, "$.ecg.qt_adaptation", "invalid QT adaptation configuration");
+            }
+        }
+        if (repolarization_episodes)
+        {
+            if (document.schema_version < 3)
+                add_message(fresh_result, ecg_json_unknown_field, "$.ecg.repolarization_episodes", "dynamic repolarization episodes require schema version 3");
+            else if (repolarization_episodes->type != json_value::array_kind)
+                add_message(fresh_result, ecg_json_type, "$.ecg.repolarization_episodes", "field has the wrong JSON type");
+            else
+            {
+                for (std::size_t i = 0; i < repolarization_episodes->array.size(); ++i)
+                {
+                    const std::string path = "$.ecg.repolarization_episodes[" + json_index(i) + "]";
+                    const json_value& item = repolarization_episodes->array[i];
+                    if (item.type != json_value::object_kind)
+                    {
+                        add_message(fresh_result, ecg_json_type, path, "episode must be an object");
+                        continue;
+                    }
+                    const char* fields[] = {"condition","start_seconds","duration_seconds","transition_seconds","peak_severity"};
+                    allowed_fields(item, fields, 5, path, fresh_result);
+                    const json_value* condition = required(item, "condition", json_value::string_kind, path, fresh_result);
+                    const json_value* start = required(item, "start_seconds", json_value::number_kind, path, fresh_result);
+                    const json_value* episode_duration = required(item, "duration_seconds", json_value::number_kind, path, fresh_result);
+                    const json_value* transition = required(item, "transition_seconds", json_value::number_kind, path, fresh_result);
+                    const json_value* severity = required(item, "peak_severity", json_value::number_kind, path, fresh_result);
+                    if (!condition || !start || !episode_duration || !transition || !severity)
+                        continue;
+                    const ecg_condition_info* info = find_ecg_condition(condition->string.c_str());
+                    if (!info)
+                    {
+                        add_message(fresh_result, ecg_json_range, path + ".condition", "unknown condition code");
+                        continue;
+                    }
+                    if (!document.ecg.add_repolarization_episode(info->code, start->number, episode_duration->number, transition->number, severity->number))
+                        add_message(fresh_result, ecg_json_range, path, "invalid dynamic repolarization episode");
+                }
+            }
         }
         if (morphology)
         {

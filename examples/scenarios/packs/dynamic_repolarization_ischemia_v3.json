@@ -1,0 +1,64 @@
+{
+  "schema_version": 3,
+  "scenario_id": "dynamic_repolarization_ischemia_v3",
+  "name": "Dynamic repolarization ischemia episode",
+  "description": "Sinus baseline with a smooth time-varying anterolateral ST-T depression episode and explicit dynamic repolarization ground truth.",
+  "author": "Synsigra",
+  "tags": ["ecg", "st_t", "dynamic_repolarization", "qt_adaptation"],
+  "duration_seconds": 12,
+  "sample_rate_hz": 500,
+  "seed": 49001,
+  "ecg": {
+    "heart_rate_bpm": 72,
+    "rr_variability_seconds": 0.04,
+    "ectopic_every_n_beats": 0,
+    "second_degree_av_pattern": "unspecified",
+    "q_wave_territory": "unspecified",
+    "episode_type": "none",
+    "episode_start_seconds": 2,
+    "episode_duration_seconds": 4,
+    "episode_rate_bpm": 170,
+    "flutter_conduction_pattern": "fixed",
+    "pacing_mode": "ventricular",
+    "pacing_non_capture_every_n_beats": 0,
+    "fidelity_policy": "allow_parameterized",
+    "qt_adaptation": {"model": "fridericia", "qtc_ms": 410},
+    "repolarization_episodes": [
+      {"condition": "ISCAL", "start_seconds": 1, "duration_seconds": 8, "transition_seconds": 2, "peak_severity": 1}
+    ],
+    "conditions": [{"code": "SR", "severity": 1}]
+  },
+  "ppg": {
+    "enabled": false,
+    "pulse_delay_ms": 180,
+    "rise_time_ms": 120,
+    "decay_time_ms": 300,
+    "amplitude_au": 1,
+    "baseline_au": 0,
+    "dicrotic_delay_ms": 180,
+    "dicrotic_width_ms": 80,
+    "dicrotic_amplitude_ratio": 0.15,
+    "pulse_delay_variation_ms": 0,
+    "pulse_delay_variation_hz": 0.1,
+    "missing_pulse_every_n_beats": 0,
+    "clock_drift_ppm": 0,
+    "seed": 490011
+  },
+  "randomization": {"enabled": false, "seed": 490012, "envelopes": []},
+  "physiology": {
+    "respiration_frequency_hz": 0.25,
+    "respiratory_rr_amplitude_seconds": 0,
+    "ecg_baseline_amplitude_mv": 0.01,
+    "ppg_amplitude_modulation_ratio": 0,
+    "activity_start_seconds": 0,
+    "activity_duration_seconds": 0,
+    "activity_intensity": 0,
+    "seed": 490013
+  },
+  "output": {
+    "compact": false,
+    "retain_source_channels": true,
+    "include_waveform_csv": true,
+    "include_edf_bdf": true
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "pack_id": "ecg_dynamic_repolarization_v1",
+  "name": "ECG Dynamic Repolarization",
+  "version": "1.0",
+  "description": "Smooth time-varying QT/ST/T episode scenarios with explicit dynamic ground-truth traces.",
+  "targets": ["r_peak", "qt_interval", "st_t_morphology", "dynamic_ground_truth"],
+  "scenarios": [
+    {
+      "id": "dynamic_repolarization_ischemia",
+      "path": "../scenarios/packs/dynamic_repolarization_ischemia_v3.json",
+      "targets": ["r_peak", "st_t_morphology", "dynamic_ground_truth"]
+    },
+    {
+      "id": "dynamic_repolarization_long_qt",
+      "path": "../scenarios/packs/dynamic_repolarization_long_qt_v3.json",
+      "targets": ["r_peak", "qt_interval", "dynamic_ground_truth"]
+    }
+  ]
+}

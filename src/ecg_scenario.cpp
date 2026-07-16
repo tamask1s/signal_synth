@@ -16,7 +16,7 @@ namespace signal_synth
     namespace
     {
         const unsigned int SCENARIO_SCHEMA_VERSION = 2;
-        const unsigned int SCENARIO_ENGINE_VERSION = 13;
+        const unsigned int SCENARIO_ENGINE_VERSION = 14;
         const unsigned long long DEFAULT_SEED = 0x5343454e4152494fULL;
         const ecg_condition_code NO_CONDITION = ecg_condition_count;
 
@@ -103,6 +103,12 @@ namespace signal_synth
         {
             const int raw = enum_value(value);
             return raw >= ecg_pacing_ventricular && raw <= ecg_pacing_dual_chamber;
+        }
+
+        bool valid_qt_adaptation_model(ecg_qt_adaptation_model value)
+        {
+            const int raw = enum_value(value);
+            return raw >= ecg_qt_adaptation_fixed && raw <= ecg_qt_adaptation_hodges;
         }
 
         // Catalog order and statement names follow PTB-XL 1.0.3 scp_statements.csv (CC BY 4.0).
@@ -440,6 +446,10 @@ namespace signal_synth
         double hrv_respiratory_amplitude_seconds;
         bool morphology_enabled[ecg_morphology_control_count];
         double morphology_values[ecg_morphology_control_count];
+        bool qt_adaptation_enabled;
+        ecg_qt_adaptation_model qt_adaptation_model;
+        double qt_adaptation_qtc_ms;
+        std::vector<ecg_repolarization_episode> repolarization_episodes;
         double activity_start_seconds;
         double activity_duration_seconds;
         double activity_intensity;
@@ -457,7 +467,7 @@ namespace signal_synth
         ecg_scenario_fidelity_policy fidelity_policy;
 
         implementation()
-            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), retain_source_channels(true), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), flutter_conduction_pattern(ecg_flutter_fixed), pacing_mode(ecg_pacing_ventricular), pacing_non_capture_every_n_beats(0), fidelity_policy(ecg_fidelity_allow_parameterized)
+            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), qt_adaptation_enabled(false), qt_adaptation_model(ecg_qt_adaptation_fridericia), qt_adaptation_qtc_ms(400.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), retain_source_channels(true), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), flutter_conduction_pattern(ecg_flutter_fixed), pacing_mode(ecg_pacing_ventricular), pacing_non_capture_every_n_beats(0), fidelity_policy(ecg_fidelity_allow_parameterized)
         {
             for (unsigned int index = 0; index < ecg_morphology_control_count; ++index)
             {
@@ -712,6 +722,44 @@ namespace signal_synth
                     add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "episode_duration_seconds must contain at least two tachycardia beats.");
                 if (scenario.rr_variability_seconds > 0.0)
                     add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "The first episode timeline pack does not apply rr_variability_seconds.");
+            }
+            if (scenario.qt_adaptation_enabled)
+            {
+                if (!valid_qt_adaptation_model(scenario.qt_adaptation_model) || !std::isfinite(scenario.qt_adaptation_qtc_ms) || scenario.qt_adaptation_qtc_ms < 250.0 || scenario.qt_adaptation_qtc_ms > 700.0)
+                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "Invalid QT adaptation configuration.");
+            }
+            if (!scenario.repolarization_episodes.empty())
+            {
+                if (has_condition(scenario.conditions, ecg_condition_norm))
+                    add_issue(report, ecg_issue_error, ecg_issue_condition_conflict, ecg_condition_norm, NO_CONDITION, "Dynamic repolarization episodes require an explicit non-normal baseline such as SR.");
+                if (episode_condition)
+                    add_issue(report, ecg_issue_error, ecg_issue_condition_conflict, NO_CONDITION, ecg_condition_svarr, "Dynamic repolarization episodes do not compose with rhythm episodes in this pack.");
+                for (unsigned int index = 0; index < sizeof(non_sinus_rhythms) / sizeof(non_sinus_rhythms[0]); ++index)
+                    if (has_condition(scenario.conditions, non_sinus_rhythms[index]))
+                        add_issue(report, ecg_issue_error, ecg_issue_condition_conflict, NO_CONDITION, non_sinus_rhythms[index], "Dynamic repolarization episodes require the sinus timeline.");
+                for (unsigned int index = 0; index < sizeof(av_blocks) / sizeof(av_blocks[0]); ++index)
+                    if (has_condition(scenario.conditions, av_blocks[index]))
+                        add_issue(report, ecg_issue_error, ecg_issue_condition_conflict, NO_CONDITION, av_blocks[index], "Dynamic repolarization episodes do not compose with AV block timelines in this pack.");
+                for (unsigned int index = 0; index < sizeof(clean_conduction_conditions) / sizeof(clean_conduction_conditions[0]); ++index)
+                    if (has_condition(scenario.conditions, clean_conduction_conditions[index]))
+                        add_issue(report, ecg_issue_error, ecg_issue_condition_conflict, NO_CONDITION, clean_conduction_conditions[index], "Dynamic repolarization episodes do not compose with conduction morphology in this pack.");
+                if (ectopic_origin || pattern)
+                    add_issue(report, ecg_issue_error, ecg_issue_condition_conflict, NO_CONDITION, ecg_condition_prc, "Dynamic repolarization episodes do not compose with periodic ectopy in this pack.");
+                if (scenario.repolarization_episodes.size() > clinical_repolarization_episode_max)
+                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "Too many dynamic repolarization episodes.");
+                for (std::size_t left = 0; left < scenario.repolarization_episodes.size(); ++left)
+                {
+                    const ecg_repolarization_episode& episode = scenario.repolarization_episodes[left];
+                    if (!valid_condition(episode.condition) || !(is_new_repolarization_condition(episode.condition) || episode.condition == ecg_condition_lngqt) || !std::isfinite(episode.start_seconds) || !std::isfinite(episode.duration_seconds) || !std::isfinite(episode.transition_seconds) || !std::isfinite(episode.peak_severity) || episode.start_seconds < 0.0 || episode.duration_seconds <= 0.0 || episode.transition_seconds < 0.0 || episode.transition_seconds > 0.5 * episode.duration_seconds || episode.peak_severity <= 0.0 || episode.peak_severity > 1.0)
+                        add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "Invalid dynamic repolarization episode.");
+                    for (std::size_t right = left + 1; right < scenario.repolarization_episodes.size(); ++right)
+                    {
+                        const double left_end = scenario.repolarization_episodes[left].start_seconds + scenario.repolarization_episodes[left].duration_seconds;
+                        const double right_end = scenario.repolarization_episodes[right].start_seconds + scenario.repolarization_episodes[right].duration_seconds;
+                        if (scenario.repolarization_episodes[left].start_seconds < right_end && scenario.repolarization_episodes[right].start_seconds < left_end)
+                            add_issue(report, ecg_issue_error, ecg_issue_condition_conflict, NO_CONDITION, NO_CONDITION, "Dynamic repolarization episodes must not overlap.");
+                    }
+                }
             }
 
             add_conflict(report, scenario.conditions, ecg_condition_lvolt, ecg_condition_hvolt, "Low and high QRS voltage conditions are mutually exclusive.");
@@ -994,6 +1042,47 @@ namespace signal_synth
             }
         }
 
+        clinical_qt_correction clinical_qt_model(ecg_qt_adaptation_model model)
+        {
+            switch (model)
+            {
+            case ecg_qt_adaptation_bazett: return clinical_qt_bazett;
+            case ecg_qt_adaptation_framingham: return clinical_qt_framingham;
+            case ecg_qt_adaptation_hodges: return clinical_qt_hodges;
+            case ecg_qt_adaptation_fixed: return clinical_qt_fixed;
+            case ecg_qt_adaptation_fridericia:
+            default:
+                return clinical_qt_fridericia;
+            }
+        }
+
+        void compile_repolarization_episode_target(const ecg_repolarization_episode& episode, const clinical_ecg_config& base, clinical_repolarization_episode_config& output)
+        {
+            clinical_ecg_config target = base;
+            if (episode.condition == ecg_condition_lngqt)
+            {
+                target.timing.qtc_ms = 440.0 + 80.0 * episode.peak_severity;
+                target.timing.qt_correction = clinical_qt_fridericia;
+            }
+            else
+                compile_repolarization_condition(episode.condition, episode.peak_severity, target);
+            output.start_seconds = episode.start_seconds;
+            output.duration_seconds = episode.duration_seconds;
+            output.transition_seconds = episode.transition_seconds;
+            output.peak_severity = episode.peak_severity;
+            output.target_qtc_ms = target.timing.qtc_ms;
+            output.target_qt_interval_ms = target.timing.qt_interval_ms;
+            output.target_qt_correction = target.timing.qt_correction;
+            output.target_t_duration_ms = target.timing.t_duration_ms;
+            output.target_t_amplitude_mv = target.morphology.t_amplitude_mv;
+            output.target_st_j_amplitude_mv = target.morphology.st_j_amplitude_mv;
+            output.target_st_slope_mv_per_second = target.morphology.st_slope_mv_per_second;
+            output.target_repolarization_axis_offset_degrees = target.sources.axis_offset_degrees[clinical_source_repolarization];
+            output.target_repolarization_elevation_offset_degrees = target.sources.elevation_offset_degrees[clinical_source_repolarization];
+            output.target_injury_axis_offset_degrees = target.sources.axis_offset_degrees[clinical_source_injury];
+            output.target_injury_elevation_offset_degrees = target.sources.elevation_offset_degrees[clinical_source_injury];
+        }
+
         void compile_advanced_conduction(ecg_condition_code code, double severity, clinical_ecg_config& config)
         {
             if (code == ecg_condition_lafb)
@@ -1067,6 +1156,13 @@ namespace signal_synth
             if (scenario.heart_rate_bpm > 0.0)
                 config.rhythm.heart_rate_bpm = scenario.heart_rate_bpm;
             apply_morphology_controls(scenario, config);
+            if (scenario.qt_adaptation_enabled)
+            {
+                config.timing.qtc_ms = scenario.qt_adaptation_qtc_ms;
+                config.timing.qt_correction = clinical_qt_model(scenario.qt_adaptation_model);
+                if (scenario.qt_adaptation_model == ecg_qt_adaptation_fixed)
+                    config.timing.qt_interval_ms = scenario.qt_adaptation_qtc_ms;
+            }
             const bool episode_condition = has_condition(scenario.conditions, ecg_condition_psvt) || has_condition(scenario.conditions, ecg_condition_svarr);
             if (episode_condition)
             {
@@ -1243,6 +1339,10 @@ namespace signal_synth
                     config.sources.elevation_offset_degrees[clinical_source_septal] = -30.0;
                 }
             }
+
+            config.scenario.repolarization_episode_count = static_cast<unsigned int>(std::min<std::size_t>(scenario.repolarization_episodes.size(), clinical_repolarization_episode_max));
+            for (unsigned int index = 0; index < config.scenario.repolarization_episode_count; ++index)
+                compile_repolarization_episode_target(scenario.repolarization_episodes[index], config, config.scenario.repolarization_episodes[index]);
 
             const bool pac = has_condition(scenario.conditions, ecg_condition_pac);
             const bool pvc = has_condition(scenario.conditions, ecg_condition_pvc);
@@ -2630,6 +2730,73 @@ namespace signal_synth
         return false;
     }
 
+    bool ecg_qa_scenario::set_qt_adaptation(ecg_qt_adaptation_model model, double qtc_ms)
+    {
+        if (!valid_qt_adaptation_model(model) || !std::isfinite(qtc_ms) || qtc_ms < 250.0 || qtc_ms > 700.0)
+            return false;
+        implementation_->qt_adaptation_enabled = true;
+        implementation_->qt_adaptation_model = model;
+        implementation_->qt_adaptation_qtc_ms = qtc_ms;
+        return true;
+    }
+
+    void ecg_qa_scenario::clear_qt_adaptation()
+    {
+        implementation_->qt_adaptation_enabled = false;
+        implementation_->qt_adaptation_model = ecg_qt_adaptation_fridericia;
+        implementation_->qt_adaptation_qtc_ms = 400.0;
+    }
+
+    bool ecg_qa_scenario::qt_adaptation_enabled() const
+    {
+        return implementation_->qt_adaptation_enabled;
+    }
+
+    ecg_qt_adaptation_model ecg_qa_scenario::qt_adaptation_model() const
+    {
+        return implementation_->qt_adaptation_model;
+    }
+
+    double ecg_qa_scenario::qt_adaptation_qtc_ms() const
+    {
+        return implementation_->qt_adaptation_qtc_ms;
+    }
+
+    bool ecg_qa_scenario::add_repolarization_episode(ecg_condition_code condition, double start_seconds, double duration_seconds, double transition_seconds, double peak_severity)
+    {
+        if (!valid_condition(condition) || !(is_new_repolarization_condition(condition) || condition == ecg_condition_lngqt) || implementation_->repolarization_episodes.size() >= clinical_repolarization_episode_max)
+            return false;
+        if (!std::isfinite(start_seconds) || !std::isfinite(duration_seconds) || !std::isfinite(transition_seconds) || !std::isfinite(peak_severity)
+            || start_seconds < 0.0 || start_seconds > 86400.0 || duration_seconds <= 0.0 || duration_seconds > 86400.0 || transition_seconds < 0.0 || transition_seconds > 0.5 * duration_seconds || peak_severity <= 0.0 || peak_severity > 1.0)
+            return false;
+        ecg_repolarization_episode episode = {};
+        episode.condition = condition;
+        episode.start_seconds = start_seconds;
+        episode.duration_seconds = duration_seconds;
+        episode.transition_seconds = transition_seconds;
+        episode.peak_severity = peak_severity;
+        implementation_->repolarization_episodes.push_back(episode);
+        return true;
+    }
+
+    void ecg_qa_scenario::clear_repolarization_episodes()
+    {
+        implementation_->repolarization_episodes.clear();
+    }
+
+    unsigned int ecg_qa_scenario::repolarization_episode_count() const
+    {
+        return static_cast<unsigned int>(implementation_->repolarization_episodes.size());
+    }
+
+    bool ecg_qa_scenario::repolarization_episode(unsigned int index, ecg_repolarization_episode& output) const
+    {
+        if (index >= implementation_->repolarization_episodes.size())
+            return false;
+        output = implementation_->repolarization_episodes[index];
+        return true;
+    }
+
     bool ecg_qa_scenario::set_minimum_rr_seconds(double value)
     {
         if (!std::isfinite(value) || value < 0.0 || value > 10.0)
@@ -2857,6 +3024,25 @@ namespace signal_synth
                     hash_u64(hash, index);
                     hash_u64(hash, quantize(implementation_->morphology_values[index], 1000000.0));
                 }
+            }
+        }
+        if (implementation_->qt_adaptation_enabled)
+        {
+            hash_u64(hash, 0x5154414441505431ULL);
+            hash_u64(hash, enum_value(implementation_->qt_adaptation_model));
+            hash_u64(hash, quantize(implementation_->qt_adaptation_qtc_ms, 1000.0));
+        }
+        if (!implementation_->repolarization_episodes.empty())
+        {
+            hash_u64(hash, 0x5245504f4c5631ULL);
+            hash_u64(hash, implementation_->repolarization_episodes.size());
+            for (const ecg_repolarization_episode& episode : implementation_->repolarization_episodes)
+            {
+                hash_u64(hash, enum_value(episode.condition));
+                hash_u64(hash, quantize(episode.start_seconds, 1000000.0));
+                hash_u64(hash, quantize(episode.duration_seconds, 1000000.0));
+                hash_u64(hash, quantize(episode.transition_seconds, 1000000.0));
+                hash_u64(hash, quantize(episode.peak_severity, 1000000.0));
             }
         }
         if (implementation_->hrv_modulation_enabled)

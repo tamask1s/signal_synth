@@ -129,6 +129,21 @@ namespace
         case signal_synth::clinical_episode_none: return "none";
         case signal_synth::clinical_episode_psvt: return "psvt";
         case signal_synth::clinical_episode_svarr: return "svarr";
+        case signal_synth::clinical_episode_repolarization: return "dynamic_repolarization";
+        }
+        return "unknown";
+    }
+
+    const char* dynamic_annotation_kind_name(signal_synth::clinical_dynamic_annotation_kind value)
+    {
+        switch (value)
+        {
+        case signal_synth::clinical_dynamic_repolarization_severity: return "repolarization_severity";
+        case signal_synth::clinical_dynamic_qt_interval_ms: return "qt_interval_ms";
+        case signal_synth::clinical_dynamic_qtc_ms: return "qtc_ms";
+        case signal_synth::clinical_dynamic_st_j_amplitude_mv: return "st_j_amplitude_mv";
+        case signal_synth::clinical_dynamic_st_slope_mv_per_second: return "st_slope_mv_per_second";
+        case signal_synth::clinical_dynamic_t_amplitude_mv: return "t_amplitude_mv";
         }
         return "unknown";
     }
@@ -492,6 +507,20 @@ namespace
                    << ",\"offset_transition_start_sample_index\":" << episode.offset_transition_start_sample_index
                    << ",\"offset_transition_end_sample_index\":" << episode.offset_transition_end_sample_index
                    << ",\"present\":" << boolean(episode.present) << '}';
+        }
+        output << "],\"dynamic_traces\":[";
+        for (unsigned int i = 0; detailed_annotations && i < render.record.dynamic_annotation_count(); ++i)
+        {
+            if (i)
+                output << ',';
+            const signal_synth::clinical_dynamic_annotation& annotation = render.record.dynamic_annotations()[i];
+            output << "{\"annotation_index\":" << annotation.annotation_index
+                   << ",\"beat_index\":" << annotation.beat_index
+                   << ",\"kind\":" << json_string(dynamic_annotation_kind_name(annotation.kind))
+                   << ",\"time_seconds\":" << annotation.time_seconds
+                   << ",\"sample_index\":" << annotation.sample_index
+                   << ",\"value\":" << annotation.value
+                   << ",\"present\":" << boolean(annotation.present) << '}';
         }
         output << ']';
         if (render.document.schema_version >= 2)

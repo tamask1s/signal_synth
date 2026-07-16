@@ -139,6 +139,9 @@ Implementation increment designs:
 - `increments/047_ECG_MORPHOLOGY_RANDOMIZATION.md` defines controlled,
   replayable ECG morphology randomization for population-like engineering
   variation packs.
+- `increments/048_DYNAMIC_REPOLARIZATION_EPISODES.md` defines smooth
+  time-varying QT/ST/T episode rendering and dynamic repolarization
+  ground-truth traces.
 
 Traceability demonstration:
 

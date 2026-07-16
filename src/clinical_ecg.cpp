@@ -35,6 +35,7 @@ namespace signal_synth
             std::vector<clinical_fiducial_annotation> fiducials;
             std::vector<clinical_pacing_event> pacing_events;
             std::vector<clinical_episode_annotation> episodes;
+            std::vector<clinical_dynamic_annotation> dynamic_annotations;
         };
 
         bool finite(double value)
@@ -73,6 +74,11 @@ namespace signal_synth
         vec3 source_vector(const clinical_ecg_config& config, clinical_ecg_source source, double amplitude, double axis_degrees, double elevation_degrees)
         {
             return spatial_vector(amplitude * config.sources.gain[source], axis_degrees + config.sources.axis_offset_degrees[source], elevation_degrees + config.sources.elevation_offset_degrees[source]);
+        }
+
+        vec3 source_vector_with_offset(const clinical_ecg_config& config, clinical_ecg_source source, double amplitude, double axis_degrees, double elevation_degrees, double axis_offset_degrees, double elevation_offset_degrees)
+        {
+            return spatial_vector(amplitude * config.sources.gain[source], axis_degrees + axis_offset_degrees, elevation_degrees + elevation_offset_degrees);
         }
 
         vec3 rotate_vector(const vec3& input, const clinical_lead_config& config)
@@ -169,11 +175,11 @@ namespace signal_synth
             return result;
         }
 
-        double corrected_qt_seconds(const clinical_ecg_config& config, double rr_seconds)
+        double corrected_qt_seconds(clinical_qt_correction correction, double qtc_ms, double qt_interval_ms, double rr_seconds)
         {
-            const double qtc = config.timing.qtc_ms * 0.001;
+            const double qtc = qtc_ms * 0.001;
             const double heart_rate = 60.0 / rr_seconds;
-            switch (config.timing.qt_correction)
+            switch (correction)
             {
             case clinical_qt_bazett:
                 return qtc * std::sqrt(rr_seconds);
@@ -185,8 +191,76 @@ namespace signal_synth
                 return qtc - 0.00175 * (heart_rate - 60.0);
             case clinical_qt_fixed:
             default:
-                return config.timing.qt_interval_ms * 0.001;
+                return qt_interval_ms * 0.001;
             }
+        }
+
+        double smooth_episode_envelope(double time_seconds, double start_seconds, double duration_seconds, double transition_seconds)
+        {
+            if (duration_seconds <= 0.0 || time_seconds < start_seconds || time_seconds > start_seconds + duration_seconds)
+                return 0.0;
+            const double end_seconds = start_seconds + duration_seconds;
+            const double transition = std::max(0.0, std::min(transition_seconds, 0.5 * duration_seconds));
+            if (transition <= 0.0)
+                return 1.0;
+            if (time_seconds < start_seconds + transition)
+                return smoothstep((time_seconds - start_seconds) / transition);
+            if (time_seconds > end_seconds - transition)
+                return smoothstep((end_seconds - time_seconds) / transition);
+            return 1.0;
+        }
+
+        struct dynamic_repolarization_state
+        {
+            double severity;
+            double qtc_ms;
+            double qt_interval_ms;
+            clinical_qt_correction qt_correction;
+            double t_duration_ms;
+            double t_amplitude_mv;
+            double st_j_amplitude_mv;
+            double st_slope_mv_per_second;
+            double repolarization_axis_offset_degrees;
+            double repolarization_elevation_offset_degrees;
+            double injury_axis_offset_degrees;
+            double injury_elevation_offset_degrees;
+        };
+
+        dynamic_repolarization_state repolarization_state_at(const clinical_ecg_config& config, double time_seconds)
+        {
+            dynamic_repolarization_state state = {};
+            state.qtc_ms = config.timing.qtc_ms;
+            state.qt_interval_ms = config.timing.qt_interval_ms;
+            state.qt_correction = config.timing.qt_correction;
+            state.t_duration_ms = config.timing.t_duration_ms;
+            state.t_amplitude_mv = config.morphology.t_amplitude_mv;
+            state.st_j_amplitude_mv = config.morphology.st_j_amplitude_mv;
+            state.st_slope_mv_per_second = config.morphology.st_slope_mv_per_second;
+            state.repolarization_axis_offset_degrees = config.sources.axis_offset_degrees[clinical_source_repolarization];
+            state.repolarization_elevation_offset_degrees = config.sources.elevation_offset_degrees[clinical_source_repolarization];
+            state.injury_axis_offset_degrees = config.sources.axis_offset_degrees[clinical_source_injury];
+            state.injury_elevation_offset_degrees = config.sources.elevation_offset_degrees[clinical_source_injury];
+            const dynamic_repolarization_state baseline = state;
+            for (unsigned int index = 0; index < config.scenario.repolarization_episode_count; ++index)
+            {
+                const clinical_repolarization_episode_config& episode = config.scenario.repolarization_episodes[index];
+                const double weight = smooth_episode_envelope(time_seconds, episode.start_seconds, episode.duration_seconds, episode.transition_seconds);
+                if (weight <= 0.0)
+                    continue;
+                state.severity = std::max(state.severity, weight * episode.peak_severity);
+                state.qtc_ms = baseline.qtc_ms + weight * (episode.target_qtc_ms - baseline.qtc_ms);
+                state.qt_interval_ms = baseline.qt_interval_ms + weight * (episode.target_qt_interval_ms - baseline.qt_interval_ms);
+                state.qt_correction = weight >= 0.5 ? episode.target_qt_correction : baseline.qt_correction;
+                state.t_duration_ms = baseline.t_duration_ms + weight * (episode.target_t_duration_ms - baseline.t_duration_ms);
+                state.t_amplitude_mv = baseline.t_amplitude_mv + weight * (episode.target_t_amplitude_mv - baseline.t_amplitude_mv);
+                state.st_j_amplitude_mv = baseline.st_j_amplitude_mv + weight * (episode.target_st_j_amplitude_mv - baseline.st_j_amplitude_mv);
+                state.st_slope_mv_per_second = baseline.st_slope_mv_per_second + weight * (episode.target_st_slope_mv_per_second - baseline.st_slope_mv_per_second);
+                state.repolarization_axis_offset_degrees = baseline.repolarization_axis_offset_degrees + weight * (episode.target_repolarization_axis_offset_degrees - baseline.repolarization_axis_offset_degrees);
+                state.repolarization_elevation_offset_degrees = baseline.repolarization_elevation_offset_degrees + weight * (episode.target_repolarization_elevation_offset_degrees - baseline.repolarization_elevation_offset_degrees);
+                state.injury_axis_offset_degrees = baseline.injury_axis_offset_degrees + weight * (episode.target_injury_axis_offset_degrees - baseline.injury_axis_offset_degrees);
+                state.injury_elevation_offset_degrees = baseline.injury_elevation_offset_degrees + weight * (episode.target_injury_elevation_offset_degrees - baseline.injury_elevation_offset_degrees);
+            }
+            return state;
         }
 
         bool valid_config(const clinical_ecg_config& config)
@@ -248,6 +322,19 @@ namespace signal_synth
                 return false;
             if (config.scenario.episode_kind != clinical_episode_none && (config.scenario.episode_start_seconds < 0.0 || config.scenario.episode_duration_seconds <= 0.0 || config.scenario.episode_rate_bpm <= 100.0 || config.scenario.episode_rate_bpm > 400.0 || config.scenario.episode_rate_bpm <= config.rhythm.heart_rate_bpm))
                 return false;
+            if (config.scenario.repolarization_episode_count > clinical_repolarization_episode_max)
+                return false;
+            for (unsigned int index = 0; index < config.scenario.repolarization_episode_count; ++index)
+            {
+                const clinical_repolarization_episode_config& episode = config.scenario.repolarization_episodes[index];
+                const int target_qt_correction = enum_value(episode.target_qt_correction);
+                const double values[] = {episode.start_seconds, episode.duration_seconds, episode.transition_seconds, episode.peak_severity, episode.target_qtc_ms, episode.target_qt_interval_ms, episode.target_t_duration_ms, episode.target_t_amplitude_mv, episode.target_st_j_amplitude_mv, episode.target_st_slope_mv_per_second, episode.target_repolarization_axis_offset_degrees, episode.target_repolarization_elevation_offset_degrees, episode.target_injury_axis_offset_degrees, episode.target_injury_elevation_offset_degrees};
+                for (double value : values)
+                    if (!finite(value))
+                        return false;
+                if (target_qt_correction < clinical_qt_fixed || target_qt_correction > clinical_qt_hodges || episode.start_seconds < 0.0 || episode.duration_seconds <= 0.0 || episode.transition_seconds < 0.0 || episode.transition_seconds > 0.5 * episode.duration_seconds || episode.peak_severity <= 0.0 || episode.peak_severity > 1.0 || episode.target_qtc_ms <= 0.0 || episode.target_qt_interval_ms <= 0.0 || episode.target_t_duration_ms <= 0.0)
+                    return false;
+            }
             if (rhythm != clinical_rhythm_sinus && av_conduction != clinical_av_normal)
                 return false;
             if (rhythm != clinical_rhythm_sinus && (config.scenario.premature_every_n_beats > 0 || config.scenario.sinus_pause_every_n_beats > 0))
@@ -292,12 +379,13 @@ namespace signal_synth
         clinical_beat_annotation make_beat(const clinical_ecg_config& config, unsigned long long beat_index, double r_peak_time, double rr_seconds, long long linked_atrial_index, double pr_seconds, clinical_ventricular_origin origin)
         {
             clinical_beat_annotation beat = {};
+            const dynamic_repolarization_state repolarization = repolarization_state_at(config, r_peak_time);
             const double qrs_duration = adjusted_qrs_duration(config, origin);
             const double qrs_onset = r_peak_time - config.timing.qrs_r_fraction * qrs_duration;
-            double qt = corrected_qt_seconds(config, std::max(0.2, rr_seconds));
-            qt = std::max(qt, qrs_duration + config.timing.t_duration_ms * 0.001 + 0.020);
+            double qt = corrected_qt_seconds(repolarization.qt_correction, repolarization.qtc_ms, repolarization.qt_interval_ms, std::max(0.2, rr_seconds));
+            qt = std::max(qt, qrs_duration + repolarization.t_duration_ms * 0.001 + 0.020);
             const double t_offset = qrs_onset + qt;
-            const double t_duration = std::min(config.timing.t_duration_ms * 0.001, std::max(0.040, qt - qrs_duration - 0.020));
+            const double t_duration = std::min(repolarization.t_duration_ms * 0.001, std::max(0.040, qt - qrs_duration - 0.020));
             const double t_onset = t_offset - t_duration;
             beat.beat_index = beat_index;
             beat.linked_atrial_index = linked_atrial_index;
@@ -309,7 +397,7 @@ namespace signal_synth
             beat.pr_interval_seconds = pr_seconds;
             beat.qrs_duration_seconds = qrs_duration;
             beat.qt_interval_seconds = qt;
-            beat.qtc_interval_seconds = config.timing.qtc_ms * 0.001;
+            beat.qtc_interval_seconds = repolarization.qtc_ms * 0.001;
             beat.qrs_onset_time_seconds = qrs_onset;
             beat.q_peak_time_seconds = qrs_onset + config.timing.qrs_q_fraction * qrs_duration;
             beat.r_peak_time_seconds = r_peak_time;
@@ -722,7 +810,9 @@ namespace signal_synth
         void apply_source_presence(const clinical_ecg_config& config, generated_clinical_data& output)
         {
             const bool p_source_present = config.sources.gain[clinical_source_atrial] > 0.0 && std::fabs(config.morphology.p_amplitude_mv) > 0.0;
-            const bool t_source_present = config.sources.gain[clinical_source_repolarization] > 0.0 && std::fabs(config.morphology.t_amplitude_mv) > 0.0;
+            bool t_source_present = config.sources.gain[clinical_source_repolarization] > 0.0 && std::fabs(config.morphology.t_amplitude_mv) > 0.0;
+            for (unsigned int index = 0; index < config.scenario.repolarization_episode_count; ++index)
+                t_source_present = t_source_present || (config.sources.gain[clinical_source_repolarization] > 0.0 && std::fabs(config.scenario.repolarization_episodes[index].target_t_amplitude_mv) > 0.0);
             for (clinical_atrial_event& atrial : output.atrial_events)
                 atrial.visible = atrial.visible && p_source_present;
             for (clinical_beat_annotation& beat : output.beats)
@@ -811,13 +901,14 @@ namespace signal_synth
             }
             for (const clinical_beat_annotation& beat : output.beats)
             {
+                const dynamic_repolarization_state repolarization = repolarization_state_at(config, beat.r_peak_time_seconds);
                 double septal_axis = config.morphology.qrs_axis_degrees;
                 double ventricular_axis = config.morphology.qrs_axis_degrees;
                 double terminal_axis = config.morphology.qrs_axis_degrees;
                 double q_amplitude = config.morphology.q_amplitude_mv;
                 double r_amplitude = config.morphology.r_amplitude_mv;
                 double s_amplitude = config.morphology.s_amplitude_mv;
-                double t_amplitude = config.morphology.t_amplitude_mv;
+                double t_amplitude = repolarization.t_amplitude_mv;
                 bool render_delta = false;
                 if (beat.intraventricular_conduction == clinical_iv_lbbb)
                 {
@@ -904,10 +995,10 @@ namespace signal_synth
                 render_compact_wave(sources[clinical_source_septal], output.sampling_rate_hz, beat.qrs_onset_time_seconds, beat.q_peak_time_seconds, beat.r_peak_time_seconds, source_vector(config, clinical_source_septal, q_amplitude, septal_axis, config.morphology.qrs_elevation_degrees));
                 render_compact_wave(sources[clinical_source_ventricular], output.sampling_rate_hz, beat.q_peak_time_seconds, beat.r_peak_time_seconds, beat.s_peak_time_seconds, source_vector(config, clinical_source_ventricular, r_amplitude, ventricular_axis, config.morphology.qrs_elevation_degrees));
                 render_compact_wave(sources[clinical_source_terminal], output.sampling_rate_hz, beat.r_peak_time_seconds, beat.s_peak_time_seconds, beat.qrs_offset_time_seconds, source_vector(config, clinical_source_terminal, s_amplitude, terminal_axis, config.morphology.qrs_elevation_degrees));
-                const vec3 j = source_vector(config, clinical_source_injury, config.morphology.st_j_amplitude_mv, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees);
-                const vec3 st_slope = source_vector(config, clinical_source_injury, config.morphology.st_slope_mv_per_second, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees);
+                const vec3 j = source_vector_with_offset(config, clinical_source_injury, repolarization.st_j_amplitude_mv, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees, repolarization.injury_axis_offset_degrees, repolarization.injury_elevation_offset_degrees);
+                const vec3 st_slope = source_vector_with_offset(config, clinical_source_injury, repolarization.st_slope_mv_per_second, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees, repolarization.injury_axis_offset_degrees, repolarization.injury_elevation_offset_degrees);
                 render_injury_wave(sources[clinical_source_injury], output.sampling_rate_hz, beat, j, st_slope);
-                render_compact_wave(sources[clinical_source_repolarization], output.sampling_rate_hz, beat.t_onset_time_seconds, beat.t_peak_time_seconds, beat.t_offset_time_seconds, source_vector(config, clinical_source_repolarization, t_amplitude, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees));
+                render_compact_wave(sources[clinical_source_repolarization], output.sampling_rate_hz, beat.t_onset_time_seconds, beat.t_peak_time_seconds, beat.t_offset_time_seconds, source_vector_with_offset(config, clinical_source_repolarization, t_amplitude, config.morphology.t_axis_degrees, config.morphology.t_elevation_degrees, repolarization.repolarization_axis_offset_degrees, repolarization.repolarization_elevation_offset_degrees));
             }
         }
 
@@ -997,6 +1088,67 @@ namespace signal_synth
             if (value >= sample_count)
                 return sample_count ? sample_count - 1 : 0;
             return static_cast<unsigned long long>(value);
+        }
+
+        void add_repolarization_episode_intervals(const clinical_ecg_config& config, double duration_seconds, generated_clinical_data& output)
+        {
+            for (unsigned int index = 0; index < config.scenario.repolarization_episode_count; ++index)
+            {
+                const clinical_repolarization_episode_config& source = config.scenario.repolarization_episodes[index];
+                const double start = source.start_seconds;
+                const double end = source.start_seconds + source.duration_seconds;
+                const double transition = std::min(source.transition_seconds, 0.5 * source.duration_seconds);
+                clinical_episode_annotation episode = {};
+                episode.kind = clinical_episode_repolarization;
+                episode.start_time_seconds = start;
+                episode.end_time_seconds = end;
+                episode.first_beat_index = NO_BEAT;
+                episode.last_beat_index = NO_BEAT;
+                episode.onset_transition_start_seconds = start;
+                episode.onset_transition_end_seconds = std::min(end, start + transition);
+                episode.offset_transition_start_seconds = std::max(start, end - transition);
+                episode.offset_transition_end_seconds = end;
+                episode.present = start < duration_seconds;
+                for (unsigned int beat_index = 0; beat_index < output.beats.size(); ++beat_index)
+                {
+                    const clinical_beat_annotation& beat = output.beats[beat_index];
+                    if (beat.r_peak_time_seconds < start || beat.r_peak_time_seconds > end)
+                        continue;
+                    if (episode.first_beat_index == NO_BEAT)
+                        episode.first_beat_index = beat.beat_index;
+                    episode.last_beat_index = beat.beat_index;
+                }
+                output.episodes.push_back(episode);
+            }
+        }
+
+        void add_dynamic_annotation(generated_clinical_data& output, long long beat_index, clinical_dynamic_annotation_kind kind, double time_seconds, double value, bool present)
+        {
+            clinical_dynamic_annotation annotation = {};
+            annotation.annotation_index = output.dynamic_annotations.size();
+            annotation.beat_index = beat_index;
+            annotation.kind = kind;
+            annotation.time_seconds = time_seconds;
+            annotation.sample_index = sample_index(time_seconds, output.sampling_rate_hz, output.sample_count);
+            annotation.value = value;
+            annotation.present = present && time_seconds >= 0.0 && time_seconds < static_cast<double>(output.sample_count) / output.sampling_rate_hz;
+            output.dynamic_annotations.push_back(annotation);
+        }
+
+        void build_dynamic_repolarization_annotations(const clinical_ecg_config& config, generated_clinical_data& output)
+        {
+            if (config.scenario.repolarization_episode_count == 0)
+                return;
+            for (const clinical_beat_annotation& beat : output.beats)
+            {
+                const dynamic_repolarization_state state = repolarization_state_at(config, beat.r_peak_time_seconds);
+                add_dynamic_annotation(output, static_cast<long long>(beat.beat_index), clinical_dynamic_repolarization_severity, beat.r_peak_time_seconds, state.severity, true);
+                add_dynamic_annotation(output, static_cast<long long>(beat.beat_index), clinical_dynamic_qt_interval_ms, beat.r_peak_time_seconds, beat.qt_interval_seconds * 1000.0, true);
+                add_dynamic_annotation(output, static_cast<long long>(beat.beat_index), clinical_dynamic_qtc_ms, beat.r_peak_time_seconds, beat.qtc_interval_seconds * 1000.0, true);
+                add_dynamic_annotation(output, static_cast<long long>(beat.beat_index), clinical_dynamic_st_j_amplitude_mv, beat.j_point_time_seconds, state.st_j_amplitude_mv, true);
+                add_dynamic_annotation(output, static_cast<long long>(beat.beat_index), clinical_dynamic_st_slope_mv_per_second, beat.j_point_time_seconds, state.st_slope_mv_per_second, true);
+                add_dynamic_annotation(output, static_cast<long long>(beat.beat_index), clinical_dynamic_t_amplitude_mv, beat.t_peak_time_seconds, state.t_amplitude_mv, beat.t_present);
+            }
         }
 
         void finalize_episode_samples(generated_clinical_data& output)
@@ -1135,8 +1287,13 @@ namespace signal_synth
     {
     }
 
+    clinical_repolarization_episode_config::clinical_repolarization_episode_config()
+        : start_seconds(0.0), duration_seconds(0.0), transition_seconds(0.0), peak_severity(0.0), target_qtc_ms(400.0), target_qt_interval_ms(400.0), target_qt_correction(clinical_qt_fridericia), target_t_duration_ms(180.0), target_t_amplitude_mv(0.30), target_st_j_amplitude_mv(0.0), target_st_slope_mv_per_second(0.0), target_repolarization_axis_offset_degrees(0.0), target_repolarization_elevation_offset_degrees(0.0), target_injury_axis_offset_degrees(0.0), target_injury_elevation_offset_degrees(0.0)
+    {
+    }
+
     clinical_scenario_config::clinical_scenario_config()
-        : premature_every_n_beats(0), premature_origin(clinical_origin_pvc), premature_coupling_ratio(0.65), compensatory_pause_ratio(1.35), sinus_pause_every_n_beats(0), sinus_pause_ratio(2.0), pacing_non_capture_every_n_beats(0), episode_kind(clinical_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0)
+        : premature_every_n_beats(0), premature_origin(clinical_origin_pvc), premature_coupling_ratio(0.65), compensatory_pause_ratio(1.35), sinus_pause_every_n_beats(0), sinus_pause_ratio(2.0), pacing_non_capture_every_n_beats(0), episode_kind(clinical_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), repolarization_episode_count(0)
     {
     }
 
@@ -1174,6 +1331,7 @@ namespace signal_synth
         std::vector<clinical_fiducial_annotation> fiducials;
         std::vector<clinical_pacing_event> pacing_events;
         std::vector<clinical_episode_annotation> episodes;
+        std::vector<clinical_dynamic_annotation> dynamic_annotations;
 
         implementation()
             : sampling_rate_hz(0), sample_count(0)
@@ -1298,6 +1456,16 @@ namespace signal_synth
         return implementation_->episodes.empty() ? 0 : implementation_->episodes.data();
     }
 
+    unsigned int clinical_ecg_record::dynamic_annotation_count() const
+    {
+        return static_cast<unsigned int>(implementation_->dynamic_annotations.size());
+    }
+
+    const clinical_dynamic_annotation* clinical_ecg_record::dynamic_annotations() const
+    {
+        return implementation_->dynamic_annotations.empty() ? 0 : implementation_->dynamic_annotations.data();
+    }
+
     struct clinical_ecg_generator::implementation
     {
         clinical_ecg_config config;
@@ -1381,6 +1549,8 @@ namespace signal_synth
                 generate_atrial_conduction_timeline(implementation_->config, duration, generated);
             else
                 generate_sequential_timeline(implementation_->config, duration, generated);
+            add_repolarization_episode_intervals(implementation_->config, duration, generated);
+            build_dynamic_repolarization_annotations(implementation_->config, generated);
             apply_source_presence(implementation_->config, generated);
             std::vector<vec3> raw_sources[clinical_source_count];
             std::vector<vec3> total_source;
@@ -1408,6 +1578,7 @@ namespace signal_synth
             completed.fiducials.swap(generated.fiducials);
             completed.pacing_events.swap(generated.pacing_events);
             completed.episodes.swap(generated.episodes);
+            completed.dynamic_annotations.swap(generated.dynamic_annotations);
             std::swap(*output.implementation_, completed);
             return true;
         }

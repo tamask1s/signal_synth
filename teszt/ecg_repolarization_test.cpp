@@ -1,5 +1,7 @@
 #include "../src/ecg_scenario.h"
 #include "../src/clinical_ecg.h"
+#include "../src/ecg_export.h"
+#include "../src/ecg_scenario_json.h"
 
 #include <algorithm>
 #include <cmath>
@@ -186,6 +188,53 @@ namespace
         }
         return true;
     }
+
+    double dynamic_trace_extreme(const signal_synth::clinical_ecg_record& record, signal_synth::clinical_dynamic_annotation_kind kind, bool maximum)
+    {
+        double result = maximum ? -1e100 : 1e100;
+        bool found = false;
+        for (unsigned int index = 0; index < record.dynamic_annotation_count(); ++index)
+        {
+            const signal_synth::clinical_dynamic_annotation& annotation = record.dynamic_annotations()[index];
+            if (annotation.kind != kind || !annotation.present)
+                continue;
+            result = maximum ? std::max(result, annotation.value) : std::min(result, annotation.value);
+            found = true;
+        }
+        return found ? result : 0.0;
+    }
+
+    bool dynamic_trace_is_reasonably_continuous(const signal_synth::clinical_ecg_record& record, signal_synth::clinical_dynamic_annotation_kind kind, double maximum_step)
+    {
+        bool found_previous = false;
+        double previous = 0.0;
+        for (unsigned int index = 0; index < record.dynamic_annotation_count(); ++index)
+        {
+            const signal_synth::clinical_dynamic_annotation& annotation = record.dynamic_annotations()[index];
+            if (annotation.kind != kind || !annotation.present)
+                continue;
+            if (found_previous && std::fabs(annotation.value - previous) > maximum_step)
+                return false;
+            previous = annotation.value;
+            found_previous = true;
+        }
+        return found_previous;
+    }
+
+    bool qt_adapts_to_rr(const signal_synth::clinical_ecg_record& record)
+    {
+        if (record.beat_count() < 4)
+            return false;
+        double min_qt = 1e100, max_qt = -1e100, min_qtc = 1e100, max_qtc = -1e100;
+        for (unsigned int index = 0; index < record.beat_count(); ++index)
+        {
+            min_qt = std::min(min_qt, record.beats()[index].qt_interval_seconds);
+            max_qt = std::max(max_qt, record.beats()[index].qt_interval_seconds);
+            min_qtc = std::min(min_qtc, record.beats()[index].qtc_interval_seconds);
+            max_qtc = std::max(max_qtc, record.beats()[index].qtc_interval_seconds);
+        }
+        return max_qt - min_qt > 0.010 && min_qtc > 0.409 && max_qtc < 0.411;
+    }
 }
 
 int main()
@@ -200,7 +249,7 @@ int main()
     for (unsigned int index = 0; index < sizeof(stt_conditions) / sizeof(stt_conditions[0]); ++index)
         support_levels = support_levels && signal_synth::find_ecg_condition(stt_conditions[index])->support == signal_synth::ecg_support_parameterized;
     ok &= check(support_levels, "all_ischemia_stt_conditions_are_parameterized");
-    ok &= check(signal_synth::ecg_scenario_engine_version() == 13, "current_waveform_semantics_increment_engine_version");
+    ok &= check(signal_synth::ecg_scenario_engine_version() == 14, "current_waveform_semantics_increment_engine_version");
 
     bool default_phenotypes = true;
     bool mild_phenotypes = true;
@@ -320,6 +369,64 @@ int main()
         }
     }
     ok &= check(continuous_boundaries, "injury_source_boundaries_are_sampled_smoothly");
+
+    signal_synth::ecg_qa_scenario dynamic_stt;
+    dynamic_stt.clear_conditions();
+    dynamic_stt.add_condition(signal_synth::ecg_condition_sr);
+    dynamic_stt.set_sampling_rate_hz(500);
+    dynamic_stt.set_heart_rate_bpm(72.0);
+    dynamic_stt.set_rr_variability_seconds(0.12);
+    dynamic_stt.set_hrv_modulation(1.0, 0.10, 0.04, 0.25, 0.12, 0.25, 0.05);
+    dynamic_stt.set_qt_adaptation(signal_synth::ecg_qt_adaptation_fridericia, 410.0);
+    dynamic_stt.add_repolarization_episode(signal_synth::ecg_condition_iscal, 1.0, 8.0, 2.0, 1.0);
+    signal_synth::clinical_ecg_record dynamic_record;
+    signal_synth::ecg_scenario_report dynamic_report;
+    const bool dynamic_generated = engine.generate(dynamic_stt, 6000, dynamic_record, dynamic_report) && dynamic_report.success();
+    ok &= check(dynamic_generated, "dynamic_repolarization_generates");
+    ok &= check(dynamic_generated && dynamic_record.episode_count() == 1 && dynamic_record.episodes()[0].kind == signal_synth::clinical_episode_repolarization, "dynamic_repolarization_episode_boundary_exported");
+    ok &= check(dynamic_generated && dynamic_record.dynamic_annotation_count() >= dynamic_record.beat_count() * 6, "dynamic_repolarization_trace_annotations_exported");
+    ok &= check(dynamic_generated && dynamic_trace_extreme(dynamic_record, signal_synth::clinical_dynamic_repolarization_severity, true) > 0.8 && dynamic_trace_extreme(dynamic_record, signal_synth::clinical_dynamic_repolarization_severity, false) < 0.05, "dynamic_repolarization_severity_trace_range");
+    ok &= check(dynamic_generated && dynamic_trace_extreme(dynamic_record, signal_synth::clinical_dynamic_st_j_amplitude_mv, false) < -0.15 && dynamic_trace_extreme(dynamic_record, signal_synth::clinical_dynamic_t_amplitude_mv, false) < -0.20, "dynamic_repolarization_st_t_targets");
+    ok &= check(dynamic_generated && dynamic_trace_is_reasonably_continuous(dynamic_record, signal_synth::clinical_dynamic_repolarization_severity, 0.80), "dynamic_repolarization_severity_trace_continuity");
+    ok &= check(dynamic_generated && qt_adapts_to_rr(dynamic_record), "dynamic_qt_adapts_to_rr");
+    ok &= check(dynamic_generated && injury_boundaries_are_smooth(dynamic_record), "dynamic_repolarization_waveform_continuity");
+
+    signal_synth::ecg_qa_scenario dynamic_repeated = dynamic_stt;
+    signal_synth::clinical_ecg_record dynamic_record_repeated;
+    signal_synth::ecg_scenario_report dynamic_report_repeated;
+    signal_synth::ecg_qa_scenario dynamic_shifted = dynamic_stt;
+    dynamic_shifted.clear_repolarization_episodes();
+    dynamic_shifted.add_repolarization_episode(signal_synth::ecg_condition_iscal, 2.0, 8.0, 2.0, 1.0);
+    ok &= check(engine.generate(dynamic_repeated, 6000, dynamic_record_repeated, dynamic_report_repeated) && same_signal(dynamic_record, dynamic_record_repeated) && dynamic_report.run_fingerprint() == dynamic_report_repeated.run_fingerprint() && dynamic_stt.fingerprint() != dynamic_shifted.fingerprint(), "dynamic_repolarization_is_reproducible_and_fingerprinted");
+
+    signal_synth::ecg_qa_scenario dynamic_invalid_norm;
+    dynamic_invalid_norm.add_condition(signal_synth::ecg_condition_norm);
+    dynamic_invalid_norm.add_repolarization_episode(signal_synth::ecg_condition_ste, 1.0, 4.0, 1.0, 1.0);
+    signal_synth::ecg_qa_scenario dynamic_overlap = dynamic_stt;
+    dynamic_overlap.add_repolarization_episode(signal_synth::ecg_condition_std, 5.0, 2.0, 0.5, 0.5);
+    ok &= check(!engine.validate(dynamic_invalid_norm, report) && report_has_issue(report, signal_synth::ecg_issue_condition_conflict), "dynamic_repolarization_norm_composition_is_rejected");
+    ok &= check(!engine.validate(dynamic_overlap, report) && report_has_issue(report, signal_synth::ecg_issue_condition_conflict), "dynamic_repolarization_overlap_is_rejected");
+
+    signal_synth::ecg_scenario_document document;
+    document.schema_version = 3;
+    document.scenario_id = "dynamic_repolarization_episode";
+    document.name = "Dynamic repolarization episode";
+    document.duration_seconds = 12.0;
+    signal_synth::ecg_qa_scenario dynamic_json_scenario;
+    dynamic_json_scenario.clear_conditions();
+    dynamic_json_scenario.add_condition(signal_synth::ecg_condition_sr);
+    dynamic_json_scenario.set_sampling_rate_hz(500);
+    dynamic_json_scenario.set_heart_rate_bpm(72.0);
+    dynamic_json_scenario.set_qt_adaptation(signal_synth::ecg_qt_adaptation_fridericia, 410.0);
+    dynamic_json_scenario.add_repolarization_episode(signal_synth::ecg_condition_iscal, 1.0, 8.0, 2.0, 1.0);
+    document.ecg = dynamic_json_scenario;
+    signal_synth::ecg_scenario_json_result json;
+    signal_synth::ecg_scenario_document parsed;
+    signal_synth::ecg_scenario_json_result parsed_result;
+    signal_synth::ecg_render_bundle render;
+    signal_synth::ecg_export_result export_result;
+    signal_synth::ecg_export_bundle bundle;
+    ok &= check(signal_synth::write_ecg_scenario_json(document, json) && json.canonical_json.find("\"qt_adaptation\"") != std::string::npos && json.canonical_json.find("\"repolarization_episodes\"") != std::string::npos && signal_synth::parse_ecg_scenario_json(json.canonical_json, parsed, parsed_result) && parsed.ecg.qt_adaptation_enabled() && parsed.ecg.repolarization_episode_count() == 1 && signal_synth::render_ecg_document(parsed, render, export_result) && signal_synth::build_ecg_export_bundle(render, bundle, export_result) && bundle.find("annotations.json") && bundle.find("annotations.json")->content.find("\"kind\":\"dynamic_repolarization\"") != std::string::npos && bundle.find("annotations.json")->content.find("\"dynamic_traces\"") != std::string::npos && bundle.find("annotations.json")->content.find("\"kind\":\"repolarization_severity\"") != std::string::npos, "dynamic_repolarization_json_and_export_contract");
 
     std::cout << (ok ? "All ECG ischemia/ST-T tests passed.\n" : "ECG ischemia/ST-T test failure.\n");
     return ok ? 0 : 1;

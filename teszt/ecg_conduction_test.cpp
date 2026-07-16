@@ -146,7 +146,7 @@ int main()
     ok &= check(engine.generate(reproducible, 4000, first, first_report) && engine.generate(reproducible, 4000, second, second_report) && same_signal(first, second) && first_report.run_fingerprint() == second_report.run_fingerprint(), "advanced_conduction_generation_is_reproducible");
     signal_synth::ecg_qa_scenario changed = make_scenario(signal_synth::ecg_condition_wpw, 0.3, 500);
     ok &= check(reproducible.fingerprint() != changed.fingerprint(), "advanced_conduction_fingerprint_covers_severity");
-    ok &= check(signal_synth::ecg_scenario_engine_version() == 13, "advanced_conduction_engine_identity");
+    ok &= check(signal_synth::ecg_scenario_engine_version() == 14, "advanced_conduction_engine_identity");
 
     std::cout << (ok ? "All advanced conduction tests passed.\n" : "Advanced conduction test failure.\n");
     return ok ? 0 : 1;

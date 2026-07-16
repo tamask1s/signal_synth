@@ -141,6 +141,24 @@ namespace signal_synth
     bool ecg_morphology_control_from_name(const char* name, ecg_morphology_control& control);
     bool ecg_morphology_control_bounds(ecg_morphology_control control, double& minimum, double& maximum);
 
+    enum ecg_qt_adaptation_model
+    {
+        ecg_qt_adaptation_fixed = 0,
+        ecg_qt_adaptation_bazett = 1,
+        ecg_qt_adaptation_fridericia = 2,
+        ecg_qt_adaptation_framingham = 3,
+        ecg_qt_adaptation_hodges = 4
+    };
+
+    struct ecg_repolarization_episode
+    {
+        ecg_condition_code condition;
+        double start_seconds;
+        double duration_seconds;
+        double transition_seconds;
+        double peak_severity;
+    };
+
     enum ecg_scenario_fidelity_policy
     {
         ecg_fidelity_native_only = 0,
@@ -288,6 +306,15 @@ namespace signal_synth
         bool morphology_control_enabled(ecg_morphology_control control) const;
         double morphology_control_value(ecg_morphology_control control) const;
         bool has_morphology_controls() const;
+        bool set_qt_adaptation(ecg_qt_adaptation_model model, double qtc_ms);
+        void clear_qt_adaptation();
+        bool qt_adaptation_enabled() const;
+        ecg_qt_adaptation_model qt_adaptation_model() const;
+        double qt_adaptation_qtc_ms() const;
+        bool add_repolarization_episode(ecg_condition_code condition, double start_seconds, double duration_seconds, double transition_seconds, double peak_severity);
+        void clear_repolarization_episodes();
+        unsigned int repolarization_episode_count() const;
+        bool repolarization_episode(unsigned int index, ecg_repolarization_episode& output) const;
         bool set_minimum_rr_seconds(double value);
         double minimum_rr_seconds() const;
         bool set_maximum_rr_seconds(double value);
