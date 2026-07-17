@@ -49,8 +49,8 @@ int main()
         signal_synth::ecg_scenario_json_result parse_result;
         signal_synth::ecg_render_bundle first;
         signal_synth::ecg_render_bundle second;
-        signal_synth::ecg_export_result first_result;
-        signal_synth::ecg_export_result second_result;
+        signal_synth::ecg_document_render_result first_result;
+        signal_synth::ecg_document_render_result second_result;
         const bool rendered = signal_synth::parse_ecg_scenario_json(scenario_json, document, parse_result) && signal_synth::render_ecg_document(document, first, first_result) && signal_synth::render_ecg_document(document, second, second_result);
         ok &= check(rendered, "hrv_pack_case_renders");
         if (!rendered)

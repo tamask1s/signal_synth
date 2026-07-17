@@ -72,8 +72,9 @@ int main()
     document.ecg.set_seed(1);
 
     signal_synth::ecg_render_bundle render;
+    signal_synth::ecg_document_render_result render_result;
     signal_synth::ecg_export_result result;
-    ok &= check(signal_synth::render_ecg_document(document, render, result) && result.success, "render_valid_document");
+    ok &= check(signal_synth::render_ecg_document(document, render, render_result) && render_result.success, "render_valid_document");
     ok &= check(render.render_identity.find(render.document_identity.document_fingerprint + ":ecg-run-") == 0, "render_identity_contract");
     ok &= check(render.record.sample_count() == document.sample_count() && render.record.lead_count() == 12 && render.morphology.entry_count() == render.record.beat_count() * 12, "render_bundle_shape");
     ok &= check(render.metrics.beat_count == render.record.beat_count() && render.metrics.mean_rr_seconds > 0.0 && render.metrics.mean_heart_rate_bpm > 0.0, "ground_truth_metrics");
@@ -139,12 +140,12 @@ int main()
 
     signal_synth::ecg_render_bundle repeated_render;
     signal_synth::ecg_export_bundle repeated_bundle;
-    ok &= check(signal_synth::render_ecg_document(document, repeated_render, result) && signal_synth::build_ecg_export_bundle(repeated_render, repeated_bundle, result) && same_artifacts(bundle, repeated_bundle), "byte_deterministic_artifacts");
+    ok &= check(signal_synth::render_ecg_document(document, repeated_render, render_result) && signal_synth::build_ecg_export_bundle(repeated_render, repeated_bundle, result) && same_artifacts(bundle, repeated_bundle), "byte_deterministic_artifacts");
 
     signal_synth::ecg_scenario_document invalid = document;
     invalid.duration_seconds = 0.0;
     signal_synth::ecg_render_bundle preserved = render;
-    ok &= check(!signal_synth::render_ecg_document(invalid, preserved, result) && preserved.document.scenario_id == "export_test" && preserved.record.sample_count() == render.record.sample_count(), "failed_render_is_transactional");
+    ok &= check(!signal_synth::render_ecg_document(invalid, preserved, render_result) && preserved.document.scenario_id == "export_test" && preserved.record.sample_count() == render.record.sample_count(), "failed_render_is_transactional");
 
     signal_synth::ecg_render_bundle incomplete;
     signal_synth::ecg_export_bundle preserved_export = bundle;
@@ -162,7 +163,7 @@ int main()
     paced_document.ecg.set_pacing_non_capture_every_n_beats(3);
     signal_synth::ecg_render_bundle paced_render;
     signal_synth::ecg_export_bundle paced_bundle;
-    ok &= check(signal_synth::render_ecg_document(paced_document, paced_render, result) && paced_render.record.pacing_event_count() > paced_render.record.beat_count() && signal_synth::build_ecg_export_bundle(paced_render, paced_bundle, result), "paced_export_render");
+    ok &= check(signal_synth::render_ecg_document(paced_document, paced_render, render_result) && paced_render.record.pacing_event_count() > paced_render.record.beat_count() && signal_synth::build_ecg_export_bundle(paced_render, paced_bundle, result), "paced_export_render");
     const signal_synth::ecg_text_artifact* paced_annotations = paced_bundle.find("annotations.json");
     ok &= check(paced_annotations && paced_annotations->content.find("\"pacing_events\":[{") != std::string::npos && paced_annotations->content.find("\"kind\":\"atrial\"") != std::string::npos && paced_annotations->content.find("\"kind\":\"ventricular\"") != std::string::npos && paced_annotations->content.find("\"captured\":false") != std::string::npos && paced_annotations->content.find("\"beat_class\":\"paced\"") != std::string::npos, "paced_annotation_export_contract");
 
@@ -177,7 +178,7 @@ int main()
     artifact_episode.ecg.set_episode_duration_seconds(4.0);
     artifact_episode.ecg.set_episode_rate_bpm(180.0);
     signal_synth::ecg_render_bundle clean_episode_render;
-    ok &= check(signal_synth::render_ecg_document(artifact_episode, clean_episode_render, result), "clean_episode_truth_render");
+    ok &= check(signal_synth::render_ecg_document(artifact_episode, clean_episode_render, render_result), "clean_episode_truth_render");
     signal_synth::signal_quality_artifact_config artifact;
     artifact.type = signal_synth::signal_quality_ecg_emg_noise;
     artifact.start_seconds = 2.5;
@@ -188,7 +189,7 @@ int main()
         artifact.ecg_leads[lead] = true;
     artifact_episode.signal_quality.artifacts.push_back(artifact);
     signal_synth::ecg_render_bundle artifact_episode_render;
-    ok &= check(signal_synth::render_ecg_document(artifact_episode, artifact_episode_render, result) && same_rhythm_truth(clean_episode_render.record, artifact_episode_render.record) && artifact_episode_render.signal_quality.artifacts.size() == 1u, "artifact_overlap_preserves_rhythm_truth");
+    ok &= check(signal_synth::render_ecg_document(artifact_episode, artifact_episode_render, render_result) && same_rhythm_truth(clean_episode_render.record, artifact_episode_render.record) && artifact_episode_render.signal_quality.artifacts.size() == 1u, "artifact_overlap_preserves_rhythm_truth");
 
     signal_synth::ecg_scenario_document multimodal = document;
     multimodal.schema_version = 2;
@@ -196,7 +197,7 @@ int main()
     multimodal.ppg.enabled = true;
     signal_synth::ecg_render_bundle multimodal_render;
     signal_synth::ecg_export_bundle multimodal_bundle;
-    ok &= check(signal_synth::render_ecg_document(multimodal, multimodal_render, result) && multimodal_render.ppg.sample_count() == multimodal_render.record.sample_count(), "multimodal_render");
+    ok &= check(signal_synth::render_ecg_document(multimodal, multimodal_render, render_result) && multimodal_render.ppg.sample_count() == multimodal_render.record.sample_count(), "multimodal_render");
     ok &= check(multimodal_render.render_identity != render.render_identity, "ppg_document_changes_render_identity");
     ok &= check(multimodal_render.metrics.ppg_pulse_count > 0 && std::fabs(multimodal_render.metrics.mean_ppg_onset_delay_seconds - 0.18) < 1e-12 && multimodal_render.metrics.mean_ppg_peak_delay_seconds > 0.18, "ppg_delay_metrics");
     ok &= check(signal_synth::build_ecg_export_bundle(multimodal_render, multimodal_bundle, result), "multimodal_export");

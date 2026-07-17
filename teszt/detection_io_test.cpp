@@ -22,7 +22,7 @@ namespace
         signal_synth::ecg_scenario_document document;
         document.scenario_id = "detection_io_clean";
         document.duration_seconds = 8.0;
-        signal_synth::ecg_export_result result;
+        signal_synth::ecg_document_render_result result;
         return signal_synth::render_ecg_document(document, render, result) && result.success;
     }
 

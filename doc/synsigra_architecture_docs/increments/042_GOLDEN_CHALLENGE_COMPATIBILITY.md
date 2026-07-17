@@ -4,13 +4,18 @@
 
 **Version:** 1.0
 
-**Status:** Implemented
+**Status:** Superseded by `SYN-ARCH-INC-052`
 
 **Owner role:** Engineering
 
 **Date:** 2026-07-06
 
 **Implementation issue:** [signal_synth#66](https://github.com/tamask1s/signal_synth/issues/66)
+
+> Historical record. The fixture and `TEST-GOLDEN-CHALLENGE-001` were removed
+> when backward package compatibility ceased to be a supported product
+> requirement. Current producer/consumer behavior is verified by
+> `TEST-INTEGRATION-CONTRACT-001` against a newly generated package.
 
 ## 1. Decision
 

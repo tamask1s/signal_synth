@@ -43,9 +43,9 @@ integer types. SHA-256 document/package fingerprints and composite
 `render_identity` values remain unchanged because they are already strings.
 CLI `key=value` diagnostics are not JSON and retain their existing form.
 
-Newly generated JSON always uses decimal strings. Consumers should accept both
-the new string representation and legacy numeric values when reading historical
-packages. No duplicate or transitional field is introduced.
+JSON uses decimal strings. Numeric legacy values are not part of the supported
+contract; development packages using them must be regenerated. No duplicate or
+transitional field is introduced.
 
 ## 4. Verification
 
@@ -67,5 +67,5 @@ producer output while retaining legacy package input compatibility.
 - No standalone unsigned 64-bit fingerprint is emitted as a JSON number.
 - Values above signed 64-bit range remain byte-exact decimal text.
 - C++ identity APIs and deterministic fingerprints are unchanged.
-- Historical numeric fingerprints remain consumable by the Python verifier.
+- Distribution and verifier fixtures use the canonical string representation.
 - Release and sanitizer test suites pass.

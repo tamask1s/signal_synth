@@ -110,10 +110,18 @@ int main()
     ok &= check(std::fabs(signal_synth::synsigra_default_compare_tolerance_seconds(signal_synth::synsigra_compare_ppg_systolic_peak) - 0.080) < 1e-12, "default_ppg_tolerance");
     ok &= check(std::fabs(signal_synth::synsigra_default_compare_tolerance_seconds(signal_synth::synsigra_compare_ppg_pulse_onset) - 0.050) < 1e-12
         && std::string(signal_synth::synsigra_compare_target_name(signal_synth::synsigra_compare_ppg_pulse_onset)) == "ppg_pulse_onset", "ppg_onset_contract");
+    ok &= check(std::string(signal_synth::synsigra_compare_target_name(static_cast<signal_synth::synsigra_compare_target>(99))).empty()
+        && signal_synth::synsigra_default_compare_tolerance_seconds(static_cast<signal_synth::synsigra_compare_target>(99)) == 0.0, "invalid_target_has_no_fallback");
+    const std::string integration_contract = signal_synth::synsigra_integration_contract_json();
+    ok &= check(std::string(signal_synth::synsigra_integration_contract_version()) == "synsigra_core_integration_v1"
+        && integration_contract.find("\"contract\":\"synsigra_core_integration_v1\"") != std::string::npos
+        && integration_contract.find("\"cpp_facade\":\"1.0.0\"") != std::string::npos
+        && integration_contract.find("\"challenge_package\":\"synsigra_challenge_package_v1\"") != std::string::npos
+        && integration_contract.find("\"comparison_targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ppg_pulse_onset\",\"ecg_beat_classification\"]") != std::string::npos, "integration_contract");
 
     signal_synth::synsigra_validation_result invalid;
     ok &= check(!signal_synth::synsigra_validate_scenario_json("{\"schema_version\":2}", invalid) && !invalid.success && !invalid.messages.empty(), "invalid_has_messages");
-    ok &= check(std::string(signal_synth::synsigra_api_version()) == "0.2.0", "api_version");
+    ok &= check(std::string(signal_synth::synsigra_api_version()) == "1.0.0", "api_version");
 
     return ok ? 0 : 1;
 }

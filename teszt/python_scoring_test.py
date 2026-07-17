@@ -159,7 +159,7 @@ def main():
     assert integrity["ok"] and integrity["checked_file_count"] > 0
     scoring_manifest = challenge.scoring_manifest()
     assert scoring_manifest["cases"][0]["case_summary_path"] == "cases/clean_ecg/case_summary.json"
-    assert scoring_manifest["cases"][0]["scoring"][0]["score_command"].startswith("signal-synth compare rpeaks")
+    assert scoring_manifest["cases"][0]["scoring"][0]["score_command"].startswith("signal-synth compare r_peak")
     case_summary = challenge.case("clean_ecg").case_summary()
     assert case_summary["case_id"] == "clean_ecg"
     assert case_summary["render"]["sample_rate_hz"] == 500
@@ -222,7 +222,7 @@ def main():
     assert "not diagnosis" in rpeak_report.html and "clinical validation certification" in rpeak_report.html
 
     direct_dir = os.path.join(work_dir, "direct_compare")
-    run([cli, "compare", "rpeaks", challenge.case("clean_ecg").scenario_path, rpeak_path, "--out", direct_dir])
+    run([cli, "compare", "r_peak", challenge.case("clean_ecg").scenario_path, rpeak_path, "--out", direct_dir])
     assert read_json(os.path.join(direct_dir, "comparison.json")) == rpeak_report.json
 
     ppg_report = ss.compare_ppg_peaks(challenge.case("ppg_clean"), ppg_detections_doc, cli_path=cli)
@@ -269,7 +269,7 @@ def main():
     assert read_json(os.path.join(local_verify_dir, "verification", "ppg_clean_ppg_systolic_peak", "comparison.json"))["comparison"]["metrics"]["total"]["f1_score"] == 1
     local_onset = read_json(os.path.join(local_verify_dir, "verification", "ppg_clean_ppg_pulse_onset", "comparison.json"))["comparison"]
     cpp_onset_dir = os.path.join(work_dir, "cpp_ppg_onset")
-    run([cli, "compare", "ppg-onsets", challenge.case("ppg_clean").scenario_path, ppg_onset_path, "--out", cpp_onset_dir])
+    run([cli, "compare", "ppg_pulse_onset", challenge.case("ppg_clean").scenario_path, ppg_onset_path, "--out", cpp_onset_dir])
     cpp_onset = read_json(os.path.join(cpp_onset_dir, "comparison.json"))["comparison"]
     for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
         assert local_onset[key] == cpp_onset[key]
@@ -281,13 +281,13 @@ def main():
     assert motion_metrics["motion"]["ground_truth_count"] > 0
     assert motion_metrics["motion"]["true_positive_count"] == motion_metrics["motion"]["ground_truth_count"]
     cpp_stress_dir = os.path.join(work_dir, "cpp_ppg_stress")
-    run([cli, "compare", "ppg-peaks", challenge.case("ppg_stress").scenario_path, ppg_stress_path, "--out", cpp_stress_dir])
+    run([cli, "compare", "ppg_systolic_peak", challenge.case("ppg_stress").scenario_path, ppg_stress_path, "--out", cpp_stress_dir])
     python_stress = read_json(os.path.join(local_verify_dir, "verification", "ppg_stress", "comparison.json"))["comparison"]
     cpp_stress = read_json(os.path.join(cpp_stress_dir, "comparison.json"))["comparison"]
     for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
         assert python_stress[key] == cpp_stress[key]
     cpp_motion_dir = os.path.join(work_dir, "cpp_ppg_motion")
-    run([cli, "compare", "ppg-peaks", challenge.case("ppg_motion").scenario_path, ppg_motion_path, "--out", cpp_motion_dir])
+    run([cli, "compare", "ppg_systolic_peak", challenge.case("ppg_motion").scenario_path, ppg_motion_path, "--out", cpp_motion_dir])
     python_motion = read_json(os.path.join(local_verify_dir, "verification", "ppg_motion", "comparison.json"))["comparison"]
     cpp_motion = read_json(os.path.join(cpp_motion_dir, "comparison.json"))["comparison"]
     for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
@@ -330,14 +330,14 @@ def main():
     assert degraded_rpeak_summary["total"]["mean_absolute_error_seconds"] > 0
 
     cpp_rpeak_dir = os.path.join(work_dir, "cpp_degraded_rpeak")
-    run([cli, "compare", "rpeaks", challenge.case("clean_ecg").scenario_path, degraded_rpeak_path, "--out", cpp_rpeak_dir])
+    run([cli, "compare", "r_peak", challenge.case("clean_ecg").scenario_path, degraded_rpeak_path, "--out", cpp_rpeak_dir])
     python_rpeak = read_json(os.path.join(degraded_verify_dir, "verification", "clean_ecg_r_peak", "comparison.json"))["comparison"]
     cpp_rpeak = read_json(os.path.join(cpp_rpeak_dir, "comparison.json"))["comparison"]
     for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
         assert python_rpeak[key] == cpp_rpeak[key]
 
     cpp_class_dir = os.path.join(work_dir, "cpp_degraded_class")
-    run([cli, "compare", "beat-classes", challenge.case("clean_ecg").scenario_path, degraded_class_path, "--out", cpp_class_dir])
+    run([cli, "compare", "ecg_beat_classification", challenge.case("clean_ecg").scenario_path, degraded_class_path, "--out", cpp_class_dir])
     python_class = read_json(os.path.join(degraded_verify_dir, "verification", "clean_ecg_ecg_beat_classification", "comparison.json"))
     cpp_class = read_json(os.path.join(cpp_class_dir, "comparison.json"))
     for key in ("summary", "classes", "confusion_matrix", "matches", "unmatched_ground_truth", "unmatched_predictions"):

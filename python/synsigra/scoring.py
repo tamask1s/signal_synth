@@ -45,19 +45,19 @@ class ScoreReport(object):
 
 
 def compare_rpeaks(case, detections, out_dir=None, cli_path=None, tolerance_ms=None):
-    return _compare("rpeaks", case, detections, out_dir, cli_path, tolerance_ms)
+    return _compare("r_peak", case, detections, out_dir, cli_path, tolerance_ms)
 
 
 def compare_ppg_peaks(case, detections, out_dir=None, cli_path=None, tolerance_ms=None):
-    return _compare("ppg-peaks", case, detections, out_dir, cli_path, tolerance_ms)
+    return _compare("ppg_systolic_peak", case, detections, out_dir, cli_path, tolerance_ms)
 
 
 def compare_ppg_onsets(case, detections, out_dir=None, cli_path=None, tolerance_ms=None):
-    return _compare("ppg-onsets", case, detections, out_dir, cli_path, tolerance_ms)
+    return _compare("ppg_pulse_onset", case, detections, out_dir, cli_path, tolerance_ms)
 
 
 def compare_beat_classes(case, detections, out_dir=None, cli_path=None, tolerance_ms=None):
-    return _compare("beat-classes", case, detections, out_dir, cli_path, tolerance_ms)
+    return _compare("ecg_beat_classification", case, detections, out_dir, cli_path, tolerance_ms)
 
 
 def score_hrv(case, user_output, out_dir=None, cli_path=None):

@@ -202,7 +202,7 @@ The C++ CLI can compare detector outputs directly when the relevant scenario and
 Example R-peak comparison:
 
 ```sh
-./build/signal-synth compare rpeaks \
+./build/signal-synth compare r_peak \
   challenge/cases/clean_70/scenario.json \
   detections/clean_70.csv \
   --out verification-clean-70

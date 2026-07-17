@@ -105,12 +105,14 @@ Validate and fingerprint a portable scenario document:
 Discover the SaaS-safe form contract, scenario templates, and pack estimates:
 
 ```sh
+/tmp/signal_synth-build/signal-synth contract
 /tmp/signal_synth-build/signal-synth authoring schema
 /tmp/signal_synth-build/signal-synth authoring templates
 /tmp/signal_synth-build/signal-synth pack analyze examples/packs/ecg_rhythm_v1.json
 ```
 
-See `SCENARIO_AUTHORING.md` for the JSON and C++ integration contract.
+`signal-synth contract` is the machine-readable worker preflight contract.
+See `SCENARIO_AUTHORING.md` for the scenario-authoring contract.
 
 Use `-DSIGNAL_SYNTH_BUILD_CLI=OFF` for a library-only build.
 

@@ -126,8 +126,8 @@ Implementation increment designs:
   scoring and the PPG benchmark pack.
 - `increments/041_PYTHON_SDK_DISTRIBUTION.md` defines the local Python
   verifier distribution.
-- `increments/042_GOLDEN_CHALLENGE_COMPATIBILITY.md` defines golden challenge
-  compatibility checks.
+- `increments/042_GOLDEN_CHALLENGE_COMPATIBILITY.md` is the superseded
+  historical golden challenge compatibility design.
 - `increments/043_SAAS_CURATED_PACK_METADATA.md` defines SaaS-ingestable pack
   metadata export.
 - `increments/044_SAAS_RELEASE_SET_EXPORT.md` defines the beta curated release
@@ -147,6 +147,10 @@ Implementation increment designs:
 - `increments/050_DATABROWSER_GENERATION_SYNC.md` defines the generation-only
   Windows adapter, modern annotation/channel output, and SHA-256 synchronization
   contract.
+- `increments/051_UINT64_JSON_IDENTITY.md` defines lossless decimal-string
+  serialization for unsigned 64-bit JSON identities.
+- `increments/052_SAAS_INTEGRATION_CLOSURE.md` defines the single versioned
+  core/SaaS contract, JSON worker receipt, and removed compatibility surface.
 
 Traceability demonstration:
 

@@ -126,7 +126,7 @@ Implemented verification covers:
 - CLI render and pack challenge contracts;
 - Python local-verifier package loading with provenance files present;
 - curated metadata output artifact roles;
-- golden challenge fixture compatibility.
+- current CLI integration contract and generated challenge receipt.
 
 Local release verification on 2026-07-08:
 

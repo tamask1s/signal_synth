@@ -135,6 +135,8 @@ namespace signal_synth
     };
 
     const char* synsigra_api_version();
+    const char* synsigra_integration_contract_version();
+    std::string synsigra_integration_contract_json();
     double synsigra_default_compare_tolerance_seconds(synsigra_compare_target target);
     const char* synsigra_compare_target_name(synsigra_compare_target target);
     bool synsigra_validate_scenario_json(const std::string& scenario_json, synsigra_validation_result& result);

@@ -1,13 +1,3 @@
-cmake_minimum_required(VERSION 3.10)
-
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-    project(signal_synth_test LANGUAGES CXX)
-    set(SIGNAL_SYNTH_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-    set(SIGNAL_SYNTH_INSTALL ON CACHE BOOL "" FORCE)
-    add_subdirectory(.. signal_synth_core)
-    enable_testing()
-endif()
-
 function(signal_synth_add_test target source test_id)
     add_executable(${target} ${source})
     target_link_libraries(${target} PRIVATE signal_synth::signal_synth)
@@ -24,9 +14,7 @@ function(signal_synth_add_test target source test_id)
 endfunction()
 
 signal_synth_add_test(signal_synth_test signal_synth_test.cpp TEST-SYNTH-001)
-set_tests_properties(
-    TEST-SYNTH-001
-    PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/..")
+set_tests_properties(TEST-SYNTH-001 PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/..")
 signal_synth_add_test(ecg_model_test ecg_model_test.cpp TEST-ECG-MODEL-001)
 signal_synth_add_test(clinical_ecg_test clinical_ecg_test.cpp TEST-ECG-PHANTOM-001)
 signal_synth_add_test(ecg_morphology_test ecg_morphology_test.cpp TEST-ECG-MORPH-001)
@@ -136,6 +124,13 @@ if(TARGET signal_synth_cli AND SIGNAL_SYNTH_PYTHON_EXECUTABLE)
         PROPERTIES
             ENVIRONMENT "SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..")
     add_test(
+        NAME TEST-INTEGRATION-CONTRACT-001
+        COMMAND ${SIGNAL_SYNTH_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/integration_contract_test.py)
+    set_tests_properties(
+        TEST-INTEGRATION-CONTRACT-001
+        PROPERTIES
+            ENVIRONMENT "SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_PACK_EXAMPLE=${CMAKE_CURRENT_SOURCE_DIR}/../examples/packs/r_peak_stress_v1.json;SIGNAL_SYNTH_EXAMPLE=${CMAKE_CURRENT_SOURCE_DIR}/../examples/scenarios/ecg_clean.json;SIGNAL_SYNTH_INTEGRATION_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/integration_contract_work")
+    add_test(
         NAME TEST-VERIFICATION-CATALOG-001
         COMMAND ${SIGNAL_SYNTH_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/verification_catalog_test.py)
     set_tests_properties(
@@ -156,13 +151,6 @@ if(TARGET signal_synth_cli AND SIGNAL_SYNTH_PYTHON_EXECUTABLE)
         TEST-PYTHON-SCORING-001
         PROPERTIES
             ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python;SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..;SIGNAL_SYNTH_PY_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/python_scoring_work")
-    add_test(
-        NAME TEST-GOLDEN-CHALLENGE-001
-        COMMAND ${SIGNAL_SYNTH_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/golden_challenge_fixture_test.py)
-    set_tests_properties(
-        TEST-GOLDEN-CHALLENGE-001
-        PROPERTIES
-            ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..")
     add_test(
         NAME TEST-EDF-BDF-NATIVE-001
         COMMAND

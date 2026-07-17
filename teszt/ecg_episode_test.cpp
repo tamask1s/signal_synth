@@ -166,9 +166,10 @@ int main()
     ok &= check(signal_synth::write_ecg_scenario_json(document, json) && json.canonical_json.find("\"episode_type\":\"psvt\"") != std::string::npos && signal_synth::parse_ecg_scenario_json(json.canonical_json, roundtrip, parsed) && roundtrip.ecg.episode_type() == signal_synth::ecg_episode_psvt && close(roundtrip.ecg.episode_start_seconds(), 2.0) && close(roundtrip.ecg.episode_duration_seconds(), 4.0) && close(roundtrip.ecg.episode_rate_bpm(), 180.0), "episode_json_roundtrip");
 
     signal_synth::ecg_render_bundle render;
+    signal_synth::ecg_document_render_result render_result;
     signal_synth::ecg_export_result export_result;
     signal_synth::ecg_export_bundle bundle;
-    ok &= check(signal_synth::render_ecg_document(document, render, export_result) && signal_synth::build_ecg_export_bundle(render, bundle, export_result) && bundle.find("annotations.json") && bundle.find("annotations.json")->content.find("\"episodes\":[{\"kind\":\"psvt\"") != std::string::npos && bundle.find("annotations.json")->content.find("\"onset_transition_start_seconds\"") != std::string::npos && bundle.find("ground_truth_metrics.json")->content.find("\"episode_count\":1") != std::string::npos, "episode_export_contract");
+    ok &= check(signal_synth::render_ecg_document(document, render, render_result) && signal_synth::build_ecg_export_bundle(render, bundle, export_result) && bundle.find("annotations.json") && bundle.find("annotations.json")->content.find("\"episodes\":[{\"kind\":\"psvt\"") != std::string::npos && bundle.find("annotations.json")->content.find("\"onset_transition_start_seconds\"") != std::string::npos && bundle.find("ground_truth_metrics.json")->content.find("\"episode_count\":1") != std::string::npos, "episode_export_contract");
     std::ifstream script("../examples/databrowser/074_ECG_Episode_Rhythm_Phenotypes.txt");
     if (!script.good())
     {

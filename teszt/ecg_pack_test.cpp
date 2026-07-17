@@ -103,9 +103,9 @@ int main()
             signal_synth::ecg_scenario_document document;
             signal_synth::ecg_scenario_json_result scenario_result;
             signal_synth::ecg_render_bundle render;
-            signal_synth::ecg_export_result export_result;
+            signal_synth::ecg_document_render_result render_result;
             const std::string scenario_json = read_file(scenario_path);
-            ok &= check(!scenario_json.empty() && signal_synth::parse_ecg_scenario_json(scenario_json, document, scenario_result) && signal_synth::render_ecg_document(document, render, export_result), "curated_pack_scenario_renders");
+            ok &= check(!scenario_json.empty() && signal_synth::parse_ecg_scenario_json(scenario_json, document, scenario_result) && signal_synth::render_ecg_document(document, render, render_result), "curated_pack_scenario_renders");
             if (render.record.sample_count())
                 ++rendered_scenarios;
             if (render.metrics.artifact_count)

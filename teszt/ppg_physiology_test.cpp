@@ -156,7 +156,8 @@ int main()
 
     document.schema_version = 4;
     signal_synth::ecg_render_bundle render;
-    signal_synth::ecg_export_result result;
+    signal_synth::ecg_document_render_result result;
+    signal_synth::ecg_export_result export_result;
     ok &= check(signal_synth::render_ecg_document(document, render, result)
         && render.metrics.ppg_low_perfusion_pulse_count == low_perfusion
         && render.metrics.ppg_weak_pulse_count == weak
@@ -176,7 +177,7 @@ int main()
         }
     ok &= check(respiratory_waveform_difference, "respiratory_amplitude_modulation");
     signal_synth::ecg_export_bundle export_bundle;
-    ok &= check(signal_synth::build_ecg_export_bundle(render, export_bundle, result)
+    ok &= check(signal_synth::build_ecg_export_bundle(render, export_bundle, export_result)
         && export_bundle.find("synsigra.dat") && export_bundle.find("synsigra.edf") && export_bundle.find("synsigra.bdf")
         && export_bundle.find("waveform.csv")
         && export_bundle.find("annotations.json")
@@ -257,7 +258,7 @@ int main()
         && arrhythmia_render.metrics.ppg_arrhythmia_linked_pulse_count > 0u
         && arrhythmia_render.metrics.ppg_arrhythmia_linked_missing_pulse_count == arrhythmia_render.metrics.ppg_arrhythmia_linked_pulse_count, "arrhythmia_linked_render_metrics");
     signal_synth::ecg_export_bundle arrhythmia_export;
-    ok &= check(signal_synth::build_ecg_export_bundle(arrhythmia_render, arrhythmia_export, result)
+    ok &= check(signal_synth::build_ecg_export_bundle(arrhythmia_render, arrhythmia_export, export_result)
         && arrhythmia_export.find("annotations.json")
         && arrhythmia_export.find("annotations.json")->content.find("\"arrhythmia_linked\":true") != std::string::npos
         && arrhythmia_export.find("annotations.json")->content.find("\"arrhythmia_amplitude_scale\":0") != std::string::npos

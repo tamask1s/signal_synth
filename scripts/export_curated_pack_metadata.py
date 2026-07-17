@@ -84,10 +84,6 @@ TARGET_CONTRACTS = {
 LOCAL_VERIFIER_SMOKE_TESTS = {
     "r_peak": [
         {
-            "test_id": "TEST-GOLDEN-CHALLENGE-001",
-            "scope": "golden challenge package compatibility and R-peak scoring fixture",
-        },
-        {
             "test_id": "TEST-PYTHON-SCORING-001",
             "scope": "local event-detection scoring smoke test",
         },

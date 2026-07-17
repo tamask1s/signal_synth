@@ -944,15 +944,6 @@ namespace signal_synth
             "Not for: diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment.\n";
     }
 
-    bool render_ecg_document(const ecg_scenario_document& document, ecg_render_bundle& output, ecg_export_result& result)
-    {
-        ecg_document_render_result render_result;
-        const bool success = render_ecg_document(document, output, render_result);
-        result.success = render_result.success;
-        result.messages = render_result.messages;
-        return success;
-    }
-
     bool build_ecg_export_bundle(const ecg_render_bundle& render, ecg_export_bundle& output, ecg_export_result& result)
     {
         ecg_export_result fresh_result;

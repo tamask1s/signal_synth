@@ -59,8 +59,9 @@ int main()
     document.ecg.set_ectopic_every_n_beats(3);
 
     signal_synth::ecg_render_bundle render;
+    signal_synth::ecg_document_render_result render_result;
     signal_synth::ecg_export_result result;
-    ok &= check(signal_synth::render_ecg_document(document, render, result), "render");
+    ok &= check(signal_synth::render_ecg_document(document, render, render_result), "render");
 
     signal_synth::wfdb_export_bundle bundle;
     ok &= check(signal_synth::build_wfdb_export_bundle(render, "wfdb test/01", bundle, result) && result.success, "build_wfdb");

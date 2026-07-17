@@ -62,8 +62,8 @@ int main()
     document.signal_quality.artifacts.push_back(artifact(signal_synth::signal_quality_ppg_dropout, 20.0, 4.0, 53002));
 
     signal_synth::ecg_render_bundle render;
-    signal_synth::ecg_export_result export_result;
-    ok &= check(signal_synth::render_ecg_document(document, render, export_result), "render");
+    signal_synth::ecg_document_render_result render_result;
+    ok &= check(signal_synth::render_ecg_document(document, render, render_result), "render");
 
     signal_synth::ecg_compare_options options;
     options.target = signal_synth::ecg_compare_ppg_pulse_onset;

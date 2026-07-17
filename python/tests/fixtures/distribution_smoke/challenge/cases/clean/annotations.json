@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generation_fingerprint": 1,
+  "generation_fingerprint": "1",
   "beats": [
     {"beat_index": 0, "qrs_present": true, "r_peak_seconds": 1.0},
     {"beat_index": 1, "qrs_present": true, "r_peak_seconds": 2.0},

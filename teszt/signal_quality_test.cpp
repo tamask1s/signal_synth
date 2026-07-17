@@ -109,15 +109,16 @@ int main()
     ok &= check(signal_synth::write_ecg_scenario_json(changed, changed_result) && changed_result.document_fingerprint != json_result.document_fingerprint && changed_result.generation_fingerprint == json_result.generation_fingerprint, "artifact_changes_document_not_ecg_fingerprint");
 
     signal_synth::ecg_render_bundle render;
+    signal_synth::ecg_document_render_result render_result;
     signal_synth::ecg_export_result export_result;
-    ok &= check(signal_synth::render_ecg_document(document, render, export_result) && render.signal_quality.artifacts.size() == 2 && render.metrics.artifact_count == 2, "render_artifact_document");
+    ok &= check(signal_synth::render_ecg_document(document, render, render_result) && render.signal_quality.artifacts.size() == 2 && render.metrics.artifact_count == 2, "render_artifact_document");
     ok &= check(render.signal_quality.artifacts[0].start_sample_index == 1000 && render.signal_quality.artifacts[0].end_sample_index == 2499 && std::fabs(render.signal_quality.artifacts[0].end_seconds - 5.0) < 1e-12, "artifact_interval_exactness");
     ok &= check(same_vector(render.signal_quality.ecg_leads[signal_synth::clinical_lead_i], render.record.lead_data(signal_synth::clinical_lead_i), render.record.sample_count()), "unselected_ecg_channel_unchanged");
     ok &= check(any_difference(render.signal_quality.ecg_leads[signal_synth::clinical_lead_ii], render.record.lead_data(signal_synth::clinical_lead_ii), 1000, 2500), "selected_ecg_channel_modified");
     ok &= check(any_difference(render.signal_quality.ppg, render.ppg.samples(), 1500, 2000), "ppg_artifact_modified");
 
     signal_synth::ecg_render_bundle repeated;
-    signal_synth::ecg_export_result repeated_result;
+    signal_synth::ecg_document_render_result repeated_result;
     ok &= check(signal_synth::render_ecg_document(document, repeated, repeated_result) && repeated.signal_quality.ecg_leads == render.signal_quality.ecg_leads && repeated.signal_quality.ppg == render.signal_quality.ppg, "artifact_render_reproducible");
 
     signal_synth::ecg_scenario_document clean_document;
@@ -125,7 +126,7 @@ int main()
     clean_document.scenario_id = "lead_fault_clean";
     clean_document.name = "Lead Fault Clean";
     signal_synth::ecg_render_bundle clean_render;
-    ok &= check(signal_synth::render_ecg_document(clean_document, clean_render, export_result), "lead_fault_clean_render");
+    ok &= check(signal_synth::render_ecg_document(clean_document, clean_render, render_result), "lead_fault_clean_render");
     signal_synth::ppg_record no_ppg;
     signal_synth::signal_quality_config reversal_config;
     reversal_config.artifacts.push_back(make_ecg_fault(signal_synth::signal_quality_ecg_lead_reversal, signal_synth::clinical_lead_i));
@@ -204,7 +205,7 @@ int main()
     signal_synth::ecg_scenario_document example_document;
     signal_synth::ecg_scenario_json_result example_json;
     signal_synth::ecg_render_bundle example_render;
-    ok &= check(example_opened && signal_synth::parse_ecg_scenario_json(example_stream.str(), example_document, example_json) && signal_synth::render_ecg_document(example_document, example_render, export_result) && example_render.metrics.artifact_count == 6, "example_artifact_scenario_renders");
+    ok &= check(example_opened && signal_synth::parse_ecg_scenario_json(example_stream.str(), example_document, example_json) && signal_synth::render_ecg_document(example_document, example_render, render_result) && example_render.metrics.artifact_count == 6, "example_artifact_scenario_renders");
 
     std::ifstream lead_fault_example("../examples/scenarios/packs/sq_lead_faults.json");
     if (!lead_fault_example.good())
@@ -215,7 +216,7 @@ int main()
     signal_synth::ecg_scenario_document lead_fault_example_document;
     signal_synth::ecg_scenario_json_result lead_fault_example_json;
     signal_synth::ecg_render_bundle lead_fault_example_render;
-    ok &= check(lead_fault_opened && signal_synth::parse_ecg_scenario_json(lead_fault_stream.str(), lead_fault_example_document, lead_fault_example_json) && signal_synth::render_ecg_document(lead_fault_example_document, lead_fault_example_render, export_result) && lead_fault_example_render.metrics.artifact_count == 9, "lead_fault_example_scenario_renders");
+    ok &= check(lead_fault_opened && signal_synth::parse_ecg_scenario_json(lead_fault_stream.str(), lead_fault_example_document, lead_fault_example_json) && signal_synth::render_ecg_document(lead_fault_example_document, lead_fault_example_render, render_result) && lead_fault_example_render.metrics.artifact_count == 9, "lead_fault_example_scenario_renders");
 
     return ok ? 0 : 1;
 }

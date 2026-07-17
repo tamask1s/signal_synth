@@ -127,7 +127,8 @@ int main()
     ok &= check(!signal_synth::write_ecg_scenario_json(invalid_morphology, invalid_morphology_result), "invalid_morphology_envelope_rejected");
 
     signal_synth::ecg_render_bundle render;
-    signal_synth::ecg_export_result result;
+    signal_synth::ecg_document_render_result result;
+    signal_synth::ecg_export_result export_result;
     ok &= check(signal_synth::render_ecg_document(input, render, result), "stress_render");
     unsigned int missing = 0;
     double minimum_delay = 1e9;
@@ -173,7 +174,7 @@ int main()
     signal_synth::ecg_render_bundle compact_render;
     signal_synth::ecg_export_bundle compact_bundle;
     ok &= check(signal_synth::render_ecg_document(compact, compact_render, result)
-        && signal_synth::build_ecg_export_bundle(compact_render, compact_bundle, result), "compact_render_and_export");
+        && signal_synth::build_ecg_export_bundle(compact_render, compact_bundle, export_result), "compact_render_and_export");
     ok &= check(compact_render.record.source_data(0, 0) == 0
         && compact_render.record.vcg_data(0) == 0
         && compact_bundle.find("waveform.csv") == 0

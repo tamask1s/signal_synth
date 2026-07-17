@@ -8,6 +8,7 @@
 #include "detection_io.h"
 #include "hrv_scoring.h"
 #include "scenario_authoring.h"
+#include "synsigra_api.h"
 
 #include <algorithm>
 #include <cerrno>
@@ -69,9 +70,10 @@ namespace
 
     void print_usage()
     {
-        std::cerr << "usage: signal-synth <validate|fingerprint> <scenario.json|->\n"
+        std::cerr << "usage: signal-synth contract\n"
+                  << "       signal-synth <validate|fingerprint> <scenario.json|->\n"
                   << "       signal-synth render <scenario.json|-> --out <new-directory>\n"
-                  << "       signal-synth compare <rpeaks|ppg-peaks|ppg-onsets|beat-classes> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
+                  << "       signal-synth compare <r_peak|ppg_systolic_peak|ppg_pulse_onset|ecg_beat_classification> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack analyze <pack.json>\n"
@@ -412,18 +414,8 @@ namespace
         signal_synth::ecg_compare_target compare_target;
         if (!signal_synth::detection_compare_target_from_name(target, compare_target))
             return false;
-        score_type = "event_detection";
-        if (compare_target == signal_synth::ecg_compare_r_peak)
-            command_name = "compare rpeaks";
-        else if (compare_target == signal_synth::ecg_compare_ppg_systolic_peak)
-            command_name = "compare ppg-peaks";
-        else if (compare_target == signal_synth::ecg_compare_ppg_pulse_onset)
-            command_name = "compare ppg-onsets";
-        else
-        {
-            score_type = "classification";
-            command_name = "compare beat-classes";
-        }
+        score_type = compare_target == signal_synth::ecg_compare_beat_classification ? "classification" : "event_detection";
+        command_name = "compare " + target;
         return true;
     }
 
@@ -802,31 +794,6 @@ namespace
         return false;
     }
 
-    bool parse_compare_target(const std::string& value, signal_synth::ecg_compare_target& target)
-    {
-        if (value == "rpeaks" || value == "r-peak" || value == "r_peak")
-        {
-            target = signal_synth::ecg_compare_r_peak;
-            return true;
-        }
-        if (value == "ppg-peaks" || value == "ppg_peak" || value == "ppg-systolic-peak")
-        {
-            target = signal_synth::ecg_compare_ppg_systolic_peak;
-            return true;
-        }
-        if (value == "ppg-onsets" || value == "ppg_onset" || value == "ppg-pulse-onset")
-        {
-            target = signal_synth::ecg_compare_ppg_pulse_onset;
-            return true;
-        }
-        if (value == "beat-classes" || value == "beat_classification" || value == "ecg_beat_classification")
-        {
-            target = signal_synth::ecg_compare_beat_classification;
-            return true;
-        }
-        return false;
-    }
-
     bool select_pack_score_target(const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_scenario& scenario, signal_synth::ecg_compare_target& target, std::string& target_name)
     {
         for (std::size_t i = 0; i < scenario.targets.size(); ++i)
@@ -859,6 +826,16 @@ int main(int argc, char** argv)
         return 2;
     }
     const std::string command(argv[1]);
+    if (command == "contract")
+    {
+        if (argc != 2)
+        {
+            print_usage();
+            return 2;
+        }
+        std::cout << signal_synth::synsigra_integration_contract_json() << '\n';
+        return 0;
+    }
     if (command == "authoring")
     {
         if (argc != 3)
@@ -920,10 +897,10 @@ int main(int argc, char** argv)
                 return 4;
             }
             signal_synth::ecg_render_bundle render;
-            signal_synth::ecg_export_result export_result;
-            if (!signal_synth::render_ecg_document(document, render, export_result))
+            signal_synth::ecg_document_render_result render_result;
+            if (!signal_synth::render_ecg_document(document, render, render_result))
             {
-                std::cerr << "error=RENDER_FAILED path=$ message=" << (export_result.messages.empty() ? "render failed" : export_result.messages[0]) << '\n';
+                std::cerr << "error=RENDER_FAILED path=$ message=" << (render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
                 return 4;
             }
             signal_synth::hrv_score_result score;
@@ -974,9 +951,9 @@ int main(int argc, char** argv)
         try
         {
             signal_synth::ecg_compare_target target;
-            if (!parse_compare_target(argv[2], target))
+            if (!signal_synth::detection_compare_target_from_name(argv[2], target))
             {
-                std::cerr << "error=COMPARE_TARGET_FAILED path=$ message=target must be rpeaks, ppg-peaks, ppg-onsets, or beat-classes\n";
+                std::cerr << "error=COMPARE_TARGET_FAILED path=$ message=target must be r_peak, ppg_systolic_peak, ppg_pulse_onset, or ecg_beat_classification\n";
                 return 2;
             }
             if (std::string(argv[3]) == "-" && std::string(argv[4]) == "-")
@@ -1027,10 +1004,10 @@ int main(int argc, char** argv)
                 return 4;
             }
             signal_synth::ecg_render_bundle render;
-            signal_synth::ecg_export_result export_result;
-            if (!signal_synth::render_ecg_document(document, render, export_result))
+            signal_synth::ecg_document_render_result render_result;
+            if (!signal_synth::render_ecg_document(document, render, render_result))
             {
-                std::cerr << "error=RENDER_FAILED path=$ message=" << (export_result.messages.empty() ? "render failed" : export_result.messages[0]) << '\n';
+                std::cerr << "error=RENDER_FAILED path=$ message=" << (render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
                 return 4;
             }
             double requested_tolerance_seconds = signal_synth::ecg_compare_default_tolerance_seconds(target);
@@ -1226,10 +1203,10 @@ int main(int argc, char** argv)
                         return 4;
                     }
                     signal_synth::ecg_render_bundle render;
-                    signal_synth::ecg_export_result export_result;
-                    if (!signal_synth::render_ecg_document(document, render, export_result))
+                    signal_synth::ecg_document_render_result render_result;
+                    if (!signal_synth::render_ecg_document(document, render, render_result))
                     {
-                        std::cerr << "error=RENDER_FAILED path=" << pack_scenario.path << " message=" << (export_result.messages.empty() ? "render failed" : export_result.messages[0]) << '\n';
+                        std::cerr << "error=RENDER_FAILED path=" << pack_scenario.path << " message=" << (render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
                         return 4;
                     }
                     std::string detection_path = join_path(detection_directory, pack_scenario.id + ".json");
@@ -1344,10 +1321,16 @@ int main(int argc, char** argv)
                 }
                 signal_synth::ecg_render_bundle render;
                 signal_synth::ecg_export_bundle export_bundle;
+                signal_synth::ecg_document_render_result render_result;
                 signal_synth::ecg_export_result export_result;
-                if (!signal_synth::render_ecg_document(document, render, export_result) || !signal_synth::build_ecg_export_bundle(render, export_bundle, export_result))
+                if (!signal_synth::render_ecg_document(document, render, render_result))
                 {
-                    std::cerr << "error=RENDER_FAILED path=" << pack_scenario.path << " message=" << (export_result.messages.empty() ? "render or export failed" : export_result.messages[0]) << '\n';
+                    std::cerr << "error=RENDER_FAILED path=" << pack_scenario.path << " message=" << (render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
+                    return 4;
+                }
+                if (!signal_synth::build_ecg_export_bundle(render, export_bundle, export_result))
+                {
+                    std::cerr << "error=EXPORT_FAILED path=" << pack_scenario.path << " message=" << (export_result.messages.empty() ? "export failed" : export_result.messages[0]) << '\n';
                     return 4;
                 }
                 if (pack_render)
@@ -1432,12 +1415,17 @@ int main(int argc, char** argv)
                     std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=unable to write challenge package directory\n";
                     return 3;
                 }
-                std::cout << "status=challenge-rendered\n"
-                          << "output_directory=" << output_directory << '\n'
-                          << "package_id=" << challenge_result.manifest.package_id << '\n'
-                          << "scenario_count=" << challenge_result.manifest.cases.size() << '\n'
-                          << "pack_fingerprint=" << pack_result.pack_fingerprint << '\n'
-                          << "package_fingerprint=" << challenge_result.manifest_json.package_fingerprint << '\n';
+                std::cout << "{\"schema_version\":1,\"contract\":" << json_text(signal_synth::synsigra_integration_contract_version())
+                          << ",\"status\":\"challenge_rendered\",\"output_directory\":" << json_text(output_directory)
+                          << ",\"package_id\":" << json_text(challenge_result.manifest.package_id)
+                          << ",\"scenario_count\":" << challenge_result.manifest.cases.size()
+                          << ",\"pack_fingerprint\":" << json_text(pack_result.pack_fingerprint)
+                          << ",\"package_fingerprint\":" << json_text(challenge_result.manifest_json.package_fingerprint)
+                          << ",\"generator\":{\"name\":\"signal_synth\",\"version\":" << json_text(signal_synth::signal_synth_generator_version())
+                          << ",\"git_commit\":" << json_text(signal_synth::signal_synth_generator_git_commit())
+                          << ",\"build_identity\":" << json_text(signal_synth::signal_synth_build_identity()) << "}"
+                          << ",\"contracts\":{\"challenge_package\":" << json_text(signal_synth::signal_synth_package_contract_version())
+                          << ",\"scoring_manifest\":" << json_text(signal_synth::signal_synth_scoring_manifest_contract_version()) << "}}\n";
                 return 0;
             }
             if (!write_text_file(join_path(output_directory, "pack.json"), pack_result.canonical_json)
@@ -1491,10 +1479,16 @@ int main(int argc, char** argv)
         {
             signal_synth::ecg_render_bundle render;
             signal_synth::ecg_export_bundle export_bundle;
+            signal_synth::ecg_document_render_result render_result;
             signal_synth::ecg_export_result export_result;
-            if (!signal_synth::render_ecg_document(document, render, export_result) || !signal_synth::build_ecg_export_bundle(render, export_bundle, export_result))
+            if (!signal_synth::render_ecg_document(document, render, render_result))
             {
-                std::cerr << "error=RENDER_FAILED path=$ message=" << (export_result.messages.empty() ? "render or export failed" : export_result.messages[0]) << '\n';
+                std::cerr << "error=RENDER_FAILED path=$ message=" << (render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
+                return 4;
+            }
+            if (!signal_synth::build_ecg_export_bundle(render, export_bundle, export_result))
+            {
+                std::cerr << "error=EXPORT_FAILED path=$ message=" << (export_result.messages.empty() ? "export failed" : export_result.messages[0]) << '\n';
                 return 4;
             }
             if (!write_export_directory(argv[4], export_bundle))

@@ -580,22 +580,22 @@ namespace signal_synth
 
     bool detection_compare_target_from_name(const std::string& name, ecg_compare_target& target)
     {
-        if (name == "r_peak" || name == "rpeaks" || name == "r-peak")
+        if (name == "r_peak")
         {
             target = ecg_compare_r_peak;
             return true;
         }
-        if (name == "ppg_systolic_peak" || name == "ppg_peak" || name == "ppg-peaks" || name == "ppg-systolic-peak")
+        if (name == "ppg_systolic_peak")
         {
             target = ecg_compare_ppg_systolic_peak;
             return true;
         }
-        if (name == "ppg_pulse_onset" || name == "ppg_onset" || name == "ppg-onsets" || name == "ppg-pulse-onset")
+        if (name == "ppg_pulse_onset")
         {
             target = ecg_compare_ppg_pulse_onset;
             return true;
         }
-        if (name == "ecg_beat_classification" || name == "beat_classification" || name == "beat-classes")
+        if (name == "ecg_beat_classification")
         {
             target = ecg_compare_beat_classification;
             return true;

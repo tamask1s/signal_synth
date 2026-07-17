@@ -115,15 +115,10 @@ Command:
 signal-synth pack challenge <pack.json> --out <new-directory>
 ```
 
-Success stdout:
+Success stdout (superseded by `SYN-ARCH-INC-052`):
 
-```text
-status=challenge-rendered
-output_directory=<path>
-package_id=<pack-id>
-scenario_count=<count>
-pack_fingerprint=sha256:<64-hex>
-package_fingerprint=sha256:<64-hex>
+```json
+{"schema_version":1,"contract":"synsigra_core_integration_v1","status":"challenge_rendered","output_directory":"<path>","package_id":"<pack-id>","scenario_count":4,"pack_fingerprint":"sha256:<64-hex>","package_fingerprint":"sha256:<64-hex>","generator":{"name":"signal_synth","version":"<version>","git_commit":"<commit>","build_identity":"<identity>"},"contracts":{"challenge_package":"synsigra_challenge_package_v1","scoring_manifest":"synsigra_scoring_manifest_v1"}}
 ```
 
 Failure behavior follows the existing CLI error contract: non-zero exit code,

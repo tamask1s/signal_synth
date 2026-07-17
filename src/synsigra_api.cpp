@@ -2,7 +2,9 @@
 
 #include "ecg_compare.h"
 #include "ecg_export.h"
+#include "scenario_authoring.h"
 
+#include <iomanip>
 #include <sstream>
 
 namespace
@@ -36,6 +38,35 @@ namespace
             output.push_back(make_message("EXPORT_ERROR", "$", source.messages[i]));
     }
 
+    void copy_render_messages(const signal_synth::ecg_document_render_result& source, std::vector<signal_synth::synsigra_message>& output)
+    {
+        for (std::size_t i = 0; i < source.messages.size(); ++i)
+            output.push_back(make_message("RENDER_ERROR", "$", source.messages[i]));
+    }
+
+    std::string json_text(const std::string& value)
+    {
+        std::ostringstream output;
+        output << '"';
+        for (std::size_t i = 0; i < value.size(); ++i)
+        {
+            const unsigned char c = static_cast<unsigned char>(value[i]);
+            if (c == '"' || c == '\\')
+                output << '\\' << static_cast<char>(c);
+            else if (c == '\b') output << "\\b";
+            else if (c == '\f') output << "\\f";
+            else if (c == '\n') output << "\\n";
+            else if (c == '\r') output << "\\r";
+            else if (c == '\t') output << "\\t";
+            else if (c < 0x20)
+                output << "\\u00" << std::hex << std::setw(2) << std::setfill('0') << static_cast<unsigned int>(c) << std::dec;
+            else
+                output << static_cast<char>(c);
+        }
+        output << '"';
+        return output.str();
+    }
+
     void fill_identity(const signal_synth::ecg_scenario_document& document, const signal_synth::ecg_scenario_json_result& identity, signal_synth::synsigra_identity& output)
     {
         output.scenario_id = document.scenario_id;
@@ -66,13 +97,15 @@ namespace
         }
     }
 
-    signal_synth::ecg_compare_target to_internal_target(signal_synth::synsigra_compare_target target)
+    bool to_internal_target(signal_synth::synsigra_compare_target target, signal_synth::ecg_compare_target& output)
     {
-        if (target == signal_synth::synsigra_compare_ppg_systolic_peak)
-            return signal_synth::ecg_compare_ppg_systolic_peak;
-        if (target == signal_synth::synsigra_compare_ppg_pulse_onset)
-            return signal_synth::ecg_compare_ppg_pulse_onset;
-        return signal_synth::ecg_compare_r_peak;
+        switch (target)
+        {
+        case signal_synth::synsigra_compare_r_peak: output = signal_synth::ecg_compare_r_peak; return true;
+        case signal_synth::synsigra_compare_ppg_systolic_peak: output = signal_synth::ecg_compare_ppg_systolic_peak; return true;
+        case signal_synth::synsigra_compare_ppg_pulse_onset: output = signal_synth::ecg_compare_ppg_pulse_onset; return true;
+        }
+        return false;
     }
 
     void copy_metrics(const signal_synth::ecg_compare_bin_metrics& source, signal_synth::synsigra_compare_metrics& output)
@@ -161,17 +194,42 @@ namespace signal_synth
 
     const char* synsigra_api_version()
     {
-        return "0.2.0";
+        return "1.0.0";
+    }
+
+    const char* synsigra_integration_contract_version()
+    {
+        return "synsigra_core_integration_v1";
+    }
+
+    std::string synsigra_integration_contract_json()
+    {
+        std::ostringstream output;
+        output << "{\"schema_version\":1,\"contract\":" << json_text(synsigra_integration_contract_version())
+               << ",\"generator\":{\"name\":\"signal_synth\",\"version\":" << json_text(signal_synth_generator_version())
+               << ",\"git_commit\":" << json_text(signal_synth_generator_git_commit())
+               << ",\"build_identity\":" << json_text(signal_synth_build_identity()) << "}"
+               << ",\"contracts\":{\"cpp_facade\":" << json_text(synsigra_api_version())
+               << ",\"challenge_package\":" << json_text(signal_synth_package_contract_version())
+               << ",\"scoring_manifest\":" << json_text(signal_synth_scoring_manifest_contract_version())
+               << ",\"scenario_authoring\":" << json_text(scenario_authoring_metadata_version())
+               << ",\"scenario_templates\":" << json_text(scenario_template_catalog_version()) << "}"
+               << ",\"cli\":{\"challenge_command\":\"signal-synth pack challenge <pack.json> --out <new-directory>\""
+               << ",\"challenge_success_media_type\":\"application/json\""
+               << ",\"comparison_targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ppg_pulse_onset\",\"ecg_beat_classification\"]}}";
+        return output.str();
     }
 
     double synsigra_default_compare_tolerance_seconds(synsigra_compare_target target)
     {
-        return ecg_compare_default_tolerance_seconds(to_internal_target(target));
+        ecg_compare_target internal;
+        return to_internal_target(target, internal) ? ecg_compare_default_tolerance_seconds(internal) : 0.0;
     }
 
     const char* synsigra_compare_target_name(synsigra_compare_target target)
     {
-        return ecg_compare_target_name(to_internal_target(target));
+        ecg_compare_target internal;
+        return to_internal_target(target, internal) ? ecg_compare_target_name(internal) : "";
     }
 
     bool synsigra_validate_scenario_json(const std::string& scenario_json, synsigra_validation_result& result)
@@ -204,13 +262,14 @@ namespace signal_synth
             return false;
         }
         ecg_render_bundle render;
-        ecg_export_result export_result;
-        if (!render_ecg_document(document, render, export_result))
+        ecg_document_render_result render_result;
+        if (!render_ecg_document(document, render, render_result))
         {
-            copy_export_messages(export_result, fresh.messages);
+            copy_render_messages(render_result, fresh.messages);
             result = fresh;
             return false;
         }
+        ecg_export_result export_result;
         ecg_export_bundle export_bundle;
         if (!build_ecg_export_bundle(render, export_bundle, export_result))
         {
@@ -237,10 +296,10 @@ namespace signal_synth
             return false;
         }
         ecg_render_bundle render;
-        ecg_export_result export_result;
-        if (!render_ecg_document(document, render, export_result))
+        ecg_document_render_result render_result;
+        if (!render_ecg_document(document, render, render_result))
         {
-            copy_export_messages(export_result, fresh.messages);
+            copy_render_messages(render_result, fresh.messages);
             result = fresh;
             return false;
         }
@@ -255,7 +314,12 @@ namespace signal_synth
             internal_detections.push_back(event);
         }
         ecg_compare_options internal_options;
-        internal_options.target = to_internal_target(options.target);
+        if (!to_internal_target(options.target, internal_options.target))
+        {
+            fresh.messages.push_back(make_message("COMPARE_OPTIONS_ERROR", "$.target", "unsupported comparison target"));
+            result = fresh;
+            return false;
+        }
         internal_options.tolerance_seconds = options.tolerance_seconds;
         ecg_compare_result compare_result;
         if (!compare_detections_to_render(render, internal_detections, internal_options, compare_result))

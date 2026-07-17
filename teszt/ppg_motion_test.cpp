@@ -70,7 +70,8 @@ int main()
 
     signal_synth::ecg_render_bundle first;
     signal_synth::ecg_render_bundle repeated;
-    signal_synth::ecg_export_result result;
+    signal_synth::ecg_document_render_result result;
+    signal_synth::ecg_export_result export_result;
     ok &= check(signal_synth::render_ecg_document(document, first, result)
         && signal_synth::render_ecg_document(document, repeated, result)
         && first.signal_quality.ppg == repeated.signal_quality.ppg
@@ -119,7 +120,7 @@ int main()
     ok &= check(ok, "all_artifacts_modify_interior_and_taper_boundaries");
 
     signal_synth::ecg_export_bundle bundle;
-    ok &= check(signal_synth::build_ecg_export_bundle(first, bundle, result), "export_bundle");
+    ok &= check(signal_synth::build_ecg_export_bundle(first, bundle, export_result), "export_bundle");
     const signal_synth::ecg_text_artifact* waveform = bundle.find("waveform.csv");
     const signal_synth::ecg_text_artifact* annotations = bundle.find("annotations.json");
     const signal_synth::ecg_text_artifact* metadata = bundle.find("metadata.json");

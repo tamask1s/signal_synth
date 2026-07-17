@@ -2,11 +2,11 @@
 
 **Document ID:** SYN-SAAS-HANDOFF-001
 
-**Version:** 1.0
+**Version:** 2.0
 
-**Status:** Ready for initial SaaS implementation
+**Status:** Core contract closed; SaaS consumer migration required
 
-**Date:** 2026-07-05
+**Date:** 2026-07-17
 
 ## 1. Product Boundary
 
@@ -39,6 +39,7 @@ Core C++ library:
 
 CLI:
 
+- machine-readable integration preflight through `signal-synth contract`;
 - local render/validate/fingerprint;
 - pack render/score;
 - SaaS-ready challenge package assembly;
@@ -102,19 +103,19 @@ The SaaS worker should use this command as the first integration surface:
 signal-synth pack challenge <pack.json> --out <new-directory>
 ```
 
-Successful stdout is line-oriented and machine-readable:
+Before accepting work, the worker image shall run `signal-synth contract`,
+parse the JSON, and require the exact integration contract it implements.
+This detects an accidentally mismatched linked library, CLI binary, or image.
 
-```text
-status=challenge-rendered
-output_directory=<path>
-package_id=<pack-id>
-scenario_count=<count>
-pack_fingerprint=sha256:<64-hex>
-package_fingerprint=sha256:<64-hex>
+Successful challenge stdout is one compact JSON document:
+
+```json
+{"schema_version":1,"contract":"synsigra_core_integration_v1","status":"challenge_rendered","output_directory":"<path>","package_id":"<pack-id>","scenario_count":4,"pack_fingerprint":"sha256:<64-hex>","package_fingerprint":"sha256:<64-hex>","generator":{"name":"signal_synth","version":"<version>","git_commit":"<commit>","build_identity":"<identity>"},"contracts":{"challenge_package":"synsigra_challenge_package_v1","scoring_manifest":"synsigra_scoring_manifest_v1"}}
 ```
 
 Failure behavior follows the repository CLI contract: non-zero exit code,
 empty stdout, and `stderr` beginning with `error=<stable-code>`.
+The former line-oriented `key=value` success format is not supported.
 
 The output directory must not already exist. The CLI performs rollback of
 files/directories created during failed writes. SaaS orchestration may archive
@@ -223,6 +224,7 @@ Suggested SaaS database fields for a generated package object:
 - source pack ID or uploaded pack reference;
 - pack fingerprint;
 - package fingerprint from CLI stdout;
+- integration contract version and full preflight contract JSON;
 - generator version;
 - generator git commit or container image digest;
 - worker command and normalized arguments;
@@ -231,24 +233,28 @@ Suggested SaaS database fields for a generated package object:
 - manifest JSON and/or manifest storage key;
 - job status and stable error object on failure.
 
-## 6. Implementation Preconditions
+## 6. Core Integration Status
 
-Already satisfied for initial SaaS implementation:
+Available from the core:
 
 - challenge package manifest contract exists and is strict;
 - `signal-synth pack challenge` produces a complete package directory;
 - generated challenge directories are loadable by the Python package;
 - WFDB and EDF+/BDF+ exports have deterministic writer tests and native-reader
   smoke tests;
-- CLI has stable stdout/stderr and exit-code smoke coverage;
+- CLI has JSON success, stable stderr, and exit-code smoke coverage;
+- C++ and CLI expose the same versioned integration contract;
 - generator version is recorded in the package manifest;
 - package-level `provenance.json` records generator git commit when available,
   build identity, package contract, scoring contract and verifier version;
 - package-level and per-case `ENGINEERING_CLAIM_BOUNDARY.txt` files record the
   deterministic engineering QA boundary.
 
-Still required in the SaaS service layer:
+Required in the SaaS service layer after this closure:
 
+- replace the key/value challenge stdout parser with strict JSON parsing;
+- reject unknown integration contracts and nested contract mismatches;
+- compare worker receipt identity with startup preflight identity;
 - index generator git commit or container image digest from package provenance
   and worker metadata as searchable audit metadata;
 - store the package fingerprint and manifest hash as immutable object metadata;
@@ -257,21 +263,20 @@ Still required in the SaaS service layer:
 - ensure Python SDK can download and load the archived package shape chosen by
   the SaaS layer.
 
-## 7. Suggested First Session Tasks
+## 7. SaaS Consumer Migration
 
-1. Create a SaaS architecture record under this folder with chosen stack,
-   deployment shape, database, queue, and object-storage abstraction.
-2. Add an API SRS for offline challenge generation, excluding server-side user
-   algorithm execution.
-3. Scaffold backend service with one endpoint: create challenge job from an
-   existing pack ID.
-4. Add worker wrapper around `signal-synth pack challenge`.
-5. Store output in local filesystem object-store abstraction first.
-6. Add integration test that requests a pack, waits for completion, downloads
-   `manifest.json`, downloads the package directory/archive, and loads it with
-   `synsigra.load_challenge()`.
-7. Add a second integration test that runs a simple local scoring flow against
-   the downloaded package using CSV/JSON detection output.
+1. Build the SaaS and worker against one pinned core commit.
+2. Validate `signal-synth contract` once at service/worker startup.
+3. Parse challenge stdout as JSON and validate all required fields and exact
+   contract versions.
+4. Persist the integration contract and receipt with the immutable job audit
+   record.
+5. Run a fresh-state end-to-end test that generates, downloads, verifies, and
+   locally scores a current challenge package.
+
+Do not add a compatibility parser for the old success format. If existing SaaS
+state contains only development data, reset it instead of introducing schema,
+job, or package migration code.
 
 ## 8. Explicit Non-Goals For V1
 
@@ -289,3 +294,4 @@ Still required in the SaaS service layer:
 - `doc/synsigra_architecture_docs/srs/002_FORMATS_AND_IO_CONTRACTS_SRS.md`
 - `doc/synsigra_architecture_docs/18_TRACEABILITY_MATRIX.md`
 - [signal_synth#58](https://github.com/tamask1s/signal_synth/issues/58)
+- [signal_synth#73](https://github.com/tamask1s/signal_synth/issues/73)

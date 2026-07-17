@@ -424,9 +424,10 @@ int main()
     signal_synth::ecg_scenario_document parsed;
     signal_synth::ecg_scenario_json_result parsed_result;
     signal_synth::ecg_render_bundle render;
+    signal_synth::ecg_document_render_result render_result;
     signal_synth::ecg_export_result export_result;
     signal_synth::ecg_export_bundle bundle;
-    ok &= check(signal_synth::write_ecg_scenario_json(document, json) && json.canonical_json.find("\"qt_adaptation\"") != std::string::npos && json.canonical_json.find("\"repolarization_episodes\"") != std::string::npos && signal_synth::parse_ecg_scenario_json(json.canonical_json, parsed, parsed_result) && parsed.ecg.qt_adaptation_enabled() && parsed.ecg.repolarization_episode_count() == 1 && signal_synth::render_ecg_document(parsed, render, export_result) && signal_synth::build_ecg_export_bundle(render, bundle, export_result) && bundle.find("annotations.json") && bundle.find("annotations.json")->content.find("\"kind\":\"dynamic_repolarization\"") != std::string::npos && bundle.find("annotations.json")->content.find("\"dynamic_traces\"") != std::string::npos && bundle.find("annotations.json")->content.find("\"kind\":\"repolarization_severity\"") != std::string::npos, "dynamic_repolarization_json_and_export_contract");
+    ok &= check(signal_synth::write_ecg_scenario_json(document, json) && json.canonical_json.find("\"qt_adaptation\"") != std::string::npos && json.canonical_json.find("\"repolarization_episodes\"") != std::string::npos && signal_synth::parse_ecg_scenario_json(json.canonical_json, parsed, parsed_result) && parsed.ecg.qt_adaptation_enabled() && parsed.ecg.repolarization_episode_count() == 1 && signal_synth::render_ecg_document(parsed, render, render_result) && signal_synth::build_ecg_export_bundle(render, bundle, export_result) && bundle.find("annotations.json") && bundle.find("annotations.json")->content.find("\"kind\":\"dynamic_repolarization\"") != std::string::npos && bundle.find("annotations.json")->content.find("\"dynamic_traces\"") != std::string::npos && bundle.find("annotations.json")->content.find("\"kind\":\"repolarization_severity\"") != std::string::npos, "dynamic_repolarization_json_and_export_contract");
 
     std::cout << (ok ? "All ECG ischemia/ST-T tests passed.\n" : "ECG ischemia/ST-T test failure.\n");
     return ok ? 0 : 1;

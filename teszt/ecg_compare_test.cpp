@@ -24,7 +24,7 @@ namespace
 
     bool render_document(const signal_synth::ecg_scenario_document& document, signal_synth::ecg_render_bundle& render)
     {
-        signal_synth::ecg_export_result result;
+        signal_synth::ecg_document_render_result result;
         return signal_synth::render_ecg_document(document, render, result) && result.success;
     }
 

@@ -22,7 +22,7 @@ namespace
         document.ecg.clear_conditions();
         document.ecg.add_condition(signal_synth::ecg_condition_pvc, 0.7);
         document.ecg.set_ectopic_every_n_beats(3);
-        signal_synth::ecg_export_result result;
+        signal_synth::ecg_document_render_result result;
         return signal_synth::render_ecg_document(document, render, result);
     }
 

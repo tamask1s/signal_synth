@@ -49,8 +49,8 @@ int main()
     document.ecg.set_rr_variability_seconds(0.04);
 
     signal_synth::ecg_render_bundle render;
-    signal_synth::ecg_export_result export_result;
-    ok &= check(signal_synth::render_ecg_document(document, render, export_result), "render_hrv_scenario");
+    signal_synth::ecg_document_render_result render_result;
+    ok &= check(signal_synth::render_ecg_document(document, render, render_result), "render_hrv_scenario");
     ok &= check(render.hrv.metrics.accepted_interval_count > 20 && render.hrv.metrics.sdnn_seconds > 0.0, "render_has_hrv_truth");
 
     signal_synth::hrv_user_output user;
