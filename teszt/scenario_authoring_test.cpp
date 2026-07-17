@@ -35,7 +35,7 @@ int main()
     bool ok = true;
     const std::string metadata = signal_synth::scenario_authoring_metadata_json();
     const std::string templates = signal_synth::scenario_template_catalog_json();
-    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v6"
+    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v7"
         && metadata.find("\"condition_count\"") == std::string::npos
         && metadata.find("\"code\":\"NORM\"") != std::string::npos
         && metadata.find("\"path\":\"$.hrv.target_sdnn_seconds\"") != std::string::npos
@@ -56,7 +56,8 @@ int main()
         && templates.find("\"difficulty_values\"") != std::string::npos, "template_contract");
     ok &= check(signal_synth::scenario_target_support_for_name("r_peak") == signal_synth::scenario_target_local_scoring
         && signal_synth::scenario_target_support_for_name("ppg_pulse_onset") == signal_synth::scenario_target_local_scoring
-        && signal_synth::scenario_target_support_for_name("signal_quality") == signal_synth::scenario_target_reference_only
+        && signal_synth::scenario_target_support_for_name("signal_quality") == signal_synth::scenario_target_local_scoring
+        && signal_synth::scenario_target_support_for_name("rhythm_episode") == signal_synth::scenario_target_local_scoring
         && signal_synth::scenario_target_support_for_name("unknown") == signal_synth::scenario_target_unsupported, "target_support_contract");
 
     signal_synth::ecg_scenario_document clean;

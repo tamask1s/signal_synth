@@ -21,6 +21,8 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/ecg_beat_classification.h
     src/ecg_compare.h
     src/detection_io.h
+    src/interval_io.h
+    src/interval_scoring.h
     src/synsigra_api.h
     src/challenge_package.h
     src/challenge_assembly.h
@@ -49,6 +51,8 @@ add_library(
     src/ecg_beat_classification.cpp
     src/ecg_compare.cpp
     src/detection_io.cpp
+    src/interval_io.cpp
+    src/interval_scoring.cpp
     src/synsigra_api.cpp
     src/challenge_package.cpp
     src/challenge_assembly.cpp

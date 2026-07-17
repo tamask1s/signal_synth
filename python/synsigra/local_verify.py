@@ -10,6 +10,7 @@ import shutil
 
 from .challenge import ChallengePackage, load_challenge
 from .detections import DetectionDocument, load_detections
+from .intervals import IntervalEvent, load_intervals, score_interval_events
 from .profiles import load_threshold_profile
 
 
@@ -84,7 +85,7 @@ def verify_package(challenge, detections_dir, out_dir, cases=None, targets=None,
                 if not entry.get("supported", False):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
-                if target not in ("r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification", "hrv"):
+                if target not in ("r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality"):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
                 result = _verify_case_target(package, case, case_summary, annotations, entry, detections_dir, out_dir)
@@ -130,6 +131,16 @@ def _verify_case_target(package, case, case_summary, annotations, entry, detecti
             _write_text(os.path.join(target_dir, "comparison.csv"), report_csv)
             _write_text(os.path.join(target_dir, "comparison_report.html"), report_html)
             return _case_result_from_report(case, case_summary, target, relative_out, detection_path, input_identity, report_json)
+        if target in ("rhythm_episode", "signal_quality"):
+            intervals = load_intervals(detection_path, target=target)
+            report_json = _score_interval_detection(package, case, case_summary, annotations, intervals, entry)
+            report_csv = _interval_comparison_csv(report_json)
+            report_html = _interval_comparison_html(report_json)
+            _write_json(os.path.join(target_dir, "comparison.json"), report_json)
+            _write_text(os.path.join(target_dir, "comparison.csv"), report_csv)
+            _write_text(os.path.join(target_dir, "comparison_report.html"), report_html)
+            identity = {"path": intervals.path, "format": "interval_json_v1" if intervals.raw else "interval_csv_v1", "algorithm": {"name": intervals.algorithm_name, "version": intervals.algorithm_version}, "interval_count": len(intervals)}
+            return _case_result_from_report(case, case_summary, target, relative_out, detection_path, identity, report_json)
         detections = load_detections(detection_path, target=target)
         if target == "ecg_beat_classification":
             report_json = _score_beat_classification(package, case, case_summary, annotations, detections, entry)
@@ -145,6 +156,58 @@ def _verify_case_target(package, case, case_summary, annotations, entry, detecti
         return _case_result_from_report(case, case_summary, target, relative_out, detection_path, _detection_identity(detections), report_json)
     except Exception as error:
         return _error_result(package, case, case_summary, entry, target_dir, "scoring_error", str(error), detection_path)
+
+
+def _score_interval_detection(package, case, case_summary, annotations, intervals, entry):
+    target = intervals.target
+    minimum_iou = float(entry.get("default_minimum_iou", 0.1))
+    predictions = list(intervals.intervals)
+    channel_mode = "global"
+    if target == "signal_quality":
+        has_global = any(item.channel == "global" for item in predictions)
+        has_physical = any(item.channel != "global" for item in predictions)
+        if has_global and has_physical:
+            raise VerificationError("signal_quality predictions cannot mix global and physical channels")
+        channel_mode = "per_channel" if has_physical else "global"
+    truth = _truth_intervals_for_target(target, annotations, case_summary, channel_mode)
+    duration_seconds = float(case_summary.get("render", {}).get("duration_seconds", annotations.get("duration_seconds", 0.0)))
+    comparison = score_interval_events(truth, predictions, duration_seconds, minimum_iou)
+    scenario_identity = _scenario_identity(case, case_summary, annotations)
+    scenario_identity["duration_seconds"] = duration_seconds
+    return {
+        "schema_version": 1,
+        "score_type": "interval_detection_qa",
+        "scoring_version": SCORING_VERSION,
+        "package": _package_identity(package),
+        "scenario": scenario_identity,
+        "target": target,
+        "algorithm": {"name": intervals.algorithm_name, "version": intervals.algorithm_version},
+        "options": {"minimum_iou": minimum_iou, "channel_mode": channel_mode},
+        "overall": comparison["overall"],
+        "classes": comparison["classes"],
+        "confusion_matrix": comparison["confusion_matrix"],
+        "matches": comparison["matches"],
+        "false_positive_indices": comparison["false_positive_indices"],
+        "false_negative_indices": comparison["false_negative_indices"],
+        "notes": ["Intervals are half-open [start,end); undefined zero-denominator metrics are null.", LIMITATION_TEXT],
+    }
+
+
+def _truth_intervals_for_target(target, annotations, case_summary, channel_mode):
+    truth = []
+    if target == "rhythm_episode":
+        for item in annotations.get("episodes", []):
+            if item.get("present", True) and item.get("kind") in ("psvt", "svarr"):
+                truth.append(IntervalEvent(item["start_seconds"], item["end_seconds"], item["kind"], "global", original_index=len(truth)))
+        return truth
+    artifact_intervals = annotations.get("artifact_intervals")
+    if artifact_intervals is None:
+        artifact_intervals = case_summary.get("artifact_intervals", [])
+    for item in artifact_intervals:
+        channels = ["global"] if channel_mode == "global" else list(item.get("channels", []))
+        for channel in channels:
+            truth.append(IntervalEvent(item["start_seconds"], item["end_seconds"], item["type"], channel, original_index=len(truth)))
+    return truth
 
 
 def _score_event_detection(package, case, case_summary, annotations, detections, entry):
@@ -895,6 +958,15 @@ def _case_result_from_report(case, case_summary, target, relative_out, detection
         }
         result["metrics"] = list(report_json.get("metrics", []))
         result["rr"] = dict(report_json.get("rr", {}))
+    elif target in ("rhythm_episode", "signal_quality"):
+        result["score_type"] = "interval_detection"
+        result["exclusion_policy"] = "Half-open intervals are scored by label and channel; global and per-channel signal-quality modes are not mixed."
+        result["summary"] = dict(report_json.get("overall", {}))
+        result["classes"] = list(report_json.get("classes", []))
+        result["confusion_matrix"] = list(report_json.get("confusion_matrix", []))
+        result["_interval_onset_errors"] = [float(item["onset_error_seconds"]) for item in report_json.get("matches", [])]
+        result["_interval_offset_errors"] = [float(item["offset_error_seconds"]) for item in report_json.get("matches", [])]
+        result["record_duration_seconds"] = float(report_json.get("scenario", {}).get("duration_seconds", 0.0))
     else:
         result["score_type"] = "event_detection"
         result["exclusion_policy"] = "All events are scored in total; clean and artifact bins partition events by target-affecting half-open artifact intervals [start,end)."
@@ -968,6 +1040,8 @@ def _build_verification_summary(package, scoring_manifest, integrity, results, m
     for result in results:
         public_result = dict(result)
         public_result.pop("_absolute_errors", None)
+        public_result.pop("_interval_onset_errors", None)
+        public_result.pop("_interval_offset_errors", None)
         public_results.append(public_result)
     return {
         "schema_version": 1,
@@ -1011,6 +1085,8 @@ def _aggregate_targets(results):
             _aggregate_classification_result(aggregate, result)
         if result.get("score_type") == "hrv_metrics" and result.get("success", False):
             _aggregate_hrv_result(aggregate, result)
+        if result.get("score_type") == "interval_detection" and result.get("success", False):
+            _aggregate_interval_result(aggregate, result)
     ordered = []
     for target in sorted(aggregates.keys()):
         aggregate = aggregates[target]
@@ -1025,6 +1101,8 @@ def _aggregate_targets(results):
             _finalize_classification_aggregate(aggregate)
         if aggregate.get("score_type") == "hrv_metrics":
             _finalize_hrv_aggregate(aggregate)
+        if aggregate.get("score_type") == "interval_detection":
+            _finalize_interval_aggregate(aggregate)
         ordered.append(aggregate)
     return ordered
 
@@ -1121,6 +1199,73 @@ def _finalize_hrv_aggregate(aggregate):
     aggregate["rr"]["pass_fraction"] = _ratio(aggregate["rr"]["passed_count"], aggregate["rr"]["ground_truth_count"])
 
 
+def _aggregate_interval_result(aggregate, result):
+    if aggregate.get("score_type") != "interval_detection":
+        aggregate["score_type"] = "interval_detection"
+        aggregate["overall"] = _empty_interval_aggregate_metrics()
+        aggregate["classes"] = {}
+        aggregate["confusion_matrix"] = {}
+        aggregate["_record_duration_seconds"] = 0.0
+        aggregate["_onset_errors"] = []
+        aggregate["_offset_errors"] = []
+    _accumulate_interval_metrics(aggregate["overall"], result.get("summary", {}))
+    aggregate["_record_duration_seconds"] += float(result.get("record_duration_seconds", 0.0))
+    aggregate["_onset_errors"].extend(result.get("_interval_onset_errors", []))
+    aggregate["_offset_errors"].extend(result.get("_interval_offset_errors", []))
+    for item in result.get("classes", []):
+        label = item.get("label", "")
+        row = aggregate["classes"].setdefault(label, _empty_interval_aggregate_metrics())
+        _accumulate_interval_metrics(row, item.get("metrics", {}))
+    for item in result.get("confusion_matrix", []):
+        key = (item.get("ground_truth_label", ""), item.get("prediction_label", ""))
+        aggregate["confusion_matrix"][key] = aggregate["confusion_matrix"].get(key, 0) + int(item.get("count", 0))
+
+
+def _finalize_interval_aggregate(aggregate):
+    duration = aggregate.pop("_record_duration_seconds")
+    onset_errors = aggregate.pop("_onset_errors")
+    offset_errors = aggregate.pop("_offset_errors")
+    _finalize_interval_aggregate_metrics(aggregate["overall"], duration, onset_errors, offset_errors)
+    class_rows = []
+    for label in sorted(aggregate["classes"].keys()):
+        metrics = aggregate["classes"][label]
+        _finalize_interval_aggregate_metrics(metrics, duration, [], [])
+        class_rows.append({"label": label, "metrics": metrics})
+    aggregate["classes"] = class_rows
+    confusion = aggregate["confusion_matrix"]
+    aggregate["confusion_matrix"] = [{"ground_truth_label": key[0], "prediction_label": key[1], "count": confusion[key]} for key in sorted(confusion.keys())]
+
+
+def _empty_interval_aggregate_metrics():
+    return {
+        "ground_truth_count": 0, "prediction_count": 0, "matched_count": 0, "false_alarm_count": 0, "missed_count": 0,
+        "ground_truth_duration_seconds": 0.0, "prediction_duration_seconds": 0.0, "overlap_duration_seconds": 0.0,
+    }
+
+
+def _accumulate_interval_metrics(destination, source):
+    for key in ("ground_truth_count", "prediction_count", "matched_count", "false_alarm_count", "missed_count"):
+        destination[key] += int(source.get(key, 0))
+    for key in ("ground_truth_duration_seconds", "prediction_duration_seconds", "overlap_duration_seconds"):
+        destination[key] += float(source.get(key, 0.0))
+
+
+def _finalize_interval_aggregate_metrics(metrics, duration, onset_errors, offset_errors):
+    truth_duration = metrics["ground_truth_duration_seconds"]
+    prediction_duration = metrics["prediction_duration_seconds"]
+    overlap = metrics["overlap_duration_seconds"]
+    metrics["time_sensitivity"] = overlap / truth_duration if truth_duration > 0.0 else None
+    metrics["time_precision"] = overlap / prediction_duration if prediction_duration > 0.0 else None
+    metrics["time_f1_score"] = 2.0 * overlap / (truth_duration + prediction_duration) if truth_duration + prediction_duration > 0.0 else None
+    union = truth_duration + prediction_duration - overlap
+    metrics["temporal_iou"] = overlap / union if union > 0.0 else None
+    metrics["event_sensitivity"] = float(metrics["matched_count"]) / metrics["ground_truth_count"] if metrics["ground_truth_count"] else None
+    metrics["event_precision"] = float(metrics["matched_count"]) / metrics["prediction_count"] if metrics["prediction_count"] else None
+    metrics["false_alarms_per_hour"] = metrics["false_alarm_count"] * 3600.0 / duration if duration > 0.0 else 0.0
+    metrics["mean_absolute_onset_error_seconds"] = _mean([abs(value) for value in onset_errors]) if onset_errors else None
+    metrics["mean_absolute_offset_error_seconds"] = _mean([abs(value) for value in offset_errors]) if offset_errors else None
+
+
 def _evaluate_policy(targets, profile):
     checks = []
     target_results = []
@@ -1132,6 +1277,8 @@ def _evaluate_policy(targets, profile):
             definition_name = "ecg_beat_classification"
         elif score_type == "hrv_metrics":
             definition_name = "hrv"
+        elif score_type == "interval_detection" and definition_name not in definitions:
+            definition_name = "interval_detection"
         definition = definitions.get(definition_name, {})
         target_checks = []
         if score_type == "event_detection":
@@ -1148,6 +1295,10 @@ def _evaluate_policy(targets, profile):
         elif score_type == "hrv_metrics":
             target_checks.extend(_threshold_checks(target["target"], "summary", target, definition.get("summary", {}), target.get("evaluated_metric_count", 0) > 0))
             target_checks.extend(_threshold_checks(target["target"], "rr", target.get("rr", {}), definition.get("rr", {}), target.get("rr", {}).get("evaluated_case_count", 0) > 0))
+        elif score_type == "interval_detection":
+            overall = target.get("overall", {})
+            applicable = int(overall.get("ground_truth_count", 0)) > 0 or int(overall.get("prediction_count", 0)) > 0
+            target_checks.extend(_threshold_checks(target["target"], "overall", overall, definition.get("overall", {}), applicable))
         target_passed = bool(target_checks) and all(item["passed"] for item in target_checks if item["applicable"])
         target["policy"] = {"profile_id": profile["profile_id"], "passed": target_passed, "checks": target_checks}
         target_results.append({"target": target["target"], "passed": target_passed, "check_count": len(target_checks)})
@@ -1209,6 +1360,27 @@ def _event_comparison_csv(report_json):
     return output.getvalue()
 
 
+def _interval_comparison_csv(report_json):
+    output = io.StringIO()
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerow(["row_type", "label", "prediction_label", "ground_truth_count", "prediction_count", "matched_count", "false_alarm_count", "missed_count", "ground_truth_duration_seconds", "prediction_duration_seconds", "overlap_duration_seconds", "time_sensitivity", "time_precision", "time_f1_score", "temporal_iou", "event_sensitivity", "event_precision", "false_alarms_per_hour", "mean_absolute_onset_error_seconds", "mean_absolute_offset_error_seconds"])
+    rows = [("__overall__", report_json.get("overall", {}))] + [(item.get("label", ""), item.get("metrics", {})) for item in report_json.get("classes", [])]
+    for label, metrics in rows:
+        writer.writerow(["metrics", label, "", metrics.get("ground_truth_count", 0), metrics.get("prediction_count", 0), metrics.get("matched_count", 0), metrics.get("false_alarm_count", 0), metrics.get("missed_count", 0), metrics.get("ground_truth_duration_seconds", 0.0), metrics.get("prediction_duration_seconds", 0.0), metrics.get("overlap_duration_seconds", 0.0), _csv_optional(metrics.get("time_sensitivity")), _csv_optional(metrics.get("time_precision")), _csv_optional(metrics.get("time_f1_score")), _csv_optional(metrics.get("temporal_iou")), _csv_optional(metrics.get("event_sensitivity")), _csv_optional(metrics.get("event_precision")), metrics.get("false_alarms_per_hour", 0.0), _csv_optional(metrics.get("onset_error_seconds", {}).get("mean_absolute")), _csv_optional(metrics.get("offset_error_seconds", {}).get("mean_absolute"))])
+    for item in report_json.get("confusion_matrix", []):
+        writer.writerow(["confusion", item.get("ground_truth_label", ""), item.get("prediction_label", ""), item.get("count", 0)])
+    return output.getvalue()
+
+
+def _interval_comparison_html(report_json):
+    rows = []
+    metric_rows = [("Overall", report_json.get("overall", {}))] + [(item.get("label", ""), item.get("metrics", {})) for item in report_json.get("classes", [])]
+    for label, metrics in metric_rows:
+        rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (_h(label), metrics.get("ground_truth_count", 0), metrics.get("prediction_count", 0), metrics.get("matched_count", 0), _h(_display_optional(metrics.get("time_sensitivity"))), _h(_display_optional(metrics.get("time_precision"))), _h(_display_optional(metrics.get("time_f1_score"))), _h(_display_optional(metrics.get("temporal_iou")))))
+    confusion_rows = ["<tr><td>%s</td><td>%s</td><td>%s</td></tr>" % (_h(item.get("ground_truth_label", "")), _h(item.get("prediction_label", "")), item.get("count", 0)) for item in report_json.get("confusion_matrix", [])]
+    return "<!doctype html><html><head><meta charset=\"utf-8\"><title>Interval scoring</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#20252b}table{border-collapse:collapse;margin:16px 0}th,td{border:1px solid #c9ced4;padding:6px 9px;text-align:right}th:first-child,td:first-child{text-align:left}.note{color:#555}</style></head><body><h1>Interval scoring</h1><p>Target: %s | Channel mode: %s | Minimum IoU: %s</p><table><tr><th>Class</th><th>Truth</th><th>Predicted</th><th>Matched</th><th>Time sensitivity</th><th>Time precision</th><th>Time F1</th><th>IoU</th></tr>%s</table><h2>Confusion matrix</h2><table><tr><th>Ground truth</th><th>Prediction</th><th>Count</th></tr>%s</table><p class=\"note\">%s</p></body></html>" % (_h(report_json.get("target", "")), _h(report_json.get("options", {}).get("channel_mode", "")), report_json.get("options", {}).get("minimum_iou", ""), "".join(rows), "".join(confusion_rows), _h(LIMITATION_TEXT))
+
+
 def _event_bin(item):
     if item.get("in_motion_artifact_interval", False):
         return "motion"
@@ -1265,12 +1437,12 @@ def _hrv_csv(report_json):
 def _summary_csv(summary):
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["case_id", "scenario_id", "target", "status", "score_type", "ground_truth_count", "detection_count", "true_positive_count", "false_positive_count", "false_negative_count", "f1_score", "accuracy", "micro_f1_score", "hrv_metric_pass_fraction", "threshold_profile", "package_policy_passed", "report_path", "message"])
+    writer.writerow(["case_id", "scenario_id", "target", "status", "score_type", "ground_truth_count", "detection_count", "true_positive_count", "false_positive_count", "false_negative_count", "f1_score", "accuracy", "micro_f1_score", "hrv_metric_pass_fraction", "interval_time_f1_score", "interval_temporal_iou", "threshold_profile", "package_policy_passed", "report_path", "message"])
     for item in summary["cases"]:
         metric_data = item.get("metrics", {})
         total = metric_data.get("total", {}) if isinstance(metric_data, dict) else {}
         classification = item.get("summary", {})
-        writer.writerow([item.get("case_id", ""), item.get("scenario_id", ""), item.get("target", ""), item.get("status", ""), item.get("score_type", ""), total.get("ground_truth_count", ""), total.get("detection_count", ""), total.get("true_positive_count", ""), total.get("false_positive_count", ""), total.get("false_negative_count", ""), total.get("f1_score", ""), classification.get("accuracy", ""), classification.get("micro_f1_score", ""), classification.get("metric_pass_fraction", ""), summary["policy"]["profile_id"], int(summary["policy"]["passed"]), item.get("report_path", ""), item.get("message", "")])
+        writer.writerow([item.get("case_id", ""), item.get("scenario_id", ""), item.get("target", ""), item.get("status", ""), item.get("score_type", ""), total.get("ground_truth_count", ""), total.get("detection_count", ""), total.get("true_positive_count", ""), total.get("false_positive_count", ""), total.get("false_negative_count", ""), total.get("f1_score", ""), classification.get("accuracy", ""), classification.get("micro_f1_score", ""), classification.get("metric_pass_fraction", ""), _csv_optional(classification.get("time_f1_score")), _csv_optional(classification.get("temporal_iou")), summary["policy"]["profile_id"], int(summary["policy"]["passed"]), item.get("report_path", ""), item.get("message", "")])
     return output.getvalue()
 
 
@@ -1318,7 +1490,7 @@ def _summary_html(summary):
     for item in summary["cases"]:
         metric_data = item.get("metrics", {})
         event_f1 = metric_data.get("total", {}).get("f1_score", "") if isinstance(metric_data, dict) else ""
-        metric = item.get("summary", {}).get("micro_f1_score", item.get("summary", {}).get("metric_pass_fraction", event_f1))
+        metric = item.get("summary", {}).get("micro_f1_score", item.get("summary", {}).get("metric_pass_fraction", item.get("summary", {}).get("time_f1_score", event_f1)))
         rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (_h(item.get("case_id", "")), _h(item.get("target", "")), _h(item.get("status", "")), _h(str(metric)), _h(item.get("report_path", ""))))
     failed_checks = [item for item in summary["policy"]["checks"] if item["applicable"] and not item["passed"]]
     check_rows = ["<tr><td>%s</td><td>%s</td><td>%s</td><td>%.6g</td><td>%s %.6g</td></tr>" % (_h(item["target"]), _h(item["section"]), _h(item["metric"]), item["actual"], _h(item["operator"]), item["threshold"]) for item in failed_checks]
@@ -1526,6 +1698,14 @@ def _csv_cell(value):
     writer = csv.writer(output)
     writer.writerow([value])
     return output.getvalue().strip()
+
+
+def _csv_optional(value):
+    return "NA" if value is None else value
+
+
+def _display_optional(value):
+    return "NA" if value is None else "%.6g" % float(value)
 
 
 def _relative_to_parent(path):

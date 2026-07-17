@@ -12,7 +12,7 @@
 
 namespace
 {
-    const char* metadata_version = "synsigra_authoring_v6";
+    const char* metadata_version = "synsigra_authoring_v7";
     const char* template_version = "synsigra_templates_v3";
 
     struct field_definition
@@ -155,6 +155,11 @@ namespace
             message = "Signal-quality reference requires at least one artifact interval.";
             return false;
         }
+        if (target == "rhythm_episode" && document.ecg.episode_type() == signal_synth::ecg_episode_none)
+        {
+            message = "Rhythm-episode scoring requires a configured PSVT or SVARR episode.";
+            return false;
+        }
         return true;
     }
 
@@ -227,6 +232,8 @@ namespace
             return "classification";
         if (target == "hrv")
             return "hrv_metrics";
+        if (target == "rhythm_episode" || target == "signal_quality")
+            return "interval_detection";
         return "generated_reference_only";
     }
 
@@ -236,6 +243,8 @@ namespace
             return "micro_f1_score";
         if (target == "hrv")
             return "metric_pass_fraction";
+        if (target == "rhythm_episode" || target == "signal_quality")
+            return "time_f1_score";
         if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset")
             return "f1_score";
         return "";
@@ -262,6 +271,11 @@ namespace
         }
         else if (target == "hrv")
             output.push_back("hrv_json_v1");
+        else if (target == "rhythm_episode" || target == "signal_quality")
+        {
+            output.push_back("interval_json_v1");
+            output.push_back("interval_csv_v1");
+        }
         return output;
     }
 
@@ -456,9 +470,9 @@ namespace signal_synth
 
     scenario_target_support scenario_target_support_for_name(const std::string& target)
     {
-        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset" || target == "ecg_beat_classification" || target == "hrv")
+        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset" || target == "ecg_beat_classification" || target == "hrv" || target == "rhythm_episode" || target == "signal_quality")
             return scenario_target_local_scoring;
-        if (target == "signal_quality" || target == "morphology_assertions" || target == "ecg_ppg_alignment")
+        if (target == "morphology_assertions" || target == "ecg_ppg_alignment")
             return scenario_target_reference_only;
         return scenario_target_unsupported;
     }
@@ -622,7 +636,8 @@ namespace signal_synth
                << "{\"name\":\"ppg_pulse_onset\",\"support\":\"local_scoring\",\"requires\":[\"ppg.enabled\"]},"
                << "{\"name\":\"ecg_beat_classification\",\"support\":\"local_scoring\",\"requires\":[]},"
                << "{\"name\":\"hrv\",\"support\":\"local_scoring\",\"requires\":[\"hrv.enabled\",\"duration_seconds>=300\"]},"
-               << "{\"name\":\"signal_quality\",\"support\":\"reference_only\",\"requires\":[\"artifacts.length>0\"]},"
+               << "{\"name\":\"rhythm_episode\",\"support\":\"local_scoring\",\"requires\":[\"ecg.episode_type!=none\"]},"
+               << "{\"name\":\"signal_quality\",\"support\":\"local_scoring\",\"requires\":[\"artifacts.length>0\"]},"
                << "{\"name\":\"morphology_assertions\",\"support\":\"reference_only\",\"requires\":[\"ecg.conditions\"]},"
                << "{\"name\":\"ecg_ppg_alignment\",\"support\":\"reference_only\",\"requires\":[\"ppg.enabled\"]}],"
                << "\"cross_field_rules\":["

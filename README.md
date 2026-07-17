@@ -16,7 +16,9 @@ identity. `ppg_model` generates a linked optical pulse channel with variable
 PTT, morphology, modulation, perfusion, weak-pulse, and missing-pulse ground
 truth from the exact ECG ventricular timeline. PPG QA includes deterministic
 motion/sensor artifacts, an accelerometer reference, peak/onset event scoring,
-and pulse-interval/rate metrics.
+and pulse-interval/rate metrics. Generic interval scoring supports rhythm
+episodes and global or channel-specific signal-quality outputs with time
+coverage, IoU, boundary error, false-alarm, and confusion metrics.
 
 ## ECG model status
 
@@ -100,6 +102,7 @@ Validate and fingerprint a portable scenario document:
 /tmp/signal_synth-build/signal-synth validate examples/scenarios/ecg_clean.json
 /tmp/signal_synth-build/signal-synth fingerprint examples/scenarios/ecg_clean.json
 /tmp/signal_synth-build/signal-synth render examples/scenarios/ecg_clean.json --out /tmp/ecg_clean_export
+/tmp/signal_synth-build/signal-synth interval score rhythm_episode examples/scenarios/catalog/rhythm_psvt_episode.json intervals.json --out /tmp/episode_score
 ```
 
 Discover the SaaS-safe form contract, scenario templates, and pack estimates:
@@ -164,7 +167,7 @@ python -m pip install synsigra-0.2.0-py3-none-any.whl
 Run local verification:
 
 ```bash
-synsigra-verify package.zip detections/ verification-results/ --profile regression
+synsigra-verify package.zip user-outputs/ verification-results/ --profile regression
 ```
 
 The verifier reads package manifests, case summaries, annotations, user detection files, and threshold profiles locally. It does not invoke the C++ generator. It writes `verification_summary.json`, `verification_summary.csv`, `verification_report.html`, and per-case evidence under `verification/`. Exit code `0` means pass, `1` means verification failure, and `2` means invalid CLI usage. Built-in profiles are `smoke`, `regression`, `stress`, and `benchmark`.

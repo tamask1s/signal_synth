@@ -27,24 +27,41 @@ synsigra-verify --help
 ## One-command verification
 
 ```bash
-synsigra-verify package.zip detections/ verification-results/ --profile regression
+synsigra-verify package.zip user-outputs/ verification-results/ --profile regression
 ```
 
 Arguments:
 
 - `package.zip` or `challenge.synsigra`: downloaded Synsigra challenge package or package directory;
-- `detections/`: one user-output file per case/target, using the schema described by the package scoring metadata;
+- `user-outputs/`: event detections, interval outputs, and HRV results in the `detections/`, `intervals/`, and `hrv_outputs/` paths described by package scoring metadata;
 - `verification-results/`: output directory for JSON, CSV, and HTML reports;
 - `--profile`: threshold policy. Built-ins are `smoke`, `regression`, `stress`, and `benchmark`.
 
 Useful filters:
 
 ```bash
-synsigra-verify package.zip detections/ out/ --case clean_70 --target r_peak
-synsigra-verify package.zip detections/ out/ --profile path/to/custom-profile.json
+synsigra-verify package.zip user-outputs/ out/ --case clean_70 --target r_peak
+synsigra-verify package.zip user-outputs/ out/ --profile path/to/custom-profile.json
 ```
 
 Use `--force` to replace an existing output directory.
+
+Point detections use `detection_json_v1` or `detection_csv_v2`. Rhythm and
+signal-quality algorithms use `interval_json_v1` or `interval_csv_v1` with
+half-open `[start_seconds,end_seconds)` intervals, a label, and either the
+`global` channel or physical channel names. The package
+`scoring_manifest.json` names the accepted schema and recommended filename for
+every case/target.
+
+Programmatic generator-backed scoring is also available:
+
+```python
+import synsigra
+
+package = synsigra.load_challenge("package.zip")
+intervals = synsigra.load_intervals("episodes.json", target="rhythm_episode")
+report = synsigra.score_rhythm_episodes(package.case("psvt_episode"), intervals)
+```
 
 ## CI behavior
 

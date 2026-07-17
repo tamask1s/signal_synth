@@ -62,10 +62,20 @@ TARGET_CONTRACTS = {
         "description": "HRV metric and RR-interval scoring against exact synthetic tachogram ground truth.",
     },
     "signal_quality": {
-        "scoreable": False,
-        "score_type": "generated_reference_only",
-        "reference_artifacts": ["artifact_intervals", "waveform_channels", "annotations_json", "case_summary_json"],
-        "description": "Generated signal-quality interval and artifact ground truth. No local scoring policy is defined yet.",
+        "scoreable": True,
+        "score_type": "interval_detection",
+        "accepted_interval_formats": ["interval_json_v1", "interval_csv_v1"],
+        "default_minimum_iou": 0.1,
+        "primary_metric": "time_f1_score",
+        "description": "Signal-quality interval labels and channels scored against exact synthetic artifact ground truth.",
+    },
+    "rhythm_episode": {
+        "scoreable": True,
+        "score_type": "interval_detection",
+        "accepted_interval_formats": ["interval_json_v1", "interval_csv_v1"],
+        "default_minimum_iou": 0.1,
+        "primary_metric": "time_f1_score",
+        "description": "Rhythm episode labels and boundaries scored against exact synthetic episode ground truth.",
     },
     "morphology_assertions": {
         "scoreable": False,
@@ -115,6 +125,14 @@ LOCAL_VERIFIER_SMOKE_TESTS = {
             "test_id": "TEST-PYTHON-SCORING-001",
             "scope": "local HRV user-output scoring smoke test",
         },
+    ],
+    "rhythm_episode": [
+        {"test_id": "TEST-INTERVAL-SCORING-001", "scope": "core rhythm-episode interval scoring smoke test"},
+        {"test_id": "TEST-PYTHON-SCORING-001", "scope": "local rhythm-episode interval scoring parity test"},
+    ],
+    "signal_quality": [
+        {"test_id": "TEST-INTERVAL-SCORING-001", "scope": "core signal-quality interval scoring smoke test"},
+        {"test_id": "TEST-PYTHON-SCORING-001", "scope": "local signal-quality interval scoring parity test"},
     ],
 }
 
@@ -278,7 +296,7 @@ def output_artifacts(scoreable_targets, reference_targets):
 def detector_output_schemas(scoreable_targets):
     schemas = []
     for target in scoreable_targets:
-        for key in ("accepted_detection_formats", "accepted_user_output_formats"):
+        for key in ("accepted_detection_formats", "accepted_user_output_formats", "accepted_interval_formats"):
             for schema in target.get(key, []):
                 if schema not in schemas:
                     schemas.append(schema)

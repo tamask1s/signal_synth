@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 
 from .detections import DetectionDocument
+from .intervals import IntervalDocument
 
 
 class _TemporaryDirectory(object):
@@ -86,6 +87,42 @@ def score_hrv(case, user_output, out_dir=None, cli_path=None):
         _read_text(os.path.join(out_dir, "hrv_score_report.html")),
         tempdir,
     )
+
+
+def score_intervals(case, intervals, out_dir=None, cli_path=None, minimum_iou=None):
+    if not isinstance(intervals, IntervalDocument):
+        raise TypeError("intervals must be an IntervalDocument")
+    if intervals.target not in ("rhythm_episode", "signal_quality"):
+        raise ValueError("interval target must be rhythm_episode or signal_quality")
+    case.package.ensure_integrity_verified()
+    tempdir = None
+    if out_dir is None:
+        tempdir = _TemporaryDirectory()
+        out_dir = os.path.join(tempdir.name, "interval_score")
+    command = [_cli(cli_path), "interval", "score", intervals.target, case.scenario_path, intervals.path, "--out", out_dir]
+    if minimum_iou is not None:
+        command.extend(["--minimum-iou", str(minimum_iou)])
+    summary = _run(command)
+    return ScoreReport(
+        out_dir,
+        summary,
+        _read_json(os.path.join(out_dir, "interval_score.json")),
+        _read_text(os.path.join(out_dir, "interval_score.csv")),
+        _read_text(os.path.join(out_dir, "interval_score_report.html")),
+        tempdir,
+    )
+
+
+def score_rhythm_episodes(case, intervals, out_dir=None, cli_path=None, minimum_iou=None):
+    if not isinstance(intervals, IntervalDocument) or intervals.target != "rhythm_episode":
+        raise TypeError("intervals must be a rhythm_episode IntervalDocument")
+    return score_intervals(case, intervals, out_dir, cli_path, minimum_iou)
+
+
+def score_signal_quality(case, intervals, out_dir=None, cli_path=None, minimum_iou=None):
+    if not isinstance(intervals, IntervalDocument) or intervals.target != "signal_quality":
+        raise TypeError("intervals must be a signal_quality IntervalDocument")
+    return score_intervals(case, intervals, out_dir, cli_path, minimum_iou)
 
 
 def score_pack(pack_json, detections_dir, out_dir=None, cli_path=None):

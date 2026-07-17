@@ -40,7 +40,7 @@ Issue map:
 - [ ] Add rhythm packs for AFib, flutter with variable conduction, SVT
       episodes, pauses, bigeminy/trigeminy, paced rhythms, and transition
       annotations.
-- [ ] Add signal-quality packs with explicit scoreable quality labels, not
+- [x] Add signal-quality packs with explicit scoreable quality labels, not
       only artifact reference intervals.
 - [ ] Add morphology/stress packs for conduction, ST-T/ischemia, hypertrophy,
       infarction, lead faults, and acquisition faults as user-selectable
@@ -54,8 +54,9 @@ Issue map:
       metric scoring.
 - [ ] Add first-class pack-level scoring for beat classification confusion
       matrices and per-class F1.
-- [ ] Add signal-quality scoring contracts: interval overlap, sample mask
-      accuracy, quality-class accuracy, and artifact-class confusion.
+- [x] Add signal-quality interval overlap, boundary, false-alarm, and
+      artifact-class confusion scoring contracts.
+- [ ] Add optional sample-mask accuracy scoring derived from interval output.
 - [ ] Add PPG scoring summaries parallel to R-peak scoring, including timing
       error distribution and missed/extra pulse statistics.
 - [ ] Add exclusion-window semantics to all relevant scoring targets so users

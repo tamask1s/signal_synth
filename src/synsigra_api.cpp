@@ -216,7 +216,9 @@ namespace signal_synth
                << ",\"scenario_templates\":" << json_text(scenario_template_catalog_version()) << "}"
                << ",\"cli\":{\"challenge_command\":\"signal-synth pack challenge <pack.json> --out <new-directory>\""
                << ",\"challenge_success_media_type\":\"application/json\""
-               << ",\"comparison_targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ppg_pulse_onset\",\"ecg_beat_classification\"]}}";
+               << ",\"comparison_targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ppg_pulse_onset\",\"ecg_beat_classification\"]"
+               << ",\"interval_targets\":[\"rhythm_episode\",\"signal_quality\"]"
+               << ",\"interval_output_schemas\":[\"interval_json_v1\",\"interval_csv_v1\"]}}";
         return output.str();
     }
 

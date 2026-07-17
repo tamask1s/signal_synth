@@ -78,7 +78,7 @@ def assert_release_pack_metadata(item):
             assert target["case_count"] == len(target["case_ids"])
             assert target["case_ids"]
             assert target["support"] == "local_scoring"
-            assert target["score_type"] in ("event_detection", "classification", "hrv_metrics")
+            assert target["score_type"] in ("event_detection", "classification", "hrv_metrics", "interval_detection")
     else:
         assert not item["detector_output_schemas"]
         assert not item["supported_threshold_profiles"]
@@ -104,7 +104,7 @@ def assert_rpeak_metadata(item):
     assert item["declared_targets"] == ["r_peak"]
     assert item["targets"] == ["r_peak", "signal_quality"]
     assert item["catalog_scoring_mode"] == "local"
-    assert item["scoring_mode"] == "mixed"
+    assert item["scoring_mode"] == "local"
     assert item["case_count"] == 4
     assert item["case_ids"] == ["clean_70", "slow_45", "fast_120", "baseline_powerline"]
     assert item["duration"]["total_seconds"] == 100
@@ -116,25 +116,27 @@ def assert_rpeak_metadata(item):
     assert item["supported_threshold_profiles"] == ["smoke", "regression", "stress", "benchmark"]
     assert item["local_verifier_smoke_tests"]
     assert item["threshold_profile_contract"]["policy_failure_exit_code"] == 1
-    assert item["detector_output_schemas"] == ["detection_json_v1", "detection_csv_v2"]
+    assert item["detector_output_schemas"] == ["detection_json_v1", "detection_csv_v2", "interval_json_v1", "interval_csv_v1"]
     assert item["recommended_for"] and item["not_recommended_for"] and item["changelog"]
     assert item["generator_compatibility"]["minimum_generator_version"] == "0.5.0-dev"
     assert item["generator_compatibility"]["scoring_manifest_contract"] == "synsigra_scoring_manifest_v1"
     scoreable = dict((target["target"], target) for target in item["scoreable_targets"])
     reference = dict((target["target"], target) for target in item["reference_only_targets"])
-    assert sorted(scoreable.keys()) == ["r_peak"]
-    assert sorted(reference.keys()) == ["signal_quality"]
+    assert sorted(scoreable.keys()) == ["r_peak", "signal_quality"]
+    assert reference == {}
     assert scoreable["r_peak"]["score_type"] == "event_detection"
     assert scoreable["r_peak"]["accepted_detection_formats"] == ["detection_json_v1", "detection_csv_v2"]
     assert scoreable["r_peak"]["default_tolerance_seconds"] == 0.05
     assert scoreable["r_peak"]["case_ids"] == item["case_ids"]
-    assert reference["signal_quality"]["score_type"] == "generated_reference_only"
-    assert reference["signal_quality"]["case_ids"] == ["baseline_powerline"]
+    assert scoreable["signal_quality"]["score_type"] == "interval_detection"
+    assert scoreable["signal_quality"]["accepted_interval_formats"] == ["interval_json_v1", "interval_csv_v1"]
+    assert scoreable["signal_quality"]["default_minimum_iou"] == 0.1
+    assert scoreable["signal_quality"]["case_ids"] == ["baseline_powerline"]
     baseline = [case for case in item["cases"] if case["case_id"] == "baseline_powerline"][0]
-    assert baseline["scoreable_targets"] == ["r_peak"]
-    assert baseline["reference_only_targets"] == ["signal_quality"]
+    assert baseline["scoreable_targets"] == ["r_peak", "signal_quality"]
+    assert baseline["reference_only_targets"] == []
     assert item["ui"]["scoreable_before_job"]
-    assert item["ui"]["reference_only_before_job"]
+    assert not item["ui"]["reference_only_before_job"]
 
 
 def assert_ppg_benchmark_metadata(item):
@@ -169,7 +171,7 @@ def main():
         assert generated["release_set_id"] == "synsigra_curated_release_2026_07_06"
         assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
-        assert generated["catalog_version"] == "1.4"
+        assert generated["catalog_version"] == "1.5"
         assert generated["pack_count"] == 10
         assert [item["pack_id"] for item in generated["packs"]] == RELEASE_PACK_IDS
         for pack_id in RELEASE_PACK_IDS:

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "1.4",
+  "version": "1.5",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -123,7 +123,7 @@
       "pack_id": "ecg_rhythm_v1",
       "path": "../packs/ecg_rhythm_v1.json",
       "modality": ["ECG"],
-      "targets": ["r_peak", "ecg_beat_classification"],
+      "targets": ["r_peak", "ecg_beat_classification", "rhythm_episode"],
       "difficulty": ["regression", "stress"],
       "recommended_profile": "stress",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
@@ -146,6 +146,13 @@
       ],
       "changelog": [
         {
+          "version": "1.1",
+          "date": "2026-07-17",
+          "changes": [
+            "Added PSVT rhythm-episode interval output and local scoring."
+          ]
+        },
+        {
           "version": "1.0",
           "date": "2026-07-06",
           "changes": [
@@ -162,24 +169,31 @@
       "difficulty": ["stress"],
       "recommended_profile": "stress",
       "supported_threshold_profiles": ["smoke", "regression", "stress"],
-      "scoring_mode": "mixed",
+      "scoring_mode": "local",
       "feature_tags": ["baseline_wander", "powerline", "dropout", "saturation", "lead_fault", "acquisition_fault"],
       "release_status": "beta",
       "release_date": "2026-07-06",
       "deprecation_message": "",
       "recommended_for": [
-        "Signal-quality interval inspection and reference export",
+        "Local signal-quality interval scoring by artifact class and channel",
         "Artifact-aware detector stress scenario generation",
-        "Manual QA of artifact timing, channels and labels",
-        "Downstream scoring development that needs exact synthetic artifact intervals"
+        "Onset, offset, overlap and false-alarm regression testing",
+        "Manual QA of exact synthetic artifact timing, channels and labels"
       ],
       "not_recommended_for": [
-        "Local automated scoring without a project-specific quality metric",
         "Clinical signal-quality certification",
         "Clean detector smoke tests",
-        "Morphology-only validation"
+        "Morphology-only validation",
+        "Sample-level quality-mask scoring in the current release"
       ],
       "changelog": [
+        {
+          "version": "1.1",
+          "date": "2026-07-17",
+          "changes": [
+            "Added local class-aware and channel-aware interval scoring with temporal and event metrics."
+          ]
+        },
         {
           "version": "1.0",
           "date": "2026-07-06",
@@ -195,9 +209,9 @@
       "modality": ["ECG"],
       "targets": ["morphology_assertions", "signal_quality"],
       "difficulty": ["stress"],
-      "recommended_profile": null,
-      "supported_threshold_profiles": [],
-      "scoring_mode": "reference_only",
+      "recommended_profile": "stress",
+      "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
+      "scoring_mode": "mixed",
       "feature_tags": ["conduction", "st_t", "ischemia", "hypertrophy", "infarction", "lead_fault", "acquisition_fault"],
       "release_status": "beta",
       "release_date": "2026-07-06",
@@ -267,7 +281,7 @@
       "difficulty": ["stress"],
       "recommended_profile": "stress",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
-      "scoring_mode": "mixed",
+      "scoring_mode": "local",
       "feature_tags": ["multimodal", "artifact", "dropout", "timing"],
       "release_status": "beta",
       "release_date": "2026-07-06",

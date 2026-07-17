@@ -38,6 +38,8 @@ def create_challenge_with_cli(source_dir, work_dir, cli):
     shutil.copyfile(os.path.join(source_dir, "examples", "scenarios", "ppg_perfusion_stress_v4.json"), os.path.join(scenario_dir, "ppg_stress.json"))
     shutil.copyfile(os.path.join(source_dir, "examples", "scenarios", "ppg_motion_accelerometer_v4.json"), os.path.join(scenario_dir, "ppg_motion.json"))
     shutil.copyfile(os.path.join(source_dir, "examples", "scenarios", "hrv", "hrv_mild_variability.json"), os.path.join(scenario_dir, "hrv_mild.json"))
+    shutil.copyfile(os.path.join(source_dir, "examples", "scenarios", "catalog", "rhythm_psvt_episode.json"), os.path.join(scenario_dir, "rhythm_episode.json"))
+    shutil.copyfile(os.path.join(source_dir, "examples", "scenarios", "packs", "sq_baseline_powerline.json"), os.path.join(scenario_dir, "signal_quality.json"))
     pack_path = os.path.join(pack_source_dir, "pack.json")
     write_json(pack_path, {
         "schema_version": 1,
@@ -45,13 +47,15 @@ def create_challenge_with_cli(source_dir, work_dir, cli):
         "name": "Python Scoring Challenge",
         "version": "1",
         "description": "Python scoring integration test challenge.",
-        "targets": ["r_peak", "ppg_systolic_peak", "ecg_beat_classification", "hrv"],
+        "targets": ["r_peak", "ppg_systolic_peak", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality"],
         "scenarios": [
             {"id": "clean_ecg", "path": "scenarios/clean_ecg.json", "targets": ["r_peak", "ecg_beat_classification"]},
             {"id": "ppg_clean", "path": "scenarios/ppg_clean.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
             {"id": "ppg_stress", "path": "scenarios/ppg_stress.json", "targets": ["ppg_systolic_peak"]},
             {"id": "ppg_motion", "path": "scenarios/ppg_motion.json", "targets": ["ppg_systolic_peak"]},
             {"id": "hrv_mild", "path": "scenarios/hrv_mild.json", "targets": ["hrv"]},
+            {"id": "rhythm_episode", "path": "scenarios/rhythm_episode.json", "targets": ["rhythm_episode"]},
+            {"id": "signal_quality", "path": "scenarios/signal_quality.json", "targets": ["signal_quality"]},
         ],
     })
     challenge_dir = os.path.join(work_dir, "challenge")
@@ -113,6 +117,15 @@ def write_detections(path, target, events):
     })
 
 
+def write_intervals(path, target, intervals):
+    write_json(path, {
+        "schema_version": 1,
+        "algorithm": {"name": "python_test_interval_detector", "version": "1"},
+        "target": target,
+        "intervals": intervals,
+    })
+
+
 def zip_directory(source, archive_path):
     with zipfile.ZipFile(archive_path, "w") as archive:
         for root, dirs, files in os.walk(source):
@@ -143,7 +156,7 @@ def main():
 
     challenge = ss.load_challenge(challenge_dir)
     assert challenge.package_id == "python_scoring_challenge"
-    assert challenge.case_ids() == ["clean_ecg", "ppg_clean", "ppg_stress", "ppg_motion", "hrv_mild"]
+    assert challenge.case_ids() == ["clean_ecg", "ppg_clean", "ppg_stress", "ppg_motion", "hrv_mild", "rhythm_episode", "signal_quality"]
     provenance = read_json(os.path.join(challenge_dir, "provenance.json"))
     assert provenance["metadata_type"] == "synsigra_package_provenance"
     assert provenance["generator"]["version"] == "0.5.0-dev"
@@ -199,6 +212,8 @@ def main():
     beat_class_path = os.path.join(detections_dir, "clean_ecg_beat_classes.json")
     beat_class_recommended_path = os.path.join(detections_dir, "clean_ecg_ecg_beat_classification.json")
     hrv_path = os.path.join(detections_dir, "hrv_mild.json")
+    rhythm_interval_path = os.path.join(detections_dir, "rhythm_episode.json")
+    quality_interval_path = os.path.join(detections_dir, "signal_quality.json")
     write_detections(rpeak_path, "r_peak", rpeak_detections(challenge.case("clean_ecg").annotations()))
     shutil.copyfile(rpeak_path, rpeak_recommended_path)
     write_detections(ppg_path, "ppg_systolic_peak", ppg_detections(challenge.case("ppg_clean").annotations()))
@@ -209,6 +224,8 @@ def main():
     write_detections(beat_class_path, "ecg_beat_classification", beat_classifications(challenge.case("clean_ecg").annotations()))
     shutil.copyfile(beat_class_path, beat_class_recommended_path)
     write_json(hrv_path, hrv_output(challenge.case("hrv_mild")))
+    write_intervals(rhythm_interval_path, "rhythm_episode", [{"start_seconds": item["start_seconds"], "end_seconds": item["end_seconds"], "label": item["kind"], "channel": "global"} for item in challenge.case("rhythm_episode").annotations()["episodes"] if item.get("present", True) and item["kind"] in ("psvt", "svarr")])
+    write_intervals(quality_interval_path, "signal_quality", [{"start_seconds": item["start_seconds"], "end_seconds": item["end_seconds"], "label": item["type"], "channel": "global"} for item in challenge.case("signal_quality").annotations()["artifact_intervals"]])
 
     rpeak_detections_doc = ss.load_detections(rpeak_path, target="r_peak")
     ppg_detections_doc = ss.load_detections(ppg_path, target="ppg_systolic_peak")
@@ -216,6 +233,9 @@ def main():
     assert len(rpeak_detections_doc) > 0
     assert len(ppg_detections_doc) > 0
     assert len(beat_class_doc) == len(rpeak_detections_doc)
+    rhythm_intervals_doc = ss.load_intervals(rhythm_interval_path, target="rhythm_episode")
+    quality_intervals_doc = ss.load_intervals(quality_interval_path, target="signal_quality")
+    assert len(rhythm_intervals_doc) == 1 and len(quality_intervals_doc) > 0
 
     rpeak_report = ss.compare_rpeaks(challenge.case("clean_ecg"), rpeak_detections_doc, cli_path=cli)
     assert rpeak_report.json["comparison"]["metrics"]["total"]["f1_score"] == 1
@@ -257,12 +277,17 @@ def main():
     assert hrv_report.json["rr"]["missing_count"] == 0
     assert "HRV Algorithm QA Score" in hrv_report.html
 
+    rhythm_interval_report = ss.score_rhythm_episodes(challenge.case("rhythm_episode"), rhythm_intervals_doc, cli_path=cli)
+    assert rhythm_interval_report.json["overall"]["time_f1_score"] == 1
+    quality_interval_report = ss.score_signal_quality(challenge.case("signal_quality"), quality_intervals_doc, cli_path=cli)
+    assert quality_interval_report.json["overall"]["time_f1_score"] == 1
+
     local_verify_dir = os.path.join(work_dir, "local_verify")
     local_report = ss.verify_package(archive_path, detections_dir, local_verify_dir)
     assert local_report.summary["success"]
     assert local_report.summary["package"]["package_id"] == "python_scoring_challenge"
-    assert local_report.summary["case_target_count"] == 7
-    assert local_report.summary["passed_case_target_count"] == 7
+    assert local_report.summary["case_target_count"] == 9
+    assert local_report.summary["passed_case_target_count"] == 9
     assert local_report.summary["policy"]["profile_id"] == "regression"
     assert local_report.summary["policy"]["passed"]
     assert read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_r_peak", "comparison.json"))["comparison"]["metrics"]["total"]["f1_score"] == 1
@@ -294,6 +319,13 @@ def main():
         assert python_motion[key] == cpp_motion[key]
     assert read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_ecg_beat_classification", "comparison.json"))["summary"]["micro_f1_score"] == 1
     assert read_json(os.path.join(local_verify_dir, "verification", "hrv_mild", "comparison.json"))["metric_pass_fraction"] == 1
+    local_rhythm_interval = read_json(os.path.join(local_verify_dir, "verification", "rhythm_episode", "comparison.json"))
+    local_quality_interval = read_json(os.path.join(local_verify_dir, "verification", "signal_quality", "comparison.json"))
+    assert local_rhythm_interval["overall"]["time_f1_score"] == 1
+    assert local_quality_interval["overall"]["time_f1_score"] == 1
+    for local_interval, direct_report in ((local_rhythm_interval, rhythm_interval_report.json), (local_quality_interval, quality_interval_report.json)):
+        for key in ("target", "options", "overall", "classes", "confusion_matrix", "matches", "false_positive_indices", "false_negative_indices"):
+            assert local_interval[key] == direct_report[key]
     assert next(item for item in local_report.summary["targets"] if item["target"] == "ecg_beat_classification")["confusion_matrix"]["labels"] == ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "unscored"]
     with open(os.path.join(local_verify_dir, "verification_report.html"), "r") as handle:
         assert "Synsigra Local Verification Report" in handle.read()

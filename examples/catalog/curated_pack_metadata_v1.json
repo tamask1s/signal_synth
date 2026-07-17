@@ -1,6 +1,6 @@
 {
   "catalog_id": "synsigra_verification_packs",
-  "catalog_version": "1.4",
+  "catalog_version": "1.5",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "metadata_type": "synsigra_curated_pack_catalog",
   "metadata_version": "synsigra_curated_pack_metadata_export_v1",
@@ -81,14 +81,13 @@
           "estimated_package_bytes": 5695400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
-          "reference_only_targets": [
-            "signal_quality"
-          ],
+          "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
           "scenario_id": "sq_baseline_powerline",
           "scoreable_targets": [
-            "r_peak"
+            "r_peak",
+            "signal_quality"
           ],
           "targets": [
             "r_peak",
@@ -137,7 +136,9 @@
       "description": "Deterministic ECG scenarios for R-peak detector smoke, rate and artifact stress testing.",
       "detector_output_schemas": [
         "detection_json_v1",
-        "detection_csv_v2"
+        "detection_csv_v2",
+        "interval_json_v1",
+        "interval_csv_v1"
       ],
       "difficulty": [
         "smoke",
@@ -180,16 +181,19 @@
           "scope": "local event-detection scoring smoke test",
           "target": "r_peak",
           "test_id": "TEST-PYTHON-SCORING-001"
-        }
-      ],
-      "messages": [
+        },
         {
-          "code": "REFERENCE_ONLY_TARGET",
-          "message": "signal_quality exports ground truth but has no local scoring policy.",
-          "path": "$.targets",
-          "severity": "warning"
+          "scope": "core signal-quality interval scoring smoke test",
+          "target": "signal_quality",
+          "test_id": "TEST-INTERVAL-SCORING-001"
+        },
+        {
+          "scope": "local signal-quality interval scoring parity test",
+          "target": "signal_quality",
+          "test_id": "TEST-PYTHON-SCORING-001"
         }
       ],
+      "messages": [],
       "metadata_type": "synsigra_curated_pack_metadata",
       "metadata_version": "synsigra_curated_pack_metadata_export_v1",
       "modality": [
@@ -238,13 +242,6 @@
         {
           "required": true,
           "role": "edf_bdf"
-        },
-        {
-          "required": true,
-          "role": "reference_ground_truth",
-          "targets": [
-            "signal_quality"
-          ]
         }
       ],
       "pack_id": "r_peak_stress_v1",
@@ -255,25 +252,7 @@
         "CI regression gates using exact synthetic R-peak ground truth"
       ],
       "recommended_profile": "stress",
-      "reference_only_targets": [
-        {
-          "case_count": 1,
-          "case_ids": [
-            "baseline_powerline"
-          ],
-          "description": "Generated signal-quality interval and artifact ground truth. No local scoring policy is defined yet.",
-          "reference_artifacts": [
-            "artifact_intervals",
-            "waveform_channels",
-            "annotations_json",
-            "case_summary_json"
-          ],
-          "score_type": "generated_reference_only",
-          "scoreable": false,
-          "support": "reference_only",
-          "target": "signal_quality"
-        }
-      ],
+      "reference_only_targets": [],
       "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
@@ -300,9 +279,26 @@
           "scoreable": true,
           "support": "local_scoring",
           "target": "r_peak"
+        },
+        {
+          "accepted_interval_formats": [
+            "interval_json_v1",
+            "interval_csv_v1"
+          ],
+          "case_count": 1,
+          "case_ids": [
+            "baseline_powerline"
+          ],
+          "default_minimum_iou": 0.1,
+          "description": "Signal-quality interval labels and channels scored against exact synthetic artifact ground truth.",
+          "primary_metric": "time_f1_score",
+          "score_type": "interval_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "signal_quality"
         }
       ],
-      "scoring_mode": "mixed",
+      "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
         "pack_fingerprint": "sha256:3baac9270fe98e1b999f44a93f461efac8e93ca312e134eb4362b9951c09a2eb",
@@ -337,7 +333,7 @@
           "bradycardia",
           "tachycardia"
         ],
-        "reference_only_before_job": true,
+        "reference_only_before_job": false,
         "scoreable_before_job": true
       },
       "version": "1.0"
@@ -516,14 +512,13 @@
           "estimated_package_bytes": 14970400,
           "estimated_peak_memory_bytes": 15448576,
           "estimated_waveform_csv_bytes": 7020256,
-          "reference_only_targets": [
-            "signal_quality"
-          ],
+          "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
           "scenario_id": "hrv_artifact_contamination",
           "scoreable_targets": [
-            "hrv"
+            "hrv",
+            "signal_quality"
           ],
           "targets": [
             "hrv",
@@ -571,7 +566,9 @@
       "deprecation_message": "",
       "description": "Deterministic five-minute ECG scenarios for time-domain, Poincare, spectral, exclusion-policy, and local scoring QA. The companion hrv_short_window_rejected.json is an expected validation failure.",
       "detector_output_schemas": [
-        "hrv_json_v1"
+        "hrv_json_v1",
+        "interval_json_v1",
+        "interval_csv_v1"
       ],
       "difficulty": [
         "benchmark"
@@ -622,16 +619,19 @@
           "scope": "local HRV user-output scoring smoke test",
           "target": "hrv",
           "test_id": "TEST-PYTHON-SCORING-001"
-        }
-      ],
-      "messages": [
+        },
         {
-          "code": "REFERENCE_ONLY_TARGET",
-          "message": "signal_quality exports ground truth but has no local scoring policy.",
-          "path": "$.targets",
-          "severity": "warning"
+          "scope": "core signal-quality interval scoring smoke test",
+          "target": "signal_quality",
+          "test_id": "TEST-INTERVAL-SCORING-001"
+        },
+        {
+          "scope": "local signal-quality interval scoring parity test",
+          "target": "signal_quality",
+          "test_id": "TEST-PYTHON-SCORING-001"
         }
       ],
+      "messages": [],
       "metadata_type": "synsigra_curated_pack_metadata",
       "metadata_version": "synsigra_curated_pack_metadata_export_v1",
       "modality": [
@@ -688,13 +688,6 @@
         {
           "required": true,
           "role": "rr_tachogram_csv"
-        },
-        {
-          "required": true,
-          "role": "reference_ground_truth",
-          "targets": [
-            "signal_quality"
-          ]
         }
       ],
       "pack_id": "hrv_v1",
@@ -705,25 +698,7 @@
         "Five-minute benchmark windows with deterministic replay"
       ],
       "recommended_profile": "benchmark",
-      "reference_only_targets": [
-        {
-          "case_count": 1,
-          "case_ids": [
-            "artifact_contamination"
-          ],
-          "description": "Generated signal-quality interval and artifact ground truth. No local scoring policy is defined yet.",
-          "reference_artifacts": [
-            "artifact_intervals",
-            "waveform_channels",
-            "annotations_json",
-            "case_summary_json"
-          ],
-          "score_type": "generated_reference_only",
-          "scoreable": false,
-          "support": "reference_only",
-          "target": "signal_quality"
-        }
-      ],
+      "reference_only_targets": [],
       "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
@@ -753,9 +728,26 @@
           "scoreable": true,
           "support": "local_scoring",
           "target": "hrv"
+        },
+        {
+          "accepted_interval_formats": [
+            "interval_json_v1",
+            "interval_csv_v1"
+          ],
+          "case_count": 1,
+          "case_ids": [
+            "artifact_contamination"
+          ],
+          "default_minimum_iou": 0.1,
+          "description": "Signal-quality interval labels and channels scored against exact synthetic artifact ground truth.",
+          "primary_metric": "time_f1_score",
+          "score_type": "interval_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "signal_quality"
         }
       ],
-      "scoring_mode": "mixed",
+      "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
         "pack_fingerprint": "sha256:84500c0091bf48ec951ff41e1fcc58d5e28a7c8326a5c604cdfcb67af61f1695",
@@ -789,7 +781,7 @@
           "rmssd",
           "pnn50"
         ],
-        "reference_only_before_job": true,
+        "reference_only_before_job": false,
         "scoreable_before_job": true
       },
       "version": "1.0"
@@ -1203,11 +1195,13 @@
           "scenario_id": "rhythm_psvt_episode",
           "scoreable_targets": [
             "r_peak",
-            "ecg_beat_classification"
+            "ecg_beat_classification",
+            "rhythm_episode"
           ],
           "targets": [
             "r_peak",
-            "ecg_beat_classification"
+            "ecg_beat_classification",
+            "rhythm_episode"
           ]
         },
         {
@@ -1299,6 +1293,13 @@
       "changelog": [
         {
           "changes": [
+            "Added PSVT rhythm-episode interval output and local scoring."
+          ],
+          "date": "2026-07-17",
+          "version": "1.1"
+        },
+        {
+          "changes": [
             "Initial beta curated rhythm pack with arrhythmia, transition, ectopy and pacing cases."
           ],
           "date": "2026-07-06",
@@ -1331,13 +1332,16 @@
       },
       "declared_targets": [
         "r_peak",
-        "ecg_beat_classification"
+        "ecg_beat_classification",
+        "rhythm_episode"
       ],
       "deprecation_message": "",
       "description": "Curated AFib, variable-conduction flutter, sustained SVT, PSVT transition, pause, ectopy-cadence, and paced rhythm cases.",
       "detector_output_schemas": [
         "detection_json_v1",
-        "detection_csv_v2"
+        "detection_csv_v2",
+        "interval_json_v1",
+        "interval_csv_v1"
       ],
       "difficulty": [
         "regression",
@@ -1388,6 +1392,16 @@
         {
           "scope": "local beat-classification scoring smoke test",
           "target": "ecg_beat_classification",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
+          "scope": "core rhythm-episode interval scoring smoke test",
+          "target": "rhythm_episode",
+          "test_id": "TEST-INTERVAL-SCORING-001"
+        },
+        {
+          "scope": "local rhythm-episode interval scoring parity test",
+          "target": "rhythm_episode",
           "test_id": "TEST-PYTHON-SCORING-001"
         }
       ],
@@ -1505,14 +1519,31 @@
           "scoreable": true,
           "support": "local_scoring",
           "target": "ecg_beat_classification"
+        },
+        {
+          "accepted_interval_formats": [
+            "interval_json_v1",
+            "interval_csv_v1"
+          ],
+          "case_count": 1,
+          "case_ids": [
+            "psvt_episode"
+          ],
+          "default_minimum_iou": 0.1,
+          "description": "Rhythm episode labels and boundaries scored against exact synthetic episode ground truth.",
+          "primary_metric": "time_f1_score",
+          "score_type": "interval_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "rhythm_episode"
         }
       ],
       "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
-        "pack_fingerprint": "sha256:7b4a7a2884ea028e922d284fc43845b6fd051e96fbfca0d80b0270dc05ba51fe",
+        "pack_fingerprint": "sha256:c65071a9b68514e99a3469080317c2b0d22113ecd89e97c7aaef6ca05dbf9db0",
         "pack_path": "../packs/ecg_rhythm_v1.json",
-        "source_content_sha256": "sha256:abd671f4f4c468d1f00cec35cf2914577f5b40cac6499271dfa8080dc0222d34"
+        "source_content_sha256": "sha256:34ae600611d0657d6c4af75ad7bc99714dd806d39b1062e9a5de74cdc3355a09"
       },
       "supported_threshold_profiles": [
         "smoke",
@@ -1522,7 +1553,8 @@
       ],
       "targets": [
         "r_peak",
-        "ecg_beat_classification"
+        "ecg_beat_classification",
+        "rhythm_episode"
       ],
       "threshold_profile_contract": {
         "policy_failure_exit_code": 1,
@@ -1545,7 +1577,7 @@
         "reference_only_before_job": false,
         "scoreable_before_job": true
       },
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "case_count": 5,
@@ -1565,13 +1597,13 @@
           "estimated_package_bytes": 5695400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
-          "reference_only_targets": [
-            "signal_quality"
-          ],
+          "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
           "scenario_id": "sq_baseline_powerline",
-          "scoreable_targets": [],
+          "scoreable_targets": [
+            "signal_quality"
+          ],
           "targets": [
             "signal_quality"
           ]
@@ -1584,13 +1616,13 @@
           "estimated_package_bytes": 5712400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
-          "reference_only_targets": [
-            "signal_quality"
-          ],
+          "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
           "scenario_id": "sq_dropout_saturation",
-          "scoreable_targets": [],
+          "scoreable_targets": [
+            "signal_quality"
+          ],
           "targets": [
             "signal_quality"
           ]
@@ -1603,13 +1635,13 @@
           "estimated_package_bytes": 5695400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
-          "reference_only_targets": [
-            "signal_quality"
-          ],
+          "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
           "scenario_id": "sq_lead_faults",
-          "scoreable_targets": [],
+          "scoreable_targets": [
+            "signal_quality"
+          ],
           "targets": [
             "signal_quality"
           ]
@@ -1622,13 +1654,12 @@
           "estimated_package_bytes": 6121400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
-          "reference_only_targets": [
-            "signal_quality"
-          ],
+          "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
           "scenario_id": "combined_ecg_ppg_quality",
           "scoreable_targets": [
+            "signal_quality",
             "ppg_systolic_peak"
           ],
           "targets": [
@@ -1644,20 +1675,27 @@
           "estimated_package_bytes": 6087400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
-          "reference_only_targets": [
-            "signal_quality"
-          ],
+          "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
           "scenario_id": "ecg_artifact_signal_quality_001",
-          "scoreable_targets": [],
+          "scoreable_targets": [
+            "signal_quality"
+          ],
           "targets": [
             "signal_quality"
           ]
         }
       ],
-      "catalog_scoring_mode": "mixed",
+      "catalog_scoring_mode": "local",
       "changelog": [
+        {
+          "changes": [
+            "Added local class-aware and channel-aware interval scoring with temporal and event metrics."
+          ],
+          "date": "2026-07-17",
+          "version": "1.1"
+        },
         {
           "changes": [
             "Initial beta reference-only signal-quality pack with baseline, powerline, dropout, saturation and lead-fault cases."
@@ -1697,6 +1735,8 @@
       "deprecation_message": "",
       "description": "ECG/PPG acquisition artifact scenarios with explicit interval ground truth.",
       "detector_output_schemas": [
+        "interval_json_v1",
+        "interval_csv_v1",
         "detection_json_v1",
         "detection_csv_v2"
       ],
@@ -1739,19 +1779,22 @@
       },
       "local_verifier_smoke_tests": [
         {
+          "scope": "core signal-quality interval scoring smoke test",
+          "target": "signal_quality",
+          "test_id": "TEST-INTERVAL-SCORING-001"
+        },
+        {
+          "scope": "local signal-quality interval scoring parity test",
+          "target": "signal_quality",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
           "scope": "local PPG event-detection scoring smoke test",
           "target": "ppg_systolic_peak",
           "test_id": "TEST-PYTHON-SCORING-001"
         }
       ],
-      "messages": [
-        {
-          "code": "REFERENCE_ONLY_TARGET",
-          "message": "signal_quality exports ground truth but has no local scoring policy.",
-          "path": "$.targets",
-          "severity": "warning"
-        }
-      ],
+      "messages": [],
       "metadata_type": "synsigra_curated_pack_metadata",
       "metadata_version": "synsigra_curated_pack_metadata_export_v1",
       "modality": [
@@ -1759,10 +1802,10 @@
       ],
       "name": "Signal Quality Pack v1",
       "not_recommended_for": [
-        "Local automated scoring without a project-specific quality metric",
         "Clinical signal-quality certification",
         "Clean detector smoke tests",
-        "Morphology-only validation"
+        "Morphology-only validation",
+        "Sample-level quality-mask scoring in the current release"
       ],
       "output_artifacts": [
         {
@@ -1800,25 +1843,29 @@
         {
           "required": true,
           "role": "edf_bdf"
-        },
-        {
-          "required": true,
-          "role": "reference_ground_truth",
-          "targets": [
-            "signal_quality"
-          ]
         }
       ],
       "pack_id": "signal_quality_v1",
       "recommended_for": [
-        "Signal-quality interval inspection and reference export",
+        "Local signal-quality interval scoring by artifact class and channel",
         "Artifact-aware detector stress scenario generation",
-        "Manual QA of artifact timing, channels and labels",
-        "Downstream scoring development that needs exact synthetic artifact intervals"
+        "Onset, offset, overlap and false-alarm regression testing",
+        "Manual QA of exact synthetic artifact timing, channels and labels"
       ],
       "recommended_profile": "stress",
-      "reference_only_targets": [
+      "reference_only_targets": [],
+      "release_date": "2026-07-06",
+      "release_status": "beta",
+      "sampling_rates_hz": [
+        500
+      ],
+      "schema_version": 1,
+      "scoreable_targets": [
         {
+          "accepted_interval_formats": [
+            "interval_json_v1",
+            "interval_csv_v1"
+          ],
           "case_count": 5,
           "case_ids": [
             "baseline_powerline",
@@ -1827,26 +1874,14 @@
             "combined_ecg_ppg",
             "full_artifact_demo"
           ],
-          "description": "Generated signal-quality interval and artifact ground truth. No local scoring policy is defined yet.",
-          "reference_artifacts": [
-            "artifact_intervals",
-            "waveform_channels",
-            "annotations_json",
-            "case_summary_json"
-          ],
-          "score_type": "generated_reference_only",
-          "scoreable": false,
-          "support": "reference_only",
+          "default_minimum_iou": 0.1,
+          "description": "Signal-quality interval labels and channels scored against exact synthetic artifact ground truth.",
+          "primary_metric": "time_f1_score",
+          "score_type": "interval_detection",
+          "scoreable": true,
+          "support": "local_scoring",
           "target": "signal_quality"
-        }
-      ],
-      "release_date": "2026-07-06",
-      "release_status": "beta",
-      "sampling_rates_hz": [
-        500
-      ],
-      "schema_version": 1,
-      "scoreable_targets": [
+        },
         {
           "accepted_detection_formats": [
             "detection_json_v1",
@@ -1865,12 +1900,12 @@
           "target": "ppg_systolic_peak"
         }
       ],
-      "scoring_mode": "mixed",
+      "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
-        "pack_fingerprint": "sha256:e06bf835eb6ab7a718ce0d50a37227915964d669cfddf79c312c193d3834ebac",
+        "pack_fingerprint": "sha256:83c2cd00b1829563a3fb74245ec7947fd54fdf09ad264f1ba70c8582e8c83123",
         "pack_path": "../packs/signal_quality_v1.json",
-        "source_content_sha256": "sha256:ce2cba471a33fc3f3ad97c07485505c609064456aa49839820ac0c11b6c1d253"
+        "source_content_sha256": "sha256:f2f718446a720b8872504965cb2dcc790ee150e0810defda041ab549af2839d6"
       },
       "supported_threshold_profiles": [
         "smoke",
@@ -1897,10 +1932,10 @@
           "powerline",
           "dropout"
         ],
-        "reference_only_before_job": true,
+        "reference_only_before_job": false,
         "scoreable_before_job": true
       },
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "case_count": 5,
@@ -1996,19 +2031,19 @@
           "estimated_package_bytes": 5695400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
-          "reference_only_targets": [
-            "signal_quality"
-          ],
+          "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
           "scenario_id": "sq_lead_faults",
-          "scoreable_targets": [],
+          "scoreable_targets": [
+            "signal_quality"
+          ],
           "targets": [
             "signal_quality"
           ]
         }
       ],
-      "catalog_scoring_mode": "reference_only",
+      "catalog_scoring_mode": "mixed",
       "changelog": [
         {
           "changes": [
@@ -2048,7 +2083,10 @@
       ],
       "deprecation_message": "",
       "description": "Curated conduction, ST-T/ischemia, hypertrophy, infarction, lead-fault, and acquisition-fault reference cases.",
-      "detector_output_schemas": [],
+      "detector_output_schemas": [
+        "interval_json_v1",
+        "interval_csv_v1"
+      ],
       "difficulty": [
         "stress"
       ],
@@ -2087,17 +2125,22 @@
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
         "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
       },
-      "local_verifier_smoke_tests": [],
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "core signal-quality interval scoring smoke test",
+          "target": "signal_quality",
+          "test_id": "TEST-INTERVAL-SCORING-001"
+        },
+        {
+          "scope": "local signal-quality interval scoring parity test",
+          "target": "signal_quality",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
       "messages": [
         {
           "code": "REFERENCE_ONLY_TARGET",
           "message": "morphology_assertions exports ground truth but has no local scoring policy.",
-          "path": "$.targets",
-          "severity": "warning"
-        },
-        {
-          "code": "REFERENCE_ONLY_TARGET",
-          "message": "signal_quality exports ground truth but has no local scoring policy.",
           "path": "$.targets",
           "severity": "warning"
         }
@@ -2155,8 +2198,7 @@
           "required": true,
           "role": "reference_ground_truth",
           "targets": [
-            "morphology_assertions",
-            "signal_quality"
+            "morphology_assertions"
           ]
         }
       ],
@@ -2167,7 +2209,7 @@
         "Stress input generation for morphology-sensitive algorithms",
         "Future morphology-scoring contract development"
       ],
-      "recommended_profile": null,
+      "recommended_profile": "stress",
       "reference_only_targets": [
         {
           "case_count": 4,
@@ -2188,23 +2230,6 @@
           "scoreable": false,
           "support": "reference_only",
           "target": "morphology_assertions"
-        },
-        {
-          "case_count": 1,
-          "case_ids": [
-            "lead_and_acquisition_faults"
-          ],
-          "description": "Generated signal-quality interval and artifact ground truth. No local scoring policy is defined yet.",
-          "reference_artifacts": [
-            "artifact_intervals",
-            "waveform_channels",
-            "annotations_json",
-            "case_summary_json"
-          ],
-          "score_type": "generated_reference_only",
-          "scoreable": false,
-          "support": "reference_only",
-          "target": "signal_quality"
         }
       ],
       "release_date": "2026-07-06",
@@ -2213,23 +2238,51 @@
         500
       ],
       "schema_version": 1,
-      "scoreable_targets": [],
-      "scoring_mode": "reference_only",
+      "scoreable_targets": [
+        {
+          "accepted_interval_formats": [
+            "interval_json_v1",
+            "interval_csv_v1"
+          ],
+          "case_count": 1,
+          "case_ids": [
+            "lead_and_acquisition_faults"
+          ],
+          "default_minimum_iou": 0.1,
+          "description": "Signal-quality interval labels and channels scored against exact synthetic artifact ground truth.",
+          "primary_metric": "time_f1_score",
+          "score_type": "interval_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "signal_quality"
+        }
+      ],
+      "scoring_mode": "mixed",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
         "pack_fingerprint": "sha256:e24fc01f4e5162326cfd312f657a38a88c34a54e7d4a1dfb1ab640f93cac58ef",
         "pack_path": "../packs/ecg_morphology_stress_v1.json",
         "source_content_sha256": "sha256:94f845fb9721c215458c4296a0171e014febb4c7bc03734ba4fc9d2292f14806"
       },
-      "supported_threshold_profiles": [],
+      "supported_threshold_profiles": [
+        "smoke",
+        "regression",
+        "stress",
+        "benchmark"
+      ],
       "targets": [
         "morphology_assertions",
         "signal_quality"
       ],
       "threshold_profile_contract": {
         "policy_failure_exit_code": 1,
-        "recommended_profile": null,
-        "supported_profiles": []
+        "recommended_profile": "stress",
+        "supported_profiles": [
+          "smoke",
+          "regression",
+          "stress",
+          "benchmark"
+        ]
       },
       "ui": {
         "primary_badges": [
@@ -2239,7 +2292,7 @@
           "ischemia"
         ],
         "reference_only_before_job": true,
-        "scoreable_before_job": false
+        "scoreable_before_job": true
       },
       "version": "1.0"
     },
@@ -2304,14 +2357,13 @@
           "estimated_package_bytes": 6121400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
-          "reference_only_targets": [
-            "signal_quality"
-          ],
+          "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
           "scenario_id": "combined_ecg_ppg_quality",
           "scoreable_targets": [
-            "ppg_systolic_peak"
+            "ppg_systolic_peak",
+            "signal_quality"
           ],
           "targets": [
             "ppg_systolic_peak",
@@ -2326,14 +2378,13 @@
           "estimated_package_bytes": 6087400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
-          "reference_only_targets": [
-            "signal_quality"
-          ],
+          "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
           "scenario_id": "ecg_artifact_signal_quality_001",
           "scoreable_targets": [
-            "ppg_systolic_peak"
+            "ppg_systolic_peak",
+            "signal_quality"
           ],
           "targets": [
             "ppg_systolic_peak",
@@ -2390,7 +2441,9 @@
       "description": "Linked ECG/PPG scenarios for pulse timing and peak detector QA.",
       "detector_output_schemas": [
         "detection_json_v1",
-        "detection_csv_v2"
+        "detection_csv_v2",
+        "interval_json_v1",
+        "interval_csv_v1"
       ],
       "difficulty": [
         "smoke"
@@ -2430,18 +2483,22 @@
           "scope": "local PPG event-detection scoring smoke test",
           "target": "ppg_systolic_peak",
           "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
+          "scope": "core signal-quality interval scoring smoke test",
+          "target": "signal_quality",
+          "test_id": "TEST-INTERVAL-SCORING-001"
+        },
+        {
+          "scope": "local signal-quality interval scoring parity test",
+          "target": "signal_quality",
+          "test_id": "TEST-PYTHON-SCORING-001"
         }
       ],
       "messages": [
         {
           "code": "REFERENCE_ONLY_TARGET",
           "message": "ecg_ppg_alignment exports ground truth but has no local scoring policy.",
-          "path": "$.targets",
-          "severity": "warning"
-        },
-        {
-          "code": "REFERENCE_ONLY_TARGET",
-          "message": "signal_quality exports ground truth but has no local scoring policy.",
           "path": "$.targets",
           "severity": "warning"
         }
@@ -2500,8 +2557,7 @@
           "required": true,
           "role": "reference_ground_truth",
           "targets": [
-            "ecg_ppg_alignment",
-            "signal_quality"
+            "ecg_ppg_alignment"
           ]
         }
       ],
@@ -2531,24 +2587,6 @@
           "scoreable": false,
           "support": "reference_only",
           "target": "ecg_ppg_alignment"
-        },
-        {
-          "case_count": 2,
-          "case_ids": [
-            "combined_dropout",
-            "artifact_reference"
-          ],
-          "description": "Generated signal-quality interval and artifact ground truth. No local scoring policy is defined yet.",
-          "reference_artifacts": [
-            "artifact_intervals",
-            "waveform_channels",
-            "annotations_json",
-            "case_summary_json"
-          ],
-          "score_type": "generated_reference_only",
-          "scoreable": false,
-          "support": "reference_only",
-          "target": "signal_quality"
         }
       ],
       "release_date": "2026-07-06",
@@ -2577,6 +2615,24 @@
           "scoreable": true,
           "support": "local_scoring",
           "target": "ppg_systolic_peak"
+        },
+        {
+          "accepted_interval_formats": [
+            "interval_json_v1",
+            "interval_csv_v1"
+          ],
+          "case_count": 2,
+          "case_ids": [
+            "combined_dropout",
+            "artifact_reference"
+          ],
+          "default_minimum_iou": 0.1,
+          "description": "Signal-quality interval labels and channels scored against exact synthetic artifact ground truth.",
+          "primary_metric": "time_f1_score",
+          "score_type": "interval_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "signal_quality"
         }
       ],
       "scoring_mode": "mixed",
@@ -2688,15 +2744,14 @@
           "estimated_package_bytes": 6121400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
-          "reference_only_targets": [
-            "signal_quality"
-          ],
+          "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
           "scenario_id": "combined_ecg_ppg_quality",
           "scoreable_targets": [
             "r_peak",
-            "ppg_systolic_peak"
+            "ppg_systolic_peak",
+            "signal_quality"
           ],
           "targets": [
             "r_peak",
@@ -2705,7 +2760,7 @@
           ]
         }
       ],
-      "catalog_scoring_mode": "mixed",
+      "catalog_scoring_mode": "local",
       "changelog": [
         {
           "changes": [
@@ -2757,7 +2812,9 @@
       "detector_output_schemas": [
         "detection_json_v1",
         "detection_csv_v2",
-        "hrv_json_v1"
+        "hrv_json_v1",
+        "interval_json_v1",
+        "interval_csv_v1"
       ],
       "difficulty": [
         "stress"
@@ -2814,16 +2871,19 @@
           "scope": "local PPG event-detection scoring smoke test",
           "target": "ppg_systolic_peak",
           "test_id": "TEST-PYTHON-SCORING-001"
-        }
-      ],
-      "messages": [
+        },
         {
-          "code": "REFERENCE_ONLY_TARGET",
-          "message": "signal_quality exports ground truth but has no local scoring policy.",
-          "path": "$.targets",
-          "severity": "warning"
+          "scope": "core signal-quality interval scoring smoke test",
+          "target": "signal_quality",
+          "test_id": "TEST-INTERVAL-SCORING-001"
+        },
+        {
+          "scope": "local signal-quality interval scoring parity test",
+          "target": "signal_quality",
+          "test_id": "TEST-PYTHON-SCORING-001"
         }
       ],
+      "messages": [],
       "metadata_type": "synsigra_curated_pack_metadata",
       "metadata_version": "synsigra_curated_pack_metadata_export_v1",
       "modality": [
@@ -2881,13 +2941,6 @@
         {
           "required": true,
           "role": "rr_tachogram_csv"
-        },
-        {
-          "required": true,
-          "role": "reference_ground_truth",
-          "targets": [
-            "signal_quality"
-          ]
         }
       ],
       "pack_id": "combined_worst_case_v1",
@@ -2898,25 +2951,7 @@
         "Release-candidate smoke tests for integrated verification tooling"
       ],
       "recommended_profile": "stress",
-      "reference_only_targets": [
-        {
-          "case_count": 1,
-          "case_ids": [
-            "combined_quality"
-          ],
-          "description": "Generated signal-quality interval and artifact ground truth. No local scoring policy is defined yet.",
-          "reference_artifacts": [
-            "artifact_intervals",
-            "waveform_channels",
-            "annotations_json",
-            "case_summary_json"
-          ],
-          "score_type": "generated_reference_only",
-          "scoreable": false,
-          "support": "reference_only",
-          "target": "signal_quality"
-        }
-      ],
+      "reference_only_targets": [],
       "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
@@ -2975,9 +3010,26 @@
           "scoreable": true,
           "support": "local_scoring",
           "target": "ppg_systolic_peak"
+        },
+        {
+          "accepted_interval_formats": [
+            "interval_json_v1",
+            "interval_csv_v1"
+          ],
+          "case_count": 1,
+          "case_ids": [
+            "combined_quality"
+          ],
+          "default_minimum_iou": 0.1,
+          "description": "Signal-quality interval labels and channels scored against exact synthetic artifact ground truth.",
+          "primary_metric": "time_f1_score",
+          "score_type": "interval_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "signal_quality"
         }
       ],
-      "scoring_mode": "mixed",
+      "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
         "pack_fingerprint": "sha256:4844b59a5e4de8c537ec46c3398ee820801f14a93613563ed85d940b3b747000",
@@ -3013,7 +3065,7 @@
           "artifact",
           "dropout"
         ],
-        "reference_only_before_job": true,
+        "reference_only_before_job": false,
         "scoreable_before_job": true
       },
       "version": "1.0"
@@ -3887,5 +3939,5 @@
   "release_set_id": "synsigra_curated_release_2026_07_06",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:61584b4a4e06c6e003f7a607a27068924b7a03c6ed327ee8661d8c41e144431d"
+  "source_catalog_sha256": "sha256:3c95741ecd5bbf7c6873368fb93ca759fa322bb1156ef1133bfd5c1e649ddc72"
 }

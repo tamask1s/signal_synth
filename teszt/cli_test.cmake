@@ -130,7 +130,7 @@ if(NOT pack_challenge_manifest MATCHES "\"package_id\":\"r_peak_stress_v1\"" OR 
     message(FATAL_ERROR "Pack challenge manifest contract failed")
 endif()
 file(READ "${pack_challenge_dir}/scoring_manifest.json" pack_challenge_scoring_manifest)
-if(NOT pack_challenge_scoring_manifest MATCHES "\"target\":\"r_peak\"" OR NOT pack_challenge_scoring_manifest MATCHES "\"generator_git_commit\":\"[^\"]+\"" OR NOT pack_challenge_scoring_manifest MATCHES "\"package_contract_version\":\"synsigra_challenge_package_v1\"" OR NOT pack_challenge_scoring_manifest MATCHES "\"score_command\":\"signal-synth compare r_peak cases/clean_70/scenario.json detections/clean_70.json --out verification/clean_70\"")
+if(NOT pack_challenge_scoring_manifest MATCHES "\"target\":\"r_peak\"" OR NOT pack_challenge_scoring_manifest MATCHES "\"generator_git_commit\":\"[^\"]+\"" OR NOT pack_challenge_scoring_manifest MATCHES "\"package_contract_version\":\"synsigra_challenge_package_v1\"" OR NOT pack_challenge_scoring_manifest MATCHES "\"interval_directory\":\"intervals\"" OR NOT pack_challenge_scoring_manifest MATCHES "\"hrv_output_directory\":\"hrv_outputs\"" OR NOT pack_challenge_scoring_manifest MATCHES "\"score_command\":\"signal-synth compare r_peak cases/clean_70/scenario.json detections/clean_70.json --out verification/clean_70\"")
     message(FATAL_ERROR "Pack challenge scoring manifest contract failed")
 endif()
 file(READ "${pack_challenge_dir}/cases/clean_70/case_summary.json" pack_challenge_case_summary)
