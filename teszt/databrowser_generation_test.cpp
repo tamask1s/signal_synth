@@ -80,8 +80,10 @@ namespace
             return render.parameter_draws.size() == 5u && render.record.beat_count() > 20u;
         if (document.scenario_id.find("dynamic_repolarization_") == 0)
             return render.record.dynamic_annotation_count() == render.record.beat_count() * 6u && render.record.episode_count() >= 1u;
-        if (document.scenario_id == "ppg_multichannel_optical_v4")
+        if (document.scenario_id == "ppg_multichannel_optical_v6")
             return render.ppg.channel_count() == 3u && std::string(render.ppg.channel_name(0)) == "ppg_green" && std::string(render.ppg.channel_name(1)) == "ppg_red" && std::string(render.ppg.channel_name(2)) == "ppg_infrared" && render.ppg.channel_annotation_count(0) > 0u && render.ppg.channel_annotation_count(1) > 0u && render.ppg.channel_annotation_count(2) > 0u;
+        if (document.scenario_id == "ppg_optical_databrowser_v6")
+            return render.ppg.channel_count() == 3u && render.ppg.optical_state_count() == render.ppg.pulse_count() && render.ppg.optical_config().oxygenation_episodes.size() == 1u;
         if (document.scenario_id.find("delineation_") == 0)
         {
             bool has_p = false;
@@ -101,7 +103,7 @@ namespace
             const bool expected_p = document.scenario_id != "delineation_afib";
             return render.record.beat_count() > 5u && has_qrs && has_j && has_t && has_p == expected_p;
         }
-        if (document.scenario_id == "wearable_databrowser_v5")
+        if (document.scenario_id == "wearable_databrowser_v6")
             return render.wearable.streams.size() == 3u
                 && render.wearable.stream(signal_synth::wearable_stream_ecg)->config.sample_rate_hz == 250u
                 && render.wearable.stream(signal_synth::wearable_stream_ppg)->config.sample_rate_hz == 100u
@@ -110,10 +112,10 @@ namespace
         return false;
     }
 
-    bool verify_wearable_script(const char* path)
+    bool verify_specialized_script(const char* path, const char* function_name)
     {
         const std::string script = read_text(path);
-        const std::string function = "GenerateWearableScenarioJSON(";
+        const std::string function = std::string(function_name) + '(';
         const std::size_t call = script.find(function);
         const std::size_t first = call == std::string::npos ? std::string::npos : script.find('{', call + function.size());
         if (first == std::string::npos || script.find("SaveVarToFile") == std::string::npos || script.find("DisplayData") == std::string::npos || script.find("SaveVarToFile") > script.find("DisplayData") || script.find(",, A2,") == std::string::npos || script.find(",, C,") != std::string::npos)
@@ -187,13 +189,15 @@ int main()
     ok &= check(verify_script("examples/databrowser/078_ECG_Dynamic_Repolarization.txt", 2), "dynamic_repolarization_script");
     ok &= check(verify_script("examples/databrowser/079_PPG_Multichannel_Optical.txt", 1), "ppg_multichannel_script");
     ok &= check(verify_script("examples/databrowser/080_ECG_Delineation_GroundTruth.txt", 4), "delineation_ground_truth_script");
-    ok &= check(verify_wearable_script("examples/databrowser/081_Wearable_Multirate_Timebase.txt"), "wearable_timebase_script");
+    ok &= check(verify_specialized_script("examples/databrowser/081_Wearable_Multirate_Timebase.txt", "GenerateWearableScenarioJSON"), "wearable_timebase_script");
+    ok &= check(verify_specialized_script("examples/databrowser/082_PPG_Optical_Physiology_V2.txt", "GeneratePPGOpticalScenarioJSON"), "ppg_optical_script");
 
     const std::string adapter = read_text("integrations/databrowser/SignalProc_RSPT.cpp");
     ok &= check(adapter.find("#include \"ecg_render.h\"") != std::string::npos && adapter.find("#include \"wearable_timebase.h\"") != std::string::npos && adapter.find("#include \"ecg_export.h\"") == std::string::npos, "adapter_uses_render_layer");
     ok &= check(adapter.find("pacing_event_count()") != std::string::npos && adapter.find("dynamic_annotation_count()") != std::string::npos && adapter.find("channel_name(ppg_channel)") != std::string::npos, "adapter_enumerates_new_truth");
     ok &= check(adapter.find("ecg_document_render_result render_result") != std::string::npos, "adapter_render_result_contract");
     ok &= check(adapter.find("GenerateWearableScenarioJSON") != std::string::npos && adapter.find("timestamp error") != std::string::npos && adapter.find("packet availability") != std::string::npos, "adapter_wearable_api");
+    ok &= check(adapter.find("GeneratePPGOpticalScenarioJSON") != std::string::npos && adapter.find("GT SpO2 target") != std::string::npos && adapter.find("GenerateSyntheticECGPPG") == std::string::npos, "adapter_optical_api");
 
     const std::string project = read_text("integrations/databrowser/SignalProc_RSPT.cbp");
     ok &= check(project.find("ecg_render.cpp") != std::string::npos && project.find("hrv_metrics.cpp") != std::string::npos && project.find("scenario_stress.cpp") != std::string::npos && project.find("wearable_timebase.cpp") != std::string::npos, "codeblocks_generation_dependencies");

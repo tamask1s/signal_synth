@@ -36,7 +36,8 @@ def main():
     source_dir = os.environ["SIGNAL_SYNTH_SOURCE_DIR"]
     schema = run_json([cli, "authoring", "schema"])
     assert schema["schema_version"] == 1
-    assert schema["scenario_schema_version"] == 5
+    assert schema["scenario_schema_version"] == 6
+    assert schema["supported_scenario_schema_versions"] == [2, 3, 4, 5, 6]
     assert len(schema["fields"]) >= 40
     assert len(schema["conditions"]) == 71
     assert len(schema["artifacts"]) == 20
@@ -54,6 +55,7 @@ def main():
     assert any(item["code"] == "AFIB" and item["support"] == "native" for item in schema["conditions"])
     assert any(item["code"] == "CLBBB" and item["support"] == "parameterized" for item in schema["conditions"])
     target_support = dict((item["name"], item["support"]) for item in schema["targets"])
+    assert target_support["ppg_optical"] == "local_scoring"
 
     templates = run_json([cli, "authoring", "templates"])
     assert templates["difficulty_values"] == ["smoke", "regression", "stress", "benchmark"]

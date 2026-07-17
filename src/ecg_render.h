@@ -68,6 +68,7 @@ namespace signal_synth
         ecg_morphology_report morphology;
         ppg_record ppg;
         signal_quality_waveforms signal_quality;
+        std::vector<unsigned long long> ppg_clipping_counts;
         wearable_timebase_record wearable;
         hrv_analysis_result hrv;
         ecg_ground_truth_metrics metrics;

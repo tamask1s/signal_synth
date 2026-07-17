@@ -183,15 +183,14 @@ namespace
 
     const double* rendered_ppg(const signal_synth::ecg_render_bundle& render)
     {
-        if (render.signal_quality.ppg.size() == render.ppg.sample_count())
-            return render.signal_quality.ppg.empty() ? 0 : &render.signal_quality.ppg[0];
+        if (!render.signal_quality.ppg_channels.empty() && render.signal_quality.ppg_channels[0].size() == render.ppg.sample_count())
+            return render.signal_quality.ppg_channels[0].empty() ? 0 : &render.signal_quality.ppg_channels[0][0];
         return render.ppg.samples();
     }
 
     const double* rendered_ppg_channel(const signal_synth::ecg_render_bundle& render, unsigned int channel)
     {
-        if (channel == 0)
-            return rendered_ppg(render);
+        if (channel < render.signal_quality.ppg_channels.size() && render.signal_quality.ppg_channels[channel].size() == render.ppg.sample_count()) return render.signal_quality.ppg_channels[channel].empty() ? 0 : &render.signal_quality.ppg_channels[channel][0];
         return render.ppg.channel_samples(channel);
     }
 
@@ -219,6 +218,45 @@ namespace
                 output << ',' << normalized_zero(render.signal_quality.accelerometer[sample]);
             output << '\n';
         }
+        return output.str();
+    }
+
+    int ppg_channel_index(const signal_synth::ppg_record& record, signal_synth::ppg_channel_kind kind)
+    {
+        for (unsigned int channel = 0; channel < record.channel_count(); ++channel) if (record.channel_kind(channel) == kind) return static_cast<int>(channel);
+        return -1;
+    }
+
+    std::string ppg_optical_latent_csv(const signal_synth::ecg_render_bundle& render)
+    {
+        const int red = ppg_channel_index(render.ppg, signal_synth::ppg_channel_red);
+        const int infrared = ppg_channel_index(render.ppg, signal_synth::ppg_channel_infrared);
+        if (red < 0 || infrared < 0) return std::string();
+        std::ostringstream output; output.imbue(std::locale::classic()); output << std::setprecision(std::numeric_limits<double>::max_digits10)
+            << "sample_index,time_seconds,red_latent_au,infrared_latent_au,red_sensor_au,infrared_sensor_au\n";
+        const double* red_latent = render.ppg.channel_samples(static_cast<unsigned int>(red));
+        const double* infrared_latent = render.ppg.channel_samples(static_cast<unsigned int>(infrared));
+        const double* red_sensor = rendered_ppg_channel(render, static_cast<unsigned int>(red));
+        const double* infrared_sensor = rendered_ppg_channel(render, static_cast<unsigned int>(infrared));
+        for (unsigned int sample = 0; sample < render.ppg.sample_count(); ++sample)
+            output << sample << ',' << static_cast<double>(sample) / render.ppg.sampling_rate_hz() << ',' << red_latent[sample] << ',' << infrared_latent[sample] << ',' << red_sensor[sample] << ',' << infrared_sensor[sample] << '\n';
+        return output.str();
+    }
+
+    std::string ppg_optical_truth_json(const signal_synth::ecg_render_bundle& render)
+    {
+        const signal_synth::ppg_optical_config& config = render.ppg.optical_config();
+        std::ostringstream output; output.imbue(std::locale::classic()); output << std::setprecision(std::numeric_limits<double>::max_digits10)
+            << "{\"schema_version\":1,\"contract\":\"synsigra_ppg_optical_truth_v2\",\"profile_id\":" << json_string(config.profile_id) << ",\"calibration\":{\"id\":" << json_string(config.calibration_id)
+            << ",\"equation\":\"spo2_percent = intercept_percent + slope_percent * ratio_of_ratios\",\"intercept_percent\":" << config.calibration_intercept_percent << ",\"slope_percent\":" << config.calibration_slope_percent
+            << ",\"minimum_spo2_percent\":" << config.minimum_spo2_percent << ",\"maximum_spo2_percent\":" << config.maximum_spo2_percent << "},\"units\":{\"optical_amplitude\":\"a.u.\",\"perfusion_index\":\"%\",\"oxygen_saturation\":\"%\",\"time\":\"s\"},\"optical_equations\":{\"perfusion_index\":\"100 * AC / DC\",\"ratio_of_ratios\":\"(AC_red / DC_red) / (AC_infrared / DC_infrared)\"},\"channels\":[";
+        for (unsigned int channel = 1u; channel < render.ppg.channel_count(); ++channel)
+            output << (channel == 1u ? "" : ",") << "{\"name\":" << json_string(render.ppg.channel_name(channel)) << ",\"dc_au\":" << render.ppg.channel_dc_au(channel) << ",\"sensor_gain\":" << render.ppg.channel_sensor_gain(channel) << ",\"delay_ms\":" << render.ppg.channel_delay_ms(channel) << ",\"noise_std_au\":" << render.ppg.channel_noise_std_au(channel) << ",\"ambient_offset_au\":" << render.ppg.channel_ambient_offset_au(channel) << ",\"motion_sensitivity\":" << render.ppg.channel_motion_sensitivity(channel) << ",\"ambient_sensitivity\":" << render.ppg.channel_ambient_sensitivity(channel) << ",\"crosstalk_ratio\":" << render.ppg.channel_crosstalk_ratio(channel) << ",\"minimum_output_au\":" << render.ppg.channel_minimum_output_au(channel) << ",\"maximum_output_au\":" << render.ppg.channel_maximum_output_au(channel) << ",\"quantization_bits\":" << render.ppg.channel_quantization_bits(channel) << ",\"seed\":" << json_u64_string(render.ppg.channel_seed(channel)) << ",\"clipping_count\":" << (channel < render.ppg_clipping_counts.size() ? render.ppg_clipping_counts[channel] : 0u) << '}';
+        output << "],\"pulses\":[";
+        const signal_synth::ppg_optical_pulse_state* states = render.ppg.optical_states();
+        for (unsigned int i = 0; states && i < render.ppg.optical_state_count(); ++i)
+            output << (i ? "," : "") << "{\"ecg_beat_index\":\"" << states[i].ecg_beat_index << "\",\"time_seconds\":" << states[i].time_seconds << ",\"spo2_percent\":" << states[i].spo2_percent << ",\"ratio_of_ratios\":" << states[i].ratio_of_ratios << ",\"red_dc_au\":" << states[i].red_dc_au << ",\"red_ac_au\":" << states[i].red_ac_au << ",\"red_perfusion_index_percent\":" << states[i].red_perfusion_index_percent << ",\"infrared_dc_au\":" << states[i].infrared_dc_au << ",\"infrared_ac_au\":" << states[i].infrared_ac_au << ",\"infrared_perfusion_index_percent\":" << states[i].infrared_perfusion_index_percent << ",\"calibration_in_range\":" << (states[i].calibration_in_range ? "true" : "false") << ",\"generated\":" << (states[i].generated ? "true" : "false") << ",\"valid_for_measurement\":" << (states[i].valid_for_measurement ? "true" : "false") << '}';
+        output << "],\"claim_boundary\":\"Engineering optical simulation only; no clinical SpO2 or pulse-oximeter validation claim.\"}";
         return output.str();
     }
 
@@ -353,7 +391,7 @@ namespace
         return output.str();
     }
 
-    void write_artifact_channels(std::ostringstream& output, const signal_synth::signal_quality_artifact_interval& artifact)
+    void write_artifact_channels(std::ostringstream& output, const signal_synth::signal_quality_artifact_interval& artifact, const signal_synth::ppg_record& ppg)
     {
         output << '[';
         bool first = true;
@@ -368,12 +406,12 @@ namespace
             }
         }
         if (artifact.ppg)
-        {
-            if (!first)
-                output << ',';
-            output << "\"ppg_green\"";
-            first = false;
-        }
+            for (unsigned int channel = 0; channel < ppg.channel_count(); ++channel)
+            {
+                if (!first) output << ',';
+                output << json_string(ppg.channel_name(channel));
+                first = false;
+            }
         if (artifact.accelerometer_reference)
         {
             if (!first)
@@ -680,7 +718,7 @@ namespace
                    << ",\"severity\":" << artifact.severity
                    << ",\"seed\":" << artifact.seed
                    << ",\"channels\":";
-            write_artifact_channels(output, artifact);
+            write_artifact_channels(output, artifact, render.ppg);
             output << '}';
         }
         output << "]}";
@@ -808,10 +846,18 @@ namespace
             output << ",{\"name\":" << json_string(render.ppg.channel_name(channel))
                    << ",\"unit\":\"a.u.\""
                    << ",\"role\":\"optical_ppg\""
-                   << ",\"amplitude_gain\":" << render.ppg.channel_amplitude_gain(channel)
-                   << ",\"baseline_au\":" << render.ppg.channel_baseline_au(channel)
+                   << ",\"dc_au\":" << render.ppg.channel_dc_au(channel)
+                   << ",\"sensor_gain\":" << render.ppg.channel_sensor_gain(channel)
                    << ",\"delay_ms\":" << render.ppg.channel_delay_ms(channel)
                    << ",\"noise_std_au\":" << render.ppg.channel_noise_std_au(channel)
+                   << ",\"ambient_offset_au\":" << render.ppg.channel_ambient_offset_au(channel)
+                   << ",\"motion_sensitivity\":" << render.ppg.channel_motion_sensitivity(channel)
+                   << ",\"ambient_sensitivity\":" << render.ppg.channel_ambient_sensitivity(channel)
+                   << ",\"crosstalk_ratio\":" << render.ppg.channel_crosstalk_ratio(channel)
+                   << ",\"minimum_output_au\":" << render.ppg.channel_minimum_output_au(channel)
+                   << ",\"maximum_output_au\":" << render.ppg.channel_maximum_output_au(channel)
+                   << ",\"quantization_bits\":" << render.ppg.channel_quantization_bits(channel)
+                   << ",\"clipping_count\":" << (channel < render.ppg_clipping_counts.size() ? render.ppg_clipping_counts[channel] : 0u)
                    << ",\"seed\":" << render.ppg.channel_seed(channel) << '}';
         if (!render.signal_quality.accelerometer.empty())
             output << ",{\"name\":\"accel_motion\",\"unit\":\"g\",\"role\":\"motion_reference\"}";
@@ -996,7 +1042,7 @@ namespace
         {
             const signal_synth::signal_quality_artifact_interval& artifact = render.signal_quality.artifacts[i];
             std::ostringstream channels;
-            write_artifact_channels(channels, artifact);
+            write_artifact_channels(channels, artifact, render.ppg);
             output << "<tr><td>" << signal_synth::signal_quality_artifact_type_name(artifact.type)
                    << "</td><td>" << artifact.start_seconds
                    << "</td><td>" << artifact.end_seconds
@@ -1119,6 +1165,11 @@ namespace signal_synth
         add_artifact(fresh, "realism_metrics.json", "application/json", realism_analysis_json(realism));
         add_artifact(fresh, "realism_metrics.csv", "text/csv", realism_analysis_csv(realism));
         add_artifact(fresh, "realism_report.html", "text/html", realism_analysis_html(realism));
+        if (render.ppg.optical_enabled())
+        {
+            add_artifact(fresh, "ppg_optical_latent.csv", "text/csv", ppg_optical_latent_csv(render));
+            add_artifact(fresh, "ppg_optical_truth.json", "application/json", ppg_optical_truth_json(render));
+        }
         add_artifact(fresh, "annotations.json", "application/json", annotations_json(render));
         add_artifact(fresh, "rr_tachogram.csv", "text/csv", rr_tachogram_csv(render));
         add_artifact(fresh, "hrv_metrics.json", "application/json", hrv_metrics_json(render));

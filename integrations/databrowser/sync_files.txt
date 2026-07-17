@@ -38,3 +38,4 @@ examples/databrowser/078_ECG_Dynamic_Repolarization.txt|SigForge/Scripts/078_ECG
 examples/databrowser/079_PPG_Multichannel_Optical.txt|SigForge/Scripts/079_PPG_Multichannel_Optical.txt
 examples/databrowser/080_ECG_Delineation_GroundTruth.txt|SigForge/Scripts/080_ECG_Delineation_GroundTruth.txt
 examples/databrowser/081_Wearable_Multirate_Timebase.txt|SigForge/Scripts/081_Wearable_Multirate_Timebase.txt
+examples/databrowser/082_PPG_Optical_Physiology_V2.txt|SigForge/Scripts/082_PPG_Optical_Physiology_V2.txt

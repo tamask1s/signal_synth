@@ -35,7 +35,7 @@ int main()
     bool ok = true;
     const std::string metadata = signal_synth::scenario_authoring_metadata_json();
     const std::string templates = signal_synth::scenario_template_catalog_json();
-    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v10"
+    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v11"
         && metadata.find("\"condition_count\"") == std::string::npos
         && metadata.find("\"code\":\"NORM\"") != std::string::npos
         && metadata.find("\"path\":\"$.hrv.target_sdnn_seconds\"") != std::string::npos
@@ -45,12 +45,15 @@ int main()
         && metadata.find("\"path\":\"$.output.compact\"") != std::string::npos
         && metadata.find("\"path\":\"$.wearable.ppg.clock_drift_ppm\"") != std::string::npos
         && metadata.find("\"path\":\"$.ppg.clock_drift_ppm\"") == std::string::npos
-        && metadata.find("\"scenario_schema_version\":5") != std::string::npos
+        && metadata.find("\"scenario_schema_version\":6") != std::string::npos
+        && metadata.find("\"path\":\"$.ppg.optical.profile_id\"") != std::string::npos
+        && metadata.find("\"ppg_oxygenation_episode_item_fields\"") != std::string::npos
         && metadata.find("\"type\":\"ppg_motion_periodic\"") != std::string::npos
         && metadata.find("\"type\":\"ppg_sensor_saturation\"") != std::string::npos
         && metadata.find("\"name\":\"ppg_systolic_peak\"") != std::string::npos
         && metadata.find("\"name\":\"ppg_pulse_onset\"") != std::string::npos
-        && metadata.find("\"name\":\"ecg_delineation\"") != std::string::npos, "metadata_contract");
+        && metadata.find("\"name\":\"ecg_delineation\"") != std::string::npos
+        && metadata.find("\"name\":\"ppg_optical\",\"support\":\"local_scoring\"") != std::string::npos, "metadata_contract");
     ok &= check(std::string(signal_synth::scenario_template_catalog_version()) == "synsigra_templates_v4"
         && templates.find("\"template_id\":\"ecg_rpeak_clean\"") != std::string::npos
         && templates.find("\"template_id\":\"ecg_hrv_benchmark\"") != std::string::npos
@@ -64,6 +67,7 @@ int main()
         && signal_synth::scenario_target_support_for_name("rhythm_episode") == signal_synth::scenario_target_local_scoring
         && signal_synth::scenario_target_support_for_name("morphology_assertions") == signal_synth::scenario_target_local_scoring
         && signal_synth::scenario_target_support_for_name("ecg_ppg_alignment") == signal_synth::scenario_target_local_scoring
+        && signal_synth::scenario_target_support_for_name("ppg_optical") == signal_synth::scenario_target_local_scoring
         && signal_synth::scenario_target_support_for_name("unknown") == signal_synth::scenario_target_unsupported, "target_support_contract");
 
     signal_synth::ecg_scenario_document clean;

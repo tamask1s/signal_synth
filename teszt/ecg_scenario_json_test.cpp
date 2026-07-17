@@ -74,7 +74,7 @@ int main()
     ok &= check(rejects_without_mutation("[]", signal_synth::ecg_json_type), "reject_root_type");
     ok &= check(rejects_without_mutation("{", signal_synth::ecg_json_syntax), "reject_truncated_json");
     ok &= check(rejects_without_mutation(input + "x", signal_synth::ecg_json_syntax), "reject_trailing_data");
-    ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":6"), signal_synth::ecg_json_schema_version), "reject_schema_version");
+    ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":7"), signal_synth::ecg_json_schema_version), "reject_schema_version");
     ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":1,\"schema_version\":1"), signal_synth::ecg_json_duplicate_key), "reject_duplicate_key");
     ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":1,\"unknown\":0"), signal_synth::ecg_json_unknown_field), "reject_unknown_field");
     ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"name\":\"Clean ECG\","), 19, ""), signal_synth::ecg_json_missing_field), "reject_missing_field");

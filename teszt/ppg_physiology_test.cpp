@@ -116,24 +116,25 @@ int main()
     ok &= check(!signal_synth::ppg_generator(overlap).valid(), "overlapping_perfusion_rejected");
 
     signal_synth::ecg_scenario_document document;
-    document.schema_version = 4;
+    document.schema_version = 6;
     document.scenario_id = "ppg_physiology_v2";
     document.name = "PPG physiology v2";
     document.duration_seconds = 40.0;
     document.ecg.set_sampling_rate_hz(250);
     document.ppg = config;
     document.ppg.pac_pulse_amplitude_scale = 0.6;
-    document.ppg.red.enabled = true;
-    document.ppg.red.amplitude_gain = 0.75;
-    document.ppg.red.baseline_au = 0.12;
-    document.ppg.red.delay_ms = 10.0;
-    document.ppg.red.noise_std_au = 0.0005;
-    document.ppg.infrared.enabled = true;
-    document.ppg.infrared.amplitude_gain = 1.25;
-    document.ppg.infrared.baseline_au = 0.18;
-    document.ppg.infrared.delay_ms = 16.0;
+    document.ppg.optical.enabled = true;
+    document.ppg.optical.red.sensor_gain = 0.75;
+    document.ppg.optical.red.dc_au = 0.12;
+    document.ppg.optical.red.delay_ms = 10.0;
+    document.ppg.optical.red.noise_std_au = 0.0005;
+    document.ppg.optical.infrared.sensor_gain = 1.25;
+    document.ppg.optical.infrared.dc_au = 0.18;
+    document.ppg.optical.infrared.delay_ms = 16.0;
     document.physiology.respiration_frequency_hz = 0.22;
     document.physiology.ppg_amplitude_modulation_ratio = 0.15;
+    document.wearable.ecg.enabled = true;
+    document.wearable.ecg.sample_rate_hz = 250;
     signal_synth::ecg_scenario_json_result identity;
     signal_synth::ecg_scenario_document parsed;
     signal_synth::ecg_scenario_json_result repeated_identity;
@@ -142,8 +143,9 @@ int main()
         && identity.document_fingerprint == repeated_identity.document_fingerprint
         && parsed.ppg.perfusion_episodes.size() == 1u
         && parsed.ppg.pac_pulse_amplitude_scale == 0.6
-        && parsed.ppg.red.enabled
-        && parsed.ppg.infrared.enabled, "schema_v4_roundtrip");
+        && parsed.ppg.optical.enabled
+        && parsed.ppg.optical.red.sensor_gain == 0.75
+        && parsed.ppg.optical.infrared.sensor_gain == 1.25, "schema_v6_roundtrip");
     signal_synth::ecg_scenario_document changed_identity_document = document;
     ++changed_identity_document.ppg.seed;
     signal_synth::ecg_scenario_json_result changed_identity;
@@ -154,7 +156,7 @@ int main()
     signal_synth::ecg_scenario_json_result old_schema;
     ok &= check(!signal_synth::write_ecg_scenario_json(document, old_schema), "older_schema_rejects_v2_controls");
 
-    document.schema_version = 4;
+    document.schema_version = 6;
     signal_synth::ecg_render_bundle render;
     signal_synth::ecg_document_render_result result;
     signal_synth::ecg_export_result export_result;
@@ -169,8 +171,8 @@ int main()
     ok &= check(signal_synth::render_ecg_document(no_respiratory_amplitude, no_respiratory_render, result)
         && no_respiratory_render.ppg.pulse_count() == render.ppg.pulse_count(), "respiratory_reference_render");
     bool respiratory_waveform_difference = false;
-    for (std::size_t i = 0; i < render.signal_quality.ppg.size(); ++i)
-        if (render.signal_quality.ppg[i] != no_respiratory_render.signal_quality.ppg[i])
+    for (std::size_t i = 0; i < render.signal_quality.ppg_channels[0].size(); ++i)
+        if (render.signal_quality.ppg_channels[0][i] != no_respiratory_render.signal_quality.ppg_channels[0][i])
         {
             respiratory_waveform_difference = true;
             break;
@@ -200,8 +202,8 @@ int main()
         const signal_synth::ppg_annotation& annotation = render.ppg.annotations()[i];
         if (annotation.source == signal_synth::ppg_fiducial_measurement)
         {
-            ok &= annotation.sample_index < render.signal_quality.ppg.size()
-                && annotation.value_au == render.signal_quality.ppg[static_cast<std::size_t>(annotation.sample_index)];
+            ok &= annotation.sample_index < render.signal_quality.ppg_channels[0].size()
+                && annotation.value_au == render.signal_quality.ppg_channels[0][static_cast<std::size_t>(annotation.sample_index)];
             measured_onsets += annotation.kind == signal_synth::ppg_pulse_onset ? 1u : 0u;
             measured_peaks += annotation.kind == signal_synth::ppg_systolic_peak ? 1u : 0u;
             measured_offsets += annotation.kind == signal_synth::ppg_pulse_offset ? 1u : 0u;

@@ -63,5 +63,5 @@ patient physiology validation, or medical-device conformity evidence.
   delay/gain behavior, channel-specific samples and invalid channel settings.
 - `ppg_physiology_test` covers schema-v4 JSON roundtrip, render, metadata,
   annotations, waveform CSV, WFDB and EDF/BDF metadata contracts.
-- `examples/scenarios/ppg_multichannel_optical_v4.json` is a runnable scenario
+- `examples/scenarios/ppg_multichannel_optical_v6.json` is the migrated runnable scenario
   for manual and SaaS integration checks.

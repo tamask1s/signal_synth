@@ -1,32 +1,22 @@
 // Shared-timeline ECG and PPG with linked construction/measured ground truth.
 // annotation_output: 1 markers, 2 annotation channels, 3 none.
 
-#define SAMPLING_RATE 500
-#define NUMBER_OF_SAMPLES 15000
 #define OUTPUT_BASE synthetic_ecg_ppg
 
 DataDelete();
 
-GenerateSyntheticECGPPG(synthetic_ecg_ppg, NUMBER_OF_SAMPLES, SAMPLING_RATE,
+GenerateECGScenarioJSON(synthetic_ecg_ppg,
 {
-    "ecg": {
-        "heart_rate_bpm": 72,
-        "atrial_rate_bpm": 72,
-        "rr_variability_seconds": 0.035,
-        "minimum_rr_seconds": 0.25,
-        "maximum_rr_seconds": 3.0,
-        "seed": 123456789,
-        "p_duration_ms": 100,
-        "pr_interval_ms": 160,
-        "qrs_duration_ms": 90,
-        "qtc_ms": 410,
-        "qt_correction_type": 2,
-        "p_amplitude_mv": 0.12,
-        "q_amplitude_mv": -0.15,
-        "r_amplitude_mv": 1.0,
-        "s_amplitude_mv": -0.28,
-        "t_amplitude_mv": 0.30
-    },
+    "schema_version": 2,
+    "scenario_id": "ecg_ppg_ground_truth",
+    "name": "ECG PPG ground truth",
+    "description": "Shared-timeline ECG and green PPG with exact annotations.",
+    "author": "Synsigra",
+    "tags": ["ecg", "ground_truth", "ppg"],
+    "duration_seconds": 30,
+    "sample_rate_hz": 500,
+    "seed": 123456789,
+    "ecg": {"heart_rate_bpm": 72, "rr_variability_seconds": 0.035, "ectopic_every_n_beats": 0, "second_degree_av_pattern": "unspecified", "q_wave_territory": "unspecified", "episode_type": "none", "episode_start_seconds": 2, "episode_duration_seconds": 4, "episode_rate_bpm": 170, "fidelity_policy": "allow_parameterized", "conditions": [{"code": "NORM", "severity": 1}]},
     "ppg": {
         "enabled": true,
         "pulse_delay_ms": 180,

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <vector>
 
 namespace signal_synth
@@ -42,13 +43,51 @@ namespace signal_synth
     {
         ppg_optical_channel_config();
 
-        bool enabled;
-        double amplitude_gain;
-        double baseline_au;
+        double dc_au;
+        double sensor_gain;
         double delay_ms;
         double noise_std_au;
+        double ambient_offset_au;
+        double motion_sensitivity;
+        double ambient_sensitivity;
+        double crosstalk_ratio;
+        double minimum_output_au;
+        double maximum_output_au;
+        unsigned int quantization_bits;
         unsigned long long seed;
     };
+
+    struct ppg_oxygenation_episode_config
+    {
+        ppg_oxygenation_episode_config();
+
+        double start_seconds;
+        double duration_seconds;
+        double transition_seconds;
+        double target_spo2_percent;
+    };
+
+    struct ppg_optical_config
+    {
+        ppg_optical_config();
+
+        bool enabled;
+        std::string profile_id;
+        std::string calibration_id;
+        double calibration_intercept_percent;
+        double calibration_slope_percent;
+        double minimum_spo2_percent;
+        double maximum_spo2_percent;
+        double baseline_spo2_percent;
+        double infrared_perfusion_index_percent;
+        ppg_optical_channel_config red;
+        ppg_optical_channel_config infrared;
+        std::vector<ppg_oxygenation_episode_config> oxygenation_episodes;
+    };
+
+    unsigned int ppg_optical_profile_count();
+    const char* ppg_optical_profile_id(unsigned int index);
+    bool configure_ppg_optical_profile(const char* profile_id, ppg_optical_config& output);
 
     struct ppg_perfusion_episode_config
     {
@@ -89,9 +128,27 @@ namespace signal_synth
         double pvc_pulse_amplitude_scale;
         double paced_pulse_amplitude_scale;
         unsigned long long seed;
-        ppg_optical_channel_config red;
-        ppg_optical_channel_config infrared;
+        ppg_optical_config optical;
         std::vector<ppg_perfusion_episode_config> perfusion_episodes;
+    };
+
+    struct ppg_optical_pulse_state
+    {
+        ppg_optical_pulse_state();
+
+        unsigned long long ecg_beat_index;
+        double time_seconds;
+        double spo2_percent;
+        double ratio_of_ratios;
+        double red_dc_au;
+        double red_ac_au;
+        double red_perfusion_index_percent;
+        double infrared_dc_au;
+        double infrared_ac_au;
+        double infrared_perfusion_index_percent;
+        bool calibration_in_range;
+        bool generated;
+        bool valid_for_measurement;
     };
 
     struct ppg_annotation
@@ -143,10 +200,17 @@ namespace signal_synth
         const char* channel_name(unsigned int channel_index) const;
         const char* channel_unit(unsigned int channel_index) const;
         const double* channel_samples(unsigned int channel_index) const;
-        double channel_amplitude_gain(unsigned int channel_index) const;
-        double channel_baseline_au(unsigned int channel_index) const;
+        double channel_dc_au(unsigned int channel_index) const;
+        double channel_sensor_gain(unsigned int channel_index) const;
         double channel_delay_ms(unsigned int channel_index) const;
         double channel_noise_std_au(unsigned int channel_index) const;
+        double channel_ambient_offset_au(unsigned int channel_index) const;
+        double channel_motion_sensitivity(unsigned int channel_index) const;
+        double channel_ambient_sensitivity(unsigned int channel_index) const;
+        double channel_crosstalk_ratio(unsigned int channel_index) const;
+        double channel_minimum_output_au(unsigned int channel_index) const;
+        double channel_maximum_output_au(unsigned int channel_index) const;
+        unsigned int channel_quantization_bits(unsigned int channel_index) const;
         unsigned long long channel_seed(unsigned int channel_index) const;
         unsigned int channel_annotation_count(unsigned int channel_index) const;
         const ppg_annotation* channel_annotations(unsigned int channel_index) const;
@@ -154,6 +218,10 @@ namespace signal_synth
         const ppg_annotation* annotations() const;
         unsigned int pulse_count() const;
         const ppg_pulse_annotation* pulses() const;
+        bool optical_enabled() const;
+        const ppg_optical_config& optical_config() const;
+        unsigned int optical_state_count() const;
+        const ppg_optical_pulse_state* optical_states() const;
 
     private:
         struct implementation;
@@ -161,6 +229,7 @@ namespace signal_synth
         friend class ppg_generator;
         friend bool remeasure_ppg_systolic_peaks(const double* samples, unsigned int sample_count, ppg_record& record);
         friend bool remeasure_ppg_fiducials(const double* samples, unsigned int sample_count, ppg_record& record);
+        friend bool remeasure_ppg_channel_fiducials(unsigned int channel_index, const double* samples, unsigned int sample_count, ppg_record& record);
     };
 
     class ppg_generator
@@ -181,4 +250,5 @@ namespace signal_synth
 
     bool remeasure_ppg_systolic_peaks(const double* samples, unsigned int sample_count, ppg_record& record);
     bool remeasure_ppg_fiducials(const double* samples, unsigned int sample_count, ppg_record& record);
+    bool remeasure_ppg_channel_fiducials(unsigned int channel_index, const double* samples, unsigned int sample_count, ppg_record& record);
 }

@@ -88,6 +88,13 @@ class ChallengeCase(object):
     def realism_report_path(self):
         return self.file_path("realism_report_html")
 
+    def ppg_optical_latent(self):
+        return read_waveform_csv(self.file_path("ppg_optical_latent_csv"))
+
+    def ppg_optical_truth(self):
+        with open(self.file_path("ppg_optical_truth_json"), "r") as handle:
+            return json.load(handle)
+
     def annotations(self):
         with open(self.file_path("annotations_json"), "r") as handle:
             return json.load(handle)

@@ -12,7 +12,7 @@
 
 namespace
 {
-    const char* metadata_version = "synsigra_authoring_v10";
+    const char* metadata_version = "synsigra_authoring_v11";
     const char* template_version = "synsigra_templates_v4";
 
     struct field_definition
@@ -145,6 +145,11 @@ namespace
             message = "ECG/PPG alignment reference requires ppg.enabled=true.";
             return false;
         }
+        if (target == "ppg_optical" && !document.ppg.optical.enabled)
+        {
+            message = "PPG optical measurement scoring requires ppg.optical.enabled=true.";
+            return false;
+        }
         if (target == "hrv" && !document.hrv.enabled)
         {
             message = "HRV scoring requires hrv.enabled=true and a supported analysis window.";
@@ -183,7 +188,7 @@ namespace
             if (!streams[i]->enabled)
                 continue;
             const unsigned long long stream_samples = signal_synth::wearable_stream_sample_count(*streams[i], document.duration_seconds);
-            const unsigned long long stream_channels = i == 0u ? static_cast<unsigned int>(signal_synth::clinical_lead_count) : i == 1u ? 1u + (document.ppg.red.enabled ? 1u : 0u) + (document.ppg.infrared.enabled ? 1u : 0u) : 1u;
+            const unsigned long long stream_channels = i == 0u ? static_cast<unsigned int>(signal_synth::clinical_lead_count) : i == 1u ? 1u + (document.ppg.optical.enabled ? 2u : 0u) : 1u;
             wearable_bytes += 256u + stream_samples * (stream_channels + 3u) * 20u;
             wearable_bytes += stream_samples * 7u * 20u;
             const unsigned long long packet_size = std::max(1u, streams[i]->packet_size_samples);
@@ -203,7 +208,7 @@ namespace
             if (streams[i]->enabled)
             {
                 const unsigned long long stream_samples = signal_synth::wearable_stream_sample_count(*streams[i], document.duration_seconds);
-                const unsigned long long stream_channels = i == 0u ? static_cast<unsigned int>(signal_synth::clinical_lead_count) : i == 1u ? 1u + (document.ppg.red.enabled ? 1u : 0u) + (document.ppg.infrared.enabled ? 1u : 0u) : 1u;
+                const unsigned long long stream_channels = i == 0u ? static_cast<unsigned int>(signal_synth::clinical_lead_count) : i == 1u ? 1u + (document.ppg.optical.enabled ? 2u : 0u) : 1u;
                 wearable_bytes += stream_samples * (sizeof(signal_synth::wearable_sample_mapping) + stream_channels * sizeof(double));
             }
         return samples * (generation_double_channels + ppg_double_channels) * sizeof(double) + wearable_bytes + 1048576u;
@@ -258,7 +263,7 @@ namespace
             return "interval_detection";
         if (target == "ecg_delineation")
             return "ecg_delineation";
-        if (target == "morphology_assertions" || target == "ecg_ppg_alignment")
+        if (target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical")
             return "measurement";
         return "generated_reference_only";
     }
@@ -273,7 +278,7 @@ namespace
             return "time_f1_score";
         if (target == "ecg_delineation")
             return "f1_score";
-        if (target == "morphology_assertions" || target == "ecg_ppg_alignment")
+        if (target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical")
             return "tolerance_pass_fraction";
         if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset")
             return "f1_score";
@@ -313,7 +318,7 @@ namespace
             output.push_back("point_events_json_v1");
             output.push_back("point_events_csv_v1");
         }
-        else if (target == "morphology_assertions" || target == "ecg_ppg_alignment")
+        else if (target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical")
         {
             output.push_back("measurement_values_json_v1");
             output.push_back("measurement_values_csv_v1");
@@ -343,6 +348,13 @@ namespace
             output.push_back("ecg_ppg_timing");
             output.push_back("ppg_fiducials");
             output.push_back("annotations_json");
+            output.push_back("case_summary_json");
+        }
+        else if (target == "ppg_optical")
+        {
+            output.push_back("ppg_optical_latent_csv");
+            output.push_back("ppg_optical_truth_json");
+            output.push_back("waveform_channels");
             output.push_back("case_summary_json");
         }
         else
@@ -465,10 +477,12 @@ namespace
                << "{\"role\":\"realism_report_html\",\"required\":true}";
         bool has_hrv = false;
         bool has_wearable = false;
+        bool has_optical = false;
         std::vector<std::string> reference_targets;
         for (std::size_t i = 0; i < analysis.targets.size(); ++i)
         {
             has_hrv = has_hrv || analysis.targets[i].target == "hrv";
+            has_optical = has_optical || analysis.targets[i].target == "ppg_optical";
             if (analysis.targets[i].support == signal_synth::scenario_target_reference_only)
                 reference_targets.push_back(analysis.targets[i].target);
         }
@@ -478,6 +492,8 @@ namespace
             output << ",{\"role\":\"hrv_metrics_json\",\"required\":true},{\"role\":\"rr_tachogram_csv\",\"required\":true}";
         if (has_wearable)
             output << ",{\"role\":\"wearable_samples_csv\",\"required\":true},{\"role\":\"wearable_timestamp_truth_csv\",\"required\":true},{\"role\":\"wearable_timebase_truth_json\",\"required\":true},{\"role\":\"wearable_alignment_truth_json\",\"required\":true}";
+        if (has_optical)
+            output << ",{\"role\":\"ppg_optical_latent_csv\",\"required\":true},{\"role\":\"ppg_optical_truth_json\",\"required\":true}";
         if (!reference_targets.empty())
         {
             output << ",{\"role\":\"reference_ground_truth\",\"required\":true,\"targets\":";
@@ -520,7 +536,7 @@ namespace signal_synth
 
     scenario_target_support scenario_target_support_for_name(const std::string& target)
     {
-        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset" || target == "ecg_beat_classification" || target == "hrv" || target == "rhythm_episode" || target == "signal_quality" || target == "ecg_delineation" || target == "morphology_assertions" || target == "ecg_ppg_alignment")
+        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset" || target == "ecg_beat_classification" || target == "hrv" || target == "rhythm_episode" || target == "signal_quality" || target == "ecg_delineation" || target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical")
             return scenario_target_local_scoring;
         return scenario_target_unsupported;
     }
@@ -585,18 +601,40 @@ namespace signal_synth
             {"$.ppg.pvc_pulse_amplitude_scale","PVC-linked pulse amplitude","ppg_physiology","number","slider","1","0","1","0.01","ratio",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
             {"$.ppg.paced_pulse_amplitude_scale","Paced-beat pulse amplitude","ppg_physiology","number","slider","1","0","1","0.01","ratio",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
             {"$.ppg.perfusion_episodes","Perfusion episodes","ppg_physiology","ppg_perfusion_episode_array","episode_editor","[]","0","64",0,"items",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
-            {"$.ppg.red.enabled","Red PPG channel","ppg_optical","boolean","toggle","false",0,0,0,"",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
-            {"$.ppg.red.amplitude_gain","Red PPG gain","ppg_optical","number","number","0.85","0.000001","100","0.01","ratio",0,"{\"path\":\"$.ppg.red.enabled\",\"equals\":true}",true},
-            {"$.ppg.red.baseline_au","Red PPG baseline","ppg_optical","number","number","0.1","-100","100","0.01","a.u.",0,"{\"path\":\"$.ppg.red.enabled\",\"equals\":true}",true},
-            {"$.ppg.red.delay_ms","Red PPG delay offset","ppg_optical","number","number","8","0","2000","1","ms",0,"{\"path\":\"$.ppg.red.enabled\",\"equals\":true}",true},
-            {"$.ppg.red.noise_std_au","Red PPG noise","ppg_optical","number","number","0","0","100","0.001","a.u.",0,"{\"path\":\"$.ppg.red.enabled\",\"equals\":true}",true},
-            {"$.ppg.red.seed","Red PPG seed","ppg_optical","uint64_string","text","\"5787213827044626759\"",0,0,0,"",0,"{\"path\":\"$.ppg.red.enabled\",\"equals\":true}",true},
-            {"$.ppg.infrared.enabled","Infrared PPG channel","ppg_optical","boolean","toggle","false",0,0,0,"",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
-            {"$.ppg.infrared.amplitude_gain","Infrared PPG gain","ppg_optical","number","number","1.15","0.000001","100","0.01","ratio",0,"{\"path\":\"$.ppg.infrared.enabled\",\"equals\":true}",true},
-            {"$.ppg.infrared.baseline_au","Infrared PPG baseline","ppg_optical","number","number","0.2","-100","100","0.01","a.u.",0,"{\"path\":\"$.ppg.infrared.enabled\",\"equals\":true}",true},
-            {"$.ppg.infrared.delay_ms","Infrared PPG delay offset","ppg_optical","number","number","12","0","2000","1","ms",0,"{\"path\":\"$.ppg.infrared.enabled\",\"equals\":true}",true},
-            {"$.ppg.infrared.noise_std_au","Infrared PPG noise","ppg_optical","number","number","0","0","100","0.001","a.u.",0,"{\"path\":\"$.ppg.infrared.enabled\",\"equals\":true}",true},
-            {"$.ppg.infrared.seed","Infrared PPG seed","ppg_optical","uint64_string","text","\"5787213827044626759\"",0,0,0,"",0,"{\"path\":\"$.ppg.infrared.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.enabled","Paired red/infrared optical model","ppg_optical","boolean","toggle","false",0,0,0,"",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.profile_id","Optical site/device profile","ppg_optical","string","select","\"custom\"",0,0,0,"","[\"custom\",\"finger_transmissive_v1\",\"wrist_reflectance_v1\",\"ear_reflectance_v1\"]","{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.calibration_id","Calibration identifier","ppg_optical","string","text","\"engineering_linear_v1\"",0,0,0,"",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.calibration_intercept_percent","SpO2 calibration intercept","ppg_optical","number","number","110","-1000","1000","0.1","%",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.calibration_slope_percent","SpO2 calibration slope","ppg_optical","number","number","-25","-1000","-0.000001","0.1","%/ratio",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.minimum_spo2_percent","Minimum calibrated SpO2","ppg_optical","number","number","70","0","100","0.1","%",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.maximum_spo2_percent","Maximum calibrated SpO2","ppg_optical","number","number","100","0","100","0.1","%",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.baseline_spo2_percent","Baseline SpO2 target","ppg_optical","number","number","97","0","100","0.1","%",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.infrared_perfusion_index_percent","Infrared perfusion index","ppg_optical","number","number","2","0.000001","100","0.1","%",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.oxygenation_episodes","Oxygenation episodes","ppg_optical","ppg_oxygenation_episode_array","episode_editor","[]","0","64",0,"items",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.red.dc_au","Red DC level","ppg_optical_red","number","number","1","0.000001","100","0.01","a.u.",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.red.sensor_gain","Red sensor gain","ppg_optical_red","number","number","1","0.000001","100","0.01","ratio",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.red.delay_ms","Red delay offset","ppg_optical_red","number","number","8","0","2000","1","ms",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.red.noise_std_au","Red sensor noise","ppg_optical_red","number","number","0","0","100","0.001","a.u.",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.red.ambient_offset_au","Red ambient offset","ppg_optical_red","number","number","0","-100","100","0.01","a.u.",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.red.motion_sensitivity","Red motion sensitivity","ppg_optical_red","number","number","1.2","0","100","0.1","ratio",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.red.ambient_sensitivity","Red ambient sensitivity","ppg_optical_red","number","number","1.1","0","100","0.1","ratio",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.red.crosstalk_ratio","Red crosstalk","ppg_optical_red","number","number","0","0","1","0.01","ratio",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.red.minimum_output_au","Red output minimum","ppg_optical_red","number","number","0","-100","100","0.01","a.u.",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.red.maximum_output_au","Red output maximum","ppg_optical_red","number","number","5","-100","100","0.01","a.u.",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.red.quantization_bits","Red quantization","ppg_optical_red","integer","number","0","0","24","1","bits",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.red.seed","Red sensor seed","ppg_optical_red","uint64_string","text","\"5787203995898823729\"",0,0,0,"",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.infrared.dc_au","Infrared DC level","ppg_optical_infrared","number","number","1.2","0.000001","100","0.01","a.u.",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.infrared.sensor_gain","Infrared sensor gain","ppg_optical_infrared","number","number","1","0.000001","100","0.01","ratio",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.infrared.delay_ms","Infrared delay offset","ppg_optical_infrared","number","number","12","0","2000","1","ms",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.infrared.noise_std_au","Infrared sensor noise","ppg_optical_infrared","number","number","0","0","100","0.001","a.u.",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.infrared.ambient_offset_au","Infrared ambient offset","ppg_optical_infrared","number","number","0","-100","100","0.01","a.u.",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.infrared.motion_sensitivity","Infrared motion sensitivity","ppg_optical_infrared","number","number","0.8","0","100","0.1","ratio",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.infrared.ambient_sensitivity","Infrared ambient sensitivity","ppg_optical_infrared","number","number","0.7","0","100","0.1","ratio",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.infrared.crosstalk_ratio","Infrared crosstalk","ppg_optical_infrared","number","number","0","0","1","0.01","ratio",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.infrared.minimum_output_au","Infrared output minimum","ppg_optical_infrared","number","number","0","-100","100","0.01","a.u.",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.infrared.maximum_output_au","Infrared output maximum","ppg_optical_infrared","number","number","5","-100","100","0.01","a.u.",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.infrared.quantization_bits","Infrared quantization","ppg_optical_infrared","integer","number","0","0","24","1","bits",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
+            {"$.ppg.optical.infrared.seed","Infrared sensor seed","ppg_optical_infrared","uint64_string","text","\"5787203995748675889\"",0,0,0,"",0,"{\"path\":\"$.ppg.optical.enabled\",\"equals\":true}",true},
             {"$.randomization.enabled","Controlled randomization","randomization","boolean","toggle","false",0,0,0,"",0,0,true},
             {"$.randomization.seed","Randomization seed","randomization","uint64_string","text","\"5927117558752822833\"",0,0,0,"",0,"{\"path\":\"$.randomization.enabled\",\"equals\":true}",true},
             {"$.randomization.envelopes","Parameter envelopes","randomization","randomization_envelope_array","envelope_editor","[]","1","32",0,"items",0,"{\"path\":\"$.randomization.enabled\",\"equals\":true}",true},
@@ -645,10 +683,10 @@ namespace signal_synth
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << "{\"schema_version\":1,\"metadata_version\":" << json_string(metadata_version)
-               << ",\"scenario_schema_version\":5,\"supported_scenario_schema_versions\":[2,3,4,5],\"groups\":["
+               << ",\"scenario_schema_version\":6,\"supported_scenario_schema_versions\":[2,3,4,5,6],\"groups\":["
                << "{\"id\":\"identity\",\"label\":\"Identity\"},{\"id\":\"render\",\"label\":\"Render\"},{\"id\":\"ecg\",\"label\":\"ECG\"},"
                << "{\"id\":\"episode\",\"label\":\"Episode\"},{\"id\":\"hrv\",\"label\":\"HRV\"},{\"id\":\"ppg\",\"label\":\"PPG\"},"
-               << "{\"id\":\"ppg_stress\",\"label\":\"PPG Timing Stress\"},{\"id\":\"ppg_physiology\",\"label\":\"PPG Physiology\"},{\"id\":\"ppg_optical\",\"label\":\"PPG Optical Channels\"},{\"id\":\"randomization\",\"label\":\"Randomization\"},"
+               << "{\"id\":\"ppg_stress\",\"label\":\"PPG Timing Stress\"},{\"id\":\"ppg_physiology\",\"label\":\"PPG Physiology\"},{\"id\":\"ppg_optical\",\"label\":\"PPG Optical Physiology\"},{\"id\":\"ppg_optical_red\",\"label\":\"PPG Red Sensor\"},{\"id\":\"ppg_optical_infrared\",\"label\":\"PPG Infrared Sensor\"},{\"id\":\"randomization\",\"label\":\"Randomization\"},"
                << "{\"id\":\"physiology\",\"label\":\"Physiology\"},{\"id\":\"output\",\"label\":\"Output\"},{\"id\":\"wearable\",\"label\":\"Wearable Timebase\"},{\"id\":\"artifacts\",\"label\":\"Artifacts\"}],\"fields\":[";
         for (std::size_t i = 0; i < sizeof(fields) / sizeof(fields[0]); ++i)
         {
@@ -659,7 +697,7 @@ namespace signal_synth
                << "{\"name\":\"code\",\"value_type\":\"string\",\"control\":\"condition_select\"},"
                << "{\"name\":\"severity\",\"value_type\":\"number\",\"control\":\"slider\",\"minimum\":0.000001,\"maximum\":1,\"step\":0.01,\"default\":1,\"enabled_when\":\"selected condition has variable_severity=true\"}],"
                << "\"randomization_envelope_item_fields\":["
-               << "{\"name\":\"parameter\",\"value_type\":\"string\",\"control\":\"select\",\"options\":[\"ecg.heart_rate_bpm\",\"ecg.rr_variability_seconds\",\"ecg.morphology.p_amplitude_mv\",\"ecg.morphology.q_amplitude_mv\",\"ecg.morphology.r_amplitude_mv\",\"ecg.morphology.s_amplitude_mv\",\"ecg.morphology.t_amplitude_mv\",\"ecg.morphology.qrs_axis_degrees\",\"ecg.morphology.t_axis_degrees\",\"ecg.morphology.qrs_duration_ms\",\"ecg.morphology.qt_interval_ms\",\"ppg.pulse_delay_ms\",\"ppg.amplitude_au\",\"ppg.red.amplitude_gain\",\"ppg.infrared.amplitude_gain\",\"hrv.target_sdnn_seconds\",\"hrv.lf_hf_ratio\",\"physiology.activity_intensity\"]},"
+               << "{\"name\":\"parameter\",\"value_type\":\"string\",\"control\":\"select\",\"options\":[\"ecg.heart_rate_bpm\",\"ecg.rr_variability_seconds\",\"ecg.morphology.p_amplitude_mv\",\"ecg.morphology.q_amplitude_mv\",\"ecg.morphology.r_amplitude_mv\",\"ecg.morphology.s_amplitude_mv\",\"ecg.morphology.t_amplitude_mv\",\"ecg.morphology.qrs_axis_degrees\",\"ecg.morphology.t_axis_degrees\",\"ecg.morphology.qrs_duration_ms\",\"ecg.morphology.qt_interval_ms\",\"ppg.pulse_delay_ms\",\"ppg.amplitude_au\",\"ppg.optical.baseline_spo2_percent\",\"ppg.optical.infrared_perfusion_index_percent\",\"hrv.target_sdnn_seconds\",\"hrv.lf_hf_ratio\",\"physiology.activity_intensity\"]},"
                << "{\"name\":\"minimum\",\"value_type\":\"number\",\"control\":\"number\"},"
                << "{\"name\":\"maximum\",\"value_type\":\"number\",\"control\":\"number\"}],"
                << "\"ppg_perfusion_episode_item_fields\":["
@@ -671,6 +709,11 @@ namespace signal_synth
                << "{\"name\":\"weak_pulse_every_n_beats\",\"value_type\":\"integer\",\"control\":\"number\",\"minimum\":0},"
                << "{\"name\":\"weak_pulse_amplitude_scale\",\"value_type\":\"number\",\"control\":\"slider\",\"exclusive_minimum\":0,\"maximum\":1,\"step\":0.01},"
                << "{\"name\":\"missing_pulse_every_n_beats\",\"value_type\":\"integer\",\"control\":\"number\",\"minimum\":0}],"
+               << "\"ppg_oxygenation_episode_item_fields\":["
+               << "{\"name\":\"start_seconds\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":0,\"unit\":\"s\"},"
+               << "{\"name\":\"duration_seconds\",\"value_type\":\"number\",\"control\":\"number\",\"exclusive_minimum\":0,\"unit\":\"s\"},"
+               << "{\"name\":\"transition_seconds\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":0,\"unit\":\"s\"},"
+               << "{\"name\":\"target_spo2_percent\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":0,\"maximum\":100,\"step\":0.1,\"unit\":\"%\"}],"
                << "\"conditions\":[";
         const ecg_condition_info* conditions = ecg_condition_catalog();
         for (unsigned int i = 0; i < ecg_condition_catalog_size(); ++i)
@@ -701,7 +744,7 @@ namespace signal_synth
                    << "{\"name\":\"severity\",\"value_type\":\"number\",\"control\":\"slider\",\"minimum\":0,\"maximum\":1,\"step\":0.01},"
                    << "{\"name\":\"seed\",\"value_type\":\"uint64_string\",\"control\":\"text\",\"serialization\":\"json_integer\"},"
                    << "{\"name\":\"channels\",\"value_type\":\"string_array\",\"control\":\"channel_picker\",\"options\":"
-                   << (ppg ? "[\"ppg_green\"]" : "[\"all_ecg\",\"I\",\"II\",\"III\",\"aVR\",\"aVL\",\"aVF\",\"V1\",\"V2\",\"V3\",\"V4\",\"V5\",\"V6\"]")
+                   << (ppg ? "[\"all_ppg\"]" : "[\"all_ecg\",\"I\",\"II\",\"III\",\"aVR\",\"aVL\",\"aVF\",\"V1\",\"V2\",\"V3\",\"V4\",\"V5\",\"V6\"]")
                    << "}]}";
         }
         output << "],\"targets\":["
@@ -714,7 +757,8 @@ namespace signal_synth
                << "{\"name\":\"signal_quality\",\"support\":\"local_scoring\",\"requires\":[\"artifacts.length>0\"]},"
                << "{\"name\":\"ecg_delineation\",\"support\":\"local_scoring\",\"requires\":[]},"
                << "{\"name\":\"morphology_assertions\",\"support\":\"local_scoring\",\"requires\":[\"ecg.conditions\"]},"
-               << "{\"name\":\"ecg_ppg_alignment\",\"support\":\"local_scoring\",\"requires\":[\"ppg.enabled\"]}],"
+               << "{\"name\":\"ecg_ppg_alignment\",\"support\":\"local_scoring\",\"requires\":[\"ppg.enabled\"]},"
+               << "{\"name\":\"ppg_optical\",\"support\":\"local_scoring\",\"requires\":[\"ppg.optical.enabled\"]}],"
                << "\"cross_field_rules\":["
                << "{\"id\":\"sample_count\",\"expression\":\"duration_seconds * sample_rate_hz is an integer in [1,4294967295]\",\"message\":\"Duration and sample rate must produce a positive 32-bit sample count.\"},"
                << "{\"id\":\"hrv_window\",\"expression\":\"!hrv.enabled || duration_seconds >= 300\",\"message\":\"Enabled spectral HRV requires at least 300 seconds.\"},"
@@ -728,7 +772,9 @@ namespace signal_synth
                << "{\"id\":\"ppg_stress_requires_ppg\",\"expression\":\"ppg.enabled || (ppg.pulse_delay_variation_ms == 0 && ppg.missing_pulse_every_n_beats == 0 && physiology.ppg_amplitude_modulation_ratio == 0)\",\"message\":\"PPG stress controls require an enabled PPG channel.\"},"
                << "{\"id\":\"ppg_physiology_requires_ppg\",\"expression\":\"ppg.enabled || (ppg.pulse_delay_jitter_ms == 0 && ppg.low_frequency_amplitude_modulation_ratio == 0 && ppg.rise_time_variation_ratio == 0 && ppg.decay_time_variation_ratio == 0 && ppg.pac_pulse_amplitude_scale == 1 && ppg.pvc_pulse_amplitude_scale == 1 && ppg.paced_pulse_amplitude_scale == 1 && ppg.perfusion_episodes.length == 0)\",\"message\":\"PPG physiology controls require an enabled PPG channel.\"},"
                << "{\"id\":\"ppg_perfusion_bounds\",\"expression\":\"forall episode: start_seconds + duration_seconds <= duration_seconds and episodes do not overlap\",\"message\":\"Perfusion episodes must fit inside the scenario and must not overlap.\"},"
-               << "{\"id\":\"wearable_sources\",\"expression\":\"wearable.ecg.enabled && (!wearable.ppg.enabled || ppg.enabled) && (!wearable.accelerometer.enabled || physiology.activity_intensity > 0 || artifacts contain PPG motion)\",\"message\":\"Enabled wearable streams require an available latent source.\"},"
+               << "{\"id\":\"ppg_optical_requires_ppg\",\"expression\":\"!ppg.optical.enabled || ppg.enabled\",\"message\":\"Optical red/infrared channels require an enabled PPG source.\"},"
+               << "{\"id\":\"ppg_oxygenation_bounds\",\"expression\":\"forall ppg.optical oxygenation episode: start_seconds + duration_seconds <= duration_seconds and episodes do not overlap\",\"message\":\"Oxygenation episodes must fit inside the scenario and must not overlap.\"},"
+               << "{\"id\":\"wearable_sources\",\"expression\":\"all wearable streams disabled || (wearable.ecg.enabled && (!wearable.ppg.enabled || ppg.enabled) && (!wearable.accelerometer.enabled || physiology.activity_intensity > 0 || artifacts contain PPG motion))\",\"message\":\"Enabled wearable streams require ECG plus every selected latent source.\"},"
                << "{\"id\":\"wearable_rates\",\"expression\":\"all enabled wearable sample rates <= sample_rate_hz and timestamp_jitter_ms <= 450/sample_rate_hz\",\"message\":\"Wearable rates and jitter must preserve supported resampling and monotonic timestamps.\"},"
                << "{\"id\":\"compact_output\",\"expression\":\"!output.compact || (!output.retain_source_channels && !output.include_waveform_csv && !output.include_edf_bdf)\",\"message\":\"Compact output omits source channels, waveform CSV, EDF and BDF.\"}"
                << "]}";
@@ -787,12 +833,14 @@ namespace signal_synth
             item.duration_seconds = document.duration_seconds;
             item.sampling_rate_hz = document.ecg.sampling_rate_hz();
             item.sample_count = document.sample_count();
-            item.wearable_timebase = document.schema_version >= 5;
+            item.wearable_timebase = !wearable_stream_config_is_default(document.wearable.ecg)
+                || !wearable_stream_config_is_default(document.wearable.ppg)
+                || !wearable_stream_config_is_default(document.wearable.accelerometer);
             bool has_accelerometer = document.physiology.activity_intensity > 0.0;
             for (std::size_t artifact = 0; artifact < document.signal_quality.artifacts.size(); ++artifact)
                 if (signal_quality_artifact_is_motion(document.signal_quality.artifacts[artifact].type))
                     has_accelerometer = true;
-            item.channel_count = clinical_lead_count + (document.ppg.enabled ? 1u + (document.ppg.red.enabled ? 1u : 0u) + (document.ppg.infrared.enabled ? 1u : 0u) : 0u) + (has_accelerometer ? 1u : 0u);
+            item.channel_count = clinical_lead_count + (document.ppg.enabled ? 1u + (document.ppg.optical.enabled ? 2u : 0u) : 0u) + (has_accelerometer ? 1u : 0u);
             item.targets = pack_case.targets;
             item.estimated_package_bytes = estimate_case_package_bytes(document, item.channel_count, item.estimated_waveform_csv_bytes, item.estimated_binary_signal_bytes);
             item.estimated_peak_memory_bytes = estimate_case_peak_memory_bytes(document);
@@ -840,7 +888,7 @@ namespace signal_synth
                << ",\"pack_version\":" << json_string(analysis.pack_version)
                << ",\"scoring_mode\":" << json_string(analysis_scoring_mode(analysis))
                << ",\"recommended_verifier_profile\":" << json_string(recommended_profile_for_analysis(analysis))
-               << ",\"generator_compatibility\":{\"pack_schema_version\":1,\"scenario_schema_versions\":[2,3,4,5],\"challenge_package_contract\":\"synsigra_challenge_package_v2\",\"scoring_manifest_contract\":\"synsigra_scoring_manifest_v2\"}"
+               << ",\"generator_compatibility\":{\"pack_schema_version\":1,\"scenario_schema_versions\":[2,3,4,5,6],\"challenge_package_contract\":\"synsigra_challenge_package_v2\",\"scoring_manifest_contract\":\"synsigra_scoring_manifest_v2\"}"
                << ",\"summary\":{\"case_count\":" << analysis.case_count
                << ",\"total_duration_seconds\":" << analysis.total_duration_seconds
                << ",\"total_sample_count\":" << analysis.total_sample_count

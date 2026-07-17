@@ -39,6 +39,7 @@ RELEASE_PACK_IDS = [
     "combined_worst_case_v1",
     "wearable_timebase_v2",
     "ppg_benchmark_v1",
+    "ppg_optical_v2",
     "ecg_delineation_v2",
 ]
 
@@ -48,7 +49,7 @@ def assert_release_pack_metadata(item):
     assert item["metadata_type"] == "synsigra_curated_pack_metadata"
     assert isinstance(item["version"], str) and item["version"]
     assert item["release_status"] == "beta"
-    expected_date = "2026-07-17" if item["pack_id"] in ("ecg_delineation_v2", "wearable_timebase_v2") else "2026-07-06"
+    expected_date = "2026-07-17" if item["pack_id"] in ("ecg_delineation_v2", "wearable_timebase_v2", "ppg_optical_v2") else "2026-07-06"
     assert item["release_date"] == expected_date
     assert item["recommended_for"] and item["not_recommended_for"] and item["changelog"]
     assert item["source"]["pack_fingerprint"].startswith("sha256:")
@@ -174,6 +175,16 @@ def assert_delineation_metadata(item):
     assert item["reference_only_targets"] == []
 
 
+def assert_ppg_optical_metadata(item):
+    assert item["pack_id"] == "ppg_optical_v2"
+    assert item["version"] == "1.0"
+    assert item["case_ids"] == ["normoxia", "desaturation", "low_perfusion", "interference"]
+    assert {"measurement_values_json_v1", "measurement_values_csv_v1", "point_events_json_v1", "point_events_csv_v1"} == set(item["submission_output_schemas"])
+    assert_measurement_metadata(item, "ppg_optical", "0.6.0")
+    roles = set(artifact["role"] for artifact in item["output_artifacts"])
+    assert {"ppg_optical_latent_csv", "ppg_optical_truth_json", "measurement_truth_json"}.issubset(roles)
+
+
 def assert_measurement_metadata(item, target, verifier_version="0.5.0"):
     contracts = dict((entry["target"], entry) for entry in item["scoreable_targets"])
     assert target in contracts
@@ -204,14 +215,15 @@ def main():
         assert generated["release_set_id"] == "synsigra_curated_release_2026_07_17"
         assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
-        assert generated["catalog_version"] == "1.9"
-        assert generated["pack_count"] == 11
+        assert generated["catalog_version"] == "2.0"
+        assert generated["pack_count"] == 12
         assert [item["pack_id"] for item in generated["packs"]] == RELEASE_PACK_IDS
         for pack_id in RELEASE_PACK_IDS:
             assert_release_pack_metadata(pack(generated, pack_id))
         assert_rpeak_metadata(pack(generated, "r_peak_stress_v1"))
         assert_ppg_benchmark_metadata(pack(generated, "ppg_benchmark_v1"))
         assert_delineation_metadata(pack(generated, "ecg_delineation_v2"))
+        assert_ppg_optical_metadata(pack(generated, "ppg_optical_v2"))
         assert_measurement_metadata(pack(generated, "ecg_morphology_stress_v1"), "morphology_assertions")
         assert_measurement_metadata(pack(generated, "ppg_alignment_v1"), "ecg_ppg_alignment")
         wearable = pack(generated, "wearable_timebase_v2")

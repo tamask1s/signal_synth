@@ -342,6 +342,36 @@ namespace
         }
     }
 
+    void add_optical_truth(const signal_synth::ecg_render_bundle& render, std::vector<signal_synth::measurement_truth>& output)
+    {
+        const signal_synth::ppg_optical_pulse_state* states = render.ppg.optical_states();
+        const std::string calibration = render.ppg.optical_config().calibration_id;
+        for (unsigned int i = 0; states && i < render.ppg.optical_state_count(); ++i)
+        {
+            const signal_synth::ppg_optical_pulse_state& state = states[i];
+            const signal_synth::measurement_status status = state.valid_for_measurement ? signal_synth::measurement_valid : state.generated ? signal_synth::measurement_not_evaluable : signal_synth::measurement_absent;
+            const char* reason = state.valid_for_measurement ? "" : state.generated ? "optical_calibration_or_perfusion_not_evaluable" : "pulse_not_generated";
+            struct value_definition { const char* name; const char* unit; double value; double tolerance; };
+            const value_definition values[] = {
+                {"spo2_target", "%", state.spo2_percent, 1.0},
+                {"ratio_of_ratios", "ratio", state.ratio_of_ratios, 0.02},
+                {"red_perfusion_index", "%", state.red_perfusion_index_percent, 0.10},
+                {"infrared_perfusion_index", "%", state.infrared_perfusion_index_percent, 0.10},
+                {"red_ac_dc_ratio", "ratio", state.red_perfusion_index_percent / 100.0, 0.001},
+                {"infrared_ac_dc_ratio", "ratio", state.infrared_perfusion_index_percent / 100.0, 0.001}
+            };
+            for (unsigned int value = 0; value < sizeof(values) / sizeof(values[0]); ++value)
+            {
+                signal_synth::measurement_truth truth = make_truth(values[value].name, values[value].unit, status, signal_synth::measurement_paired_signal, values[value].value, values[value].tolerance, 2.0, reason);
+                truth.measurement.has_beat_index = true; truth.measurement.beat_index = state.ecg_beat_index;
+                truth.measurement.has_time_seconds = true; truth.measurement.time_seconds = state.time_seconds;
+                truth.measurement.channel = "ppg_red_infrared";
+                if (value < 2u) truth.measurement.formula = calibration;
+                output.push_back(truth);
+            }
+        }
+    }
+
     bool same_descriptor(const signal_synth::measurement_value& truth, const signal_synth::measurement_value& prediction)
     {
         return truth.name == prediction.name && truth.unit == prediction.unit && truth.scope == prediction.scope && truth.channel == prediction.channel && truth.formula == prediction.formula;
@@ -589,7 +619,7 @@ namespace signal_synth
 
     bool measurement_target_supported(const std::string& target)
     {
-        return target == "morphology_assertions" || target == "ecg_ppg_alignment";
+        return target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical";
     }
 
     bool measurement_ground_truth_from_render(const ecg_render_bundle& render, const std::string& target, std::vector<measurement_truth>& output, std::vector<std::string>& messages)
@@ -611,6 +641,15 @@ namespace signal_synth
                 return false;
             }
             add_alignment_truth(render, output);
+        }
+        else if (target == "ppg_optical")
+        {
+            if (!render.ppg.optical_enabled())
+            {
+                messages.push_back("PPG optical measurement truth requires optical PPG");
+                return false;
+            }
+            add_optical_truth(render, output);
         }
         else
         {

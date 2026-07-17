@@ -36,6 +36,7 @@ set_tests_properties(TEST-HRV-PACK-001 PROPERTIES WORKING_DIRECTORY "${CMAKE_CUR
 signal_synth_add_test(ecg_beat_classification_test ecg_beat_classification_test.cpp TEST-ECG-BEAT-CLASS-001)
 signal_synth_add_test(ppg_model_test ppg_model_test.cpp TEST-PPG-001)
 signal_synth_add_test(ppg_physiology_test ppg_physiology_test.cpp TEST-PPG-PHYSIOLOGY-001)
+signal_synth_add_test(ppg_optical_v2_test ppg_optical_v2_test.cpp TEST-PPG-OPTICAL-V2-001)
 signal_synth_add_test(ppg_motion_test ppg_motion_test.cpp TEST-PPG-MOTION-001)
 signal_synth_add_test(ppg_scoring_test ppg_scoring_test.cpp TEST-PPG-SCORING-001)
 signal_synth_add_test(signal_quality_test signal_quality_test.cpp TEST-SIGNAL-QUALITY-001)
@@ -192,6 +193,13 @@ if(TARGET signal_synth_cli AND SIGNAL_SYNTH_PYTHON_EXECUTABLE)
         TEST-WEARABLE-PYTHON-001
         PROPERTIES
             ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python;SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..;SIGNAL_SYNTH_WEARABLE_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/wearable_python_work")
+    add_test(
+        NAME TEST-PPG-OPTICAL-PYTHON-001
+        COMMAND ${SIGNAL_SYNTH_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/ppg_optical_python_test.py)
+    set_tests_properties(
+        TEST-PPG-OPTICAL-PYTHON-001
+        PROPERTIES
+            ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python;SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..;SIGNAL_SYNTH_PPG_OPTICAL_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/ppg_optical_python_work")
     add_test(
         NAME TEST-EDF-BDF-NATIVE-001
         COMMAND

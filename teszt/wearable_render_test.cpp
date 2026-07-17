@@ -48,13 +48,13 @@ int main()
 {
     bool ok = true;
     signal_synth::ecg_scenario_document document;
-    document.schema_version = 5;
-    document.scenario_id = "wearable_render_test_v5";
+    document.schema_version = 6;
+    document.scenario_id = "wearable_render_test_v6";
     document.name = "Wearable render test";
     document.duration_seconds = 12.0;
     document.ecg.set_sampling_rate_hz(250u);
     document.ppg.enabled = true;
-    document.ppg.red.enabled = true;
+    document.ppg.optical.enabled = true;
     document.physiology.activity_start_seconds = 2.0;
     document.physiology.activity_duration_seconds = 8.0;
     document.physiology.activity_intensity = 0.4;
@@ -63,10 +63,10 @@ int main()
     configure_stream(document.wearable.accelerometer, 50u, -12.0, 80.0, 1.5, 10u, 0.03, 3u, 77013u);
 
     signal_synth::ecg_scenario_json_result identity;
-    ok &= check(signal_synth::write_ecg_scenario_json(document, identity) && identity.canonical_json.find("\"wearable\"") != std::string::npos && identity.canonical_json.find("\"ppg\":{\"enabled\":true") != std::string::npos, "schema_v5_write");
+    ok &= check(signal_synth::write_ecg_scenario_json(document, identity) && identity.canonical_json.find("\"wearable\"") != std::string::npos && identity.canonical_json.find("\"optical\":{\"enabled\":true") != std::string::npos, "schema_v6_write");
     signal_synth::ecg_scenario_document parsed;
     signal_synth::ecg_scenario_json_result parsed_identity;
-    ok &= check(signal_synth::parse_ecg_scenario_json(identity.canonical_json, parsed, parsed_identity) && parsed_identity.document_fingerprint == identity.document_fingerprint && parsed.wearable.ppg.clock_drift_ppm == -120.0, "schema_v5_roundtrip");
+    ok &= check(signal_synth::parse_ecg_scenario_json(identity.canonical_json, parsed, parsed_identity) && parsed_identity.document_fingerprint == identity.document_fingerprint && parsed.wearable.ppg.clock_drift_ppm == -120.0, "schema_v6_roundtrip");
 
     signal_synth::ecg_render_bundle render;
     signal_synth::ecg_document_render_result render_result;
@@ -74,7 +74,7 @@ int main()
     const signal_synth::wearable_stream_record* ecg = render.wearable.stream(signal_synth::wearable_stream_ecg);
     const signal_synth::wearable_stream_record* ppg = render.wearable.stream(signal_synth::wearable_stream_ppg);
     const signal_synth::wearable_stream_record* accel = render.wearable.stream(signal_synth::wearable_stream_accelerometer);
-    ok &= check(ecg && ppg && accel && ecg->config.sample_rate_hz == 200u && ppg->config.sample_rate_hz == 100u && accel->config.sample_rate_hz == 50u && ppg->channel_count() == 2u, "independent_streams");
+    ok &= check(ecg && ppg && accel && ecg->config.sample_rate_hz == 200u && ppg->config.sample_rate_hz == 100u && accel->config.sample_rate_hz == 50u && ppg->channel_count() == 3u, "independent_streams");
 
     signal_synth::ecg_export_bundle exports;
     signal_synth::ecg_export_result export_result;

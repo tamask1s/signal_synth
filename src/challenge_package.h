@@ -45,7 +45,9 @@ namespace signal_synth
         challenge_file_realism_metrics_csv = 19,
         challenge_file_realism_report_html = 20,
         challenge_file_realism_population_json = 21,
-        challenge_file_other = 22
+        challenge_file_ppg_optical_latent_csv = 22,
+        challenge_file_ppg_optical_truth_json = 23,
+        challenge_file_other = 24
     };
 
     struct challenge_package_json_message

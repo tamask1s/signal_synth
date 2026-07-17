@@ -115,10 +115,10 @@ namespace signal_synth
                     fresh.ppg.pulse_delay_ms = draw.value;
                 else if (draw.parameter == "ppg.amplitude_au")
                     fresh.ppg.amplitude_au = draw.value;
-                else if (draw.parameter == "ppg.red.amplitude_gain")
-                    fresh.ppg.red.amplitude_gain = draw.value;
-                else if (draw.parameter == "ppg.infrared.amplitude_gain")
-                    fresh.ppg.infrared.amplitude_gain = draw.value;
+                else if (draw.parameter == "ppg.optical.baseline_spo2_percent")
+                    fresh.ppg.optical.baseline_spo2_percent = draw.value;
+                else if (draw.parameter == "ppg.optical.infrared_perfusion_index_percent")
+                    fresh.ppg.optical.infrared_perfusion_index_percent = draw.value;
                 else if (draw.parameter == "hrv.target_sdnn_seconds")
                     fresh.hrv.target_sdnn_seconds = draw.value;
                 else if (draw.parameter == "hrv.lf_hf_ratio")
@@ -183,7 +183,7 @@ namespace signal_synth
         return true;
     }
 
-    bool apply_physiology_coupling(const physiology_coupling_config& config, double ppg_baseline_au, unsigned int sampling_rate_hz, signal_quality_waveforms& waveforms)
+    bool apply_physiology_coupling(const physiology_coupling_config& config, const ppg_record& ppg, unsigned int sampling_rate_hz, signal_quality_waveforms& waveforms)
     {
         if (!sampling_rate_hz || waveforms.ecg_leads.size() != clinical_lead_count)
             return false;
@@ -191,8 +191,8 @@ namespace signal_synth
         for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
             if (waveforms.ecg_leads[lead].size() != sample_count)
                 return false;
-        if (!waveforms.ppg.empty() && waveforms.ppg.size() != sample_count)
-            return false;
+        if (waveforms.ppg_channels.size() != ppg.channel_count()) return false;
+        for (std::size_t channel = 0; channel < waveforms.ppg_channels.size(); ++channel) if (waveforms.ppg_channels[channel].size() != sample_count) return false;
         if (!waveforms.accelerometer.empty() && waveforms.accelerometer.size() != sample_count)
             return false;
         if (config.activity_intensity > 0.0 && waveforms.accelerometer.empty())
@@ -208,11 +208,13 @@ namespace signal_synth
                 const double activity_noise = activity * (0.08 * signed_unit(config.seed + lead, sample) + 0.06 * std::sin(2.0 * pi * (1.7 + 0.11 * lead) * time));
                 waveforms.ecg_leads[lead][sample] += respiration_lead_gain(lead) * config.ecg_baseline_amplitude_mv * respiration + activity_noise;
             }
-            if (!waveforms.ppg.empty())
+            for (unsigned int channel = 0; channel < waveforms.ppg_channels.size(); ++channel)
             {
-                const double centered = waveforms.ppg[sample] - ppg_baseline_au;
+                const double baseline = ppg.channel_dc_au(channel);
+                const double centered = waveforms.ppg_channels[channel][sample] - baseline;
                 const double modulation = std::max(0.0, 1.0 + config.ppg_amplitude_modulation_ratio * respiration - 0.55 * activity);
-                waveforms.ppg[sample] = ppg_baseline_au + centered * modulation + activity * 0.05 * signed_unit(config.seed ^ 0x5050474143544956ULL, sample);
+                const double activity_scale = channel == 0u ? 0.05 : 0.01 * baseline * ppg.channel_motion_sensitivity(channel);
+                waveforms.ppg_channels[channel][sample] = baseline + centered * modulation + activity * activity_scale * signed_unit(config.seed ^ 0x5050474143544956ULL ^ channel, sample);
             }
             if (!waveforms.accelerometer.empty())
                 waveforms.accelerometer[sample] += activity * (0.7 * std::sin(2.0 * pi * 1.7 * time) + 0.3 * signed_unit(config.seed ^ 0x4143434143544956ULL, sample));

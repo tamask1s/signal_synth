@@ -1,8 +1,8 @@
 {
-  "schema_version": 4,
-  "scenario_id": "ppg_multichannel_optical_v4",
+  "schema_version": 6,
+  "scenario_id": "ppg_multichannel_optical_v6",
   "name": "Multi-channel optical PPG",
-  "description": "Engineering-only green, red and infrared PPG channel scenario with channel-specific gain, baseline, delay and deterministic noise.",
+  "description": "Engineering-only green, red and infrared PPG with explicit AC/DC physiology, calibration truth and deterministic sensor electronics.",
   "author": "Synsigra",
   "tags": ["ppg", "optical", "multichannel", "engineering"],
   "duration_seconds": 60,
@@ -47,21 +47,19 @@
     "pvc_pulse_amplitude_scale": 1,
     "paced_pulse_amplitude_scale": 1,
     "perfusion_episodes": [],
-    "red": {
+    "optical": {
       "enabled": true,
-      "amplitude_gain": 0.82,
-      "baseline_au": 0.10,
-      "delay_ms": 8,
-      "noise_std_au": 0.001,
-      "seed": 5405403
-    },
-    "infrared": {
-      "enabled": true,
-      "amplitude_gain": 1.18,
-      "baseline_au": 0.18,
-      "delay_ms": 14,
-      "noise_std_au": 0.0008,
-      "seed": 5405404
+      "profile_id": "custom",
+      "calibration_id": "engineering_linear_v1",
+      "calibration_intercept_percent": 110,
+      "calibration_slope_percent": -25,
+      "minimum_spo2_percent": 70,
+      "maximum_spo2_percent": 100,
+      "baseline_spo2_percent": 97,
+      "infrared_perfusion_index_percent": 2,
+      "red": {"dc_au": 1, "sensor_gain": 0.82, "delay_ms": 8, "noise_std_au": 0.001, "ambient_offset_au": 0, "motion_sensitivity": 1.2, "ambient_sensitivity": 1.1, "crosstalk_ratio": 0.01, "minimum_output_au": 0, "maximum_output_au": 5, "quantization_bits": 16, "seed": 5405403},
+      "infrared": {"dc_au": 1.2, "sensor_gain": 1.18, "delay_ms": 14, "noise_std_au": 0.0008, "ambient_offset_au": 0, "motion_sensitivity": 0.8, "ambient_sensitivity": 0.7, "crosstalk_ratio": 0.01, "minimum_output_au": 0, "maximum_output_au": 5, "quantization_bits": 16, "seed": 5405404},
+      "oxygenation_episodes": []
     }
   },
   "randomization": {"enabled": false, "seed": 5405405, "envelopes": []},

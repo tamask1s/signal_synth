@@ -191,7 +191,7 @@ GenerateECGScenarioJSON(pack_combined_quality, {
   "artifacts": [
     {"type": "ecg_baseline_wander", "start_seconds": 2, "duration_seconds": 20, "severity": 0.45, "seed": 24011, "channels": ["all_ecg"]},
     {"type": "ecg_emg_noise", "start_seconds": 12, "duration_seconds": 4, "severity": 0.6, "seed": 24012, "channels": ["I", "II", "V2", "V5"]},
-    {"type": "ppg_dropout", "start_seconds": 9, "duration_seconds": 1.6, "severity": 0.85, "seed": 24013, "channels": ["ppg_green"]}
+    {"type": "ppg_dropout", "start_seconds": 9, "duration_seconds": 1.6, "severity": 0.85, "seed": 24013, "channels": ["all_ppg"]}
   ]
 }, 2);
 

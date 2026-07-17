@@ -16,9 +16,53 @@ namespace
         return std::isfinite(value);
     }
 
+    bool valid_optical_channel(const signal_synth::ppg_optical_channel_config& channel)
+    {
+        return finite(channel.dc_au) && channel.dc_au > 0.0 && channel.dc_au <= 1000.0
+            && finite(channel.sensor_gain) && channel.sensor_gain > 0.0 && channel.sensor_gain <= 1000.0
+            && finite(channel.delay_ms) && channel.delay_ms >= 0.0 && channel.delay_ms <= 2000.0
+            && finite(channel.noise_std_au) && channel.noise_std_au >= 0.0 && channel.noise_std_au <= 100.0
+            && finite(channel.ambient_offset_au) && std::fabs(channel.ambient_offset_au) <= 1000.0
+            && finite(channel.motion_sensitivity) && channel.motion_sensitivity >= 0.0 && channel.motion_sensitivity <= 10.0
+            && finite(channel.ambient_sensitivity) && channel.ambient_sensitivity >= 0.0 && channel.ambient_sensitivity <= 10.0
+            && finite(channel.crosstalk_ratio) && channel.crosstalk_ratio >= 0.0 && channel.crosstalk_ratio <= 0.5
+            && finite(channel.minimum_output_au) && finite(channel.maximum_output_au) && channel.minimum_output_au < channel.maximum_output_au
+            && (channel.quantization_bits == 0u || (channel.quantization_bits >= 2u && channel.quantization_bits <= 24u));
+    }
+
+    bool valid_optical_config(const signal_synth::ppg_optical_config& optical)
+    {
+        bool known_profile = false;
+        for (unsigned int i = 0; i < signal_synth::ppg_optical_profile_count(); ++i)
+            known_profile = known_profile || optical.profile_id == signal_synth::ppg_optical_profile_id(i);
+        if (!valid_optical_channel(optical.red) || !valid_optical_channel(optical.infrared)
+            || !known_profile || optical.calibration_id.empty() || optical.calibration_id.size() > 128u
+            || !finite(optical.calibration_intercept_percent) || !finite(optical.calibration_slope_percent) || optical.calibration_slope_percent >= -1e-12
+            || !finite(optical.minimum_spo2_percent) || !finite(optical.maximum_spo2_percent) || optical.minimum_spo2_percent < 0.0 || optical.maximum_spo2_percent > 100.0 || optical.minimum_spo2_percent >= optical.maximum_spo2_percent
+            || !finite(optical.baseline_spo2_percent) || optical.baseline_spo2_percent < optical.minimum_spo2_percent || optical.baseline_spo2_percent > optical.maximum_spo2_percent
+            || !finite(optical.infrared_perfusion_index_percent) || optical.infrared_perfusion_index_percent <= 0.0 || optical.infrared_perfusion_index_percent > 20.0
+            || optical.oxygenation_episodes.size() > 64u)
+            return false;
+        for (std::size_t i = 0; i < optical.oxygenation_episodes.size(); ++i)
+        {
+            const signal_synth::ppg_oxygenation_episode_config& episode = optical.oxygenation_episodes[i];
+            if (!finite(episode.start_seconds) || !finite(episode.duration_seconds) || !finite(episode.transition_seconds) || !finite(episode.target_spo2_percent)
+                || episode.start_seconds < 0.0 || episode.duration_seconds <= 0.0 || episode.transition_seconds < 0.0 || episode.transition_seconds > 0.5 * episode.duration_seconds
+                || episode.target_spo2_percent < optical.minimum_spo2_percent || episode.target_spo2_percent > optical.maximum_spo2_percent)
+                return false;
+            const double end = episode.start_seconds + episode.duration_seconds;
+            if (!finite(end)) return false;
+            for (std::size_t previous = 0; previous < i; ++previous)
+            {
+                const signal_synth::ppg_oxygenation_episode_config& other = optical.oxygenation_episodes[previous];
+                if (episode.start_seconds < other.start_seconds + other.duration_seconds && other.start_seconds < end) return false;
+            }
+        }
+        return true;
+    }
+
     bool valid_config(const signal_synth::ppg_config& config)
     {
-        const signal_synth::ppg_optical_channel_config* optical[] = {&config.red, &config.infrared};
         if (!(finite(config.pulse_delay_ms) && config.pulse_delay_ms >= 0.0 && config.pulse_delay_ms <= 2000.0
             && finite(config.rise_time_ms) && config.rise_time_ms >= 10.0 && config.rise_time_ms <= 1000.0
             && finite(config.decay_time_ms) && config.decay_time_ms >= 10.0 && config.decay_time_ms <= 3000.0
@@ -42,17 +86,7 @@ namespace
             && config.pulse_delay_ms >= config.pulse_delay_variation_ms + config.pulse_delay_jitter_ms
             && config.perfusion_episodes.size() <= 64u))
             return false;
-        for (std::size_t channel = 0; channel < sizeof(optical) / sizeof(optical[0]); ++channel)
-        {
-            const signal_synth::ppg_optical_channel_config& opt = *optical[channel];
-            if (!(finite(opt.amplitude_gain) && opt.amplitude_gain > 0.0 && opt.amplitude_gain <= 100.0
-                && finite(opt.baseline_au) && std::fabs(opt.baseline_au) <= 100.0
-                && finite(opt.delay_ms) && opt.delay_ms >= 0.0 && opt.delay_ms <= 2000.0
-                && finite(opt.noise_std_au) && opt.noise_std_au >= 0.0 && opt.noise_std_au <= 100.0))
-                return false;
-            if (opt.enabled && !config.enabled)
-                return false;
-        }
+        if (!valid_optical_config(config.optical) || (config.optical.enabled && !config.enabled)) return false;
         for (std::size_t i = 0; i < config.perfusion_episodes.size(); ++i)
         {
             const signal_synth::ppg_perfusion_episode_config& episode = config.perfusion_episodes[i];
@@ -86,6 +120,27 @@ namespace
             + config.decay_time_ms * (1.0 + config.decay_time_variation_ratio) * maximum_decay_scale > 5000.0)
             return false;
         return true;
+    }
+
+    double smooth_transition(double position)
+    {
+        const double clipped = std::max(0.0, std::min(1.0, position));
+        return 0.5 - 0.5 * std::cos(pi * clipped);
+    }
+
+    double oxygen_saturation_at(const signal_synth::ppg_optical_config& config, double time_seconds)
+    {
+        for (std::size_t i = 0; i < config.oxygenation_episodes.size(); ++i)
+        {
+            const signal_synth::ppg_oxygenation_episode_config& episode = config.oxygenation_episodes[i];
+            const double relative = time_seconds - episode.start_seconds;
+            if (relative < 0.0 || relative >= episode.duration_seconds) continue;
+            double weight = 1.0;
+            if (episode.transition_seconds > 0.0 && relative < episode.transition_seconds) weight = smooth_transition(relative / episode.transition_seconds);
+            else if (episode.transition_seconds > 0.0 && relative > episode.duration_seconds - episode.transition_seconds) weight = smooth_transition((episode.duration_seconds - relative) / episode.transition_seconds);
+            return config.baseline_spo2_percent + weight * (episode.target_spo2_percent - config.baseline_spo2_percent);
+        }
+        return config.baseline_spo2_percent;
     }
 
     double deterministic_unit(unsigned long long seed)
@@ -235,23 +290,32 @@ namespace signal_synth
         struct channel_data
         {
             ppg_channel_kind kind;
-            double amplitude_gain;
-            double baseline_au;
+            double dc_au;
+            double sensor_gain;
             double delay_ms;
             double noise_std_au;
+            double ambient_offset_au;
+            double motion_sensitivity;
+            double ambient_sensitivity;
+            double crosstalk_ratio;
+            double minimum_output_au;
+            double maximum_output_au;
+            unsigned int quantization_bits;
             unsigned long long seed;
             std::vector<double> samples;
             std::vector<ppg_annotation> annotations;
 
             channel_data()
-                : kind(ppg_channel_green), amplitude_gain(1.0), baseline_au(0.0), delay_ms(0.0), noise_std_au(0.0), seed(0), samples(), annotations()
+                : kind(ppg_channel_green), dc_au(0.0), sensor_gain(1.0), delay_ms(0.0), noise_std_au(0.0), ambient_offset_au(0.0), motion_sensitivity(1.0), ambient_sensitivity(1.0), crosstalk_ratio(0.0), minimum_output_au(-1e9), maximum_output_au(1e9), quantization_bits(0), seed(0), samples(), annotations()
             {
             }
         };
 
         unsigned int sampling_rate_hz;
+        ppg_optical_config optical;
         std::vector<channel_data> channels;
         std::vector<ppg_pulse_annotation> pulses;
+        std::vector<ppg_optical_pulse_state> optical_states;
 
         implementation() : sampling_rate_hz(0) {}
     };
@@ -280,8 +344,73 @@ namespace signal_synth
     }
 
     ppg_optical_channel_config::ppg_optical_channel_config()
-        : enabled(false), amplitude_gain(1.0), baseline_au(0.0), delay_ms(0.0), noise_std_au(0.0), seed(0x5050475f4f505431ULL)
+        : dc_au(1.0), sensor_gain(1.0), delay_ms(0.0), noise_std_au(0.0), ambient_offset_au(0.0), motion_sensitivity(1.0), ambient_sensitivity(1.0), crosstalk_ratio(0.0), minimum_output_au(0.0), maximum_output_au(5.0), quantization_bits(0), seed(0x5050475f4f505431ULL)
     {
+    }
+
+    ppg_oxygenation_episode_config::ppg_oxygenation_episode_config()
+        : start_seconds(0.0), duration_seconds(10.0), transition_seconds(1.0), target_spo2_percent(90.0)
+    {
+    }
+
+    ppg_optical_config::ppg_optical_config()
+        : enabled(false), profile_id("custom"), calibration_id("engineering_linear_v1"), calibration_intercept_percent(110.0), calibration_slope_percent(-25.0), minimum_spo2_percent(70.0), maximum_spo2_percent(100.0), baseline_spo2_percent(97.0), infrared_perfusion_index_percent(2.0), red(), infrared(), oxygenation_episodes()
+    {
+        red.dc_au = 1.0;
+        red.delay_ms = 8.0;
+        red.motion_sensitivity = 1.2;
+        red.ambient_sensitivity = 1.1;
+        red.seed = 0x5050475f52454431ULL;
+        infrared.dc_au = 1.2;
+        infrared.delay_ms = 12.0;
+        infrared.motion_sensitivity = 0.8;
+        infrared.ambient_sensitivity = 0.7;
+        infrared.seed = 0x5050475f49523131ULL;
+    }
+
+    unsigned int ppg_optical_profile_count()
+    {
+        return 4u;
+    }
+
+    const char* ppg_optical_profile_id(unsigned int index)
+    {
+        const char* ids[] = {"custom", "finger_transmissive_v1", "wrist_reflectance_v1", "ear_reflectance_v1"};
+        return index < sizeof(ids) / sizeof(ids[0]) ? ids[index] : 0;
+    }
+
+    bool configure_ppg_optical_profile(const char* profile_id, ppg_optical_config& output)
+    {
+        if (!profile_id) return false;
+        const std::string id(profile_id);
+        ppg_optical_config fresh;
+        fresh.enabled = true;
+        fresh.profile_id = id;
+        if (id == "custom")
+        {
+        }
+        else if (id == "finger_transmissive_v1")
+        {
+            fresh.infrared_perfusion_index_percent = 2.0;
+            fresh.red.noise_std_au = 0.0005; fresh.red.motion_sensitivity = 0.8; fresh.red.ambient_sensitivity = 0.5; fresh.red.crosstalk_ratio = 0.005; fresh.red.maximum_output_au = 2.5; fresh.red.quantization_bits = 16u;
+            fresh.infrared.noise_std_au = 0.0004; fresh.infrared.motion_sensitivity = 0.6; fresh.infrared.ambient_sensitivity = 0.4; fresh.infrared.crosstalk_ratio = 0.005; fresh.infrared.maximum_output_au = 2.5; fresh.infrared.quantization_bits = 16u;
+        }
+        else if (id == "wrist_reflectance_v1")
+        {
+            fresh.infrared_perfusion_index_percent = 1.0;
+            fresh.red.dc_au = 1.4; fresh.red.delay_ms = 6.0; fresh.red.noise_std_au = 0.0015; fresh.red.motion_sensitivity = 1.6; fresh.red.ambient_sensitivity = 1.3; fresh.red.crosstalk_ratio = 0.03; fresh.red.maximum_output_au = 4.0; fresh.red.quantization_bits = 14u;
+            fresh.infrared.dc_au = 1.6; fresh.infrared.delay_ms = 10.0; fresh.infrared.noise_std_au = 0.0012; fresh.infrared.motion_sensitivity = 1.2; fresh.infrared.ambient_sensitivity = 1.0; fresh.infrared.crosstalk_ratio = 0.03; fresh.infrared.maximum_output_au = 4.0; fresh.infrared.quantization_bits = 14u;
+        }
+        else if (id == "ear_reflectance_v1")
+        {
+            fresh.infrared_perfusion_index_percent = 1.5;
+            fresh.red.dc_au = 1.1; fresh.red.delay_ms = 7.0; fresh.red.noise_std_au = 0.0008; fresh.red.motion_sensitivity = 0.9; fresh.red.ambient_sensitivity = 0.7; fresh.red.crosstalk_ratio = 0.015; fresh.red.maximum_output_au = 3.0; fresh.red.quantization_bits = 16u;
+            fresh.infrared.dc_au = 1.3; fresh.infrared.delay_ms = 10.0; fresh.infrared.noise_std_au = 0.0007; fresh.infrared.motion_sensitivity = 0.7; fresh.infrared.ambient_sensitivity = 0.5; fresh.infrared.crosstalk_ratio = 0.015; fresh.infrared.maximum_output_au = 3.0; fresh.infrared.quantization_bits = 16u;
+        }
+        else
+            return false;
+        output = fresh;
+        return true;
     }
 
     ppg_perfusion_episode_config::ppg_perfusion_episode_config()
@@ -290,16 +419,13 @@ namespace signal_synth
     }
 
     ppg_config::ppg_config()
-        : enabled(false), pulse_delay_ms(180.0), rise_time_ms(120.0), decay_time_ms(300.0), amplitude_au(1.0), baseline_au(0.0), dicrotic_delay_ms(180.0), dicrotic_width_ms(80.0), dicrotic_amplitude_ratio(0.15), pulse_delay_variation_ms(0.0), pulse_delay_variation_hz(0.0), missing_pulse_every_n_beats(0), pulse_delay_jitter_ms(0.0), low_frequency_amplitude_modulation_ratio(0.0), low_frequency_amplitude_modulation_hz(0.1), rise_time_variation_ratio(0.0), decay_time_variation_ratio(0.0), pac_pulse_amplitude_scale(1.0), pvc_pulse_amplitude_scale(1.0), paced_pulse_amplitude_scale(1.0), seed(0x5050475f53545253ULL), red(), infrared(), perfusion_episodes()
+        : enabled(false), pulse_delay_ms(180.0), rise_time_ms(120.0), decay_time_ms(300.0), amplitude_au(1.0), baseline_au(0.0), dicrotic_delay_ms(180.0), dicrotic_width_ms(80.0), dicrotic_amplitude_ratio(0.15), pulse_delay_variation_ms(0.0), pulse_delay_variation_hz(0.0), missing_pulse_every_n_beats(0), pulse_delay_jitter_ms(0.0), low_frequency_amplitude_modulation_ratio(0.0), low_frequency_amplitude_modulation_hz(0.1), rise_time_variation_ratio(0.0), decay_time_variation_ratio(0.0), pac_pulse_amplitude_scale(1.0), pvc_pulse_amplitude_scale(1.0), paced_pulse_amplitude_scale(1.0), seed(0x5050475f53545253ULL), optical(), perfusion_episodes()
     {
-        red.amplitude_gain = 0.85;
-        red.baseline_au = 0.10;
-        red.delay_ms = 8.0;
-        red.seed = 0x5050475f52454431ULL;
-        infrared.amplitude_gain = 1.15;
-        infrared.baseline_au = 0.20;
-        infrared.delay_ms = 12.0;
-        infrared.seed = 0x5050475f49523131ULL;
+    }
+
+    ppg_optical_pulse_state::ppg_optical_pulse_state()
+        : ecg_beat_index(0), time_seconds(0.0), spo2_percent(0.0), ratio_of_ratios(0.0), red_dc_au(0.0), red_ac_au(0.0), red_perfusion_index_percent(0.0), infrared_dc_au(0.0), infrared_ac_au(0.0), infrared_perfusion_index_percent(0.0), calibration_in_range(false), generated(false), valid_for_measurement(false)
+    {
     }
 
     ppg_record::ppg_record() : implementation_(new implementation)
@@ -337,10 +463,17 @@ namespace signal_synth
             return 0;
         return &implementation_->channels[channel_index].samples[0];
     }
-    double ppg_record::channel_amplitude_gain(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].amplitude_gain : 0.0; }
-    double ppg_record::channel_baseline_au(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].baseline_au : 0.0; }
+    double ppg_record::channel_dc_au(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].dc_au : 0.0; }
+    double ppg_record::channel_sensor_gain(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].sensor_gain : 0.0; }
     double ppg_record::channel_delay_ms(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].delay_ms : 0.0; }
     double ppg_record::channel_noise_std_au(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].noise_std_au : 0.0; }
+    double ppg_record::channel_ambient_offset_au(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].ambient_offset_au : 0.0; }
+    double ppg_record::channel_motion_sensitivity(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].motion_sensitivity : 0.0; }
+    double ppg_record::channel_ambient_sensitivity(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].ambient_sensitivity : 0.0; }
+    double ppg_record::channel_crosstalk_ratio(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].crosstalk_ratio : 0.0; }
+    double ppg_record::channel_minimum_output_au(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].minimum_output_au : 0.0; }
+    double ppg_record::channel_maximum_output_au(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].maximum_output_au : 0.0; }
+    unsigned int ppg_record::channel_quantization_bits(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].quantization_bits : 0u; }
     unsigned long long ppg_record::channel_seed(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? implementation_->channels[channel_index].seed : 0u; }
     unsigned int ppg_record::channel_annotation_count(unsigned int channel_index) const { return channel_index < implementation_->channels.size() ? static_cast<unsigned int>(implementation_->channels[channel_index].annotations.size()) : 0u; }
     const ppg_annotation* ppg_record::channel_annotations(unsigned int channel_index) const
@@ -353,6 +486,10 @@ namespace signal_synth
     const ppg_annotation* ppg_record::annotations() const { return channel_annotations(0); }
     unsigned int ppg_record::pulse_count() const { return static_cast<unsigned int>(implementation_->pulses.size()); }
     const ppg_pulse_annotation* ppg_record::pulses() const { return implementation_->pulses.empty() ? 0 : &implementation_->pulses[0]; }
+    bool ppg_record::optical_enabled() const { return implementation_->optical.enabled; }
+    const ppg_optical_config& ppg_record::optical_config() const { return implementation_->optical; }
+    unsigned int ppg_record::optical_state_count() const { return static_cast<unsigned int>(implementation_->optical_states.size()); }
+    const ppg_optical_pulse_state* ppg_record::optical_states() const { return implementation_->optical_states.empty() ? 0 : &implementation_->optical_states[0]; }
 
     ppg_generator::ppg_generator() : config_(), valid_(valid_config(config_))
     {
@@ -388,42 +525,57 @@ namespace signal_synth
 
         try
         {
+            fresh.implementation_->optical = config_.optical;
             ppg_record::implementation::channel_data green;
             green.kind = ppg_channel_green;
-            green.amplitude_gain = 1.0;
-            green.baseline_au = config_.baseline_au;
+            green.dc_au = config_.baseline_au;
+            green.sensor_gain = 1.0;
             green.delay_ms = 0.0;
             green.noise_std_au = 0.0;
             green.seed = config_.seed;
             green.samples.assign(timeline.sample_count(), config_.baseline_au);
             fresh.implementation_->channels.push_back(green);
-            if (config_.red.enabled)
+            if (config_.optical.enabled)
             {
                 ppg_record::implementation::channel_data red;
                 red.kind = ppg_channel_red;
-                red.amplitude_gain = config_.red.amplitude_gain;
-                red.baseline_au = config_.red.baseline_au;
-                red.delay_ms = config_.red.delay_ms;
-                red.noise_std_au = config_.red.noise_std_au;
-                red.seed = config_.red.seed;
-                red.samples.assign(timeline.sample_count(), red.baseline_au);
+                red.dc_au = config_.optical.red.dc_au;
+                red.sensor_gain = config_.optical.red.sensor_gain;
+                red.delay_ms = config_.optical.red.delay_ms;
+                red.noise_std_au = config_.optical.red.noise_std_au;
+                red.ambient_offset_au = config_.optical.red.ambient_offset_au;
+                red.motion_sensitivity = config_.optical.red.motion_sensitivity;
+                red.ambient_sensitivity = config_.optical.red.ambient_sensitivity;
+                red.crosstalk_ratio = config_.optical.red.crosstalk_ratio;
+                red.minimum_output_au = config_.optical.red.minimum_output_au;
+                red.maximum_output_au = config_.optical.red.maximum_output_au;
+                red.quantization_bits = config_.optical.red.quantization_bits;
+                red.seed = config_.optical.red.seed;
+                red.samples.assign(timeline.sample_count(), red.dc_au);
                 fresh.implementation_->channels.push_back(red);
-            }
-            if (config_.infrared.enabled)
-            {
                 ppg_record::implementation::channel_data infrared;
                 infrared.kind = ppg_channel_infrared;
-                infrared.amplitude_gain = config_.infrared.amplitude_gain;
-                infrared.baseline_au = config_.infrared.baseline_au;
-                infrared.delay_ms = config_.infrared.delay_ms;
-                infrared.noise_std_au = config_.infrared.noise_std_au;
-                infrared.seed = config_.infrared.seed;
-                infrared.samples.assign(timeline.sample_count(), infrared.baseline_au);
+                infrared.dc_au = config_.optical.infrared.dc_au;
+                infrared.sensor_gain = config_.optical.infrared.sensor_gain;
+                infrared.delay_ms = config_.optical.infrared.delay_ms;
+                infrared.noise_std_au = config_.optical.infrared.noise_std_au;
+                infrared.ambient_offset_au = config_.optical.infrared.ambient_offset_au;
+                infrared.motion_sensitivity = config_.optical.infrared.motion_sensitivity;
+                infrared.ambient_sensitivity = config_.optical.infrared.ambient_sensitivity;
+                infrared.crosstalk_ratio = config_.optical.infrared.crosstalk_ratio;
+                infrared.minimum_output_au = config_.optical.infrared.minimum_output_au;
+                infrared.maximum_output_au = config_.optical.infrared.maximum_output_au;
+                infrared.quantization_bits = config_.optical.infrared.quantization_bits;
+                infrared.seed = config_.optical.infrared.seed;
+                infrared.samples.assign(timeline.sample_count(), infrared.dc_au);
                 fresh.implementation_->channels.push_back(infrared);
             }
             const double record_end = static_cast<double>(timeline.sample_count() - 1) / timeline.sampling_rate_hz();
             for (std::size_t i = 0; i < config_.perfusion_episodes.size(); ++i)
                 if (config_.perfusion_episodes[i].start_seconds + config_.perfusion_episodes[i].duration_seconds > record_end + 1.0 / timeline.sampling_rate_hz())
+                    return false;
+            for (std::size_t i = 0; i < config_.optical.oxygenation_episodes.size(); ++i)
+                if (config_.optical.oxygenation_episodes[i].start_seconds + config_.optical.oxygenation_episodes[i].duration_seconds > record_end + 1.0 / timeline.sampling_rate_hz())
                     return false;
             const double variation_phase = 2.0 * pi * deterministic_unit(config_.seed);
             const double amplitude_phase = 2.0 * pi * deterministic_unit(config_.seed ^ 0x4c465f414d505f31ULL);
@@ -475,17 +627,42 @@ namespace signal_synth
                 pulse.state = pulse.intentionally_missing ? ppg_pulse_missing : pulse.generated ? ((weak || arrhythmia_weak) ? ppg_pulse_weak : ppg_pulse_valid) : ppg_pulse_out_of_record;
                 pulse.valid_for_peak_scoring = pulse.generated;
                 fresh.implementation_->pulses.push_back(pulse);
+                ppg_optical_pulse_state optical_state;
+                bool optical_pair_generated = false;
+                if (config_.optical.enabled)
+                {
+                    const double last_optical_delay_ms = std::max(config_.optical.red.delay_ms, config_.optical.infrared.delay_ms);
+                    optical_pair_generated = pulse.generated && onset >= 0.0 && offset + last_optical_delay_ms / 1000.0 <= record_end;
+                    optical_state.ecg_beat_index = beat.beat_index;
+                    optical_state.time_seconds = beat.r_peak_time_seconds;
+                    optical_state.spo2_percent = oxygen_saturation_at(config_.optical, beat.r_peak_time_seconds);
+                    optical_state.ratio_of_ratios = (optical_state.spo2_percent - config_.optical.calibration_intercept_percent) / config_.optical.calibration_slope_percent;
+                    optical_state.red_dc_au = config_.optical.red.dc_au;
+                    optical_state.infrared_dc_au = config_.optical.infrared.dc_au;
+                    const double pulse_scale = optical_pair_generated ? effective_amplitude / config_.amplitude_au : 0.0;
+                    optical_state.infrared_perfusion_index_percent = config_.optical.infrared_perfusion_index_percent * pulse_scale;
+                    optical_state.infrared_ac_au = optical_state.infrared_dc_au * optical_state.infrared_perfusion_index_percent / 100.0;
+                    optical_state.red_perfusion_index_percent = optical_state.ratio_of_ratios * optical_state.infrared_perfusion_index_percent;
+                    optical_state.red_ac_au = optical_state.red_dc_au * optical_state.red_perfusion_index_percent / 100.0;
+                    optical_state.calibration_in_range = optical_state.spo2_percent >= config_.optical.minimum_spo2_percent && optical_state.spo2_percent <= config_.optical.maximum_spo2_percent;
+                    optical_state.generated = optical_pair_generated;
+                    optical_state.valid_for_measurement = optical_pair_generated && optical_state.calibration_in_range && optical_state.infrared_ac_au > 0.0 && optical_state.red_ac_au > 0.0;
+                    fresh.implementation_->optical_states.push_back(optical_state);
+                }
                 if (!pulse.generated)
                     continue;
                 for (std::size_t channel_index = 0; channel_index < fresh.implementation_->channels.size(); ++channel_index)
                 {
                     ppg_record::implementation::channel_data& channel = fresh.implementation_->channels[channel_index];
+                    if (channel.kind != ppg_channel_green && !optical_pair_generated) continue;
                     const double channel_onset = onset + channel.delay_ms / 1000.0;
                     const double channel_peak = channel_onset + rise_seconds;
                     const double channel_offset = channel_peak + decay_seconds;
                     if (channel_onset < 0.0 || channel_offset > record_end)
                         continue;
-                    const double channel_amplitude = effective_amplitude * channel.amplitude_gain;
+                    double channel_amplitude = effective_amplitude;
+                    if (channel.kind == ppg_channel_red) channel_amplitude = optical_state.red_ac_au;
+                    else if (channel.kind == ppg_channel_infrared) channel_amplitude = optical_state.infrared_ac_au;
                     const unsigned long long first = sample_at_or_after(channel_onset, timeline.sampling_rate_hz());
                     const unsigned long long last = sample_at_or_after(channel_offset, timeline.sampling_rate_hz());
                     for (unsigned long long sample = first; sample <= last && sample < timeline.sample_count(); ++sample)
@@ -494,11 +671,11 @@ namespace signal_synth
                         channel.samples[static_cast<std::size_t>(sample)] += pulse_value(time, channel_onset, channel_peak, channel_offset, channel_amplitude, config_.dicrotic_delay_ms / 1000.0, config_.dicrotic_width_ms / 1000.0, config_.dicrotic_amplitude_ratio);
                     }
 
-                    add_annotation(channel.annotations, beat, ppg_pulse_onset, ppg_fiducial_construction, channel_onset, channel.baseline_au, timeline.sampling_rate_hz());
-                    add_annotation(channel.annotations, beat, ppg_systolic_peak, ppg_fiducial_construction, channel_peak, channel.baseline_au + channel_amplitude, timeline.sampling_rate_hz());
+                    add_annotation(channel.annotations, beat, ppg_pulse_onset, ppg_fiducial_construction, channel_onset, channel.dc_au, timeline.sampling_rate_hz());
+                    add_annotation(channel.annotations, beat, ppg_systolic_peak, ppg_fiducial_construction, channel_peak, channel.dc_au + channel_amplitude, timeline.sampling_rate_hz());
                     if (config_.dicrotic_amplitude_ratio > 0.0)
-                        add_annotation(channel.annotations, beat, ppg_dicrotic_feature, ppg_fiducial_construction, channel_peak + config_.dicrotic_delay_ms / 1000.0, channel.baseline_au + channel_amplitude * config_.dicrotic_amplitude_ratio, timeline.sampling_rate_hz());
-                    add_annotation(channel.annotations, beat, ppg_pulse_offset, ppg_fiducial_construction, channel_offset, channel.baseline_au, timeline.sampling_rate_hz());
+                        add_annotation(channel.annotations, beat, ppg_dicrotic_feature, ppg_fiducial_construction, channel_peak + config_.dicrotic_delay_ms / 1000.0, channel.dc_au + channel_amplitude * config_.dicrotic_amplitude_ratio, timeline.sampling_rate_hz());
+                    add_annotation(channel.annotations, beat, ppg_pulse_offset, ppg_fiducial_construction, channel_offset, channel.dc_au, timeline.sampling_rate_hz());
                     add_annotation(channel.annotations, beat, ppg_pulse_onset, ppg_fiducial_measurement, static_cast<double>(first) / timeline.sampling_rate_hz(), channel.samples[static_cast<std::size_t>(first)], timeline.sampling_rate_hz());
 
                     unsigned long long measured_sample = first;
@@ -513,9 +690,6 @@ namespace signal_synth
             for (std::size_t channel_index = 0; channel_index < fresh.implementation_->channels.size(); ++channel_index)
             {
                 ppg_record::implementation::channel_data& channel = fresh.implementation_->channels[channel_index];
-                if (channel.noise_std_au > 0.0)
-                    for (std::size_t i = 0; i < channel.samples.size(); ++i)
-                        channel.samples[i] += channel.noise_std_au * deterministic_signed(channel.seed ^ 0x4f50545f4e4f4953ULL, static_cast<unsigned long long>(i), static_cast<unsigned long long>(channel.kind) + 1u);
                 if (!remeasure_annotation_vector(channel.samples.empty() ? 0 : &channel.samples[0], static_cast<unsigned int>(channel.samples.size()), timeline.sampling_rate_hz(), channel.annotations))
                     return false;
                 for (std::size_t i = 0; i < channel.samples.size(); ++i)
@@ -533,11 +707,13 @@ namespace signal_synth
 
     bool remeasure_ppg_fiducials(const double* samples, unsigned int sample_count, ppg_record& record)
     {
-        if (!samples || sample_count != record.sample_count() || !record.sampling_rate_hz())
-            return false;
-        if (record.implementation_->channels.empty())
-            return false;
-        return remeasure_annotation_vector(samples, sample_count, record.sampling_rate_hz(), record.implementation_->channels[0].annotations);
+        return remeasure_ppg_channel_fiducials(0u, samples, sample_count, record);
+    }
+
+    bool remeasure_ppg_channel_fiducials(unsigned int channel_index, const double* samples, unsigned int sample_count, ppg_record& record)
+    {
+        if (!samples || sample_count != record.sample_count() || !record.sampling_rate_hz() || channel_index >= record.implementation_->channels.size()) return false;
+        return remeasure_annotation_vector(samples, sample_count, record.sampling_rate_hz(), record.implementation_->channels[channel_index].annotations);
     }
 
     bool remeasure_ppg_systolic_peaks(const double* samples, unsigned int sample_count, ppg_record& record)

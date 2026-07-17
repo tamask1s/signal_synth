@@ -75,11 +75,14 @@ namespace signal_synth
     struct signal_quality_waveforms
     {
         std::vector<std::vector<double> > ecg_leads;
-        std::vector<double> ppg;
+        std::vector<std::vector<double> > ppg_channels;
         std::vector<double> accelerometer;
         std::vector<signal_quality_artifact_interval> artifacts;
     };
 
     bool validate_signal_quality_config(const signal_quality_config& config, double duration_seconds, unsigned int sampling_rate_hz, bool ppg_enabled);
+    bool initialize_signal_quality_waveforms(const clinical_ecg_record& ecg, const ppg_record& ppg, signal_quality_waveforms& output);
+    bool apply_signal_quality_artifacts_in_place(const signal_quality_config& config, const clinical_ecg_record& ecg, const ppg_record& ppg, signal_quality_waveforms& output);
     bool apply_signal_quality_artifacts(const signal_quality_config& config, const clinical_ecg_record& ecg, const ppg_record& ppg, signal_quality_waveforms& output);
+    bool finalize_ppg_sensor(const ppg_record& ppg, signal_quality_waveforms& waveforms, std::vector<unsigned long long>& clipping_counts);
 }

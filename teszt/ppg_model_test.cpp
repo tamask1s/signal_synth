@@ -31,8 +31,8 @@ namespace
         {
             if (left.channel_kind(channel) != right.channel_kind(channel)
                 || left.channel_annotation_count(channel) != right.channel_annotation_count(channel)
-                || left.channel_amplitude_gain(channel) != right.channel_amplitude_gain(channel)
-                || left.channel_baseline_au(channel) != right.channel_baseline_au(channel)
+                || left.channel_dc_au(channel) != right.channel_dc_au(channel)
+                || left.channel_sensor_gain(channel) != right.channel_sensor_gain(channel)
                 || left.channel_delay_ms(channel) != right.channel_delay_ms(channel)
                 || left.channel_noise_std_au(channel) != right.channel_noise_std_au(channel)
                 || left.channel_seed(channel) != right.channel_seed(channel))
@@ -169,15 +169,12 @@ int main()
     ok &= check(run_rate(250) && run_rate(500) && run_rate(1000), "timing_and_peaks_across_sample_rates");
 
     signal_synth::ppg_config optical_config = config;
-    optical_config.red.enabled = true;
-    optical_config.red.amplitude_gain = 0.5;
-    optical_config.red.delay_ms = 20.0;
-    optical_config.red.baseline_au = 0.25;
-    optical_config.red.noise_std_au = 0.001;
-    optical_config.infrared.enabled = true;
-    optical_config.infrared.amplitude_gain = 1.5;
-    optical_config.infrared.delay_ms = 30.0;
-    optical_config.infrared.baseline_au = 0.35;
+    optical_config.optical.enabled = true;
+    optical_config.optical.red.delay_ms = 20.0;
+    optical_config.optical.red.dc_au = 0.9;
+    optical_config.optical.red.noise_std_au = 0.001;
+    optical_config.optical.infrared.delay_ms = 30.0;
+    optical_config.optical.infrared.dc_au = 1.3;
     signal_synth::ppg_record optical;
     signal_synth::ppg_record optical_repeat;
     ok &= check(signal_synth::ppg_generator(optical_config).generate(ecg, optical)
@@ -188,18 +185,21 @@ int main()
         && std::string(optical.channel_name(2)) == "ppg_infrared"
         && optical.channel_samples(1) && optical.channel_samples(2), "optical_channel_contract");
     const unsigned long long optical_beat = optical.annotations()[0].ecg_beat_index;
-    const signal_synth::ppg_annotation* green_peak = find_channel_annotation(optical, 0, optical_beat, signal_synth::ppg_systolic_peak, signal_synth::ppg_fiducial_measurement);
-    const signal_synth::ppg_annotation* red_peak = find_channel_annotation(optical, 1, optical_beat, signal_synth::ppg_systolic_peak, signal_synth::ppg_fiducial_measurement);
-    const signal_synth::ppg_annotation* infrared_peak = find_channel_annotation(optical, 2, optical_beat, signal_synth::ppg_systolic_peak, signal_synth::ppg_fiducial_measurement);
+    const signal_synth::ppg_annotation* green_peak = find_channel_annotation(optical, 0, optical_beat, signal_synth::ppg_systolic_peak, signal_synth::ppg_fiducial_construction);
+    const signal_synth::ppg_annotation* red_peak = find_channel_annotation(optical, 1, optical_beat, signal_synth::ppg_systolic_peak, signal_synth::ppg_fiducial_construction);
+    const signal_synth::ppg_annotation* infrared_peak = find_channel_annotation(optical, 2, optical_beat, signal_synth::ppg_systolic_peak, signal_synth::ppg_fiducial_construction);
     ok &= check(green_peak && red_peak && infrared_peak
-        && std::fabs((red_peak->time_seconds - green_peak->time_seconds) * 1000.0 - optical_config.red.delay_ms) <= 4.0
-        && std::fabs((infrared_peak->time_seconds - green_peak->time_seconds) * 1000.0 - optical_config.infrared.delay_ms) <= 4.0
-        && red_peak->value_au < green_peak->value_au
-        && infrared_peak->value_au > green_peak->value_au, "optical_channel_delay_gain");
-    ok &= check(red_peak && red_peak->sample_index < optical.sample_count()
-        && red_peak->value_au == optical.channel_samples(1)[red_peak->sample_index], "optical_fiducials_reference_channel_samples");
+        && std::fabs((red_peak->time_seconds - green_peak->time_seconds) * 1000.0 - optical_config.optical.red.delay_ms) <= 4.0
+        && std::fabs((infrared_peak->time_seconds - green_peak->time_seconds) * 1000.0 - optical_config.optical.infrared.delay_ms) <= 4.0, "optical_channel_delay");
+    const signal_synth::ppg_optical_pulse_state* optical_state = optical.optical_states();
+    ok &= check(optical_state && optical.optical_state_count() == optical.pulse_count()
+        && std::fabs(optical_state[0].infrared_ac_au / optical_state[0].infrared_dc_au * 100.0 - optical_state[0].infrared_perfusion_index_percent) < 1e-12
+        && std::fabs((optical_state[0].red_ac_au / optical_state[0].red_dc_au) / (optical_state[0].infrared_ac_au / optical_state[0].infrared_dc_au) - optical_state[0].ratio_of_ratios) < 1e-12, "optical_ac_dc_equations");
+    const signal_synth::ppg_annotation* measured_red_peak = find_channel_annotation(optical, 1, optical_beat, signal_synth::ppg_systolic_peak, signal_synth::ppg_fiducial_measurement);
+    ok &= check(measured_red_peak && measured_red_peak->sample_index < optical.sample_count()
+        && measured_red_peak->value_au == optical.channel_samples(1)[measured_red_peak->sample_index], "optical_fiducials_reference_channel_samples");
     invalid = optical_config;
-    invalid.red.delay_ms = -1.0;
+    invalid.optical.red.delay_ms = -1.0;
     ok &= check(!signal_synth::ppg_generator(invalid).valid(), "invalid_red_delay");
 
     signal_synth::clinical_ecg_config ectopic_config;

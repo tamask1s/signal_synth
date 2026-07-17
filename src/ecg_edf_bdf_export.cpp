@@ -91,17 +91,9 @@ namespace
         return render.record.lead_data(lead);
     }
 
-    const double* rendered_ppg(const signal_synth::ecg_render_bundle& render)
-    {
-        if (render.signal_quality.ppg.size() == render.ppg.sample_count())
-            return render.signal_quality.ppg.empty() ? 0 : &render.signal_quality.ppg[0];
-        return render.ppg.samples();
-    }
-
     const double* rendered_ppg_channel(const signal_synth::ecg_render_bundle& render, unsigned int channel)
     {
-        if (channel == 0)
-            return rendered_ppg(render);
+        if (channel < render.signal_quality.ppg_channels.size() && render.signal_quality.ppg_channels[channel].size() == render.ppg.sample_count()) return render.signal_quality.ppg_channels[channel].empty() ? 0 : &render.signal_quality.ppg_channels[channel][0];
         return render.ppg.channel_samples(channel);
     }
 
@@ -446,8 +438,8 @@ namespace
                    << ",\"unit\":\"normalized_unit\",\"edf_gain_adc_per_unit\":" << edf_ppg_gain_adc_per_au
                    << ",\"bdf_gain_adc_per_unit\":" << bdf_ppg_gain_adc_per_au
                    << ",\"role\":\"optical_ppg\""
-                   << ",\"amplitude_gain\":" << render.ppg.channel_amplitude_gain(channel)
-                   << ",\"baseline_au\":" << render.ppg.channel_baseline_au(channel)
+                   << ",\"dc_au\":" << render.ppg.channel_dc_au(channel)
+                   << ",\"sensor_gain\":" << render.ppg.channel_sensor_gain(channel)
                    << ",\"delay_ms\":" << render.ppg.channel_delay_ms(channel)
                    << ",\"noise_std_au\":" << render.ppg.channel_noise_std_au(channel)
                    << ",\"seed\":" << render.ppg.channel_seed(channel) << "}";

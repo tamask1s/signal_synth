@@ -48,7 +48,7 @@ Add optional `artifacts` to scenario JSON schema version 2. Each artifact has:
 - `duration_seconds`;
 - `severity`, normalized to `[0, 1]`;
 - `seed`;
-- `channels`: array of ECG lead names, `all_ecg`, `ppg_green`, or `all`.
+- `channels`: array of ECG lead names or `all_ecg` for ECG artifacts, and `all_ppg` for PPG artifacts.
 
 The canonical JSON includes the artifact list in input order. Artifact
 parameters contribute to the document fingerprint and render identity.

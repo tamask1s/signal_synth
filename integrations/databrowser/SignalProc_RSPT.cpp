@@ -1135,45 +1135,6 @@ private:
     }
 };
 
-struct zax_ppg_optical_channel_config: public signal_synth::ppg_optical_channel_config
-{
-    ZAX_JSON_SERIALIZABLE(zax_ppg_optical_channel_config, JSON_PROPERTY(enabled), JSON_PROPERTY(amplitude_gain), JSON_PROPERTY(baseline_au), JSON_PROPERTY(delay_ms), JSON_PROPERTY(noise_std_au), JSON_PROPERTY(seed))
-};
-
-struct zax_ppg_config: public signal_synth::ppg_config
-{
-    zax_ppg_optical_channel_config red;
-    zax_ppg_optical_channel_config infrared;
-
-    ZAX_JSON_SERIALIZABLE(
-        zax_ppg_config,
-        JSON_PROPERTY(enabled),
-        JSON_PROPERTY(pulse_delay_ms),
-        JSON_PROPERTY(rise_time_ms),
-        JSON_PROPERTY(decay_time_ms),
-        JSON_PROPERTY(amplitude_au),
-        JSON_PROPERTY(baseline_au),
-        JSON_PROPERTY(dicrotic_delay_ms),
-        JSON_PROPERTY(dicrotic_width_ms),
-        JSON_PROPERTY(dicrotic_amplitude_ratio),
-        JSON_PROPERTY(red),
-        JSON_PROPERTY(infrared))
-
-    void apply_optical_channels()
-    {
-        signal_synth::ppg_config::red = red;
-        signal_synth::ppg_config::infrared = infrared;
-    }
-};
-
-struct zax_ecg_ppg_config
-{
-    zax_clinical_ecg_config ecg;
-    zax_ppg_config ppg;
-
-    ZAX_JSON_SERIALIZABLE(zax_ecg_ppg_config, JSON_PROPERTY(ecg), JSON_PROPERTY(ppg))
-};
-
 const char* clinical_qrs_label(signal_synth::clinical_ventricular_origin origin)
 {
     switch (origin)
@@ -1405,8 +1366,8 @@ unsigned int rendered_ppg_channel_count(const signal_synth::ecg_render_bundle& r
 
 const double* rendered_ppg_channel_data(const signal_synth::ecg_render_bundle& render, unsigned int channel)
 {
-    if (channel == 0 && render.signal_quality.ppg.size() == render.record.sample_count())
-        return render.signal_quality.ppg.data();
+    if (channel < render.signal_quality.ppg_channels.size() && render.signal_quality.ppg_channels[channel].size() == render.record.sample_count())
+        return render.signal_quality.ppg_channels[channel].data();
     return render.ppg.channel_samples(channel);
 }
 
@@ -1425,8 +1386,9 @@ void add_artifact_markers(CVariable* output, const signal_synth::ecg_render_bund
         for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead)
             if (artifact.ecg_leads[lead])
                 put_marker_interval(output, artifact.start_seconds, duration, label.c_str(), lead);
-        if (artifact.ppg && ppg_channel_count)
-            put_marker_interval(output, artifact.start_seconds, duration, label.c_str(), first_ppg_channel);
+        if (artifact.ppg)
+            for (unsigned int channel = 0; channel < ppg_channel_count; ++channel)
+                put_marker_interval(output, artifact.start_seconds, duration, label.c_str(), first_ppg_channel + channel);
     }
 }
 
@@ -1564,99 +1526,6 @@ const char* ppg_annotation_label(const signal_synth::ppg_annotation& annotation)
     return "GT PPG fiducial";
 }
 
-char* GenerateSyntheticECGPPG(char* output_name, char* number_of_samples_text, char* sampling_rate_text, char* parameters_json, char* annotation_output_text)
-{
-    if (!output_name || !number_of_samples_text || !sampling_rate_text || !parameters_json)
-        return MakeString(NewChar, "ERROR: GenerateSyntheticECGPPG: not enough arguments.");
-    const unsigned long parsed_samples = strtoul(number_of_samples_text, nullptr, 10);
-    const unsigned long parsed_sampling_rate = strtoul(sampling_rate_text, nullptr, 10);
-    if (parsed_samples == 0 || parsed_samples > std::numeric_limits<unsigned int>::max() || parsed_sampling_rate == 0 || parsed_sampling_rate > std::numeric_limits<unsigned int>::max())
-        return MakeString(NewChar, "ERROR: GenerateSyntheticECGPPG: invalid sample count or sampling rate.");
-    clinical_annotation_output annotation_output;
-    if (!parse_clinical_annotation_output(annotation_output_text, annotation_output))
-        return MakeString(NewChar, "ERROR: GenerateSyntheticECGPPG: annotation output must be 1 (markers), 2 (channels), or 3 (none).");
-
-    zax_ecg_ppg_config config = parameters_json;
-    config.ecg.apply_enum_properties();
-    config.ecg.sampling_rate_hz = static_cast<unsigned int>(parsed_sampling_rate);
-    config.ppg.apply_optical_channels();
-    signal_synth::clinical_ecg_record ecg;
-    signal_synth::ppg_record ppg;
-    const unsigned int sample_count = static_cast<unsigned int>(parsed_samples);
-    if (!signal_synth::clinical_ecg_generator(config.ecg).generate(sample_count, ecg) || !signal_synth::ppg_generator(config.ppg).generate(ecg, ppg) || ppg.sample_count() != sample_count)
-        return MakeString(NewChar, "ERROR: GenerateSyntheticECGPPG: invalid parameters or generation failed.");
-
-    const unsigned int ppg_channel_count = ppg.channel_count();
-    const unsigned int annotation_channels = annotation_output == clinical_annotations_channels ? 1U + 2U * ppg_channel_count : 0U;
-    const unsigned int first_ppg_channel = 1U;
-    const unsigned int first_annotation_channel = first_ppg_channel + ppg_channel_count;
-    vector<unsigned int> channel_sizes(first_annotation_channel + annotation_channels, sample_count);
-    CVariable* output = NewCVariable();
-    output->Rebuild(channel_sizes.size(), channel_sizes.data());
-    output->m_sample_rates.m_data[0] = ecg.sampling_rate_hz();
-    copy_fixed_string(output->m_labels.m_data[0].s, "ECG Lead II");
-    copy_fixed_string(output->m_vertical_units.m_data[0].s, "mV");
-    memcpy(output->m_data[0], ecg.lead_data(signal_synth::clinical_lead_ii), sample_count * sizeof(double));
-    for (unsigned int ppg_channel = 0; ppg_channel < ppg_channel_count; ++ppg_channel)
-    {
-        const unsigned int output_channel = first_ppg_channel + ppg_channel;
-        output->m_sample_rates.m_data[output_channel] = ecg.sampling_rate_hz();
-        copy_fixed_string(output->m_labels.m_data[output_channel].s, ppg.channel_name(ppg_channel));
-        copy_fixed_string(output->m_vertical_units.m_data[output_channel].s, ppg.channel_unit(ppg_channel));
-        memcpy(output->m_data[output_channel], ppg.channel_samples(ppg_channel), sample_count * sizeof(double));
-    }
-    if (annotation_output == clinical_annotations_channels)
-    {
-        output->m_sample_rates.m_data[first_annotation_channel] = ecg.sampling_rate_hz();
-        copy_fixed_string(output->m_labels.m_data[first_annotation_channel].s, "GT ECG R peaks");
-        copy_fixed_string(output->m_vertical_units.m_data[first_annotation_channel].s, "event");
-        std::fill(output->m_data[first_annotation_channel], output->m_data[first_annotation_channel] + sample_count, 0.0);
-        for (unsigned int ppg_channel = 0; ppg_channel < ppg_channel_count; ++ppg_channel)
-        {
-            const string construction_label = string("GT ") + ppg.channel_name(ppg_channel) + " construction";
-            const string measurement_label = string("Measured ") + ppg.channel_name(ppg_channel) + " peaks";
-            for (unsigned int kind = 0; kind < 2; ++kind)
-            {
-                const unsigned int output_channel = first_annotation_channel + 1U + 2U * ppg_channel + kind;
-                output->m_sample_rates.m_data[output_channel] = ecg.sampling_rate_hz();
-                copy_fixed_string(output->m_labels.m_data[output_channel].s, kind == 0 ? construction_label.c_str() : measurement_label.c_str());
-                copy_fixed_string(output->m_vertical_units.m_data[output_channel].s, "event");
-                std::fill(output->m_data[output_channel], output->m_data[output_channel] + sample_count, 0.0);
-            }
-        }
-    }
-
-    if (annotation_output == clinical_annotations_markers)
-    {
-        for (unsigned int i = 0; i < ecg.beat_count(); ++i)
-            put_marker_interval(output, ecg.beats()[i].r_peak_time_seconds, 1.0 / ecg.sampling_rate_hz(), "GT ECG R peak", 0);
-        for (unsigned int ppg_channel = 0; ppg_channel < ppg_channel_count; ++ppg_channel)
-            for (unsigned int i = 0; i < ppg.channel_annotation_count(ppg_channel); ++i)
-                put_marker_interval(output, ppg.channel_annotations(ppg_channel)[i].time_seconds, 1.0 / ecg.sampling_rate_hz(), ppg_annotation_label(ppg.channel_annotations(ppg_channel)[i]), first_ppg_channel + ppg_channel);
-    }
-    else if (annotation_output == clinical_annotations_channels)
-    {
-        for (unsigned int i = 0; i < ecg.beat_count(); ++i)
-        {
-            const unsigned int sample = clinical_annotation_sample(ecg.beats()[i].r_peak_time_seconds, ecg);
-            output->m_data[first_annotation_channel][sample] = 1.0;
-        }
-        for (unsigned int ppg_channel = 0; ppg_channel < ppg_channel_count; ++ppg_channel)
-        {
-            for (unsigned int i = 0; i < ppg.channel_annotation_count(ppg_channel); ++i)
-            {
-                const signal_synth::ppg_annotation& annotation = ppg.channel_annotations(ppg_channel)[i];
-                const unsigned int source_offset = annotation.source == signal_synth::ppg_fiducial_construction ? 0U : 1U;
-                const unsigned int channel = first_annotation_channel + 1U + 2U * ppg_channel + source_offset;
-                output->m_data[channel][annotation.sample_index] = annotation.source == signal_synth::ppg_fiducial_measurement ? 1.0 : static_cast<int>(annotation.kind) + 1.0;
-            }
-        }
-    }
-    copy_fixed_string(output->m_varname, output_name);
-    m_variable_list_ref->Insert(output_name, output);
-    return 0;
-}
-
 struct zax_ecg_qa_scenario
 {
     vector<string> conditions;
@@ -1765,6 +1634,24 @@ char* GenerateECGQAScenario(char* ecg_output_name, char* source_output_name, cha
     return 0;
 }
 
+bool render_scenario_json(const char* scenario_json, signal_synth::ecg_render_bundle& render, string& error)
+{
+    signal_synth::ecg_scenario_document document;
+    signal_synth::ecg_scenario_json_result json_result;
+    if (!signal_synth::parse_ecg_scenario_json(scenario_json, document, json_result))
+    {
+        error = json_result.messages.empty() ? "scenario JSON parsing failed" : json_result.messages[0].path + ": " + json_result.messages[0].message;
+        return false;
+    }
+    signal_synth::ecg_document_render_result render_result;
+    if (!signal_synth::render_ecg_document(document, render, render_result))
+    {
+        error = render_result.messages.empty() ? "render failed" : render_result.messages[0];
+        return false;
+    }
+    return true;
+}
+
 char* GenerateECGScenarioJSON(char* output_name, char* scenario_json, char* annotation_output_text)
 {
     if (!output_name || !scenario_json)
@@ -1773,25 +1660,81 @@ char* GenerateECGScenarioJSON(char* output_name, char* scenario_json, char* anno
     if (!parse_clinical_annotation_output(annotation_output_text, annotation_output))
         return MakeString(NewChar, "ERROR: GenerateECGScenarioJSON: annotation output must be 1 (markers), 2 (channels), or 3 (none).");
 
-    signal_synth::ecg_scenario_document document;
-    signal_synth::ecg_scenario_json_result json_result;
-    if (!signal_synth::parse_ecg_scenario_json(scenario_json, document, json_result))
-    {
-        if (!json_result.messages.empty())
-            return MakeString(NewChar, "ERROR: GenerateECGScenarioJSON: ", json_result.messages[0].path.c_str(), ": ", json_result.messages[0].message.c_str());
-        return MakeString(NewChar, "ERROR: GenerateECGScenarioJSON: scenario JSON parsing failed.");
-    }
-
     signal_synth::ecg_render_bundle render;
-    signal_synth::ecg_document_render_result render_result;
-    if (!signal_synth::render_ecg_document(document, render, render_result))
-    {
-        if (!render_result.messages.empty())
-            return MakeString(NewChar, "ERROR: GenerateECGScenarioJSON: ", render_result.messages[0].c_str());
-        return MakeString(NewChar, "ERROR: GenerateECGScenarioJSON: render failed.");
-    }
+    string error;
+    if (!render_scenario_json(scenario_json, render, error))
+        return MakeString(NewChar, "ERROR: GenerateECGScenarioJSON: ", error.c_str());
 
     create_rendered_ecg_variable(output_name, render, annotation_output);
+    return 0;
+}
+
+double optical_truth_value(const signal_synth::ppg_optical_pulse_state& state, unsigned int channel)
+{
+    if (channel == 0U) return state.spo2_percent;
+    if (channel == 1U) return state.ratio_of_ratios;
+    if (channel == 2U) return state.red_perfusion_index_percent;
+    return state.infrared_perfusion_index_percent;
+}
+
+CVariable* create_ppg_optical_truth_variable(const signal_synth::ecg_render_bundle& render)
+{
+    const signal_synth::ppg_optical_pulse_state* states = render.ppg.optical_states();
+    const unsigned int state_count = render.ppg.optical_state_count();
+    if (!states || !state_count || !render.record.sample_count()) return 0;
+    const unsigned int channel_count = 5U;
+    vector<unsigned int> sizes(channel_count, render.record.sample_count());
+    CVariable* output = NewCVariable();
+    output->Rebuild(channel_count, sizes.data());
+    const char* labels[] = {"GT SpO2 target", "GT red/IR ratio R", "GT red perfusion index", "GT infrared perfusion index", "GT optical measurement valid"};
+    const char* units[] = {"%", "ratio", "%", "%", "bool"};
+    for (unsigned int channel = 0; channel < channel_count; ++channel)
+    {
+        output->m_sample_rates.m_data[channel] = render.record.sampling_rate_hz();
+        copy_fixed_string(output->m_labels.m_data[channel].s, labels[channel]);
+        copy_fixed_string(output->m_vertical_units.m_data[channel].s, units[channel]);
+    }
+    unsigned int right = 0U;
+    for (unsigned int sample = 0; sample < render.record.sample_count(); ++sample)
+    {
+        const double time = static_cast<double>(sample) / render.record.sampling_rate_hz();
+        while (right < state_count && states[right].time_seconds < time) ++right;
+        const unsigned int left = right == 0U ? 0U : right - 1U;
+        const unsigned int bounded_right = right < state_count ? right : state_count - 1U;
+        double weight = 0.0;
+        if (bounded_right != left && states[bounded_right].time_seconds > states[left].time_seconds)
+            weight = (time - states[left].time_seconds) / (states[bounded_right].time_seconds - states[left].time_seconds);
+        weight = std::max(0.0, std::min(1.0, weight));
+        for (unsigned int channel = 0; channel < 4U; ++channel)
+            output->m_data[channel][sample] = optical_truth_value(states[left], channel) + weight * (optical_truth_value(states[bounded_right], channel) - optical_truth_value(states[left], channel));
+        output->m_data[4][sample] = states[left].valid_for_measurement && states[bounded_right].valid_for_measurement ? 1.0 : 0.0;
+    }
+    return output;
+}
+
+char* GeneratePPGOpticalScenarioJSON(char* signal_output_name, char* truth_output_name, char* scenario_json, char* annotation_output_text)
+{
+    if (!signal_output_name || !signal_output_name[0] || !truth_output_name || !truth_output_name[0] || !scenario_json)
+        return MakeString(NewChar, "ERROR: GeneratePPGOpticalScenarioJSON: not enough arguments.");
+    if (strcmp(signal_output_name, truth_output_name) == 0)
+        return MakeString(NewChar, "ERROR: GeneratePPGOpticalScenarioJSON: output names must differ.");
+    clinical_annotation_output annotation_output;
+    if (!parse_clinical_annotation_output(annotation_output_text, annotation_output))
+        return MakeString(NewChar, "ERROR: GeneratePPGOpticalScenarioJSON: annotation output must be 1 (markers), 2 (channels), or 3 (none).");
+    signal_synth::ecg_render_bundle render;
+    string error;
+    if (!render_scenario_json(scenario_json, render, error))
+        return MakeString(NewChar, "ERROR: GeneratePPGOpticalScenarioJSON: ", error.c_str());
+    if (!render.ppg.optical_enabled())
+        return MakeString(NewChar, "ERROR: GeneratePPGOpticalScenarioJSON: ppg.optical must be enabled.");
+    CVariable* truth = create_ppg_optical_truth_variable(render);
+    if (!truth)
+        return MakeString(NewChar, "ERROR: GeneratePPGOpticalScenarioJSON: output variable creation failed.");
+    CVariable* signals = create_rendered_ecg_variable(signal_output_name, render, annotation_output);
+    if (!signals)
+        return MakeString(NewChar, "ERROR: GeneratePPGOpticalScenarioJSON: output variable creation failed.");
+    copy_fixed_string(truth->m_varname, truth_output_name);
+    m_variable_list_ref->Insert(truth_output_name, truth);
     return 0;
 }
 
@@ -1882,17 +1825,11 @@ char* GenerateWearableScenarioJSON(char* signal_output_name, char* timing_output
         return MakeString(NewChar, "ERROR: GenerateWearableScenarioJSON: not enough arguments.");
     if (strcmp(signal_output_name, timing_output_name) == 0)
         return MakeString(NewChar, "ERROR: GenerateWearableScenarioJSON: output names must differ.");
-    signal_synth::ecg_scenario_document document;
-    signal_synth::ecg_scenario_json_result json_result;
-    if (!signal_synth::parse_ecg_scenario_json(scenario_json, document, json_result))
-    {
-        if (!json_result.messages.empty())
-            return MakeString(NewChar, "ERROR: GenerateWearableScenarioJSON: ", json_result.messages[0].path.c_str(), ": ", json_result.messages[0].message.c_str());
-        return MakeString(NewChar, "ERROR: GenerateWearableScenarioJSON: scenario JSON parsing failed.");
-    }
     signal_synth::ecg_render_bundle render;
-    signal_synth::ecg_document_render_result render_result;
-    if (!signal_synth::render_ecg_document(document, render, render_result) || render.wearable.streams.empty())
+    string error;
+    if (!render_scenario_json(scenario_json, render, error))
+        return MakeString(NewChar, "ERROR: GenerateWearableScenarioJSON: ", error.c_str());
+    if (render.wearable.streams.empty())
         return MakeString(NewChar, "ERROR: GenerateWearableScenarioJSON: wearable render failed or no wearable streams were configured.");
     CVariable* signals = create_wearable_signal_variable(render.wearable);
     CVariable* timing = create_wearable_timing_variable(render.wearable);
@@ -1934,11 +1871,11 @@ extern "C"
         case 10:
             return GenerateECGQAScenario(a_param1, a_param2, a_param3, a_param4, a_param5, a_param6, a_param7);
         case 11:
-            return GenerateSyntheticECGPPG(a_param1, a_param2, a_param3, a_param4, a_param5);
-        case 12:
             return GenerateECGScenarioJSON(a_param1, a_param2, a_param3);
-        case 13:
+        case 12:
             return GenerateWearableScenarioJSON(a_param1, a_param2, a_param3);
+        case 13:
+            return GeneratePPGOpticalScenarioJSON(a_param1, a_param2, a_param3, a_param4);
         }
         return 0;
     }
@@ -1970,9 +1907,9 @@ extern "C"
         FunctionList.AddElement("GenerateSyntheticECG(outdataname, number_of_samples, sampling_rate, parameters, annotation_output)");
         FunctionList.AddElement("GenerateClinicalECG12(outdataname, number_of_samples, sampling_rate, parameters, annotation_output)");
         FunctionList.AddElement("GenerateECGQAScenario(ecg_outdataname, source_outdataname, assertion_outdataname, number_of_samples, sampling_rate, parameters, annotation_output)");
-        FunctionList.AddElement("GenerateSyntheticECGPPG(outdataname, number_of_samples, sampling_rate, parameters, annotation_output)");
         FunctionList.AddElement("GenerateECGScenarioJSON(outdataname, scenario_json, annotation_output)");
         FunctionList.AddElement("GenerateWearableScenarioJSON(signal_outdataname, timing_outdataname, scenario_json)");
+        FunctionList.AddElement("GeneratePPGOpticalScenarioJSON(signal_outdataname, truth_outdataname, scenario_json, annotation_output)");
         a_functionlibrary_reference->ParseFunctionList(&FunctionList);
         return FunctionList.m_size;
     }

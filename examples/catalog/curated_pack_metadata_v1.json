@@ -1,11 +1,11 @@
 {
   "catalog_id": "synsigra_verification_packs",
-  "catalog_version": "1.9",
+  "catalog_version": "2.0",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "metadata_type": "synsigra_curated_pack_catalog",
   "metadata_version": "synsigra_curated_pack_metadata_export_v1",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
-  "pack_count": 11,
+  "pack_count": 12,
   "packs": [
     {
       "case_count": 4,
@@ -610,7 +610,8 @@
           2,
           3,
           4,
-          5
+          5,
+          6
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -995,7 +996,8 @@
           2,
           3,
           4,
-          5
+          5,
+          6
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -1419,7 +1421,8 @@
           2,
           3,
           4,
-          5
+          5,
+          6
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -1827,7 +1830,8 @@
           2,
           3,
           4,
-          5
+          5,
+          6
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2198,7 +2202,8 @@
           2,
           3,
           4,
-          5
+          5,
+          6
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2569,7 +2574,8 @@
           2,
           3,
           4,
-          5
+          5,
+          6
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2956,7 +2962,8 @@
           2,
           3,
           4,
-          5
+          5,
+          6
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -3229,7 +3236,7 @@
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
-          "scenario_id": "wearable_independent_clocks_v5",
+          "scenario_id": "wearable_independent_clocks_v6",
           "scoreable_targets": [
             "r_peak",
             "ppg_systolic_peak",
@@ -3353,7 +3360,8 @@
           2,
           3,
           4,
-          5
+          5,
+          6
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -3543,9 +3551,9 @@
       "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
-        "pack_fingerprint": "sha256:19013ee680a00027a7a0c5eccaf147fa8000b1240fd407c5b256dce0844d2d53",
+        "pack_fingerprint": "sha256:408a231cbf5ccada564712579cadb5cc6cdd6d8a5744d01a8d9d16768fa15f07",
         "pack_path": "../packs/wearable_timebase_v2.json",
-        "source_content_sha256": "sha256:b68421320e280555a316cf6472e82ac4fbd937b00414d5e80fc3a8ecb01e2cb8"
+        "source_content_sha256": "sha256:1ae53c029972b0c6f5994e9d54990c54065184827b73ee24c4e031548d054b3d"
       },
       "submission_output_schemas": [
         "point_events_json_v1",
@@ -3779,7 +3787,7 @@
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
-          "scenario_id": "wearable_independent_clocks_v5",
+          "scenario_id": "wearable_independent_clocks_v6",
           "scoreable_targets": [
             "ppg_systolic_peak",
             "ppg_pulse_onset"
@@ -3889,7 +3897,8 @@
           2,
           3,
           4,
-          5
+          5,
+          6
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -4061,9 +4070,9 @@
       "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
-        "pack_fingerprint": "sha256:6edbdd54741ac7c3a0f740da64605073478d6de461a0b0c9607b01a6123a58b7",
+        "pack_fingerprint": "sha256:ffc207e5aa6c30df692c896d674c83f479caf5087c793abbdd84ed02a4b71f85",
         "pack_path": "../packs/ppg_benchmark_v1.json",
-        "source_content_sha256": "sha256:0ce6e4dfc58d528fc3e35b0e04a37ef456df144e540af22476dd86748303b1a0"
+        "source_content_sha256": "sha256:9d5f34632c93d7a4b13ced4c8165b7cace62a6cc938e203cab98c625611dd938"
       },
       "submission_output_schemas": [
         "point_events_json_v1",
@@ -4101,6 +4110,455 @@
         "scoreable_before_job": true
       },
       "version": "1.1"
+    },
+    {
+      "case_count": 4,
+      "case_ids": [
+        "normoxia",
+        "desaturation",
+        "low_perfusion",
+        "interference"
+      ],
+      "cases": [
+        {
+          "case_id": "normoxia",
+          "channel_count": 15,
+          "duration_seconds": 60,
+          "estimated_binary_signal_bytes": 1575000,
+          "estimated_package_bytes": 7381400,
+          "estimated_peak_memory_bytes": 8488576,
+          "estimated_waveform_csv_bytes": 4320256,
+          "reference_only_targets": [],
+          "sample_count": 15000,
+          "sampling_rate_hz": 250,
+          "scenario_id": "ppg_multichannel_optical_v6",
+          "scoreable_targets": [
+            "ppg_optical",
+            "ppg_systolic_peak",
+            "ppg_pulse_onset"
+          ],
+          "targets": [
+            "ppg_optical",
+            "ppg_systolic_peak",
+            "ppg_pulse_onset"
+          ]
+        },
+        {
+          "case_id": "desaturation",
+          "channel_count": 15,
+          "duration_seconds": 45,
+          "estimated_binary_signal_bytes": 337500,
+          "estimated_package_bytes": 4740900,
+          "estimated_peak_memory_bytes": 6628576,
+          "estimated_waveform_csv_bytes": 3240256,
+          "reference_only_targets": [],
+          "sample_count": 11250,
+          "sampling_rate_hz": 250,
+          "scenario_id": "ppg_optical_desaturation_v6",
+          "scoreable_targets": [
+            "ppg_optical",
+            "ppg_systolic_peak",
+            "ppg_pulse_onset"
+          ],
+          "targets": [
+            "ppg_optical",
+            "ppg_systolic_peak",
+            "ppg_pulse_onset"
+          ]
+        },
+        {
+          "case_id": "low_perfusion",
+          "channel_count": 15,
+          "duration_seconds": 45,
+          "estimated_binary_signal_bytes": 337500,
+          "estimated_package_bytes": 4808900,
+          "estimated_peak_memory_bytes": 6628576,
+          "estimated_waveform_csv_bytes": 3240256,
+          "reference_only_targets": [],
+          "sample_count": 11250,
+          "sampling_rate_hz": 250,
+          "scenario_id": "ppg_optical_low_perfusion_v6",
+          "scoreable_targets": [
+            "ppg_optical",
+            "ppg_systolic_peak",
+            "ppg_pulse_onset"
+          ],
+          "targets": [
+            "ppg_optical",
+            "ppg_systolic_peak",
+            "ppg_pulse_onset"
+          ]
+        },
+        {
+          "case_id": "interference",
+          "channel_count": 16,
+          "duration_seconds": 45,
+          "estimated_binary_signal_bytes": 360000,
+          "estimated_package_bytes": 12278840,
+          "estimated_peak_memory_bytes": 8698776,
+          "estimated_waveform_csv_bytes": 3442756,
+          "reference_only_targets": [],
+          "sample_count": 11250,
+          "sampling_rate_hz": 250,
+          "scenario_id": "ppg_optical_interference_v6",
+          "scoreable_targets": [
+            "ppg_optical",
+            "ppg_systolic_peak",
+            "ppg_pulse_onset"
+          ],
+          "targets": [
+            "ppg_optical",
+            "ppg_systolic_peak",
+            "ppg_pulse_onset"
+          ]
+        }
+      ],
+      "catalog_scoring_mode": "local",
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta optical physiology and sensor-electronics pack with explicit clean latent and measurement truth."
+          ],
+          "date": "2026-07-17",
+          "version": "1.0"
+        }
+      ],
+      "channels": {
+        "families": [
+          {
+            "channel_count": 12,
+            "channels": [
+              "I",
+              "II",
+              "III",
+              "aVR",
+              "aVL",
+              "aVF",
+              "V1",
+              "V2",
+              "V3",
+              "V4",
+              "V5",
+              "V6"
+            ],
+            "name": "standard_12_lead_ecg"
+          },
+          {
+            "channel_count": 1,
+            "channels": [
+              "ppg_green"
+            ],
+            "name": "green_ppg"
+          },
+          {
+            "channel_count": 2,
+            "channels": [
+              "ppg_red",
+              "ppg_infrared"
+            ],
+            "name": "paired_optical_ppg"
+          },
+          {
+            "channel_count": 1,
+            "channels": [
+              "accel_motion"
+            ],
+            "name": "motion_reference"
+          }
+        ],
+        "maximum_channel_count": 16,
+        "minimum_channel_count": 15
+      },
+      "declared_targets": [
+        "ppg_optical",
+        "ppg_systolic_peak",
+        "ppg_pulse_onset"
+      ],
+      "deprecation_message": "",
+      "description": "Engineering red/infrared optical physiology, sensor-electronics and local measurement-scoring QA pack.",
+      "difficulty": [
+        "regression",
+        "stress",
+        "benchmark"
+      ],
+      "duration": {
+        "maximum_case_seconds": 60,
+        "minimum_case_seconds": 45,
+        "total_seconds": 195
+      },
+      "estimated_package": {
+        "bytes": 29210040,
+        "peak_memory_bytes": 8698776,
+        "size_class": "medium"
+      },
+      "feature_tags": [
+        "red",
+        "infrared",
+        "ac_dc",
+        "perfusion_index",
+        "ratio_of_ratios",
+        "spo2_trajectory",
+        "motion",
+        "ambient_light",
+        "crosstalk",
+        "clipping",
+        "quantization",
+        "multirate"
+      ],
+      "generator_compatibility": {
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.6.0",
+        "minimum_generator_version": "0.6.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [
+          6
+        ],
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
+      },
+      "limitations": {
+        "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
+        "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
+      },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "core optical physiology and measurement-truth smoke test",
+          "target": "ppg_optical",
+          "test_id": "TEST-PPG-OPTICAL-V2-001"
+        },
+        {
+          "scope": "generator-free optical measurement scoring parity test",
+          "target": "ppg_optical",
+          "test_id": "TEST-MEASUREMENT-PYTHON-001"
+        },
+        {
+          "scope": "local PPG event-detection scoring smoke test",
+          "target": "ppg_systolic_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
+          "scope": "local PPG onset event-detection scoring smoke test",
+          "target": "ppg_pulse_onset",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
+      "messages": [],
+      "metadata_type": "synsigra_curated_pack_metadata",
+      "metadata_version": "synsigra_curated_pack_metadata_export_v1",
+      "modality": [
+        "ECG",
+        "PPG",
+        "accelerometer"
+      ],
+      "name": "PPG Optical Physiology v2",
+      "not_recommended_for": [
+        "Clinical pulse-oximeter validation or calibration claims",
+        "Patient SpO2 accuracy claims",
+        "Hardware conformity assessment",
+        "Blood-pressure estimation validation"
+      ],
+      "output_artifacts": [
+        {
+          "required": true,
+          "role": "manifest_json"
+        },
+        {
+          "required": true,
+          "role": "scoring_manifest_json"
+        },
+        {
+          "required": true,
+          "role": "provenance_json"
+        },
+        {
+          "required": true,
+          "role": "engineering_claim_boundary_txt"
+        },
+        {
+          "required": true,
+          "role": "case_summary_json"
+        },
+        {
+          "required": true,
+          "role": "annotations_json"
+        },
+        {
+          "required": true,
+          "role": "waveform_csv"
+        },
+        {
+          "required": true,
+          "role": "wfdb"
+        },
+        {
+          "required": true,
+          "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
+        },
+        {
+          "required": true,
+          "role": "wearable_samples_csv"
+        },
+        {
+          "required": true,
+          "role": "wearable_timestamp_truth_csv"
+        },
+        {
+          "required": true,
+          "role": "wearable_timebase_truth_json"
+        },
+        {
+          "required": true,
+          "role": "wearable_alignment_truth_json"
+        },
+        {
+          "required": true,
+          "role": "ppg_optical_latent_csv"
+        },
+        {
+          "required": true,
+          "role": "ppg_optical_truth_json"
+        },
+        {
+          "required": true,
+          "role": "measurement_truth_json"
+        }
+      ],
+      "pack_id": "ppg_optical_v2",
+      "recommended_for": [
+        "Red/infrared optical algorithm and sensor-pipeline engineering QA",
+        "AC/DC, perfusion-index and ratio-of-ratios implementation checks",
+        "Target SpO2 trajectory tracking against declared engineering calibration truth",
+        "Motion, ambient-light, crosstalk, clipping, quantization and low-perfusion stress tests"
+      ],
+      "recommended_profile": "regression",
+      "reference_only_targets": [],
+      "release_date": "2026-07-17",
+      "release_status": "beta",
+      "sampling_rates_hz": [
+        250
+      ],
+      "schema_version": 1,
+      "scoreable_targets": [
+        {
+          "accepted_formats": [
+            "measurement_values_json_v1",
+            "measurement_values_csv_v1"
+          ],
+          "case_count": 4,
+          "case_ids": [
+            "normoxia",
+            "desaturation",
+            "low_perfusion",
+            "interference"
+          ],
+          "default_pairing_window_seconds": 0.2,
+          "description": "Per-pulse red/infrared AC/DC, perfusion-index, ratio-of-ratios and oxygenation-trajectory measurements.",
+          "primary_metric": "tolerance_pass_fraction",
+          "score_type": "measurement",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "ppg_optical"
+        },
+        {
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
+          ],
+          "case_count": 4,
+          "case_ids": [
+            "normoxia",
+            "desaturation",
+            "low_perfusion",
+            "interference"
+          ],
+          "default_tolerance_seconds": 0.08,
+          "description": "PPG systolic peak event timing against exact synthetic pulse annotations.",
+          "primary_metric": "f1_score",
+          "score_type": "event_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "ppg_systolic_peak"
+        },
+        {
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
+          ],
+          "case_count": 4,
+          "case_ids": [
+            "normoxia",
+            "desaturation",
+            "low_perfusion",
+            "interference"
+          ],
+          "default_tolerance_seconds": 0.05,
+          "description": "PPG pulse onset event timing against exact synthetic pulse annotations.",
+          "primary_metric": "f1_score",
+          "score_type": "event_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "ppg_pulse_onset"
+        }
+      ],
+      "scoring_mode": "local",
+      "source": {
+        "catalog_path": "examples/catalog/verification_packs_v1.json",
+        "pack_fingerprint": "sha256:a360aec178c92f97c5d618117e4da3f4afe0ffc4b92a857cea8fd8f2f0839787",
+        "pack_path": "../packs/ppg_optical_v2.json",
+        "source_content_sha256": "sha256:f7744397afeb266182be14e50129ac849b1bd569c2c0b8912af82fc79a131076"
+      },
+      "submission_output_schemas": [
+        "measurement_values_json_v1",
+        "measurement_values_csv_v1",
+        "point_events_json_v1",
+        "point_events_csv_v1"
+      ],
+      "supported_threshold_profiles": [
+        "smoke",
+        "regression",
+        "stress",
+        "benchmark"
+      ],
+      "targets": [
+        "ppg_optical",
+        "ppg_systolic_peak",
+        "ppg_pulse_onset"
+      ],
+      "threshold_profile_contract": {
+        "policy_failure_exit_code": 1,
+        "recommended_profile": "regression",
+        "supported_profiles": [
+          "smoke",
+          "regression",
+          "stress",
+          "benchmark"
+        ]
+      },
+      "ui": {
+        "primary_badges": [
+          "regression",
+          "stress",
+          "benchmark",
+          "red",
+          "infrared",
+          "ac_dc"
+        ],
+        "reference_only_before_job": false,
+        "scoreable_before_job": true
+      },
+      "version": "1.0"
     },
     {
       "case_count": 8,
@@ -4526,5 +4984,5 @@
   "release_set_id": "synsigra_curated_release_2026_07_17",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:8e3f4bf6692c4bbf79205796c5d003b4a30ea632a5860cdfa494393dc8ea90a1"
+  "source_catalog_sha256": "sha256:2f8d6205065abccdc42ba4efa89e1b01b40239f06230836d64bd0e3d678b4f10"
 }

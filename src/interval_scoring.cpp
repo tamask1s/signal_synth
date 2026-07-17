@@ -446,7 +446,8 @@ namespace signal_synth
             {
                 for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead)
                     if (artifact.ecg_leads[lead]) channels.push_back(render.record.lead_name(lead));
-                if (artifact.ppg) channels.push_back("ppg_green");
+                if (artifact.ppg)
+                    for (unsigned int channel = 0; channel < render.ppg.channel_count(); ++channel) channels.push_back(render.ppg.channel_name(channel));
                 if (artifact.accelerometer_reference) channels.push_back("accel_motion");
             }
             for (std::size_t channel = 0; channel < channels.size(); ++channel)

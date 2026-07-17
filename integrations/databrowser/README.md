@@ -20,4 +20,4 @@ as the first argument.
 The full 32-bit Windows application is not built by the portable CI. The
 `TEST-DATABROWSER-GCC49-001` target separately compiles the exact generation
 source subset as strict C++11 and renders every scenario embedded by scripts
-077-081. Final UI inspection remains manual integration evidence.
+077-082. Final UI inspection remains manual integration evidence.

@@ -74,13 +74,13 @@ int main()
     signal_synth::ecg_export_result export_result;
     ok &= check(signal_synth::render_ecg_document(document, first, result)
         && signal_synth::render_ecg_document(document, repeated, result)
-        && first.signal_quality.ppg == repeated.signal_quality.ppg
+        && first.signal_quality.ppg_channels == repeated.signal_quality.ppg_channels
         && first.signal_quality.accelerometer == repeated.signal_quality.accelerometer, "deterministic_replay");
     signal_synth::ecg_scenario_document reordered_document = document;
     std::reverse(reordered_document.signal_quality.artifacts.begin(), reordered_document.signal_quality.artifacts.end());
     signal_synth::ecg_render_bundle reordered;
     ok &= check(signal_synth::render_ecg_document(reordered_document, reordered, result)
-        && first.signal_quality.ppg == reordered.signal_quality.ppg
+        && first.signal_quality.ppg_channels == reordered.signal_quality.ppg_channels
         && first.signal_quality.accelerometer == reordered.signal_quality.accelerometer, "nonoverlapping_artifact_order_independence");
     ok &= check(first.signal_quality.accelerometer.size() == first.record.sample_count()
         && first.signal_quality.artifacts.size() == 5u, "reference_channel_and_intervals");
@@ -112,10 +112,10 @@ int main()
         const std::size_t last_sample = static_cast<std::size_t>(interval.end_sample_index);
         bool changed_inside = false;
         for (std::size_t sample = first_sample; sample <= last_sample; ++sample)
-            changed_inside = changed_inside || first.signal_quality.ppg[sample] != clean.signal_quality.ppg[sample];
+            changed_inside = changed_inside || first.signal_quality.ppg_channels[0][sample] != clean.signal_quality.ppg_channels[0][sample];
         ok &= changed_inside
-            && first.signal_quality.ppg[first_sample] == clean.signal_quality.ppg[first_sample]
-            && first.signal_quality.ppg[last_sample] == clean.signal_quality.ppg[last_sample];
+            && first.signal_quality.ppg_channels[0][first_sample] == clean.signal_quality.ppg_channels[0][first_sample]
+            && first.signal_quality.ppg_channels[0][last_sample] == clean.signal_quality.ppg_channels[0][last_sample];
     }
     ok &= check(ok, "all_artifacts_modify_interior_and_taper_boundaries");
 

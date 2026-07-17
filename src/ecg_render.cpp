@@ -96,7 +96,10 @@ namespace
 
     bool build_wearable_record(signal_synth::ecg_render_bundle& render)
     {
-        if (render.resolved_document.schema_version < 5)
+        if (render.resolved_document.schema_version < 5
+            || (signal_synth::wearable_stream_config_is_default(render.resolved_document.wearable.ecg)
+                && signal_synth::wearable_stream_config_is_default(render.resolved_document.wearable.ppg)
+                && signal_synth::wearable_stream_config_is_default(render.resolved_document.wearable.accelerometer)))
             return true;
         signal_synth::wearable_timebase_record wearable;
         wearable.duration_seconds = render.resolved_document.duration_seconds;
@@ -122,7 +125,7 @@ namespace
             std::vector<signal_synth::wearable_source_channel> channels;
             for (unsigned int channel = 0; channel < render.ppg.channel_count(); ++channel)
             {
-                const double* samples = channel == 0 && render.signal_quality.ppg.size() == source_count ? &render.signal_quality.ppg[0] : render.ppg.channel_samples(channel);
+                const double* samples = channel < render.signal_quality.ppg_channels.size() && render.signal_quality.ppg_channels[channel].size() == source_count ? &render.signal_quality.ppg_channels[channel][0] : render.ppg.channel_samples(channel);
                 channels.push_back(signal_synth::wearable_source_channel(render.ppg.channel_name(channel), render.ppg.channel_unit(channel), samples));
             }
             signal_synth::wearable_stream_record stream;
@@ -216,24 +219,37 @@ namespace signal_synth
             result = fresh_result;
             return false;
         }
-        if (!apply_signal_quality_artifacts(fresh.resolved_document.signal_quality, fresh.record, fresh.ppg, fresh.signal_quality))
+        if (!initialize_signal_quality_waveforms(fresh.record, fresh.ppg, fresh.signal_quality))
         {
-            fresh_result.messages.push_back("signal quality artifact application failed");
+            fresh_result.messages.push_back("observable waveform initialization failed");
             result = fresh_result;
             return false;
         }
-        if (!apply_physiology_coupling(fresh.resolved_document.physiology, fresh.resolved_document.ppg.baseline_au, fresh.record.sampling_rate_hz(), fresh.signal_quality))
+        if (!apply_physiology_coupling(fresh.resolved_document.physiology, fresh.ppg, fresh.record.sampling_rate_hz(), fresh.signal_quality))
         {
             fresh_result.messages.push_back("physiology coupling failed");
             result = fresh_result;
             return false;
         }
-        if (fresh.ppg.sample_count() && !remeasure_ppg_fiducials(fresh.signal_quality.ppg.data(), static_cast<unsigned int>(fresh.signal_quality.ppg.size()), fresh.ppg))
+        if (!apply_signal_quality_artifacts_in_place(fresh.resolved_document.signal_quality, fresh.record, fresh.ppg, fresh.signal_quality))
         {
-            fresh_result.messages.push_back("final PPG peak measurement failed");
+            fresh_result.messages.push_back("signal quality artifact application failed");
             result = fresh_result;
             return false;
         }
+        if (!finalize_ppg_sensor(fresh.ppg, fresh.signal_quality, fresh.ppg_clipping_counts))
+        {
+            fresh_result.messages.push_back("PPG sensor rendering failed");
+            result = fresh_result;
+            return false;
+        }
+        for (unsigned int channel = 0; channel < fresh.ppg.channel_count(); ++channel)
+            if (!remeasure_ppg_channel_fiducials(channel, &fresh.signal_quality.ppg_channels[channel][0], static_cast<unsigned int>(fresh.signal_quality.ppg_channels[channel].size()), fresh.ppg))
+            {
+                fresh_result.messages.push_back("final PPG fiducial measurement failed");
+                result = fresh_result;
+                return false;
+            }
         if (!build_wearable_record(fresh))
         {
             fresh_result.messages.push_back("wearable timebase rendering failed");

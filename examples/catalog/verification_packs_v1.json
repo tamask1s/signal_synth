@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "1.9",
+  "version": "2.0",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -402,6 +402,50 @@
           ]
         }
       ]
+    },
+    {
+      "pack_id": "ppg_optical_v2",
+      "path": "../packs/ppg_optical_v2.json",
+      "modality": ["ECG", "PPG", "accelerometer"],
+      "targets": ["ppg_optical", "ppg_systolic_peak", "ppg_pulse_onset"],
+      "difficulty": ["regression", "stress", "benchmark"],
+      "recommended_profile": "regression",
+      "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
+      "scoring_mode": "local",
+      "feature_tags": ["red", "infrared", "ac_dc", "perfusion_index", "ratio_of_ratios", "spo2_trajectory", "motion", "ambient_light", "crosstalk", "clipping", "quantization", "multirate"],
+      "release_status": "beta",
+      "release_date": "2026-07-17",
+      "deprecation_message": "",
+      "recommended_for": [
+        "Red/infrared optical algorithm and sensor-pipeline engineering QA",
+        "AC/DC, perfusion-index and ratio-of-ratios implementation checks",
+        "Target SpO2 trajectory tracking against declared engineering calibration truth",
+        "Motion, ambient-light, crosstalk, clipping, quantization and low-perfusion stress tests"
+      ],
+      "not_recommended_for": [
+        "Clinical pulse-oximeter validation or calibration claims",
+        "Patient SpO2 accuracy claims",
+        "Hardware conformity assessment",
+        "Blood-pressure estimation validation"
+      ],
+      "changelog": [
+        {
+          "version": "1.0",
+          "date": "2026-07-17",
+          "changes": [
+            "Initial beta optical physiology and sensor-electronics pack with explicit clean latent and measurement truth."
+          ]
+        }
+      ],
+      "generator_compatibility": {
+        "minimum_generator_version": "0.6.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [6],
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1",
+        "local_verifier_min_version": "0.6.0"
+      }
     },
     {
       "pack_id": "ecg_delineation_v2",

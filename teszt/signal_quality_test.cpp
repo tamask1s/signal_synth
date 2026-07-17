@@ -115,11 +115,19 @@ int main()
     ok &= check(render.signal_quality.artifacts[0].start_sample_index == 1000 && render.signal_quality.artifacts[0].end_sample_index == 2499 && std::fabs(render.signal_quality.artifacts[0].end_seconds - 5.0) < 1e-12, "artifact_interval_exactness");
     ok &= check(same_vector(render.signal_quality.ecg_leads[signal_synth::clinical_lead_i], render.record.lead_data(signal_synth::clinical_lead_i), render.record.sample_count()), "unselected_ecg_channel_unchanged");
     ok &= check(any_difference(render.signal_quality.ecg_leads[signal_synth::clinical_lead_ii], render.record.lead_data(signal_synth::clinical_lead_ii), 1000, 2500), "selected_ecg_channel_modified");
-    ok &= check(any_difference(render.signal_quality.ppg, render.ppg.samples(), 1500, 2000), "ppg_artifact_modified");
+    ok &= check(any_difference(render.signal_quality.ppg_channels[0], render.ppg.samples(), 1500, 2000), "ppg_artifact_modified");
+
+    signal_synth::signal_quality_waveforms composed;
+    signal_synth::signal_quality_config no_artifacts;
+    ok &= check(signal_synth::initialize_signal_quality_waveforms(render.record, render.ppg, composed), "composed_waveform_initialization");
+    composed.accelerometer.assign(render.record.sample_count(), 0.25);
+    ok &= check(signal_synth::apply_signal_quality_artifacts_in_place(no_artifacts, render.record, render.ppg, composed)
+        && composed.accelerometer.size() == render.record.sample_count()
+        && composed.accelerometer.front() == 0.25 && composed.accelerometer.back() == 0.25, "artifact_layer_preserves_activity_accelerometer");
 
     signal_synth::ecg_render_bundle repeated;
     signal_synth::ecg_document_render_result repeated_result;
-    ok &= check(signal_synth::render_ecg_document(document, repeated, repeated_result) && repeated.signal_quality.ecg_leads == render.signal_quality.ecg_leads && repeated.signal_quality.ppg == render.signal_quality.ppg, "artifact_render_reproducible");
+    ok &= check(signal_synth::render_ecg_document(document, repeated, repeated_result) && repeated.signal_quality.ecg_leads == render.signal_quality.ecg_leads && repeated.signal_quality.ppg_channels == render.signal_quality.ppg_channels, "artifact_render_reproducible");
 
     signal_synth::ecg_scenario_document clean_document;
     clean_document.schema_version = 2;

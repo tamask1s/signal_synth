@@ -83,7 +83,7 @@ namespace
                   << "       signal-synth compare <r_peak|ppg_systolic_peak|ppg_pulse_onset|ecg_beat_classification> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth interval score <rhythm_episode|signal_quality> <scenario.json|-> <intervals.csv|intervals.json> --out <new-directory> [--minimum-iou <ratio>]\n"
                   << "       signal-synth delineation score <scenario.json|-> <point-events.csv|point-events.json> --out <new-directory> [--tolerance-ms <ms>]\n"
-                  << "       signal-synth measurement score <morphology_assertions|ecg_ppg_alignment> <scenario.json|-> <measurements.csv|measurements.json> --out <new-directory> [--pairing-window-ms <ms>]\n"
+                  << "       signal-synth measurement score <morphology_assertions|ecg_ppg_alignment|ppg_optical> <scenario.json|-> <measurements.csv|measurements.json> --out <new-directory> [--pairing-window-ms <ms>]\n"
                   << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack analyze <pack.json>\n"
@@ -576,7 +576,8 @@ namespace
             "\"rhythm_episode\":{\"format_family\":\"interval_events\",\"channel\":\"global\"},"
             "\"signal_quality\":{\"format_family\":\"interval_events\",\"channel\":\"global_or_physical_channel\"},"
             "\"morphology_assertions\":{\"format_family\":\"measurement_values\",\"scopes\":[\"record\",\"lead\",\"beat\",\"beat_lead\"]},"
-            "\"ecg_ppg_alignment\":{\"format_family\":\"measurement_values\",\"scopes\":[\"paired_signal\"]}}}\n";
+            "\"ecg_ppg_alignment\":{\"format_family\":\"measurement_values\",\"scopes\":[\"paired_signal\"]},"
+            "\"ppg_optical\":{\"format_family\":\"measurement_values\",\"scopes\":[\"paired_signal\"]}}}\n";
     }
 
     void add_submission_template_files(signal_synth::challenge_package_build_options& options, const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_json_result& identity, const std::vector<pack_render_row>& rows)
@@ -629,10 +630,11 @@ namespace
             }
         }
         if (artifact.ppg)
-        {
-            output << (first ? "" : ",") << "\"ppg_green\"";
-            first = false;
-        }
+            for (unsigned int channel = 0; channel < render.ppg.channel_count(); ++channel)
+            {
+                output << (first ? "" : ",") << json_text(render.ppg.channel_name(channel));
+                first = false;
+            }
         if (artifact.accelerometer_reference)
             output << (first ? "" : ",") << "\"accel_motion\"";
         output << ']';
@@ -997,7 +999,7 @@ int main(int argc, char** argv)
             const std::string target(argv[3]);
             if (!signal_synth::measurement_target_supported(target))
             {
-                std::cerr << "error=MEASUREMENT_TARGET_FAILED path=$ message=target must be morphology_assertions or ecg_ppg_alignment\n";
+                std::cerr << "error=MEASUREMENT_TARGET_FAILED path=$ message=unsupported measurement target\n";
                 return 2;
             }
             if (std::string(argv[4]) == "-" && std::string(argv[5]) == "-")

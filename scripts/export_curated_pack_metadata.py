@@ -14,7 +14,7 @@ METADATA_TYPE = "synsigra_curated_pack_catalog"
 DEFAULT_GENERATOR_COMPATIBILITY = {
     "minimum_generator_version": "0.6.0-dev",
     "pack_schema_version": 1,
-    "scenario_schema_versions": [2, 3, 4, 5],
+    "scenario_schema_versions": [2, 3, 4, 5, 6],
     "challenge_package_contract": "synsigra_challenge_package_v2",
     "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
     "submission_contract": "synsigra_submission_v1",
@@ -102,6 +102,14 @@ TARGET_CONTRACTS = {
         "primary_metric": "tolerance_pass_fraction",
         "description": "Per-beat PTT and ECG-to-PPG peak delay scored as paired-signal measurements.",
     },
+    "ppg_optical": {
+        "scoreable": True,
+        "score_type": "measurement",
+        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "default_pairing_window_seconds": 0.2,
+        "primary_metric": "tolerance_pass_fraction",
+        "description": "Per-pulse red/infrared AC/DC, perfusion-index, ratio-of-ratios and oxygenation-trajectory measurements.",
+    },
 }
 
 LOCAL_VERIFIER_SMOKE_TESTS = {
@@ -158,6 +166,10 @@ LOCAL_VERIFIER_SMOKE_TESTS = {
     "ecg_ppg_alignment": [
         {"test_id": "TEST-MEASUREMENT-SCORING-001", "scope": "core paired-signal measurement scoring smoke test"},
         {"test_id": "TEST-MEASUREMENT-PYTHON-001", "scope": "generator-free ECG/PPG measurement scoring parity test"},
+    ],
+    "ppg_optical": [
+        {"test_id": "TEST-PPG-OPTICAL-V2-001", "scope": "core optical physiology and measurement-truth smoke test"},
+        {"test_id": "TEST-MEASUREMENT-PYTHON-001", "scope": "generator-free optical measurement scoring parity test"},
     ],
 }
 
@@ -293,6 +305,8 @@ def channel_families(entry, analysis):
             families.append({"name": "standard_12_lead_ecg", "channel_count": 12, "channels": ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]})
         if modality == "PPG":
             families.append({"name": "green_ppg", "channel_count": 1, "channels": ["ppg_green"]})
+    if "ppg_optical" in effective_targets(analysis):
+        families.append({"name": "paired_optical_ppg", "channel_count": 2, "channels": ["ppg_red", "ppg_infrared"]})
     if any(item.get("channel_count", 0) > 13 for item in analysis.get("cases", [])):
         families.append({"name": "motion_reference", "channel_count": 1, "channels": ["accel_motion"]})
     return families
