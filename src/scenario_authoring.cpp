@@ -12,7 +12,7 @@
 
 namespace
 {
-    const char* metadata_version = "synsigra_authoring_v7";
+    const char* metadata_version = "synsigra_authoring_v8";
     const char* template_version = "synsigra_templates_v3";
 
     struct field_definition
@@ -234,6 +234,8 @@ namespace
             return "hrv_metrics";
         if (target == "rhythm_episode" || target == "signal_quality")
             return "interval_detection";
+        if (target == "ecg_delineation")
+            return "ecg_delineation";
         return "generated_reference_only";
     }
 
@@ -245,6 +247,8 @@ namespace
             return "metric_pass_fraction";
         if (target == "rhythm_episode" || target == "signal_quality")
             return "time_f1_score";
+        if (target == "ecg_delineation")
+            return "f1_score";
         if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset")
             return "f1_score";
         return "";
@@ -258,6 +262,8 @@ namespace
             return 0.075;
         if (target == "r_peak" || target == "ppg_pulse_onset")
             return 0.05;
+        if (target == "ecg_delineation")
+            return 0.04;
         return 0.0;
     }
 
@@ -275,6 +281,11 @@ namespace
         {
             output.push_back("interval_json_v1");
             output.push_back("interval_csv_v1");
+        }
+        else if (target == "ecg_delineation")
+        {
+            output.push_back("delineation_json_v1");
+            output.push_back("delineation_csv_v1");
         }
         return output;
     }
@@ -470,7 +481,7 @@ namespace signal_synth
 
     scenario_target_support scenario_target_support_for_name(const std::string& target)
     {
-        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset" || target == "ecg_beat_classification" || target == "hrv" || target == "rhythm_episode" || target == "signal_quality")
+        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset" || target == "ecg_beat_classification" || target == "hrv" || target == "rhythm_episode" || target == "signal_quality" || target == "ecg_delineation")
             return scenario_target_local_scoring;
         if (target == "morphology_assertions" || target == "ecg_ppg_alignment")
             return scenario_target_reference_only;
@@ -638,6 +649,7 @@ namespace signal_synth
                << "{\"name\":\"hrv\",\"support\":\"local_scoring\",\"requires\":[\"hrv.enabled\",\"duration_seconds>=300\"]},"
                << "{\"name\":\"rhythm_episode\",\"support\":\"local_scoring\",\"requires\":[\"ecg.episode_type!=none\"]},"
                << "{\"name\":\"signal_quality\",\"support\":\"local_scoring\",\"requires\":[\"artifacts.length>0\"]},"
+               << "{\"name\":\"ecg_delineation\",\"support\":\"local_scoring\",\"requires\":[]},"
                << "{\"name\":\"morphology_assertions\",\"support\":\"reference_only\",\"requires\":[\"ecg.conditions\"]},"
                << "{\"name\":\"ecg_ppg_alignment\",\"support\":\"reference_only\",\"requires\":[\"ppg.enabled\"]}],"
                << "\"cross_field_rules\":["

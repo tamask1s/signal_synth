@@ -6,6 +6,8 @@
 #include "ecg_compare.h"
 #include "ecg_beat_classification.h"
 #include "detection_io.h"
+#include "delineation_io.h"
+#include "delineation_scoring.h"
 #include "hrv_scoring.h"
 #include "interval_io.h"
 #include "interval_scoring.h"
@@ -77,6 +79,7 @@ namespace
                   << "       signal-synth render <scenario.json|-> --out <new-directory>\n"
                   << "       signal-synth compare <r_peak|ppg_systolic_peak|ppg_pulse_onset|ecg_beat_classification> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth interval score <rhythm_episode|signal_quality> <scenario.json|-> <intervals.csv|intervals.json> --out <new-directory> [--minimum-iou <ratio>]\n"
+                  << "       signal-synth delineation score <scenario.json|-> <delineation.csv|delineation.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack analyze <pack.json>\n"
@@ -392,7 +395,8 @@ namespace
     {
         scoring_input_event = 0,
         scoring_input_hrv = 1,
-        scoring_input_interval = 2
+        scoring_input_interval = 2,
+        scoring_input_delineation = 3
     };
 
     bool scoring_command_for_target(const std::string& target, std::string& score_type, std::string& command_name, scoring_input_kind& input_kind);
@@ -419,6 +423,13 @@ namespace
             score_type = "hrv_metrics";
             command_name = "hrv score";
             input_kind = scoring_input_hrv;
+            return true;
+        }
+        if (target == "ecg_delineation")
+        {
+            score_type = "ecg_delineation";
+            command_name = "delineation score";
+            input_kind = scoring_input_delineation;
             return true;
         }
         signal_synth::interval_target interval_target;
@@ -448,6 +459,11 @@ namespace
         {
             output << "{\"format\":\"interval_json_v1\",\"path\":" << json_text("intervals/" + stem + ".json") << "},"
                    << "{\"format\":\"interval_csv_v1\",\"path\":" << json_text("intervals/" + stem + ".csv") << "}";
+        }
+        else if (input_kind == scoring_input_delineation)
+        {
+            output << "{\"format\":\"delineation_json_v1\",\"path\":" << json_text("delineations/" + stem + ".json") << "},"
+                   << "{\"format\":\"delineation_csv_v1\",\"path\":" << json_text("delineations/" + stem + ".csv") << "}";
         }
         else
         {
@@ -482,6 +498,12 @@ namespace
                     output << ",\"accepted_interval_formats\":[\"interval_json_v1\",\"interval_csv_v1\"]"
                            << ",\"default_minimum_iou\":0.1"
                            << ",\"score_command\":" << json_text("signal-synth " + command_name + " " + scenario_path + " intervals/" + stem + ".json --out verification/" + stem);
+                }
+                else if (input_kind == scoring_input_delineation)
+                {
+                    output << ",\"accepted_delineation_formats\":[\"delineation_json_v1\",\"delineation_csv_v1\"]"
+                           << ",\"default_tolerance_seconds\":0.04"
+                           << ",\"score_command\":" << json_text("signal-synth delineation score " + scenario_path + " delineations/" + stem + ".json --out verification/" + stem);
                 }
                 else
                 {
@@ -606,6 +628,7 @@ namespace
                << ",\"scoring_manifest_contract_version\":" << json_text(signal_synth::signal_synth_scoring_manifest_contract_version())
                << ",\"detection_directory\":\"detections\""
                << ",\"interval_directory\":\"intervals\""
+               << ",\"delineation_directory\":\"delineations\""
                << ",\"hrv_output_directory\":\"hrv_outputs\""
                << ",\"verification_output_directory\":\"verification\""
                << ",\"targets\":[";
@@ -624,6 +647,8 @@ namespace
                     output << ",\"accepted_user_output_formats\":[\"hrv_json_v1\"]";
                 else if (input_kind == scoring_input_interval)
                     output << ",\"accepted_interval_formats\":[\"interval_json_v1\",\"interval_csv_v1\"],\"default_minimum_iou\":0.1";
+                else if (input_kind == scoring_input_delineation)
+                    output << ",\"accepted_delineation_formats\":[\"delineation_json_v1\",\"delineation_csv_v1\"],\"default_tolerance_seconds\":0.04";
                 else
                 {
                     signal_synth::ecg_compare_target compare_target;
@@ -887,6 +912,116 @@ int main(int argc, char** argv)
             return 2;
         }
         return 0;
+    }
+    if (command == "delineation")
+    {
+        if (!((argc == 7 || argc == 9) && std::string(argv[2]) == "score" && std::string(argv[5]) == "--out" && (argc == 7 || std::string(argv[7]) == "--tolerance-ms")))
+        {
+            print_usage();
+            return 2;
+        }
+        try
+        {
+            if (std::string(argv[3]) == "-" && std::string(argv[4]) == "-")
+            {
+                std::cerr << "error=INPUT_READ_FAILED path=- message=scenario and delineation output cannot both be read from stdin\n";
+                return 3;
+            }
+            std::string scenario_json;
+            std::string delineation_input;
+            if (!read_input(argv[3], scenario_json))
+            {
+                std::cerr << "error=INPUT_READ_FAILED path=" << argv[3] << " message=unable to read scenario input or input exceeds 16 MiB\n";
+                return 3;
+            }
+            if (!read_input(argv[4], delineation_input))
+            {
+                std::cerr << "error=INPUT_READ_FAILED path=" << argv[4] << " message=unable to read delineation input or input exceeds 16 MiB\n";
+                return 3;
+            }
+            signal_synth::ecg_scenario_document document;
+            signal_synth::ecg_scenario_json_result scenario_result;
+            if (!signal_synth::parse_ecg_scenario_json(scenario_json, document, scenario_result))
+            {
+                print_errors(scenario_result);
+                return 4;
+            }
+            signal_synth::delineation_output_document delineation_document;
+            signal_synth::delineation_io_result delineation_result;
+            const bool parsed = starts_with_json_object(delineation_input)
+                ? signal_synth::parse_delineation_json_v1(delineation_input, delineation_document, delineation_result)
+                : signal_synth::parse_delineation_csv_v1(delineation_input, delineation_document, delineation_result);
+            if (!parsed)
+            {
+                for (std::size_t i = 0; i < delineation_result.messages.size(); ++i)
+                {
+                    const signal_synth::delineation_io_message& message = delineation_result.messages[i];
+                    std::cerr << "error=" << signal_synth::delineation_io_message_code_name(message.code) << " path=" << message.path << " message=" << message.message << '\n';
+                }
+                if (delineation_result.messages.empty())
+                    std::cerr << "error=DELINEATION_IO_FAILED path=$ message=delineation import failed\n";
+                return 4;
+            }
+            signal_synth::delineation_score_options options;
+            if (argc == 9)
+            {
+                double tolerance_ms = 0.0;
+                if (!parse_double_cell(argv[8], tolerance_ms) || tolerance_ms <= 0.0)
+                {
+                    std::cerr << "error=DELINEATION_OPTIONS_FAILED path=$ message=--tolerance-ms must be positive\n";
+                    return 2;
+                }
+                options.tolerance_seconds = tolerance_ms / 1000.0;
+            }
+            signal_synth::ecg_render_bundle render;
+            signal_synth::ecg_document_render_result render_result;
+            if (!signal_synth::render_ecg_document(document, render, render_result))
+            {
+                std::cerr << "error=RENDER_FAILED path=$ message=" << (render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
+                return 4;
+            }
+            signal_synth::delineation_score_result score;
+            if (!signal_synth::score_delineation_output_to_render(render, delineation_document, options, score))
+            {
+                std::cerr << "error=DELINEATION_SCORE_FAILED path=$ message=" << (score.messages.empty() ? "delineation scoring failed" : score.messages[0]) << '\n';
+                return 4;
+            }
+            const std::string output_directory(argv[6]);
+            if (!create_directory(output_directory))
+            {
+                std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=output directory must be new and writable\n";
+                return 3;
+            }
+            if (!write_text_file(join_path(output_directory, "delineation_score.json"), signal_synth::delineation_score_result_json(render, delineation_document, score))
+                || !write_text_file(join_path(output_directory, "delineation_score.csv"), signal_synth::delineation_score_result_csv(score))
+                || !write_text_file(join_path(output_directory, "delineation_score_report.html"), signal_synth::delineation_score_report_html(render, score)))
+            {
+                std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=unable to write delineation scoring output files\n";
+                return 3;
+            }
+            std::cout << "status=delineation-scored\n"
+                      << "output_directory=" << output_directory << '\n'
+                      << "tolerance_seconds=" << score.tolerance_seconds << '\n'
+                      << "ground_truth_count=" << score.total.ground_truth_count << '\n'
+                      << "prediction_count=" << score.total.prediction_count << '\n'
+                      << "within_tolerance_count=" << score.total.within_tolerance_count << '\n'
+                      << "f1_score=";
+            if (score.total.ground_truth_count + score.total.prediction_count > 0u)
+                std::cout << score.total.f1_score;
+            else
+                std::cout << "NA";
+            std::cout << '\n';
+            return 0;
+        }
+        catch (const std::bad_alloc&)
+        {
+            std::cerr << "error=INTERNAL_ERROR path=$ message=memory allocation failed\n";
+        }
+        catch (...)
+        {
+            std::cerr << "error=INTERNAL_ERROR path=$ message=unexpected failure\n";
+        }
+        return 5;
     }
     if (command == "interval")
     {

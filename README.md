@@ -19,6 +19,9 @@ motion/sensor artifacts, an accelerometer reference, peak/onset event scoring,
 and pulse-interval/rate metrics. Generic interval scoring supports rhythm
 episodes and global or channel-specific signal-quality outputs with time
 coverage, IoU, boundary error, false-alarm, and confusion metrics.
+Lead-specific ECG delineation scoring covers P onset/peak/offset, QRS onset
+and offset, J point, and T onset/peak/offset with explicit all-beat or selected
+beat scope and absent-wave handling.
 
 ## ECG model status
 
@@ -103,6 +106,7 @@ Validate and fingerprint a portable scenario document:
 /tmp/signal_synth-build/signal-synth fingerprint examples/scenarios/ecg_clean.json
 /tmp/signal_synth-build/signal-synth render examples/scenarios/ecg_clean.json --out /tmp/ecg_clean_export
 /tmp/signal_synth-build/signal-synth interval score rhythm_episode examples/scenarios/catalog/rhythm_psvt_episode.json intervals.json --out /tmp/episode_score
+/tmp/signal_synth-build/signal-synth delineation score examples/scenarios/ecg_clean.json delineations.json --out /tmp/delineation_score
 ```
 
 Discover the SaaS-safe form contract, scenario templates, and pack estimates:
@@ -161,7 +165,7 @@ External beta users install the generator-free wheel supplied with the
 release:
 
 ```bash
-python -m pip install synsigra-0.2.0-py3-none-any.whl
+python -m pip install synsigra-0.3.0-py3-none-any.whl
 ```
 
 Run local verification:

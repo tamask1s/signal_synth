@@ -10,6 +10,7 @@ import shutil
 
 from .challenge import ChallengePackage, load_challenge
 from .detections import DetectionDocument, load_detections
+from .delineation import delineation_truth_from_annotations, load_delineations, score_delineation_events
 from .intervals import IntervalEvent, load_intervals, score_interval_events
 from .profiles import load_threshold_profile
 
@@ -85,7 +86,7 @@ def verify_package(challenge, detections_dir, out_dir, cases=None, targets=None,
                 if not entry.get("supported", False):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
-                if target not in ("r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality"):
+                if target not in ("r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality", "ecg_delineation"):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
                 result = _verify_case_target(package, case, case_summary, annotations, entry, detections_dir, out_dir)
@@ -141,6 +142,16 @@ def _verify_case_target(package, case, case_summary, annotations, entry, detecti
             _write_text(os.path.join(target_dir, "comparison_report.html"), report_html)
             identity = {"path": intervals.path, "format": "interval_json_v1" if intervals.raw else "interval_csv_v1", "algorithm": {"name": intervals.algorithm_name, "version": intervals.algorithm_version}, "interval_count": len(intervals)}
             return _case_result_from_report(case, case_summary, target, relative_out, detection_path, identity, report_json)
+        if target == "ecg_delineation":
+            delineations = load_delineations(detection_path)
+            report_json = _score_delineation(package, case, case_summary, annotations, delineations, entry)
+            report_csv = _delineation_comparison_csv(report_json)
+            report_html = _delineation_comparison_html(report_json)
+            _write_json(os.path.join(target_dir, "comparison.json"), report_json)
+            _write_text(os.path.join(target_dir, "comparison.csv"), report_csv)
+            _write_text(os.path.join(target_dir, "comparison_report.html"), report_html)
+            identity = {"path": delineations.path, "format": "delineation_json_v1" if delineations.raw else "delineation_csv_v1", "algorithm": {"name": delineations.algorithm_name, "version": delineations.algorithm_version}, "event_count": len(delineations)}
+            return _case_result_from_report(case, case_summary, target, relative_out, detection_path, identity, report_json)
         detections = load_detections(detection_path, target=target)
         if target == "ecg_beat_classification":
             report_json = _score_beat_classification(package, case, case_summary, annotations, detections, entry)
@@ -190,6 +201,34 @@ def _score_interval_detection(package, case, case_summary, annotations, interval
         "false_positive_indices": comparison["false_positive_indices"],
         "false_negative_indices": comparison["false_negative_indices"],
         "notes": ["Intervals are half-open [start,end); undefined zero-denominator metrics are null.", LIMITATION_TEXT],
+    }
+
+
+def _score_delineation(package, case, case_summary, annotations, delineations, entry):
+    tolerance_seconds = float(entry.get("default_tolerance_seconds", 0.040))
+    duration_seconds = float(case_summary.get("render", {}).get("duration_seconds", annotations.get("duration_seconds", 0.0)))
+    truth = delineation_truth_from_annotations(annotations, delineations)
+    comparison = score_delineation_events(truth, delineations.events, duration_seconds, tolerance_seconds, delineations.leads)
+    scenario_identity = _scenario_identity(case, case_summary, annotations)
+    scenario_identity["duration_seconds"] = duration_seconds
+    return {
+        "schema_version": 1,
+        "score_type": "ecg_delineation_qa",
+        "scoring_version": SCORING_VERSION,
+        "package": _package_identity(package),
+        "scenario": scenario_identity,
+        "target": "ecg_delineation",
+        "algorithm": {"name": delineations.algorithm_name, "version": delineations.algorithm_version},
+        "scope": {"mode": delineations.scope_mode, "beat_indices": [str(item) for item in delineations.beat_indices], "leads": list(delineations.leads)},
+        "options": {"tolerance_seconds": tolerance_seconds},
+        "overall": comparison["overall"],
+        "by_kind": comparison["by_kind"],
+        "by_lead": comparison["by_lead"],
+        "by_kind_lead": comparison["by_kind_lead"],
+        "matches": comparison["matches"],
+        "missing_events": comparison["missing_events"],
+        "unexpected_events": comparison["unexpected_events"],
+        "notes": ["Events are paired by beat, lead, and kind identity; undefined zero-denominator metrics are null.", LIMITATION_TEXT],
     }
 
 
@@ -967,6 +1006,13 @@ def _case_result_from_report(case, case_summary, target, relative_out, detection
         result["_interval_onset_errors"] = [float(item["onset_error_seconds"]) for item in report_json.get("matches", [])]
         result["_interval_offset_errors"] = [float(item["offset_error_seconds"]) for item in report_json.get("matches", [])]
         result["record_duration_seconds"] = float(report_json.get("scenario", {}).get("duration_seconds", 0.0))
+    elif target == "ecg_delineation":
+        result["score_type"] = "ecg_delineation"
+        result["exclusion_policy"] = "Only fiducials present in the declared lead/beat scope are truth; absent waves are not counted as misses."
+        result["summary"] = dict(report_json.get("overall", {}))
+        result["by_kind"] = list(report_json.get("by_kind", []))
+        result["by_lead"] = list(report_json.get("by_lead", []))
+        result["_delineation_errors"] = [float(item["error_seconds"]) for item in report_json.get("matches", [])]
     else:
         result["score_type"] = "event_detection"
         result["exclusion_policy"] = "All events are scored in total; clean and artifact bins partition events by target-affecting half-open artifact intervals [start,end)."
@@ -1042,6 +1088,7 @@ def _build_verification_summary(package, scoring_manifest, integrity, results, m
         public_result.pop("_absolute_errors", None)
         public_result.pop("_interval_onset_errors", None)
         public_result.pop("_interval_offset_errors", None)
+        public_result.pop("_delineation_errors", None)
         public_results.append(public_result)
     return {
         "schema_version": 1,
@@ -1087,6 +1134,8 @@ def _aggregate_targets(results):
             _aggregate_hrv_result(aggregate, result)
         if result.get("score_type") == "interval_detection" and result.get("success", False):
             _aggregate_interval_result(aggregate, result)
+        if result.get("score_type") == "ecg_delineation" and result.get("success", False):
+            _aggregate_delineation_result(aggregate, result)
     ordered = []
     for target in sorted(aggregates.keys()):
         aggregate = aggregates[target]
@@ -1103,6 +1152,8 @@ def _aggregate_targets(results):
             _finalize_hrv_aggregate(aggregate)
         if aggregate.get("score_type") == "interval_detection":
             _finalize_interval_aggregate(aggregate)
+        if aggregate.get("score_type") == "ecg_delineation":
+            _finalize_delineation_aggregate(aggregate)
         ordered.append(aggregate)
     return ordered
 
@@ -1266,6 +1317,34 @@ def _finalize_interval_aggregate_metrics(metrics, duration, onset_errors, offset
     metrics["mean_absolute_offset_error_seconds"] = _mean([abs(value) for value in offset_errors]) if offset_errors else None
 
 
+def _aggregate_delineation_result(aggregate, result):
+    if aggregate.get("score_type") != "ecg_delineation":
+        aggregate["score_type"] = "ecg_delineation"
+        aggregate["overall"] = dict((key, 0) for key in ("ground_truth_count", "prediction_count", "paired_count", "within_tolerance_count", "missing_prediction_count", "unexpected_prediction_count", "out_of_tolerance_count", "false_negative_count", "false_positive_count"))
+        aggregate["_errors"] = []
+    source = result.get("summary", {})
+    for key in aggregate["overall"]:
+        aggregate["overall"][key] += int(source.get(key, 0))
+    aggregate["_errors"].extend(result.get("_delineation_errors", []))
+
+
+def _finalize_delineation_aggregate(aggregate):
+    metrics = aggregate["overall"]
+    errors = aggregate.pop("_errors")
+    truth = metrics["ground_truth_count"]
+    predicted = metrics["prediction_count"]
+    within = metrics["within_tolerance_count"]
+    paired = metrics["paired_count"]
+    metrics["sensitivity"] = float(within) / truth if truth else None
+    metrics["positive_predictive_value"] = float(within) / predicted if predicted else None
+    metrics["f1_score"] = 2.0 * within / (truth + predicted) if truth + predicted else None
+    metrics["within_tolerance_fraction"] = float(within) / paired if paired else None
+    absolute = sorted(abs(value) for value in errors)
+    metrics["mean_error_seconds"] = _mean(errors) if errors else None
+    metrics["mean_absolute_error_seconds"] = _mean(absolute) if absolute else None
+    metrics["p95_absolute_error_seconds"] = absolute[int(math.ceil(0.95 * len(absolute))) - 1] if absolute else None
+
+
 def _evaluate_policy(targets, profile):
     checks = []
     target_results = []
@@ -1279,6 +1358,8 @@ def _evaluate_policy(targets, profile):
             definition_name = "hrv"
         elif score_type == "interval_detection" and definition_name not in definitions:
             definition_name = "interval_detection"
+        elif score_type == "ecg_delineation" and definition_name not in definitions:
+            definition_name = "ecg_delineation"
         definition = definitions.get(definition_name, {})
         target_checks = []
         if score_type == "event_detection":
@@ -1296,6 +1377,10 @@ def _evaluate_policy(targets, profile):
             target_checks.extend(_threshold_checks(target["target"], "summary", target, definition.get("summary", {}), target.get("evaluated_metric_count", 0) > 0))
             target_checks.extend(_threshold_checks(target["target"], "rr", target.get("rr", {}), definition.get("rr", {}), target.get("rr", {}).get("evaluated_case_count", 0) > 0))
         elif score_type == "interval_detection":
+            overall = target.get("overall", {})
+            applicable = int(overall.get("ground_truth_count", 0)) > 0 or int(overall.get("prediction_count", 0)) > 0
+            target_checks.extend(_threshold_checks(target["target"], "overall", overall, definition.get("overall", {}), applicable))
+        elif score_type == "ecg_delineation":
             overall = target.get("overall", {})
             applicable = int(overall.get("ground_truth_count", 0)) > 0 or int(overall.get("prediction_count", 0)) > 0
             target_checks.extend(_threshold_checks(target["target"], "overall", overall, definition.get("overall", {}), applicable))
@@ -1379,6 +1464,35 @@ def _interval_comparison_html(report_json):
         rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (_h(label), metrics.get("ground_truth_count", 0), metrics.get("prediction_count", 0), metrics.get("matched_count", 0), _h(_display_optional(metrics.get("time_sensitivity"))), _h(_display_optional(metrics.get("time_precision"))), _h(_display_optional(metrics.get("time_f1_score"))), _h(_display_optional(metrics.get("temporal_iou")))))
     confusion_rows = ["<tr><td>%s</td><td>%s</td><td>%s</td></tr>" % (_h(item.get("ground_truth_label", "")), _h(item.get("prediction_label", "")), item.get("count", 0)) for item in report_json.get("confusion_matrix", [])]
     return "<!doctype html><html><head><meta charset=\"utf-8\"><title>Interval scoring</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#20252b}table{border-collapse:collapse;margin:16px 0}th,td{border:1px solid #c9ced4;padding:6px 9px;text-align:right}th:first-child,td:first-child{text-align:left}.note{color:#555}</style></head><body><h1>Interval scoring</h1><p>Target: %s | Channel mode: %s | Minimum IoU: %s</p><table><tr><th>Class</th><th>Truth</th><th>Predicted</th><th>Matched</th><th>Time sensitivity</th><th>Time precision</th><th>Time F1</th><th>IoU</th></tr>%s</table><h2>Confusion matrix</h2><table><tr><th>Ground truth</th><th>Prediction</th><th>Count</th></tr>%s</table><p class=\"note\">%s</p></body></html>" % (_h(report_json.get("target", "")), _h(report_json.get("options", {}).get("channel_mode", "")), report_json.get("options", {}).get("minimum_iou", ""), "".join(rows), "".join(confusion_rows), _h(LIMITATION_TEXT))
+
+
+def _delineation_comparison_csv(report_json):
+    output = io.StringIO()
+    writer = csv.writer(output, lineterminator="\n")
+    writer.writerow(["row_type", "group_type", "kind", "lead", "beat_index", "ground_truth_time_seconds", "prediction_time_seconds", "ground_truth_count", "prediction_count", "paired_count", "within_tolerance_count", "missing_prediction_count", "unexpected_prediction_count", "out_of_tolerance_count", "false_negative_count", "false_positive_count", "sensitivity", "positive_predictive_value", "f1_score", "mean_absolute_error_seconds", "p95_absolute_error_seconds"])
+    groups = [("overall", "", "", report_json.get("overall", {}))]
+    groups.extend(("kind", item.get("kind", ""), "", item.get("metrics", {})) for item in report_json.get("by_kind", []))
+    groups.extend(("lead", "", item.get("lead", ""), item.get("metrics", {})) for item in report_json.get("by_lead", []))
+    groups.extend(("kind_lead", item.get("kind", ""), item.get("lead", ""), item.get("metrics", {})) for item in report_json.get("by_kind_lead", []))
+    for group_type, kind, lead, metrics in groups:
+        timing = metrics.get("timing_error_seconds", {})
+        writer.writerow(["metrics", group_type, kind, lead, "", "", "", metrics.get("ground_truth_count", 0), metrics.get("prediction_count", 0), metrics.get("paired_count", 0), metrics.get("within_tolerance_count", 0), metrics.get("missing_prediction_count", 0), metrics.get("unexpected_prediction_count", 0), metrics.get("out_of_tolerance_count", 0), metrics.get("false_negative_count", 0), metrics.get("false_positive_count", 0), _csv_optional(metrics.get("sensitivity")), _csv_optional(metrics.get("positive_predictive_value")), _csv_optional(metrics.get("f1_score")), _csv_optional(timing.get("mean_absolute")), _csv_optional(timing.get("p95_absolute"))])
+    for item in report_json.get("matches", []):
+        writer.writerow(["match" if item.get("within_tolerance") else "out_of_tolerance", "", item.get("kind", ""), item.get("lead", ""), item.get("beat_index", ""), item.get("ground_truth_time_seconds", ""), item.get("prediction_time_seconds", "")])
+    for item in report_json.get("missing_events", []):
+        writer.writerow(["missing", "", item.get("kind", ""), item.get("lead", ""), item.get("beat_index", ""), item.get("time_seconds", "")])
+    for item in report_json.get("unexpected_events", []):
+        writer.writerow(["unexpected", "", item.get("kind", ""), item.get("lead", ""), item.get("beat_index", ""), "", item.get("time_seconds", "")])
+    return output.getvalue()
+
+
+def _delineation_comparison_html(report_json):
+    rows = []
+    groups = [("Overall", report_json.get("overall", {}))] + [(item.get("kind", ""), item.get("metrics", {})) for item in report_json.get("by_kind", [])]
+    for label, metrics in groups:
+        timing = metrics.get("timing_error_seconds", {})
+        rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (_h(label), metrics.get("ground_truth_count", 0), metrics.get("prediction_count", 0), metrics.get("within_tolerance_count", 0), metrics.get("missing_prediction_count", 0), metrics.get("unexpected_prediction_count", 0), _h(_display_optional(metrics.get("f1_score"))), _h(_display_optional(timing.get("mean_absolute"))), _h(_display_optional(timing.get("p95_absolute")))))
+    return _html_page("ECG Delineation QA Report", "<h1>ECG Delineation QA Report</h1><p class=\"notice\">%s</p><p>Scope: %s | Leads: %s | Tolerance: %s s</p><table><tr><th>Group</th><th>Truth</th><th>Predicted</th><th>Within tolerance</th><th>Missing</th><th>Unexpected</th><th>F1</th><th>MAE (s)</th><th>P95 (s)</th></tr>%s</table>" % (_h(LIMITATION_TEXT), _h(report_json.get("scope", {}).get("mode", "")), _h(", ".join(report_json.get("scope", {}).get("leads", []))), report_json.get("options", {}).get("tolerance_seconds", ""), "".join(rows)))
 
 
 def _event_bin(item):

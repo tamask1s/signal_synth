@@ -77,6 +77,14 @@ TARGET_CONTRACTS = {
         "primary_metric": "time_f1_score",
         "description": "Rhythm episode labels and boundaries scored against exact synthetic episode ground truth.",
     },
+    "ecg_delineation": {
+        "scoreable": True,
+        "score_type": "ecg_delineation",
+        "accepted_delineation_formats": ["delineation_json_v1", "delineation_csv_v1"],
+        "default_tolerance_seconds": 0.04,
+        "primary_metric": "f1_score",
+        "description": "Lead-specific P, QRS, J-point, and T fiducial timing against exact synthetic construction ground truth.",
+    },
     "morphology_assertions": {
         "scoreable": False,
         "score_type": "generated_reference_only",
@@ -133,6 +141,10 @@ LOCAL_VERIFIER_SMOKE_TESTS = {
     "signal_quality": [
         {"test_id": "TEST-INTERVAL-SCORING-001", "scope": "core signal-quality interval scoring smoke test"},
         {"test_id": "TEST-PYTHON-SCORING-001", "scope": "local signal-quality interval scoring parity test"},
+    ],
+    "ecg_delineation": [
+        {"test_id": "TEST-DELINEATION-SCORING-001", "scope": "core lead-specific delineation scoring smoke test"},
+        {"test_id": "TEST-DELINEATION-PYTHON-001", "scope": "generator-free delineation scoring and C++/Python parity test"},
     ],
 }
 
@@ -296,7 +308,7 @@ def output_artifacts(scoreable_targets, reference_targets):
 def detector_output_schemas(scoreable_targets):
     schemas = []
     for target in scoreable_targets:
-        for key in ("accepted_detection_formats", "accepted_user_output_formats", "accepted_interval_formats"):
+        for key in ("accepted_detection_formats", "accepted_user_output_formats", "accepted_interval_formats", "accepted_delineation_formats"):
             for schema in target.get(key, []):
                 if schema not in schemas:
                     schemas.append(schema)
@@ -443,7 +455,7 @@ def export_metadata(catalog_path, cli, pack_ids, source_root):
         "schema_version": 1,
         "metadata_type": METADATA_TYPE,
         "metadata_version": EXPORTER_VERSION,
-        "release_set_id": "synsigra_curated_release_2026_07_06",
+        "release_set_id": "synsigra_curated_release_2026_07_17",
         "release_set_status": "beta",
         "catalog_id": catalog.get("catalog_id", ""),
         "catalog_version": catalog.get("version", ""),

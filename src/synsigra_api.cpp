@@ -218,7 +218,9 @@ namespace signal_synth
                << ",\"challenge_success_media_type\":\"application/json\""
                << ",\"comparison_targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ppg_pulse_onset\",\"ecg_beat_classification\"]"
                << ",\"interval_targets\":[\"rhythm_episode\",\"signal_quality\"]"
-               << ",\"interval_output_schemas\":[\"interval_json_v1\",\"interval_csv_v1\"]}}";
+               << ",\"interval_output_schemas\":[\"interval_json_v1\",\"interval_csv_v1\"]"
+               << ",\"delineation_targets\":[\"ecg_delineation\"]"
+               << ",\"delineation_output_schemas\":[\"delineation_json_v1\",\"delineation_csv_v1\"]}}";
         return output.str();
     }
 

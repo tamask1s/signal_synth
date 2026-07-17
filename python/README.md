@@ -15,7 +15,7 @@ python -m pip install .
 From a private-beta release artifact:
 
 ```bash
-python -m pip install synsigra-0.2.0-py3-none-any.whl
+python -m pip install synsigra-0.3.0-py3-none-any.whl
 ```
 
 Verify installation:
@@ -33,7 +33,7 @@ synsigra-verify package.zip user-outputs/ verification-results/ --profile regres
 Arguments:
 
 - `package.zip` or `challenge.synsigra`: downloaded Synsigra challenge package or package directory;
-- `user-outputs/`: event detections, interval outputs, and HRV results in the `detections/`, `intervals/`, and `hrv_outputs/` paths described by package scoring metadata;
+- `user-outputs/`: event detections, interval outputs, delineations, and HRV results in the `detections/`, `intervals/`, `delineations/`, and `hrv_outputs/` paths described by package scoring metadata;
 - `verification-results/`: output directory for JSON, CSV, and HTML reports;
 - `--profile`: threshold policy. Built-ins are `smoke`, `regression`, `stress`, and `benchmark`.
 
@@ -53,6 +53,12 @@ half-open `[start_seconds,end_seconds)` intervals, a label, and either the
 `scoring_manifest.json` names the accepted schema and recommended filename for
 every case/target.
 
+ECG delineators use `delineation_json_v1` or `delineation_csv_v1`. The output
+declares all-beat or selected-beat scope, evaluated standard ECG leads, and
+events identified by decimal-string beat index, lead, and fiducial kind.
+Supported kinds are P onset/peak/offset, QRS onset/offset, J point, and T
+onset/peak/offset. Absent waves are omitted from exact ground truth.
+
 Programmatic generator-backed scoring is also available:
 
 ```python
@@ -61,6 +67,9 @@ import synsigra
 package = synsigra.load_challenge("package.zip")
 intervals = synsigra.load_intervals("episodes.json", target="rhythm_episode")
 report = synsigra.score_rhythm_episodes(package.case("psvt_episode"), intervals)
+
+delineations = synsigra.load_delineations("delineations.json")
+report = synsigra.score_delineation(package.case("clean_70"), delineations)
 ```
 
 ## CI behavior

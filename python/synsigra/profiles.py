@@ -20,6 +20,10 @@ def _interval_thresholds(time_f1, temporal_iou, max_boundary_mae):
     return {"overall": {"time_f1_score": {"min": time_f1}, "temporal_iou": {"min": temporal_iou}, "mean_absolute_onset_error_seconds": {"max": max_boundary_mae}, "mean_absolute_offset_error_seconds": {"max": max_boundary_mae}}}
 
 
+def _delineation_thresholds(f1_score, max_mae):
+    return {"overall": {"f1_score": {"min": f1_score}, "mean_absolute_error_seconds": {"max": max_mae}}}
+
+
 BUILTIN_THRESHOLD_PROFILES = {
     "smoke": {
         "schema_version": 1,
@@ -28,6 +32,7 @@ BUILTIN_THRESHOLD_PROFILES = {
         "targets": {
             "event_detection": _event_thresholds(0.70, 0.75, 0.50, 0.080),
             "interval_detection": _interval_thresholds(0.60, 0.40, 0.500),
+            "ecg_delineation": _delineation_thresholds(0.60, 0.080),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.70}}, "per_class": {"f1_score": {"min": 0.50}}},
             "hrv": {"summary": {"metric_pass_fraction": {"min": 0.70}}, "rr": {"pass_fraction": {"min": 0.70}}},
         },
@@ -39,6 +44,7 @@ BUILTIN_THRESHOLD_PROFILES = {
         "targets": {
             "event_detection": _event_thresholds(0.90, 0.95, 0.70, 0.050),
             "interval_detection": _interval_thresholds(0.85, 0.75, 0.200),
+            "ecg_delineation": _delineation_thresholds(0.85, 0.040),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.90}}, "per_class": {"f1_score": {"min": 0.80}}},
             "hrv": {"summary": {"metric_pass_fraction": {"min": 0.90}}, "rr": {"pass_fraction": {"min": 0.90}}},
         },
@@ -50,6 +56,7 @@ BUILTIN_THRESHOLD_PROFILES = {
         "targets": {
             "event_detection": _event_thresholds(0.75, 0.90, 0.60, 0.080),
             "interval_detection": _interval_thresholds(0.65, 0.50, 0.400),
+            "ecg_delineation": _delineation_thresholds(0.65, 0.080),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.75}}, "per_class": {"f1_score": {"min": 0.60}}},
             "hrv": {"summary": {"metric_pass_fraction": {"min": 0.75}}, "rr": {"pass_fraction": {"min": 0.75}}},
         },
@@ -61,6 +68,7 @@ BUILTIN_THRESHOLD_PROFILES = {
         "targets": {
             "event_detection": _event_thresholds(0.95, 0.98, 0.80, 0.030),
             "interval_detection": _interval_thresholds(0.95, 0.90, 0.100),
+            "ecg_delineation": _delineation_thresholds(0.95, 0.020),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.95}}, "per_class": {"f1_score": {"min": 0.90}}},
             "hrv": {"summary": {"metric_pass_fraction": {"min": 1.0}}, "rr": {"pass_fraction": {"min": 0.95}}},
         },
@@ -83,6 +91,9 @@ PROFILE_SCHEMA = {
     },
     "interval_detection": {
         "overall": set(["time_sensitivity", "time_precision", "time_f1_score", "temporal_iou", "event_sensitivity", "event_precision", "false_alarms_per_hour", "mean_absolute_onset_error_seconds", "mean_absolute_offset_error_seconds"]),
+    },
+    "ecg_delineation": {
+        "overall": set(["sensitivity", "positive_predictive_value", "f1_score", "within_tolerance_fraction", "mean_absolute_error_seconds", "p95_absolute_error_seconds"]),
     },
 }
 PROFILE_SCHEMA["r_peak"] = PROFILE_SCHEMA["event_detection"]

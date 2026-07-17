@@ -1,11 +1,11 @@
 {
   "catalog_id": "synsigra_verification_packs",
-  "catalog_version": "1.5",
+  "catalog_version": "1.6",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "metadata_type": "synsigra_curated_pack_catalog",
   "metadata_version": "synsigra_curated_pack_metadata_export_v1",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
-  "pack_count": 10,
+  "pack_count": 11,
   "packs": [
     {
       "case_count": 4,
@@ -3933,11 +3933,386 @@
         "scoreable_before_job": true
       },
       "version": "1.1"
+    },
+    {
+      "case_count": 7,
+      "case_ids": [
+        "clean_70",
+        "slow_45",
+        "fast_120",
+        "clbbb",
+        "ischemia_anterolateral",
+        "afib_absent_p",
+        "baseline_powerline"
+      ],
+      "cases": [
+        {
+          "case_id": "clean_70",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 3918400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "rpeak_clean_70",
+          "scoreable_targets": [
+            "ecg_delineation"
+          ],
+          "targets": [
+            "ecg_delineation"
+          ]
+        },
+        {
+          "case_id": "slow_45",
+          "channel_count": 12,
+          "duration_seconds": 30,
+          "estimated_binary_signal_bytes": 1260000,
+          "estimated_package_bytes": 5491400,
+          "estimated_peak_memory_bytes": 8248576,
+          "estimated_waveform_csv_bytes": 3510256,
+          "reference_only_targets": [],
+          "sample_count": 15000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "rpeak_slow_45",
+          "scoreable_targets": [
+            "ecg_delineation"
+          ],
+          "targets": [
+            "ecg_delineation"
+          ]
+        },
+        {
+          "case_id": "fast_120",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 4190400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "rpeak_fast_120",
+          "scoreable_targets": [
+            "ecg_delineation"
+          ],
+          "targets": [
+            "ecg_delineation"
+          ]
+        },
+        {
+          "case_id": "clbbb",
+          "channel_count": 12,
+          "duration_seconds": 15,
+          "estimated_binary_signal_bytes": 630000,
+          "estimated_package_bytes": 3021400,
+          "estimated_peak_memory_bytes": 4648576,
+          "estimated_waveform_csv_bytes": 1755256,
+          "reference_only_targets": [],
+          "sample_count": 7500,
+          "sampling_rate_hz": 500,
+          "scenario_id": "morph_clbbb",
+          "scoreable_targets": [
+            "ecg_delineation"
+          ],
+          "targets": [
+            "ecg_delineation"
+          ]
+        },
+        {
+          "case_id": "ischemia_anterolateral",
+          "channel_count": 12,
+          "duration_seconds": 15,
+          "estimated_binary_signal_bytes": 630000,
+          "estimated_package_bytes": 3021400,
+          "estimated_peak_memory_bytes": 4648576,
+          "estimated_waveform_csv_bytes": 1755256,
+          "reference_only_targets": [],
+          "sample_count": 7500,
+          "sampling_rate_hz": 500,
+          "scenario_id": "morph_iscal",
+          "scoreable_targets": [
+            "ecg_delineation"
+          ],
+          "targets": [
+            "ecg_delineation"
+          ]
+        },
+        {
+          "case_id": "afib_absent_p",
+          "channel_count": 12,
+          "duration_seconds": 30,
+          "estimated_binary_signal_bytes": 1260000,
+          "estimated_package_bytes": 5865400,
+          "estimated_peak_memory_bytes": 8248576,
+          "estimated_waveform_csv_bytes": 3510256,
+          "reference_only_targets": [],
+          "sample_count": 15000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "rhythm_afib",
+          "scoreable_targets": [
+            "ecg_delineation"
+          ],
+          "targets": [
+            "ecg_delineation"
+          ]
+        },
+        {
+          "case_id": "baseline_powerline",
+          "channel_count": 12,
+          "duration_seconds": 30,
+          "estimated_binary_signal_bytes": 1260000,
+          "estimated_package_bytes": 5695400,
+          "estimated_peak_memory_bytes": 8248576,
+          "estimated_waveform_csv_bytes": 3510256,
+          "reference_only_targets": [],
+          "sample_count": 15000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "sq_baseline_powerline",
+          "scoreable_targets": [
+            "ecg_delineation"
+          ],
+          "targets": [
+            "ecg_delineation"
+          ]
+        }
+      ],
+      "catalog_scoring_mode": "local",
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta pack with exact lead-specific P/QRS/J/T fiducial scoring across seven curated cases."
+          ],
+          "date": "2026-07-17",
+          "version": "1.0"
+        }
+      ],
+      "channels": {
+        "families": [
+          {
+            "channel_count": 12,
+            "channels": [
+              "I",
+              "II",
+              "III",
+              "aVR",
+              "aVL",
+              "aVF",
+              "V1",
+              "V2",
+              "V3",
+              "V4",
+              "V5",
+              "V6"
+            ],
+            "name": "standard_12_lead_ecg"
+          }
+        ],
+        "maximum_channel_count": 12,
+        "minimum_channel_count": 12
+      },
+      "declared_targets": [
+        "ecg_delineation"
+      ],
+      "deprecation_message": "",
+      "description": "Curated exact-fiducial cases for lead-specific P, QRS, J-point, and T delineation QA.",
+      "detector_output_schemas": [
+        "delineation_json_v1",
+        "delineation_csv_v1"
+      ],
+      "difficulty": [
+        "regression",
+        "stress",
+        "benchmark"
+      ],
+      "duration": {
+        "maximum_case_seconds": 30,
+        "minimum_case_seconds": 15,
+        "total_seconds": 160
+      },
+      "estimated_package": {
+        "bytes": 31203800,
+        "peak_memory_bytes": 8248576,
+        "size_class": "medium"
+      },
+      "feature_tags": [
+        "p_wave",
+        "qrs",
+        "j_point",
+        "t_wave",
+        "delineation",
+        "lead_specific",
+        "absent_wave",
+        "conduction",
+        "repolarization",
+        "artifact"
+      ],
+      "generator_compatibility": {
+        "challenge_package_contract": "synsigra_challenge_package_v1",
+        "local_verifier_min_version": "0.3.0",
+        "minimum_generator_version": "0.5.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [
+          2,
+          3,
+          4
+        ],
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v1"
+      },
+      "limitations": {
+        "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
+        "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
+      },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "core lead-specific delineation scoring smoke test",
+          "target": "ecg_delineation",
+          "test_id": "TEST-DELINEATION-SCORING-001"
+        },
+        {
+          "scope": "generator-free delineation scoring and C++/Python parity test",
+          "target": "ecg_delineation",
+          "test_id": "TEST-DELINEATION-PYTHON-001"
+        }
+      ],
+      "messages": [],
+      "metadata_type": "synsigra_curated_pack_metadata",
+      "metadata_version": "synsigra_curated_pack_metadata_export_v1",
+      "modality": [
+        "ECG"
+      ],
+      "name": "ECG Delineation Verification Pack v1",
+      "not_recommended_for": [
+        "Clinical delineation validation claims",
+        "Patient QT database replacement",
+        "Amplitude, interval, axis, or diagnostic statement scoring",
+        "Algorithms that cannot report beat and lead identity"
+      ],
+      "output_artifacts": [
+        {
+          "required": true,
+          "role": "manifest_json"
+        },
+        {
+          "required": true,
+          "role": "scoring_manifest_json"
+        },
+        {
+          "required": true,
+          "role": "provenance_json"
+        },
+        {
+          "required": true,
+          "role": "engineering_claim_boundary_txt"
+        },
+        {
+          "required": true,
+          "role": "case_summary_json"
+        },
+        {
+          "required": true,
+          "role": "annotations_json"
+        },
+        {
+          "required": true,
+          "role": "waveform_csv"
+        },
+        {
+          "required": true,
+          "role": "wfdb"
+        },
+        {
+          "required": true,
+          "role": "edf_bdf"
+        }
+      ],
+      "pack_id": "ecg_delineation_v1",
+      "recommended_for": [
+        "P onset, peak, and offset delineation algorithm QA",
+        "QRS onset, J-point, and QRS offset timing regression",
+        "T onset, peak, and offset delineation algorithm QA",
+        "Lead-specific absent-wave, rate, conduction, repolarization, and artifact stress tests"
+      ],
+      "recommended_profile": "regression",
+      "reference_only_targets": [],
+      "release_date": "2026-07-17",
+      "release_status": "beta",
+      "sampling_rates_hz": [
+        500
+      ],
+      "schema_version": 1,
+      "scoreable_targets": [
+        {
+          "accepted_delineation_formats": [
+            "delineation_json_v1",
+            "delineation_csv_v1"
+          ],
+          "case_count": 7,
+          "case_ids": [
+            "clean_70",
+            "slow_45",
+            "fast_120",
+            "clbbb",
+            "ischemia_anterolateral",
+            "afib_absent_p",
+            "baseline_powerline"
+          ],
+          "default_tolerance_seconds": 0.04,
+          "description": "Lead-specific P, QRS, J-point, and T fiducial timing against exact synthetic construction ground truth.",
+          "primary_metric": "f1_score",
+          "score_type": "ecg_delineation",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "ecg_delineation"
+        }
+      ],
+      "scoring_mode": "local",
+      "source": {
+        "catalog_path": "examples/catalog/verification_packs_v1.json",
+        "pack_fingerprint": "sha256:d96f1f9f438b575d64799b9a3ab2f2c77386248dddedc161184a83987e4b9d25",
+        "pack_path": "../packs/ecg_delineation_v1.json",
+        "source_content_sha256": "sha256:f2779deaee4e5bf59c85cc8e20d225fac6ef06eb88d0383ca3e2b377ad0f20dc"
+      },
+      "supported_threshold_profiles": [
+        "smoke",
+        "regression",
+        "stress",
+        "benchmark"
+      ],
+      "targets": [
+        "ecg_delineation"
+      ],
+      "threshold_profile_contract": {
+        "policy_failure_exit_code": 1,
+        "recommended_profile": "regression",
+        "supported_profiles": [
+          "smoke",
+          "regression",
+          "stress",
+          "benchmark"
+        ]
+      },
+      "ui": {
+        "primary_badges": [
+          "regression",
+          "stress",
+          "benchmark",
+          "p_wave",
+          "qrs",
+          "j_point"
+        ],
+        "reference_only_before_job": false,
+        "scoreable_before_job": true
+      },
+      "version": "1.0"
     }
   ],
   "product": "Synsigra Testbench",
-  "release_set_id": "synsigra_curated_release_2026_07_06",
+  "release_set_id": "synsigra_curated_release_2026_07_17",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:3c95741ecd5bbf7c6873368fb93ca759fa322bb1156ef1133bfd5c1e649ddc72"
+  "source_catalog_sha256": "sha256:da8b877854d836b7864ec721211ebbe879535e6d85fe37b1d735372504f9ab29"
 }

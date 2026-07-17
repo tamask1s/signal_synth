@@ -34,3 +34,4 @@ examples/databrowser/076_ECG_Scenario_Pack_Batch_QA.txt|SigForge/Scripts/076_ECG
 examples/databrowser/077_ECG_Morphology_Population.txt|SigForge/Scripts/077_ECG_Morphology_Population.txt
 examples/databrowser/078_ECG_Dynamic_Repolarization.txt|SigForge/Scripts/078_ECG_Dynamic_Repolarization.txt
 examples/databrowser/079_PPG_Multichannel_Optical.txt|SigForge/Scripts/079_PPG_Multichannel_Optical.txt
+examples/databrowser/080_ECG_Delineation_GroundTruth.txt|SigForge/Scripts/080_ECG_Delineation_GroundTruth.txt

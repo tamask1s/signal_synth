@@ -73,6 +73,7 @@ The authoritative implementation/result details remain in the linked issues.
 | `TRC-DATABROWSER-001` | `REQ-API-001..003`, `REQ-NFR-003`, `REQ-NFR-008`, supporting ECG/PPG foundation requirements | Generation-only DataBrowser synchronization | `src/ecg_render.*`, `integrations/databrowser/`, `examples/databrowser/077..079` | `TEST-DATABROWSER-GCC49-001`, SHA-256 dry-run sync check, manual Windows UI gap | [signal_synth#72](https://github.com/tamask1s/signal_synth/issues/72) |
 | `TRC-JSON-ID-001` | `REQ-GEN-005..006`, `REQ-EXP-001..005`, `REQ-NFR-002`, `REQ-NFR-006..008` | Lossless uint64 JSON identity representation | `src/ecg_export.cpp`, `src/ecg_compare.cpp` | `TEST-ECG-EXPORT-001`, `TEST-COMPARE-001` | [signal_synth#71](https://github.com/tamask1s/signal_synth/issues/71) |
 | `TRC-SAAS-CLOSURE-001` | `REQ-API-001..003`, `REQ-CHAL-003..009`, `REQ-DET-001..006`, `REQ-NFR-002..008` | Versioned core/SaaS integration contract and compatibility removal | `src/synsigra_api.*`, `apps/signal_synth_cli/`, `src/detection_io.cpp`, `python/synsigra/scoring.py` | `TEST-INTEGRATION-CONTRACT-001`, `TEST-FACADE-001`, `TEST-CLI-001`, `TEST-PYTHON-SCORING-001` | [signal_synth#73](https://github.com/tamask1s/signal_synth/issues/73) |
+| `TRC-ECG-DELINEATION-001` | Supporting `REQ-GEN-005..006`, `REQ-EXP-001..005`, `REQ-SCORE-001..006`, `REQ-PY-001..008`, `REQ-NFR-002..008` | Lead-specific ECG fiducial output and scoring | `src/delineation_io.*`, `src/delineation_scoring.*`, `apps/signal_synth_cli/`, `python/synsigra/`, `examples/packs/ecg_delineation_v1.json` | `TEST-DELINEATION-IO-001`, `TEST-DELINEATION-SCORING-001`, `TEST-DELINEATION-PYTHON-001`, `TEST-CLI-001`, `TEST-DATABROWSER-GCC49-001` | [signal_synth#75](https://github.com/tamask1s/signal_synth/issues/75) |
 | `TRC-DSP-001` | Supporting `REQ-NFR-003`, `REQ-NFR-008` | Shared DSP ownership | RSPT FIR design API | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#1](https://github.com/tamask1s/rspt_module/issues/1) |
 | `TRC-DSP-002` | Supporting `REQ-NFR-008` | IIR coefficient contract | RSPT IIR/filter consumers | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#2](https://github.com/tamask1s/rspt_module/issues/2) |
 
@@ -106,9 +107,12 @@ The authoritative implementation/result details remain in the linked issues.
 | `TEST-EDF-BDF-NATIVE-001` | `teszt/edf_bdf_native_conformance.py` | Optional `pyedflib` reader conformance over generated ECG-only and ECG+PPG EDF+/BDF+ records |
 | `TEST-HRV-METRICS-001` | `teszt/hrv_metrics_test.cpp` | HRV tachogram construction, exclusion flags, SDNN/RMSSD/pNN50/SD1/SD2, deterministic LF/HF spectral metrics, and artifact-overlap handling |
 | `TEST-HRV-SCORING-001` | `teszt/hrv_scoring_test.cpp` | Strict HRV user-output parsing, metric tolerance scoring, accepted-RR matching, report contracts, and rejection behavior |
+| `TEST-DELINEATION-IO-001` | `teszt/delineation_io_test.cpp` | Strict JSON/CSV delineation parsing, canonical uint64 identities, scope preservation, deterministic round trips, and malformed-input rejection |
+| `TEST-DELINEATION-SCORING-001` | `teszt/delineation_scoring_test.cpp` | Exact lead/beat/kind pairing, timing tolerance semantics, absent-wave truth, selected scope, and grouped report contracts |
+| `TEST-DELINEATION-PYTHON-001` | `teszt/delineation_python_test.py` | Generator-free Python delineation scoring and exact aggregate parity with the C++ scorer |
 | `TEST-CLI-001` | `teszt/cli_test.cmake` | CLI file/stdin, stdout/stderr, exit codes, size limit, pack rendering/scoring, and challenge package generation |
 | `TEST-BUILD-001` | `teszt/package_smoke/` | Installed package discovery, public-header compilation, link and execution |
-| `TEST-DATABROWSER-GCC49-001` | `teszt/databrowser_generation_test.cpp` and generation-only CMake target | Strict C++11 generation subset, DataBrowser scripts 077-079, modern ECG/PPG adapter contract |
+| `TEST-DATABROWSER-GCC49-001` | `teszt/databrowser_generation_test.cpp` and generation-only CMake target | Strict C++11 generation subset, DataBrowser scripts 077-080, modern ECG/PPG adapter contract |
 | `CI-VER-001` | `.github/workflows/verification.yml` | Linux and Windows configure/build/test execution |
 
 ## 4. Evidence policy

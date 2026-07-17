@@ -82,6 +82,25 @@ namespace
             return render.record.dynamic_annotation_count() == render.record.beat_count() * 6u && render.record.episode_count() >= 1u;
         if (document.scenario_id == "ppg_multichannel_optical_v4")
             return render.ppg.channel_count() == 3u && std::string(render.ppg.channel_name(0)) == "ppg_green" && std::string(render.ppg.channel_name(1)) == "ppg_red" && std::string(render.ppg.channel_name(2)) == "ppg_infrared" && render.ppg.channel_annotation_count(0) > 0u && render.ppg.channel_annotation_count(1) > 0u && render.ppg.channel_annotation_count(2) > 0u;
+        if (document.scenario_id.find("delineation_") == 0)
+        {
+            bool has_p = false;
+            bool has_qrs = false;
+            bool has_j = false;
+            bool has_t = false;
+            for (unsigned int i = 0; i < render.record.fiducial_count(); ++i)
+            {
+                const signal_synth::clinical_fiducial_annotation& item = render.record.fiducials()[i];
+                if (!item.present || item.source != signal_synth::clinical_fiducial_construction)
+                    continue;
+                has_p = has_p || item.kind == signal_synth::clinical_p_peak;
+                has_qrs = has_qrs || item.kind == signal_synth::clinical_qrs_onset || item.kind == signal_synth::clinical_qrs_offset;
+                has_j = has_j || item.kind == signal_synth::clinical_j_point;
+                has_t = has_t || item.kind == signal_synth::clinical_t_peak;
+            }
+            const bool expected_p = document.scenario_id != "delineation_afib";
+            return render.record.beat_count() > 5u && has_qrs && has_j && has_t && has_p == expected_p;
+        }
         return false;
     }
 
@@ -128,6 +147,7 @@ int main()
     ok &= check(verify_script("examples/databrowser/077_ECG_Morphology_Population.txt", 3), "morphology_population_script");
     ok &= check(verify_script("examples/databrowser/078_ECG_Dynamic_Repolarization.txt", 2), "dynamic_repolarization_script");
     ok &= check(verify_script("examples/databrowser/079_PPG_Multichannel_Optical.txt", 1), "ppg_multichannel_script");
+    ok &= check(verify_script("examples/databrowser/080_ECG_Delineation_GroundTruth.txt", 4), "delineation_ground_truth_script");
 
     const std::string adapter = read_text("integrations/databrowser/SignalProc_RSPT.cpp");
     ok &= check(adapter.find("#include \"ecg_render.h\"") != std::string::npos && adapter.find("#include \"ecg_export.h\"") == std::string::npos, "adapter_uses_render_layer");

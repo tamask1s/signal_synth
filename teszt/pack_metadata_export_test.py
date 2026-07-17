@@ -39,6 +39,7 @@ RELEASE_PACK_IDS = [
     "combined_worst_case_v1",
     "wearable_stress_v1",
     "ppg_benchmark_v1",
+    "ecg_delineation_v1",
 ]
 
 
@@ -47,7 +48,8 @@ def assert_release_pack_metadata(item):
     assert item["metadata_type"] == "synsigra_curated_pack_metadata"
     assert isinstance(item["version"], str) and item["version"]
     assert item["release_status"] == "beta"
-    assert item["release_date"] == "2026-07-06"
+    expected_date = "2026-07-17" if item["pack_id"] == "ecg_delineation_v1" else "2026-07-06"
+    assert item["release_date"] == expected_date
     assert item["recommended_for"] and item["not_recommended_for"] and item["changelog"]
     assert item["source"]["pack_fingerprint"].startswith("sha256:")
     assert item["source"]["source_content_sha256"].startswith("sha256:")
@@ -78,7 +80,7 @@ def assert_release_pack_metadata(item):
             assert target["case_count"] == len(target["case_ids"])
             assert target["case_ids"]
             assert target["support"] == "local_scoring"
-            assert target["score_type"] in ("event_detection", "classification", "hrv_metrics", "interval_detection")
+            assert target["score_type"] in ("event_detection", "classification", "hrv_metrics", "interval_detection", "ecg_delineation")
     else:
         assert not item["detector_output_schemas"]
         assert not item["supported_threshold_profiles"]
@@ -152,6 +154,24 @@ def assert_ppg_benchmark_metadata(item):
     assert case["reference_only_targets"] == []
 
 
+def assert_delineation_metadata(item):
+    assert item["pack_id"] == "ecg_delineation_v1"
+    assert item["version"] == "1.0"
+    assert item["release_date"] == "2026-07-17"
+    assert item["case_count"] == 7
+    assert item["case_ids"] == ["clean_70", "slow_45", "fast_120", "clbbb", "ischemia_anterolateral", "afib_absent_p", "baseline_powerline"]
+    assert item["detector_output_schemas"] == ["delineation_json_v1", "delineation_csv_v1"]
+    assert len(item["scoreable_targets"]) == 1
+    target = item["scoreable_targets"][0]
+    assert target["target"] == "ecg_delineation"
+    assert target["score_type"] == "ecg_delineation"
+    assert target["accepted_delineation_formats"] == ["delineation_json_v1", "delineation_csv_v1"]
+    assert target["default_tolerance_seconds"] == 0.04
+    assert target["case_ids"] == item["case_ids"]
+    assert item["generator_compatibility"]["local_verifier_min_version"] == "0.3.0"
+    assert item["reference_only_targets"] == []
+
+
 def main():
     source_dir = os.environ["SIGNAL_SYNTH_SOURCE_DIR"]
     cli = os.environ["SIGNAL_SYNTH_CLI"]
@@ -168,16 +188,17 @@ def main():
         assert generated["schema_version"] == 1
         assert generated["metadata_type"] == "synsigra_curated_pack_catalog"
         assert generated["metadata_version"] == "synsigra_curated_pack_metadata_export_v1"
-        assert generated["release_set_id"] == "synsigra_curated_release_2026_07_06"
+        assert generated["release_set_id"] == "synsigra_curated_release_2026_07_17"
         assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
-        assert generated["catalog_version"] == "1.5"
-        assert generated["pack_count"] == 10
+        assert generated["catalog_version"] == "1.6"
+        assert generated["pack_count"] == 11
         assert [item["pack_id"] for item in generated["packs"]] == RELEASE_PACK_IDS
         for pack_id in RELEASE_PACK_IDS:
             assert_release_pack_metadata(pack(generated, pack_id))
         assert_rpeak_metadata(pack(generated, "r_peak_stress_v1"))
         assert_ppg_benchmark_metadata(pack(generated, "ppg_benchmark_v1"))
+        assert_delineation_metadata(pack(generated, "ecg_delineation_v1"))
 
         filtered_path = os.path.join(work_dir, "rpeak_only.json")
         run([sys.executable, script, "--cli", cli, "--catalog", catalog, "--source-root", source_dir, "--pack-id", "r_peak_stress_v1", "--out", filtered_path])

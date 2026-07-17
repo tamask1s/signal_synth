@@ -27,6 +27,8 @@ assert contract["cli"]["challenge_success_media_type"] == "application/json"
 assert contract["cli"]["comparison_targets"] == ["r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification"]
 assert contract["cli"]["interval_targets"] == ["rhythm_episode", "signal_quality"]
 assert contract["cli"]["interval_output_schemas"] == ["interval_json_v1", "interval_csv_v1"]
+assert contract["cli"]["delineation_targets"] == ["ecg_delineation"]
+assert contract["cli"]["delineation_output_schemas"] == ["delineation_json_v1", "delineation_csv_v1"]
 
 shutil.rmtree(work_dir, ignore_errors=True)
 os.makedirs(work_dir)

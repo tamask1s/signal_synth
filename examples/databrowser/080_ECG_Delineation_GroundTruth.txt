@@ -1,0 +1,41 @@
+// Lead II P/QRS/J/T construction markers for representative delineation cases.
+#define OUTPUT_BASE ecg_delineation_ground_truth
+
+DataDelete();
+
+GenerateECGScenarioJSON(delineation_clean, {
+  "schema_version": 2, "scenario_id": "delineation_clean", "name": "Clean delineation", "description": "Clean exact ECG fiducial ground truth.", "author": "Synsigra", "tags": ["ecg", "delineation", "clean"], "duration_seconds": 12, "sample_rate_hz": 500, "seed": 75001,
+  "ecg": {"heart_rate_bpm": 70, "rr_variability_seconds": 0, "ectopic_every_n_beats": 0, "second_degree_av_pattern": "unspecified", "q_wave_territory": "unspecified", "episode_type": "none", "episode_start_seconds": 2, "episode_duration_seconds": 4, "episode_rate_bpm": 170, "fidelity_policy": "allow_parameterized", "conditions": [{"code": "NORM", "severity": 1}]},
+  "ppg": {"enabled": false, "pulse_delay_ms": 180, "rise_time_ms": 120, "decay_time_ms": 300, "amplitude_au": 1, "baseline_au": 0, "dicrotic_delay_ms": 180, "dicrotic_width_ms": 80, "dicrotic_amplitude_ratio": 0.15}
+}, 1);
+
+GenerateECGScenarioJSON(delineation_clbbb, {
+  "schema_version": 2, "scenario_id": "delineation_clbbb", "name": "CLBBB delineation", "description": "Wide-QRS conduction delineation stress.", "author": "Synsigra", "tags": ["ecg", "delineation", "conduction"], "duration_seconds": 12, "sample_rate_hz": 500, "seed": 75002,
+  "ecg": {"heart_rate_bpm": 70, "rr_variability_seconds": 0, "ectopic_every_n_beats": 0, "second_degree_av_pattern": "unspecified", "q_wave_territory": "unspecified", "episode_type": "none", "episode_start_seconds": 2, "episode_duration_seconds": 4, "episode_rate_bpm": 170, "flutter_conduction_pattern": "fixed", "pacing_mode": "ventricular", "pacing_non_capture_every_n_beats": 0, "fidelity_policy": "allow_parameterized", "conditions": [{"code": "CLBBB", "severity": 1}]},
+  "ppg": {"enabled": false, "pulse_delay_ms": 180, "rise_time_ms": 120, "decay_time_ms": 300, "amplitude_au": 1, "baseline_au": 0, "dicrotic_delay_ms": 180, "dicrotic_width_ms": 80, "dicrotic_amplitude_ratio": 0.15}
+}, 1);
+
+GenerateECGScenarioJSON(delineation_ischemia, {
+  "schema_version": 2, "scenario_id": "delineation_ischemia", "name": "Ischemic ST-T delineation", "description": "Repolarization morphology delineation stress.", "author": "Synsigra", "tags": ["ecg", "delineation", "repolarization"], "duration_seconds": 12, "sample_rate_hz": 500, "seed": 75003,
+  "ecg": {"heart_rate_bpm": 70, "rr_variability_seconds": 0, "ectopic_every_n_beats": 0, "second_degree_av_pattern": "unspecified", "q_wave_territory": "unspecified", "episode_type": "none", "episode_start_seconds": 2, "episode_duration_seconds": 4, "episode_rate_bpm": 170, "flutter_conduction_pattern": "fixed", "pacing_mode": "ventricular", "pacing_non_capture_every_n_beats": 0, "fidelity_policy": "allow_parameterized", "conditions": [{"code": "ISCAL", "severity": 0.8}]},
+  "ppg": {"enabled": false, "pulse_delay_ms": 180, "rise_time_ms": 120, "decay_time_ms": 300, "amplitude_au": 1, "baseline_au": 0, "dicrotic_delay_ms": 180, "dicrotic_width_ms": 80, "dicrotic_amplitude_ratio": 0.15}
+}, 1);
+
+GenerateECGScenarioJSON(delineation_afib, {
+  "schema_version": 2, "scenario_id": "delineation_afib", "name": "AFib absent-P delineation", "description": "Absent organized P-wave delineation stress.", "author": "Synsigra", "tags": ["ecg", "delineation", "absent_p"], "duration_seconds": 12, "sample_rate_hz": 500, "seed": 75004,
+  "ecg": {"heart_rate_bpm": 90, "rr_variability_seconds": 0.08, "ectopic_every_n_beats": 0, "second_degree_av_pattern": "unspecified", "q_wave_territory": "unspecified", "episode_type": "none", "episode_start_seconds": 2, "episode_duration_seconds": 4, "episode_rate_bpm": 170, "flutter_conduction_pattern": "fixed", "pacing_mode": "ventricular", "pacing_non_capture_every_n_beats": 0, "fidelity_policy": "allow_parameterized", "conditions": [{"code": "AFIB", "severity": 1}]},
+  "ppg": {"enabled": false, "pulse_delay_ms": 180, "rise_time_ms": 120, "decay_time_ms": 300, "amplitude_au": 1, "baseline_au": 0, "dicrotic_delay_ms": 180, "dicrotic_width_ms": 80, "dicrotic_amplitude_ratio": 0.15}
+}, 1);
+
+SaveVarToFile(delineation_clean, CatStrings(OUTPUT_BASE, _clean.bin), 100, 8);
+SaveVarToFile(delineation_clbbb, CatStrings(OUTPUT_BASE, _clbbb.bin), 100, 8);
+SaveVarToFile(delineation_ischemia, CatStrings(OUTPUT_BASE, _ischemia.bin), 100, 8);
+SaveVarToFile(delineation_afib, CatStrings(OUTPUT_BASE, _afib.bin), 100, 8);
+DisplayData(delineation_clean, fit_width,, A2, 001);
+DisplayData(delineation_clbbb, fit_width,, A2, 001);
+DisplayData(delineation_ischemia, fit_width,, A2, 001);
+DisplayData(delineation_afib, fit_width,, A2, 001);
+SavePic(delineation_clean, CatStrings(OUTPUT_BASE, _clean.gif));
+SavePic(delineation_clbbb, CatStrings(OUTPUT_BASE, _clbbb.gif));
+SavePic(delineation_ischemia, CatStrings(OUTPUT_BASE, _ischemia.gif));
+SavePic(delineation_afib, CatStrings(OUTPUT_BASE, _afib.gif));

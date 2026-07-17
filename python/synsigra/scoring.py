@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 
 from .detections import DetectionDocument
+from .delineation import DelineationDocument
 from .intervals import IntervalDocument
 
 
@@ -123,6 +124,28 @@ def score_signal_quality(case, intervals, out_dir=None, cli_path=None, minimum_i
     if not isinstance(intervals, IntervalDocument) or intervals.target != "signal_quality":
         raise TypeError("intervals must be a signal_quality IntervalDocument")
     return score_intervals(case, intervals, out_dir, cli_path, minimum_iou)
+
+
+def score_delineation(case, delineations, out_dir=None, cli_path=None, tolerance_ms=None):
+    if not isinstance(delineations, DelineationDocument):
+        raise TypeError("delineations must be a DelineationDocument")
+    case.package.ensure_integrity_verified()
+    tempdir = None
+    if out_dir is None:
+        tempdir = _TemporaryDirectory()
+        out_dir = os.path.join(tempdir.name, "delineation_score")
+    command = [_cli(cli_path), "delineation", "score", case.scenario_path, delineations.path, "--out", out_dir]
+    if tolerance_ms is not None:
+        command.extend(["--tolerance-ms", str(tolerance_ms)])
+    summary = _run(command)
+    return ScoreReport(
+        out_dir,
+        summary,
+        _read_json(os.path.join(out_dir, "delineation_score.json")),
+        _read_text(os.path.join(out_dir, "delineation_score.csv")),
+        _read_text(os.path.join(out_dir, "delineation_score_report.html")),
+        tempdir,
+    )
 
 
 def score_pack(pack_json, detections_dir, out_dir=None, cli_path=None):

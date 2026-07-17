@@ -35,7 +35,7 @@ int main()
     bool ok = true;
     const std::string metadata = signal_synth::scenario_authoring_metadata_json();
     const std::string templates = signal_synth::scenario_template_catalog_json();
-    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v7"
+    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v8"
         && metadata.find("\"condition_count\"") == std::string::npos
         && metadata.find("\"code\":\"NORM\"") != std::string::npos
         && metadata.find("\"path\":\"$.hrv.target_sdnn_seconds\"") != std::string::npos
@@ -46,7 +46,8 @@ int main()
         && metadata.find("\"type\":\"ppg_motion_periodic\"") != std::string::npos
         && metadata.find("\"type\":\"ppg_sensor_saturation\"") != std::string::npos
         && metadata.find("\"name\":\"ppg_systolic_peak\"") != std::string::npos
-        && metadata.find("\"name\":\"ppg_pulse_onset\"") != std::string::npos, "metadata_contract");
+        && metadata.find("\"name\":\"ppg_pulse_onset\"") != std::string::npos
+        && metadata.find("\"name\":\"ecg_delineation\"") != std::string::npos, "metadata_contract");
     ok &= check(std::string(signal_synth::scenario_template_catalog_version()) == "synsigra_templates_v3"
         && templates.find("\"template_id\":\"ecg_rpeak_clean\"") != std::string::npos
         && templates.find("\"template_id\":\"ecg_hrv_benchmark\"") != std::string::npos
