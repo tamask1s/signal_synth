@@ -96,6 +96,12 @@ namespace signal_synth
             return challenge_file_wearable_timebase_truth_json;
         if (artifact_name == "wearable_alignment_truth.json")
             return challenge_file_wearable_alignment_truth_json;
+        if (artifact_name == "realism_metrics.json")
+            return challenge_file_realism_metrics_json;
+        if (artifact_name == "realism_metrics.csv")
+            return challenge_file_realism_metrics_csv;
+        if (artifact_name == "realism_report.html")
+            return challenge_file_realism_report_html;
         if (artifact_name == "report.html")
             return challenge_file_report_html;
         if (artifact_name == "README.txt" || artifact_name == "ENGINEERING_CLAIM_BOUNDARY.txt")

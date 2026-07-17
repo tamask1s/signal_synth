@@ -57,6 +57,7 @@ signal_synth_add_test(scenario_authoring_test scenario_authoring_test.cpp TEST-A
 signal_synth_add_test(scenario_stress_test scenario_stress_test.cpp TEST-SCENARIO-STRESS-001)
 signal_synth_add_test(wearable_timebase_test wearable_timebase_test.cpp TEST-WEARABLE-TIMEBASE-001)
 signal_synth_add_test(wearable_render_test wearable_render_test.cpp TEST-WEARABLE-RENDER-001)
+signal_synth_add_test(realism_validation_test realism_validation_test.cpp TEST-REALISM-VALIDATION-001)
 
 add_library(
     databrowser_generation_core

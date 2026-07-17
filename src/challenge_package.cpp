@@ -564,6 +564,10 @@ namespace signal_synth
         case challenge_file_wearable_timestamp_truth_csv: return "wearable_timestamp_truth_csv";
         case challenge_file_wearable_timebase_truth_json: return "wearable_timebase_truth_json";
         case challenge_file_wearable_alignment_truth_json: return "wearable_alignment_truth_json";
+        case challenge_file_realism_metrics_json: return "realism_metrics_json";
+        case challenge_file_realism_metrics_csv: return "realism_metrics_csv";
+        case challenge_file_realism_report_html: return "realism_report_html";
+        case challenge_file_realism_population_json: return "realism_population_json";
         case challenge_file_other: return "other";
         }
         return "other";

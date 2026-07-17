@@ -13,6 +13,7 @@
 #include "interval_scoring.h"
 #include "measurement_io.h"
 #include "measurement_scoring.h"
+#include "realism_validation.h"
 #include "scenario_authoring.h"
 #include "synsigra_api.h"
 
@@ -371,6 +372,7 @@ namespace
         unsigned int ppg_pulse_count;
         double mean_heart_rate_bpm;
         double total_artifact_seconds;
+        signal_synth::realism_analysis_result realism;
     };
 
     void add_unique_string(std::vector<std::string>& values, const std::string& value)
@@ -1852,8 +1854,22 @@ int main(int argc, char** argv)
                 row.ppg_pulse_count = render.metrics.ppg_pulse_count;
                 row.mean_heart_rate_bpm = render.metrics.mean_heart_rate_bpm;
                 row.total_artifact_seconds = render.metrics.total_artifact_seconds;
+                if (!signal_synth::analyze_signal_realism(render, row.realism))
+                {
+                    std::cerr << "error=REALISM_ANALYSIS_FAILED path=" << pack_scenario.path << " message=signal characterization failed\n";
+                    return 4;
+                }
                 rows.push_back(row);
             }
+            std::vector<signal_synth::realism_analysis_result> realism_cases;
+            for (std::size_t i = 0; i < rows.size(); ++i) realism_cases.push_back(rows[i].realism);
+            signal_synth::realism_population_summary realism_population;
+            if (!signal_synth::aggregate_realism_population(realism_cases, realism_population))
+            {
+                std::cerr << "error=REALISM_ANALYSIS_FAILED path=$ message=population characterization failed\n";
+                return 4;
+            }
+            const std::string realism_population_json = signal_synth::realism_population_json(realism_population);
             const std::string summary_json = pack_summary_json(manifest, pack_result, rows);
             const std::string summary_csv = pack_summary_csv(rows);
             const std::string index_html = pack_index_html(manifest, pack_result, rows);
@@ -1874,6 +1890,7 @@ int main(int argc, char** argv)
                 options.package_files.push_back(make_challenge_file("summary.csv", signal_synth::challenge_file_other, "text/csv", summary_csv));
                 options.package_files.push_back(make_challenge_file("index.html", signal_synth::challenge_file_readme, "text/html", index_html));
                 options.package_files.push_back(make_challenge_file("scoring_manifest.json", signal_synth::challenge_file_metadata_json, "application/json", scoring_json));
+                options.package_files.push_back(make_challenge_file("realism_population.json", signal_synth::challenge_file_realism_population_json, "application/json", realism_population_json));
                 add_submission_template_files(options, manifest, pack_result, rows);
                 signal_synth::challenge_package_build_result challenge_result;
                 if (!signal_synth::build_challenge_package_manifest(options, challenge_cases, challenge_result))
@@ -1909,6 +1926,7 @@ int main(int argc, char** argv)
             if (!write_text_file(join_path(output_directory, "pack.json"), pack_result.canonical_json)
                 || !write_text_file(join_path(output_directory, "summary.json"), summary_json)
                 || !write_text_file(join_path(output_directory, "summary.csv"), summary_csv)
+                || !write_text_file(join_path(output_directory, "realism_population.json"), realism_population_json)
                 || !write_text_file(join_path(output_directory, "index.html"), index_html))
             {
                 std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=unable to write pack summary files\n";

@@ -237,6 +237,18 @@
         {
           "required": true,
           "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
         }
       ],
       "pack_id": "r_peak_stress_v1",
@@ -681,6 +693,18 @@
         },
         {
           "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
+        },
+        {
+          "required": true,
           "role": "hrv_metrics_json"
         },
         {
@@ -1036,6 +1060,18 @@
         {
           "required": true,
           "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
         }
       ],
       "pack_id": "ecg_beat_classification_v1",
@@ -1463,6 +1499,18 @@
         {
           "required": true,
           "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
         }
       ],
       "pack_id": "ecg_rhythm_v1",
@@ -1854,6 +1902,18 @@
         {
           "required": true,
           "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
         }
       ],
       "pack_id": "signal_quality_v1",
@@ -2221,6 +2281,18 @@
         },
         {
           "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
+        },
+        {
+          "required": true,
           "role": "measurement_truth_json"
         }
       ],
@@ -2583,6 +2655,18 @@
         {
           "required": true,
           "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
         },
         {
           "required": true,
@@ -2966,6 +3050,18 @@
         },
         {
           "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
+        },
+        {
+          "required": true,
           "role": "hrv_metrics_json"
         },
         {
@@ -3339,6 +3435,18 @@
         {
           "required": true,
           "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
         },
         {
           "required": true,
@@ -3855,6 +3963,18 @@
         },
         {
           "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
+        },
+        {
+          "required": true,
           "role": "wearable_samples_csv"
         },
         {
@@ -4302,6 +4422,18 @@
         {
           "required": true,
           "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
         }
       ],
       "pack_id": "ecg_delineation_v2",

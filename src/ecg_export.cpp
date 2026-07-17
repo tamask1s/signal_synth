@@ -2,6 +2,7 @@
 #include "ecg_beat_classification.h"
 #include "ecg_edf_bdf_export.h"
 #include "ecg_wfdb_export.h"
+#include "realism_validation.h"
 
 #include <algorithm>
 #include <cmath>
@@ -1108,6 +1109,16 @@ namespace signal_synth
             if (render.wearable.stream(wearable_stream_ecg) && render.wearable.stream(wearable_stream_ppg))
                 add_artifact(fresh, "wearable_alignment_truth.json", "application/json", wearable_alignment_truth_json(render.wearable));
         }
+        realism_analysis_result realism;
+        if (!analyze_signal_realism(render, realism))
+        {
+            fresh_result.messages.push_back("signal characterization failed");
+            result = fresh_result;
+            return false;
+        }
+        add_artifact(fresh, "realism_metrics.json", "application/json", realism_analysis_json(realism));
+        add_artifact(fresh, "realism_metrics.csv", "text/csv", realism_analysis_csv(realism));
+        add_artifact(fresh, "realism_report.html", "text/html", realism_analysis_html(realism));
         add_artifact(fresh, "annotations.json", "application/json", annotations_json(render));
         add_artifact(fresh, "rr_tachogram.csv", "text/csv", rr_tachogram_csv(render));
         add_artifact(fresh, "hrv_metrics.json", "application/json", hrv_metrics_json(render));
@@ -1120,6 +1131,7 @@ namespace signal_synth
             "Intended for research, development, software testing, and algorithm QA.\n"
             "See provenance.json for generator, build, scenario and package-contract identity.\n"
             "Schema-v5 packages include explicit multi-rate wearable sample, timestamp, packet and alignment truth artifacts.\n"
+            "realism_metrics.json contains separate engineering characterization domains and intentionally no single realism score.\n"
             "See ENGINEERING_CLAIM_BOUNDARY.txt for the exact engineering QA claim boundary.\n"
             "Not for diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment.\n");
         wfdb_export_bundle wfdb;

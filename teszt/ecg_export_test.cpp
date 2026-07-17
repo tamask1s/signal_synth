@@ -88,9 +88,9 @@ int main()
 
     signal_synth::ecg_export_bundle bundle;
     ok &= check(signal_synth::build_ecg_export_bundle(render, bundle, result) && result.success, "build_export_bundle");
-    const char* expected[] = {"scenario.json","metadata.json","provenance.json","waveform.csv","annotations.json","rr_tachogram.csv","hrv_metrics.json","ground_truth_metrics.json","warnings.json","ENGINEERING_CLAIM_BOUNDARY.txt","report.html","README.txt","synsigra.hea","synsigra.dat","synsigra.atr","wfdb_metadata.json","synsigra.edf","synsigra.bdf","edf_bdf_metadata.json"};
-    ok &= check(bundle.artifacts.size() == 19, "artifact_count");
-    for (unsigned int i = 0; i < 19; ++i)
+    const char* expected[] = {"scenario.json","metadata.json","provenance.json","waveform.csv","realism_metrics.json","realism_metrics.csv","realism_report.html","annotations.json","rr_tachogram.csv","hrv_metrics.json","ground_truth_metrics.json","warnings.json","ENGINEERING_CLAIM_BOUNDARY.txt","report.html","README.txt","synsigra.hea","synsigra.dat","synsigra.atr","wfdb_metadata.json","synsigra.edf","synsigra.bdf","edf_bdf_metadata.json"};
+    ok &= check(bundle.artifacts.size() == 22, "artifact_count");
+    for (unsigned int i = 0; i < 22; ++i)
         ok &= check(bundle.artifacts[i].name == expected[i] && !bundle.artifacts[i].content.empty(), "artifact_order_and_content");
 
     const signal_synth::ecg_text_artifact* csv = bundle.find("waveform.csv");
@@ -149,7 +149,7 @@ int main()
 
     signal_synth::ecg_render_bundle incomplete;
     signal_synth::ecg_export_bundle preserved_export = bundle;
-    ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 19, "failed_export_is_transactional");
+    ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 22, "failed_export_is_transactional");
     ok &= check(std::string(signal_synth::signal_synth_generator_version()) == "0.6.0-dev", "runtime_generator_version");
     ok &= check(std::string(signal_synth::signal_synth_package_contract_version()) == "synsigra_challenge_package_v2" && std::string(signal_synth::signal_synth_scoring_manifest_contract_version()) == "synsigra_scoring_manifest_v2" && std::string(signal_synth::signal_synth_verifier_version()) == "0.6.0-dev", "runtime_contract_versions");
 

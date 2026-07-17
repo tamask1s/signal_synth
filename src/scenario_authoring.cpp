@@ -459,7 +459,10 @@ namespace
                << "{\"role\":\"annotations_json\",\"required\":true},"
                << "{\"role\":\"waveform_csv\",\"required\":true},"
                << "{\"role\":\"wfdb\",\"required\":true},"
-               << "{\"role\":\"edf_bdf\",\"required\":true}";
+               << "{\"role\":\"edf_bdf\",\"required\":true},"
+               << "{\"role\":\"realism_metrics_json\",\"required\":true},"
+               << "{\"role\":\"realism_metrics_csv\",\"required\":true},"
+               << "{\"role\":\"realism_report_html\",\"required\":true}";
         bool has_hrv = false;
         bool has_wearable = false;
         std::vector<std::string> reference_targets;

@@ -78,6 +78,16 @@ class ChallengeCase(object):
         with open(self._case_file_path("wearable_alignment_truth.json"), "r") as handle:
             return json.load(handle)
 
+    def realism_metrics(self):
+        with open(self.file_path("realism_metrics_json"), "r") as handle:
+            return json.load(handle)
+
+    def realism_table(self):
+        return read_waveform_csv(self.file_path("realism_metrics_csv"))
+
+    def realism_report_path(self):
+        return self.file_path("realism_report_html")
+
     def annotations(self):
         with open(self.file_path("annotations_json"), "r") as handle:
             return json.load(handle)
@@ -149,6 +159,9 @@ class ChallengePackage(object):
 
     def scoring_manifest(self):
         return self.read_json("scoring_manifest.json")
+
+    def realism_population(self):
+        return self.read_json("realism_population.json")
 
     def verify_integrity(self):
         errors = []
