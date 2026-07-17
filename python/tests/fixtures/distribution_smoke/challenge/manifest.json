@@ -37,8 +37,8 @@
       "path": "cases/clean/annotations.json",
       "role": "annotations_json",
       "media_type": "application/json",
-      "sha256": "sha256:0c76021b65d0732e54a559fa31dd4021230254c0f2e30ba636d3addf21a7a4d6",
-      "size_bytes": 370,
+      "sha256": "sha256:b05b6c7f7e6d11312618ff5526d325b7b50c8fbaf836e247645a215e26624dcb",
+      "size_bytes": 372,
       "required": true
     }
   ],
