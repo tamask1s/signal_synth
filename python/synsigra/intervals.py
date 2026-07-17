@@ -29,17 +29,46 @@ class IntervalDocument(object):
         return len(self.intervals)
 
 
-def load_intervals(path, target=None):
+def load_intervals(path, target=None, format_name=None):
     with open(path, "r") as handle:
-        prefix = handle.read(4096)
-        handle.seek(0)
-        if prefix.lstrip()[:1] == "{":
-            document = _load_json(path, handle, target)
-        else:
+        if format_name == "interval_events_json_v1":
+            document = _load_payload_json(path, handle, target)
+        elif format_name == "interval_events_csv_v1":
             document = _load_csv(path, handle, target)
+            document.algorithm_name = ""
+            document.algorithm_version = ""
+        else:
+            prefix = handle.read(4096)
+            handle.seek(0)
+            if prefix.lstrip()[:1] == "{":
+                document = _load_json(path, handle, target)
+            else:
+                document = _load_csv(path, handle, target)
     _validate_document(document)
     document.intervals.sort(key=lambda item: (item.start_seconds, item.end_seconds, item.channel, item.label, item.original_index))
     return document
+
+
+def _load_payload_json(path, handle, target):
+    raw = json.load(handle, object_pairs_hook=_unique_object_pairs)
+    if not isinstance(raw, dict) or set(raw.keys()) != set(["schema_version", "intervals"]):
+        raise ValueError("interval-event JSON must contain only schema_version and intervals")
+    if isinstance(raw.get("schema_version"), bool) or raw.get("schema_version") != 1 or not isinstance(raw.get("intervals"), list):
+        raise ValueError("interval-event JSON requires schema_version 1 and an intervals array")
+    intervals = []
+    allowed = set(["start_seconds", "end_seconds", "label", "channel", "confidence"])
+    required = set(["start_seconds", "end_seconds", "label"])
+    for index, item in enumerate(raw["intervals"]):
+        if not isinstance(item, dict) or not required.issubset(set(item.keys())) or not set(item.keys()).issubset(allowed):
+            raise ValueError("interval %s has missing or unknown fields" % index)
+        if any(isinstance(item[name], bool) or not isinstance(item[name], (int, float)) for name in ("start_seconds", "end_seconds")) or not isinstance(item["label"], str):
+            raise ValueError("interval %s has invalid field types" % index)
+        if "channel" in item and not isinstance(item["channel"], str):
+            raise ValueError("interval %s channel must be a string" % index)
+        if "confidence" in item and (isinstance(item["confidence"], bool) or not isinstance(item["confidence"], (int, float))):
+            raise ValueError("interval %s confidence must be a number" % index)
+        intervals.append(IntervalEvent(item["start_seconds"], item["end_seconds"], item["label"], item.get("channel", "global"), item.get("confidence"), index))
+    return IntervalDocument(path, target or "", intervals, raw=raw)
 
 
 def score_interval_events(ground_truth, predictions, record_duration_seconds, minimum_iou=0.1):

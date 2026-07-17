@@ -79,7 +79,7 @@ namespace
                   << "       signal-synth render <scenario.json|-> --out <new-directory>\n"
                   << "       signal-synth compare <r_peak|ppg_systolic_peak|ppg_pulse_onset|ecg_beat_classification> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth interval score <rhythm_episode|signal_quality> <scenario.json|-> <intervals.csv|intervals.json> --out <new-directory> [--minimum-iou <ratio>]\n"
-                  << "       signal-synth delineation score <scenario.json|-> <delineation.csv|delineation.json> --out <new-directory> [--tolerance-ms <ms>]\n"
+                  << "       signal-synth delineation score <scenario.json|-> <point-events.csv|point-events.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack analyze <pack.json>\n"
@@ -401,18 +401,9 @@ namespace
 
     bool scoring_command_for_target(const std::string& target, std::string& score_type, std::string& command_name, scoring_input_kind& input_kind);
 
-    std::string output_stem_for_target(const std::string& case_id, const std::vector<std::string>& targets, const std::string& target)
+    std::string submission_output_path(const std::string& case_id, const std::string& target)
     {
-        unsigned int supported_count = 0;
-        for (std::size_t i = 0; i < targets.size(); ++i)
-        {
-            std::string score_type;
-            std::string command_name;
-            scoring_input_kind input_kind = scoring_input_event;
-            if (scoring_command_for_target(targets[i], score_type, command_name, input_kind))
-                ++supported_count;
-        }
-        return supported_count <= 1u ? case_id : case_id + "_" + target;
+        return "outputs/" + case_id + "/" + target + ".json";
     }
 
     bool scoring_command_for_target(const std::string& target, std::string& score_type, std::string& command_name, scoring_input_kind& input_kind)
@@ -448,73 +439,54 @@ namespace
         return true;
     }
 
-    void write_user_output_files(std::ostringstream& output, const std::string& stem, scoring_input_kind input_kind)
+    const char* recommended_submission_format(scoring_input_kind input_kind)
     {
-        output << '[';
         if (input_kind == scoring_input_hrv)
-        {
-            output << "{\"format\":\"hrv_json_v1\",\"path\":" << json_text("hrv_outputs/" + stem + ".json") << "}";
-        }
+            return "hrv_metrics_json_v1";
+        if (input_kind == scoring_input_interval)
+            return "interval_events_json_v1";
+        return "point_events_json_v1";
+    }
+
+    void write_accepted_submission_formats(std::ostringstream& output, scoring_input_kind input_kind)
+    {
+        if (input_kind == scoring_input_hrv)
+            output << "[\"hrv_metrics_json_v1\"]";
         else if (input_kind == scoring_input_interval)
-        {
-            output << "{\"format\":\"interval_json_v1\",\"path\":" << json_text("intervals/" + stem + ".json") << "},"
-                   << "{\"format\":\"interval_csv_v1\",\"path\":" << json_text("intervals/" + stem + ".csv") << "}";
-        }
-        else if (input_kind == scoring_input_delineation)
-        {
-            output << "{\"format\":\"delineation_json_v1\",\"path\":" << json_text("delineations/" + stem + ".json") << "},"
-                   << "{\"format\":\"delineation_csv_v1\",\"path\":" << json_text("delineations/" + stem + ".csv") << "}";
-        }
+            output << "[\"interval_events_json_v1\",\"interval_events_csv_v1\"]";
         else
-        {
-            output << "{\"format\":\"detection_json_v1\",\"path\":" << json_text("detections/" + stem + ".json") << "},"
-                   << "{\"format\":\"detection_csv_v2\",\"path\":" << json_text("detections/" + stem + ".csv") << "}";
-        }
-        output << ']';
+            output << "[\"point_events_json_v1\",\"point_events_csv_v1\"]";
     }
 
     void write_scoring_entries(std::ostringstream& output, const std::string& case_id, const std::string& scenario_path, const std::vector<std::string>& targets)
     {
+        (void)scenario_path;
         output << '[';
         for (std::size_t i = 0; i < targets.size(); ++i)
         {
-            const std::string stem = output_stem_for_target(case_id, targets, targets[i]);
             std::string score_type;
             std::string command_name;
             scoring_input_kind input_kind = scoring_input_event;
             const bool supported = scoring_command_for_target(targets[i], score_type, command_name, input_kind);
+            (void)command_name;
             output << (i ? "," : "") << "{\"target\":" << json_text(targets[i])
                    << ",\"supported\":" << (supported ? "true" : "false");
             if (supported)
             {
-                output << ",\"score_type\":" << json_text(score_type);
-                if (input_kind == scoring_input_hrv)
-                {
-                    output << ",\"accepted_user_output_formats\":[\"hrv_json_v1\"]";
-                    output << ",\"score_command\":" << json_text("signal-synth hrv score " + scenario_path + " hrv_outputs/" + stem + ".json --out verification/" + stem);
-                }
-                else if (input_kind == scoring_input_interval)
-                {
-                    output << ",\"accepted_interval_formats\":[\"interval_json_v1\",\"interval_csv_v1\"]"
-                           << ",\"default_minimum_iou\":0.1"
-                           << ",\"score_command\":" << json_text("signal-synth " + command_name + " " + scenario_path + " intervals/" + stem + ".json --out verification/" + stem);
-                }
+                output << ",\"score_type\":" << json_text(score_type) << ",\"accepted_formats\":";
+                write_accepted_submission_formats(output, input_kind);
+                output << ",\"recommended_format\":" << json_text(recommended_submission_format(input_kind))
+                       << ",\"recommended_path\":" << json_text(submission_output_path(case_id, targets[i]));
+                if (input_kind == scoring_input_interval)
+                    output << ",\"default_minimum_iou\":0.1";
                 else if (input_kind == scoring_input_delineation)
-                {
-                    output << ",\"accepted_delineation_formats\":[\"delineation_json_v1\",\"delineation_csv_v1\"]"
-                           << ",\"default_tolerance_seconds\":0.04"
-                           << ",\"score_command\":" << json_text("signal-synth delineation score " + scenario_path + " delineations/" + stem + ".json --out verification/" + stem);
-                }
-                else
+                    output << ",\"default_tolerance_seconds\":0.04,\"default_pairing_window_seconds\":0.2,\"evaluation_scope\":{\"mode\":\"all_record\",\"leads\":[\"II\",\"V2\"]}";
+                else if (input_kind == scoring_input_event)
                 {
                     signal_synth::ecg_compare_target compare_target;
                     signal_synth::detection_compare_target_from_name(targets[i], compare_target);
-                    output << ",\"accepted_detection_formats\":[\"detection_json_v1\",\"detection_csv_v2\"]"
-                           << ",\"default_tolerance_seconds\":" << signal_synth::ecg_compare_default_tolerance_seconds(compare_target)
-                           << ",\"score_command\":" << json_text("signal-synth " + command_name + " " + scenario_path + " detections/" + stem + ".json --out verification/" + stem);
+                    output << ",\"default_tolerance_seconds\":" << signal_synth::ecg_compare_default_tolerance_seconds(compare_target);
                 }
-                output << ",\"recommended_files\":";
-                write_user_output_files(output, stem, input_kind);
             }
             else
             {
@@ -523,6 +495,80 @@ namespace
             output << '}';
         }
         output << ']';
+    }
+
+    std::string submission_payload_template(scoring_input_kind input_kind)
+    {
+        if (input_kind == scoring_input_hrv)
+            return "{\"schema_version\":1,\"metrics\":{},\"rr_intervals\":[]}\n";
+        if (input_kind == scoring_input_interval)
+            return "{\"schema_version\":1,\"intervals\":[]}\n";
+        return "{\"schema_version\":1,\"events\":[]}\n";
+    }
+
+    std::string submission_template_json(const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_json_result& identity, const std::vector<pack_render_row>& rows)
+    {
+        std::ostringstream output;
+        output << "{\"schema_version\":1,\"contract\":\"synsigra_submission_v1\",\"challenge\":{\"package_id\":" << json_text(manifest.pack_id)
+               << ",\"pack_version\":" << json_text(manifest.version) << ",\"pack_fingerprint\":" << json_text(identity.pack_fingerprint)
+               << "},\"algorithm\":{\"name\":\"REPLACE_WITH_ALGORITHM_NAME\",\"version\":\"REPLACE_WITH_ALGORITHM_VERSION\"},\"outputs\":[";
+        bool first = true;
+        for (std::size_t row = 0; row < rows.size(); ++row)
+        {
+            for (std::size_t target = 0; target < rows[row].targets.size(); ++target)
+            {
+                std::string score_type;
+                std::string command_name;
+                scoring_input_kind input_kind = scoring_input_event;
+                if (!scoring_command_for_target(rows[row].targets[target], score_type, command_name, input_kind))
+                    continue;
+                output << (first ? "" : ",") << "{\"case_id\":" << json_text(rows[row].id)
+                       << ",\"target\":" << json_text(rows[row].targets[target])
+                       << ",\"format\":" << json_text(recommended_submission_format(input_kind))
+                       << ",\"path\":" << json_text(submission_output_path(rows[row].id, rows[row].targets[target])) << '}';
+                first = false;
+            }
+        }
+        output << "]}\n";
+        return output.str();
+    }
+
+    std::string submission_formats_json()
+    {
+        return
+            "{\"schema_version\":1,\"contract\":\"synsigra_submission_formats_v1\",\"formats\":["
+            "{\"name\":\"point_events_json_v1\",\"media_type\":\"application/json\",\"container_fields\":[\"schema_version\",\"events\"],\"record_fields\":[\"time_seconds\",\"sample_index\",\"channel\",\"label\",\"confidence\"],\"required_record_fields\":[\"time_seconds\"]},"
+            "{\"name\":\"point_events_csv_v1\",\"media_type\":\"text/csv\",\"columns\":[\"time_seconds\",\"sample_index\",\"channel\",\"label\",\"confidence\"],\"required_columns\":[\"time_seconds\"]},"
+            "{\"name\":\"interval_events_json_v1\",\"media_type\":\"application/json\",\"container_fields\":[\"schema_version\",\"intervals\"],\"record_fields\":[\"start_seconds\",\"end_seconds\",\"label\",\"channel\",\"confidence\"],\"required_record_fields\":[\"start_seconds\",\"end_seconds\",\"label\"]},"
+            "{\"name\":\"interval_events_csv_v1\",\"media_type\":\"text/csv\",\"columns\":[\"start_seconds\",\"end_seconds\",\"label\",\"channel\",\"confidence\"],\"required_columns\":[\"start_seconds\",\"end_seconds\",\"label\"]},"
+            "{\"name\":\"hrv_metrics_json_v1\",\"media_type\":\"application/json\",\"container_fields\":[\"schema_version\",\"metrics\",\"rr_intervals\"],\"rr_record_fields\":[\"beat_time_seconds\",\"rr_seconds\"]}],"
+            "\"target_adapters\":{"
+            "\"r_peak\":{\"format_family\":\"point_events\",\"required_record_fields\":[\"time_seconds\"]},"
+            "\"ppg_systolic_peak\":{\"format_family\":\"point_events\",\"required_record_fields\":[\"time_seconds\"]},"
+            "\"ppg_pulse_onset\":{\"format_family\":\"point_events\",\"required_record_fields\":[\"time_seconds\"]},"
+            "\"ecg_beat_classification\":{\"format_family\":\"point_events\",\"label\":\"beat_class\",\"required_record_fields\":[\"time_seconds\",\"label\"]},"
+            "\"ecg_delineation\":{\"format_family\":\"point_events\",\"channel\":\"standard_ecg_lead\",\"label\":\"fiducial_kind\",\"required_record_fields\":[\"time_seconds\",\"channel\",\"label\"]},"
+            "\"hrv\":{\"format_family\":\"hrv_metrics\"},"
+            "\"rhythm_episode\":{\"format_family\":\"interval_events\",\"channel\":\"global\"},"
+            "\"signal_quality\":{\"format_family\":\"interval_events\",\"channel\":\"global_or_physical_channel\"}}}\n";
+    }
+
+    void add_submission_template_files(signal_synth::challenge_package_build_options& options, const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_json_result& identity, const std::vector<pack_render_row>& rows)
+    {
+        options.package_files.push_back(make_challenge_file("user-output-template/submission.json", signal_synth::challenge_file_other, "application/json", submission_template_json(manifest, identity, rows)));
+        options.package_files.push_back(make_challenge_file("user-output-template/formats.json", signal_synth::challenge_file_other, "application/json", submission_formats_json()));
+        for (std::size_t row = 0; row < rows.size(); ++row)
+        {
+            for (std::size_t target = 0; target < rows[row].targets.size(); ++target)
+            {
+                std::string score_type;
+                std::string command_name;
+                scoring_input_kind input_kind = scoring_input_event;
+                if (!scoring_command_for_target(rows[row].targets[target], score_type, command_name, input_kind))
+                    continue;
+                options.package_files.push_back(make_challenge_file("user-output-template/" + submission_output_path(rows[row].id, rows[row].targets[target]), signal_synth::challenge_file_other, "application/json", submission_payload_template(input_kind)));
+            }
+        }
     }
 
     void write_case_channels(std::ostringstream& output, const signal_synth::ecg_render_bundle& render)
@@ -626,10 +672,9 @@ namespace
                << ",\"generator_git_commit\":" << json_text(signal_synth::signal_synth_generator_git_commit())
                << ",\"package_contract_version\":" << json_text(signal_synth::signal_synth_package_contract_version())
                << ",\"scoring_manifest_contract_version\":" << json_text(signal_synth::signal_synth_scoring_manifest_contract_version())
-               << ",\"detection_directory\":\"detections\""
-               << ",\"interval_directory\":\"intervals\""
-               << ",\"delineation_directory\":\"delineations\""
-               << ",\"hrv_output_directory\":\"hrv_outputs\""
+               << ",\"submission_contract_version\":\"synsigra_submission_v1\""
+               << ",\"submission_template_path\":\"user-output-template/submission.json\""
+               << ",\"submission_format_contract_path\":\"user-output-template/formats.json\""
                << ",\"verification_output_directory\":\"verification\""
                << ",\"targets\":[";
         for (std::size_t i = 0; i < targets.size(); ++i)
@@ -642,19 +687,18 @@ namespace
                    << ",\"supported\":" << (supported ? "true" : "false");
             if (supported)
             {
-                output << ",\"score_type\":" << json_text(score_type);
-                if (input_kind == scoring_input_hrv)
-                    output << ",\"accepted_user_output_formats\":[\"hrv_json_v1\"]";
-                else if (input_kind == scoring_input_interval)
-                    output << ",\"accepted_interval_formats\":[\"interval_json_v1\",\"interval_csv_v1\"],\"default_minimum_iou\":0.1";
+                output << ",\"score_type\":" << json_text(score_type) << ",\"accepted_formats\":";
+                write_accepted_submission_formats(output, input_kind);
+                output << ",\"recommended_format\":" << json_text(recommended_submission_format(input_kind));
+                if (input_kind == scoring_input_interval)
+                    output << ",\"default_minimum_iou\":0.1";
                 else if (input_kind == scoring_input_delineation)
-                    output << ",\"accepted_delineation_formats\":[\"delineation_json_v1\",\"delineation_csv_v1\"],\"default_tolerance_seconds\":0.04";
-                else
+                    output << ",\"default_tolerance_seconds\":0.04,\"default_pairing_window_seconds\":0.2,\"evaluation_scope\":{\"mode\":\"all_record\",\"leads\":[\"II\",\"V2\"]}";
+                else if (input_kind == scoring_input_event)
                 {
                     signal_synth::ecg_compare_target compare_target;
                     signal_synth::detection_compare_target_from_name(targets[i], compare_target);
-                    output << ",\"accepted_detection_formats\":[\"detection_json_v1\",\"detection_csv_v2\"]"
-                           << ",\"default_tolerance_seconds\":" << signal_synth::ecg_compare_default_tolerance_seconds(compare_target);
+                    output << ",\"default_tolerance_seconds\":" << signal_synth::ecg_compare_default_tolerance_seconds(compare_target);
                 }
             }
             output << ",\"cases\":[";
@@ -949,8 +993,8 @@ int main(int argc, char** argv)
             signal_synth::delineation_output_document delineation_document;
             signal_synth::delineation_io_result delineation_result;
             const bool parsed = starts_with_json_object(delineation_input)
-                ? signal_synth::parse_delineation_json_v1(delineation_input, delineation_document, delineation_result)
-                : signal_synth::parse_delineation_csv_v1(delineation_input, delineation_document, delineation_result);
+                ? signal_synth::parse_delineation_point_events_json_v1(delineation_input, delineation_document, delineation_result)
+                : signal_synth::parse_delineation_point_events_csv_v1(delineation_input, delineation_document, delineation_result);
             if (!parsed)
             {
                 for (std::size_t i = 0; i < delineation_result.messages.size(); ++i)
@@ -980,8 +1024,12 @@ int main(int argc, char** argv)
                 std::cerr << "error=RENDER_FAILED path=$ message=" << (render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
                 return 4;
             }
+            signal_synth::delineation_evaluation_scope scope;
+            for (std::size_t i = 0; i < delineation_document.events.size(); ++i)
+                if (std::find(scope.leads.begin(), scope.leads.end(), delineation_document.events[i].lead) == scope.leads.end()) scope.leads.push_back(delineation_document.events[i].lead);
+            if (scope.leads.empty()) scope.leads.push_back("II");
             signal_synth::delineation_score_result score;
-            if (!signal_synth::score_delineation_output_to_render(render, delineation_document, options, score))
+            if (!signal_synth::score_delineation_output_to_render(render, delineation_document, scope, options, score))
             {
                 std::cerr << "error=DELINEATION_SCORE_FAILED path=$ message=" << (score.messages.empty() ? "delineation scoring failed" : score.messages[0]) << '\n';
                 return 4;
@@ -992,7 +1040,7 @@ int main(int argc, char** argv)
                 std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=output directory must be new and writable\n";
                 return 3;
             }
-            if (!write_text_file(join_path(output_directory, "delineation_score.json"), signal_synth::delineation_score_result_json(render, delineation_document, score))
+            if (!write_text_file(join_path(output_directory, "delineation_score.json"), signal_synth::delineation_score_result_json(render, scope, score))
                 || !write_text_file(join_path(output_directory, "delineation_score.csv"), signal_synth::delineation_score_result_csv(score))
                 || !write_text_file(join_path(output_directory, "delineation_score_report.html"), signal_synth::delineation_score_report_html(render, score)))
             {
@@ -1682,6 +1730,7 @@ int main(int argc, char** argv)
                 options.package_files.push_back(make_challenge_file("summary.csv", signal_synth::challenge_file_other, "text/csv", summary_csv));
                 options.package_files.push_back(make_challenge_file("index.html", signal_synth::challenge_file_readme, "text/html", index_html));
                 options.package_files.push_back(make_challenge_file("scoring_manifest.json", signal_synth::challenge_file_metadata_json, "application/json", scoring_json));
+                add_submission_template_files(options, manifest, pack_result, rows);
                 signal_synth::challenge_package_build_result challenge_result;
                 if (!signal_synth::build_challenge_package_manifest(options, challenge_cases, challenge_result))
                 {

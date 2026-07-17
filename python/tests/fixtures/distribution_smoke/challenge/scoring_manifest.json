@@ -4,12 +4,19 @@
   "pack_version": "1.0",
   "pack_fingerprint": "sha256:fixture",
   "generator_version": "fixture",
+  "package_contract_version": "synsigra_challenge_package_v2",
+  "scoring_manifest_contract_version": "synsigra_scoring_manifest_v2",
+  "submission_contract_version": "synsigra_submission_v1",
+  "submission_template_path": "user-output-template/submission.json",
+  "submission_format_contract_path": "user-output-template/formats.json",
+  "verification_output_directory": "verification",
   "targets": [
     {
       "target": "r_peak",
       "supported": true,
       "score_type": "event_detection",
-      "accepted_detection_formats": ["detection_json_v1", "detection_csv_v2"],
+      "accepted_formats": ["point_events_json_v1", "point_events_csv_v1"],
+      "recommended_format": "point_events_json_v1",
       "default_tolerance_seconds": 0.05,
       "cases": ["clean"]
     }
@@ -26,11 +33,11 @@
           "target": "r_peak",
           "supported": true,
           "score_type": "event_detection",
-          "accepted_detection_formats": ["detection_json_v1", "detection_csv_v2"],
+          "accepted_formats": ["point_events_json_v1", "point_events_csv_v1"],
+          "recommended_format": "point_events_json_v1",
+          "recommended_path": "outputs/clean/r_peak.json",
           "default_tolerance_seconds": 0.05,
-          "recommended_files": [
-            {"format": "detection_json_v1", "path": "detections/clean.json"}
-          ]
+          "evaluation_scope": {"mode": "all_record"}
         }
       ]
     }

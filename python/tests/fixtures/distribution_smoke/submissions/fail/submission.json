@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "contract": "synsigra_submission_v1",
+  "challenge": {"package_id": "python_distribution_smoke", "pack_version": "1.0", "pack_fingerprint": "sha256:fixture"},
+  "algorithm": {"name": "distribution_smoke_bad", "version": "1"},
+  "outputs": [{"case_id": "clean", "target": "r_peak", "format": "point_events_json_v1", "path": "outputs/clean/r_peak.json"}]
+}

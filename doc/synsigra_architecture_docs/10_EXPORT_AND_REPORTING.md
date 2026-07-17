@@ -109,9 +109,9 @@ Required fields:
     "timestamp_policy": "not_recorded_for_deterministic_local_export"
   },
   "contracts": {
-    "package_contract_version": "synsigra_challenge_package_v1",
-    "scoring_manifest_contract_version": "synsigra_scoring_manifest_v1",
-    "verifier_version": "0.5.0-dev"
+    "package_contract_version": "synsigra_challenge_package_v2",
+    "scoring_manifest_contract_version": "synsigra_scoring_manifest_v2",
+    "verifier_version": "0.6.0-dev"
   },
   "license": {
     "export_id": "exp_...",

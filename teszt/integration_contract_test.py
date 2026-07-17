@@ -19,16 +19,20 @@ assert contract_process.stderr == ""
 contract = json.loads(contract_process.stdout)
 assert contract_process.stdout.strip() == json.dumps(contract, separators=(",", ":"))
 assert contract["schema_version"] == 1
-assert contract["contract"] == "synsigra_core_integration_v1"
+assert contract["contract"] == "synsigra_core_integration_v2"
 assert contract["contracts"]["cpp_facade"] == "1.0.0"
-assert contract["contracts"]["challenge_package"] == "synsigra_challenge_package_v1"
-assert contract["contracts"]["scoring_manifest"] == "synsigra_scoring_manifest_v1"
+assert contract["contracts"]["challenge_package"] == "synsigra_challenge_package_v2"
+assert contract["contracts"]["scoring_manifest"] == "synsigra_scoring_manifest_v2"
+assert contract["contracts"]["submission"] == "synsigra_submission_v1"
+assert contract["contracts"]["submission_formats"] == "synsigra_submission_formats_v1"
 assert contract["cli"]["challenge_success_media_type"] == "application/json"
 assert contract["cli"]["comparison_targets"] == ["r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification"]
 assert contract["cli"]["interval_targets"] == ["rhythm_episode", "signal_quality"]
 assert contract["cli"]["interval_output_schemas"] == ["interval_json_v1", "interval_csv_v1"]
 assert contract["cli"]["delineation_targets"] == ["ecg_delineation"]
-assert contract["cli"]["delineation_output_schemas"] == ["delineation_json_v1", "delineation_csv_v1"]
+assert contract["cli"]["delineation_output_schemas"] == ["point_events_json_v1", "point_events_csv_v1"]
+assert contract["cli"]["customer_verification_command"].startswith("synsigra-verify")
+assert contract["cli"]["customer_output_schemas"] == ["point_events_json_v1", "point_events_csv_v1", "interval_events_json_v1", "interval_events_csv_v1", "hrv_metrics_json_v1"]
 
 shutil.rmtree(work_dir, ignore_errors=True)
 os.makedirs(work_dir)
@@ -53,6 +57,24 @@ assert receipt["contracts"]["scoring_manifest"] == contract["contracts"]["scorin
 with open(os.path.join(challenge_dir, "manifest.json"), "r") as manifest_file:
     manifest = json.load(manifest_file)
 assert manifest["package_id"] == receipt["package_id"]
+assert os.path.isfile(os.path.join(challenge_dir, "user-output-template", "submission.json"))
+with open(os.path.join(challenge_dir, "scoring_manifest.json"), "r") as handle:
+    scoring_manifest = json.load(handle)
+assert scoring_manifest["submission_contract_version"] == "synsigra_submission_v1"
+assert scoring_manifest["submission_template_path"] == "user-output-template/submission.json"
+assert scoring_manifest["submission_format_contract_path"] == "user-output-template/formats.json"
+with open(os.path.join(challenge_dir, "user-output-template", "formats.json"), "r") as handle:
+    format_contract = json.load(handle)
+assert format_contract["contract"] == "synsigra_submission_formats_v1"
+assert [item["name"] for item in format_contract["formats"]] == contract["cli"]["customer_output_schemas"]
+for case in scoring_manifest["cases"]:
+    for entry in case["scoring"]:
+        if entry["supported"]:
+            assert entry["accepted_formats"]
+            assert entry["recommended_format"] in entry["accepted_formats"]
+            assert entry["recommended_path"].startswith("outputs/%s/" % case["case_id"])
+            assert "score_command" not in entry
+            assert not any(key.startswith("accepted_") and key != "accepted_formats" for key in entry)
 
 legacy_process = run([cli, "compare", "rpeaks", scenario, os.path.join(work_dir, "missing.json"), "--out", os.path.join(work_dir, "compare")])
 assert legacy_process.returncode == 2

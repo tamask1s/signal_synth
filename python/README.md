@@ -1,109 +1,91 @@
 # Synsigra Python SDK
 
-`synsigra` is the local Python SDK for loading Synsigra challenge packages and verifying user algorithm outputs. It is the customer-facing no-build path for scoring downloaded packages from Synsigra / `signal_synth_saas`.
-
-It does **not** execute proprietary detector code and it does **not** require the C++ generator source tree for local scoring.
+`synsigra` is the customer-facing, generator-free SDK for scoring algorithm
+outputs against a downloaded Synsigra challenge. It contains no C++ generator
+and does not execute customer detector code.
 
 ## Install
 
-From the repository root during beta:
-
 ```bash
-python -m pip install .
-```
-
-From a private-beta release artifact:
-
-```bash
-python -m pip install synsigra-0.3.0-py3-none-any.whl
-```
-
-Verify installation:
-
-```bash
+python -m pip install synsigra-0.4.0-py3-none-any.whl
 synsigra-verify --help
 ```
 
-## One-command verification
+## Verify A Challenge
+
+Every challenge contains `user-output-template/`. Copy that directory, replace
+the algorithm placeholders in `submission.json`, and write each declared
+output file. The manifest is authoritative: no filename discovery or
+target-specific directory convention is used.
 
 ```bash
-synsigra-verify package.zip user-outputs/ verification-results/ --profile regression
+synsigra-verify challenge.synsigra submission/ verification-results/ --profile regression
 ```
-
-Arguments:
-
-- `package.zip` or `challenge.synsigra`: downloaded Synsigra challenge package or package directory;
-- `user-outputs/`: event detections, interval outputs, delineations, and HRV results in the `detections/`, `intervals/`, `delineations/`, and `hrv_outputs/` paths described by package scoring metadata;
-- `verification-results/`: output directory for JSON, CSV, and HTML reports;
-- `--profile`: threshold policy. Built-ins are `smoke`, `regression`, `stress`, and `benchmark`.
 
 Useful filters:
 
 ```bash
-synsigra-verify package.zip user-outputs/ out/ --case clean_70 --target r_peak
-synsigra-verify package.zip user-outputs/ out/ --profile path/to/custom-profile.json
+synsigra-verify challenge.synsigra submission/ out/ --case clean_70 --target r_peak
+synsigra-verify challenge.synsigra submission/ out/ --profile path/to/profile.json
 ```
 
-Use `--force` to replace an existing output directory.
+Use `--force` to replace an existing result directory.
 
-Point detections use `detection_json_v1` or `detection_csv_v2`. Rhythm and
-signal-quality algorithms use `interval_json_v1` or `interval_csv_v1` with
-half-open `[start_seconds,end_seconds)` intervals, a label, and either the
-`global` channel or physical channel names. The package
-`scoring_manifest.json` names the accepted schema and recommended filename for
-every case/target.
+## Submission Contract
 
-ECG delineators use `delineation_json_v1` or `delineation_csv_v1`. The output
-declares all-beat or selected-beat scope, evaluated standard ECG leads, and
-events identified by decimal-string beat index, lead, and fiducial kind.
-Supported kinds are P onset/peak/offset, QRS onset/offset, J point, and T
-onset/peak/offset. Absent waves are omitted from exact ground truth.
+`submission.json` uses `synsigra_submission_v1`. It identifies the challenge
+and algorithm once, then maps every `(case_id,target)` to an explicit format
+and relative path.
 
-Programmatic generator-backed scoring is also available:
+R-peak, PPG event, beat-classification and ECG-delineation outputs use the same
+point-event payload:
+
+```json
+{"schema_version":1,"events":[{"time_seconds":1.234,"sample_index":617,"channel":"II","label":"qrs_onset","confidence":0.98}]}
+```
+
+Its CSV columns are
+`time_seconds,sample_index,channel,label,confidence`. Optional cells may be
+empty. For delineation, `channel` is a standard ECG lead and `label` is one of
+P onset/peak/offset, QRS onset/offset, J point, or T onset/peak/offset.
+Predictions contain no generator beat identity and no negative rows.
+
+Rhythm and signal-quality outputs use `interval_events_json_v1` or
+`interval_events_csv_v1` with half-open `[start_seconds,end_seconds)` bounds,
+label and channel. HRV uses `hrv_metrics_json_v1`. The generated manifest lists
+the accepted formats for every target.
+
+## Reports
+
+The verifier writes:
+
+- `verification_summary.json`, `.csv`, and `verification_report.html`;
+- `verification/<case-target>/comparison.json`, `.csv`, and HTML evidence.
+
+ECG delineation reports expose truth-side atrial or ventricular anchors and
+`present`, `absent`, or `not_evaluable` status. Predictions for absent waves
+are false positives; predictions inside a not-evaluable wave window are
+reported as excluded.
+
+Exit code `0` means integrity, scoring and threshold policy passed. Exit code
+`1` means one of those checks failed; `2` is invalid command-line usage.
+
+## Python API
 
 ```python
 import synsigra
 
-package = synsigra.load_challenge("package.zip")
-intervals = synsigra.load_intervals("episodes.json", target="rhythm_episode")
-report = synsigra.score_rhythm_episodes(package.case("psvt_episode"), intervals)
-
-delineations = synsigra.load_delineations("delineations.json")
-report = synsigra.score_delineation(package.case("clean_70"), delineations)
+report = synsigra.verify_package("challenge.synsigra", "submission", "results")
+assert report.summary["success"]
 ```
 
-## CI behavior
+The pure-Python wheel supports CPython 3.8 through 3.11 on Linux, macOS and
+Windows. Development-only generator-backed helpers require a separately
+installed `signal-synth` executable; the customer verification workflow does
+not.
 
-The verifier prints a compact status summary and exits with:
+## Scope Boundary
 
-- `0` when package integrity, scoring, and the selected threshold profile pass;
-- non-zero when package integrity fails, required detections are missing, scoring fails, or the selected threshold profile fails.
-
-Exit codes are:
-
-- `0`: package integrity, scoring, and threshold policy passed;
-- `1`: integrity, input, scoring, or threshold-policy failure;
-- `2`: invalid command-line usage reported by `argparse`.
-
-The output directory contains:
-
-- `verification_summary.json`: canonical machine-readable overall result;
-- `verification_summary.csv`: compact case-target table;
-- `verification_report.html`: human-readable report;
-- `verification/<case-target>/`: per-target JSON, CSV, and HTML evidence.
-
-## Supported environments
-
-The beta wheel is pure Python and supports CPython 3.8 through 3.11 on Linux,
-macOS, and Windows. Release CI installs and tests the wheel on clean Linux
-Python 3.8 and 3.11 environments.
-
-`synsigra-verify` never invokes `signal-synth`; it scores only downloaded
-package ground truth and user outputs. Generator-backed convenience functions
-such as `compare_rpeaks` and `score_pack` require a separately installed
-`signal-synth` executable, selected with their `cli_path` argument or the
-`SYNSIGRA_CLI` environment variable.
-
-## Scope boundary
-
-This package produces synthetic engineering QA evidence. It is not a diagnostic device, patient monitor, clinical validation system, certified medical-device validator, or standalone conformity-assessment tool.
+This package produces synthetic engineering QA evidence. It is not a
+diagnostic device, patient monitor, clinical-validation system, or standalone
+conformity-assessment tool.

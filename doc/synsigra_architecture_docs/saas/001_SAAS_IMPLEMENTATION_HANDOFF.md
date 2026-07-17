@@ -2,7 +2,7 @@
 
 **Document ID:** SYN-SAAS-HANDOFF-001
 
-**Version:** 2.0
+**Version:** 2.1
 
 **Status:** Core contract closed; SaaS consumer migration required
 
@@ -56,8 +56,10 @@ Pack metadata export:
 Python package:
 
 - user-facing local challenge loading;
-- detection-output loading;
-- scoring execution through the packaged CLI or future native bindings;
+- strict `synsigra_submission_v1` loading with algorithm provenance supplied
+  once per submission;
+- pure-Python, generator-free local scoring for every currently scoreable
+  target;
 - report/artifact access.
 
 SaaS API:
@@ -110,7 +112,7 @@ This detects an accidentally mismatched linked library, CLI binary, or image.
 Successful challenge stdout is one compact JSON document:
 
 ```json
-{"schema_version":1,"contract":"synsigra_core_integration_v1","status":"challenge_rendered","output_directory":"<path>","package_id":"<pack-id>","scenario_count":4,"pack_fingerprint":"sha256:<64-hex>","package_fingerprint":"sha256:<64-hex>","generator":{"name":"signal_synth","version":"<version>","git_commit":"<commit>","build_identity":"<identity>"},"contracts":{"challenge_package":"synsigra_challenge_package_v1","scoring_manifest":"synsigra_scoring_manifest_v1"}}
+{"schema_version":1,"contract":"synsigra_core_integration_v2","status":"challenge_rendered","output_directory":"<path>","package_id":"<pack-id>","scenario_count":4,"pack_fingerprint":"sha256:<64-hex>","package_fingerprint":"sha256:<64-hex>","generator":{"name":"signal_synth","version":"<version>","git_commit":"<commit>","build_identity":"<identity>"},"contracts":{"challenge_package":"synsigra_challenge_package_v2","scoring_manifest":"synsigra_scoring_manifest_v2"}}
 ```
 
 Failure behavior follows the repository CLI contract: non-zero exit code,
@@ -128,12 +130,19 @@ Generated layout:
 <out>/
   manifest.json
   pack.json
+  scoring_manifest.json
+  provenance.json
+  ENGINEERING_CLAIM_BOUNDARY.txt
+  user-output-template/
+    submission.json
+    outputs/<case-id>/<target>.json
   summary.json
   summary.csv
   index.html
   cases/<case-id>/
     scenario.json
-    metadata.json
+    case_summary.json
+    provenance.json
     waveform.csv
     annotations.json
     rr_tachogram.csv
@@ -150,6 +159,21 @@ Generated layout:
     synsigra.bdf
     edf_bdf_metadata.json
 ```
+
+The SaaS must distribute `user-output-template/` unchanged. The UI may explain
+formats from each scoring entry's uniform `accepted_formats`,
+`recommended_format`, and `recommended_path`, but must not reconstruct paths
+or emit target-specific `accepted_*_formats` fields. Customer verification is:
+
+```text
+synsigra-verify <challenge> <submission-directory> <result-directory>
+```
+
+The customer point-event schemas are `point_events_json_v1` and
+`point_events_csv_v1`; interval schemas are `interval_events_json_v1` and
+`interval_events_csv_v1`; HRV uses `hrv_metrics_json_v1`. ECG delineation
+predictions contain event time, lead and kind only. Atrial/ventricular anchor
+identity and truth evaluability remain report-side metadata.
 
 `manifest.json` lists all package and case files except itself. This avoids a
 self-referential hash. Every listed file has path, role, media type, SHA-256,

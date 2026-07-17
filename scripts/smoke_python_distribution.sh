@@ -4,6 +4,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 ROOT="$PWD"
+PYTHON="${PYTHON:-python3}"
 FIXTURE="$ROOT/python/tests/fixtures/distribution_smoke"
 WHEELS=( "$ROOT"/dist/synsigra-*.whl )
 if [[ ${#WHEELS[@]} -ne 1 || ! -f "${WHEELS[0]}" ]]; then
@@ -14,7 +15,7 @@ fi
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
 
-python3 -m venv "$TMPDIR/venv"
+"$PYTHON" -m venv "$TMPDIR/venv"
 # shellcheck disable=SC1091
 source "$TMPDIR/venv/bin/activate"
 python -m pip install --no-deps "${WHEELS[0]}" >/dev/null
@@ -22,7 +23,7 @@ python -m pip install --no-deps "${WHEELS[0]}" >/dev/null
 cd "$TMPDIR"
 synsigra-verify --help > help.txt
 grep -q "challenge" help.txt
-grep -q "detections_dir" help.txt
+grep -q "submission_dir" help.txt
 grep -q "output_dir" help.txt
 grep -q -- "--profile" help.txt
 
@@ -40,7 +41,7 @@ with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED) as archive:
             archive.write(path, os.path.relpath(path, source))
 PY
 
-synsigra-verify "$TMPDIR/challenge.zip" "$FIXTURE/detections/pass" "$TMPDIR/pass-results" --profile regression
+synsigra-verify "$TMPDIR/challenge.zip" "$FIXTURE/submissions/pass" "$TMPDIR/pass-results" --profile regression
 test -f "$TMPDIR/pass-results/verification_summary.json"
 test -f "$TMPDIR/pass-results/verification_summary.csv"
 test -f "$TMPDIR/pass-results/verification_report.html"
@@ -54,8 +55,8 @@ assert summary["success"] is True
 assert summary["policy"]["passed"] is True
 PY
 
-if synsigra-verify "$TMPDIR/challenge.zip" "$FIXTURE/detections/fail" "$TMPDIR/fail-results" --profile regression; then
-    echo "Expected failing detections to return a non-zero exit code." >&2
+if synsigra-verify "$TMPDIR/challenge.zip" "$FIXTURE/submissions/fail" "$TMPDIR/fail-results" --profile regression; then
+    echo "Expected failing submission to return a non-zero exit code." >&2
     exit 1
 fi
 test -f "$TMPDIR/fail-results/verification_summary.json"
@@ -71,8 +72,10 @@ assert summary["policy"]["failed_check_count"] > 0
 PY
 
 python - <<'PY'
+import importlib.metadata
 import synsigra
 assert "site-packages" in synsigra.__file__, synsigra.__file__
+assert importlib.metadata.version("synsigra") == "0.4.0"
 PY
 
 echo "Python distribution smoke test passed"

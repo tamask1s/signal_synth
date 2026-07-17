@@ -12,11 +12,11 @@
       "target": "r_peak",
       "supported": true,
       "score_type": "event_detection",
-      "accepted_detection_formats": ["detection_json_v1", "detection_csv_v2"],
+      "accepted_formats": ["point_events_json_v1", "point_events_csv_v1"],
+      "recommended_format": "point_events_json_v1",
+      "recommended_path": "outputs/clean/r_peak.json",
       "default_tolerance_seconds": 0.05,
-      "recommended_files": [
-        {"format": "detection_json_v1", "path": "detections/clean.json"}
-      ]
+      "evaluation_scope": {"mode": "all_record"}
     }
   ]
 }

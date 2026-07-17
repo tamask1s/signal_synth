@@ -1,6 +1,6 @@
 {
   "catalog_id": "synsigra_verification_packs",
-  "catalog_version": "1.6",
+  "catalog_version": "1.7",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "metadata_type": "synsigra_curated_pack_catalog",
   "metadata_version": "synsigra_curated_pack_metadata_export_v1",
@@ -134,12 +134,6 @@
       ],
       "deprecation_message": "",
       "description": "Deterministic ECG scenarios for R-peak detector smoke, rate and artifact stress testing.",
-      "detector_output_schemas": [
-        "detection_json_v1",
-        "detection_csv_v2",
-        "interval_json_v1",
-        "interval_csv_v1"
-      ],
       "difficulty": [
         "smoke",
         "stress"
@@ -161,16 +155,17 @@
         "artifact"
       ],
       "generator_compatibility": {
-        "challenge_package_contract": "synsigra_challenge_package_v1",
-        "local_verifier_min_version": "0.2.0",
-        "minimum_generator_version": "0.5.0-dev",
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.4.0",
+        "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
           2,
           3,
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v1"
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -261,9 +256,9 @@
       "schema_version": 1,
       "scoreable_targets": [
         {
-          "accepted_detection_formats": [
-            "detection_json_v1",
-            "detection_csv_v2"
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
           "case_count": 4,
           "case_ids": [
@@ -281,9 +276,9 @@
           "target": "r_peak"
         },
         {
-          "accepted_interval_formats": [
-            "interval_json_v1",
-            "interval_csv_v1"
+          "accepted_formats": [
+            "interval_events_json_v1",
+            "interval_events_csv_v1"
           ],
           "case_count": 1,
           "case_ids": [
@@ -305,6 +300,12 @@
         "pack_path": "../packs/r_peak_stress_v1.json",
         "source_content_sha256": "sha256:747a91286c3a0d9fb619bac14a4eb675191eed9734de353dca09c767eab2c999"
       },
+      "submission_output_schemas": [
+        "point_events_json_v1",
+        "point_events_csv_v1",
+        "interval_events_json_v1",
+        "interval_events_csv_v1"
+      ],
       "supported_threshold_profiles": [
         "smoke",
         "regression",
@@ -565,11 +566,6 @@
       ],
       "deprecation_message": "",
       "description": "Deterministic five-minute ECG scenarios for time-domain, Poincare, spectral, exclusion-policy, and local scoring QA. The companion hrv_short_window_rejected.json is an expected validation failure.",
-      "detector_output_schemas": [
-        "hrv_json_v1",
-        "interval_json_v1",
-        "interval_csv_v1"
-      ],
       "difficulty": [
         "benchmark"
       ],
@@ -594,16 +590,17 @@
         "artifact_exclusion"
       ],
       "generator_compatibility": {
-        "challenge_package_contract": "synsigra_challenge_package_v1",
-        "local_verifier_min_version": "0.2.0",
-        "minimum_generator_version": "0.5.0-dev",
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.4.0",
+        "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
           2,
           3,
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v1"
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -707,8 +704,8 @@
       "schema_version": 1,
       "scoreable_targets": [
         {
-          "accepted_user_output_formats": [
-            "hrv_json_v1"
+          "accepted_formats": [
+            "hrv_metrics_json_v1"
           ],
           "case_count": 9,
           "case_ids": [
@@ -730,9 +727,9 @@
           "target": "hrv"
         },
         {
-          "accepted_interval_formats": [
-            "interval_json_v1",
-            "interval_csv_v1"
+          "accepted_formats": [
+            "interval_events_json_v1",
+            "interval_events_csv_v1"
           ],
           "case_count": 1,
           "case_ids": [
@@ -754,6 +751,11 @@
         "pack_path": "../packs/hrv_v1.json",
         "source_content_sha256": "sha256:a13a1826584b0c5c3e56d1a17277c839e70fb2c67ccdd699fe6b718e4bae4743"
       },
+      "submission_output_schemas": [
+        "hrv_metrics_json_v1",
+        "interval_events_json_v1",
+        "interval_events_csv_v1"
+      ],
       "supported_threshold_profiles": [
         "smoke",
         "regression",
@@ -931,10 +933,6 @@
       ],
       "deprecation_message": "",
       "description": "Curated normal, PAC, PVC, paced-capture, and paced-non-capture cases with exact beat-class ground truth.",
-      "detector_output_schemas": [
-        "detection_json_v1",
-        "detection_csv_v2"
-      ],
       "difficulty": [
         "regression"
       ],
@@ -956,16 +954,17 @@
         "non_capture"
       ],
       "generator_compatibility": {
-        "challenge_package_contract": "synsigra_challenge_package_v1",
-        "local_verifier_min_version": "0.2.0",
-        "minimum_generator_version": "0.5.0-dev",
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.4.0",
+        "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
           2,
           3,
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v1"
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -1046,9 +1045,9 @@
       "schema_version": 1,
       "scoreable_targets": [
         {
-          "accepted_detection_formats": [
-            "detection_json_v1",
-            "detection_csv_v2"
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
           "case_count": 5,
           "case_ids": [
@@ -1074,6 +1073,10 @@
         "pack_path": "../packs/ecg_beat_classification_v1.json",
         "source_content_sha256": "sha256:16371b28debfa5b2fd806d3a577ca7faa17753be3e1affb99ae98b4325802c8e"
       },
+      "submission_output_schemas": [
+        "point_events_json_v1",
+        "point_events_csv_v1"
+      ],
       "supported_threshold_profiles": [
         "smoke",
         "regression",
@@ -1337,12 +1340,6 @@
       ],
       "deprecation_message": "",
       "description": "Curated AFib, variable-conduction flutter, sustained SVT, PSVT transition, pause, ectopy-cadence, and paced rhythm cases.",
-      "detector_output_schemas": [
-        "detection_json_v1",
-        "detection_csv_v2",
-        "interval_json_v1",
-        "interval_csv_v1"
-      ],
       "difficulty": [
         "regression",
         "stress"
@@ -1368,16 +1365,17 @@
         "transition"
       ],
       "generator_compatibility": {
-        "challenge_package_contract": "synsigra_challenge_package_v1",
-        "local_verifier_min_version": "0.2.0",
-        "minimum_generator_version": "0.5.0-dev",
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.4.0",
+        "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
           2,
           3,
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v1"
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -1473,9 +1471,9 @@
       "schema_version": 1,
       "scoreable_targets": [
         {
-          "accepted_detection_formats": [
-            "detection_json_v1",
-            "detection_csv_v2"
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
           "case_count": 8,
           "case_ids": [
@@ -1497,9 +1495,9 @@
           "target": "r_peak"
         },
         {
-          "accepted_detection_formats": [
-            "detection_json_v1",
-            "detection_csv_v2"
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
           "case_count": 8,
           "case_ids": [
@@ -1521,9 +1519,9 @@
           "target": "ecg_beat_classification"
         },
         {
-          "accepted_interval_formats": [
-            "interval_json_v1",
-            "interval_csv_v1"
+          "accepted_formats": [
+            "interval_events_json_v1",
+            "interval_events_csv_v1"
           ],
           "case_count": 1,
           "case_ids": [
@@ -1545,6 +1543,12 @@
         "pack_path": "../packs/ecg_rhythm_v1.json",
         "source_content_sha256": "sha256:34ae600611d0657d6c4af75ad7bc99714dd806d39b1062e9a5de74cdc3355a09"
       },
+      "submission_output_schemas": [
+        "point_events_json_v1",
+        "point_events_csv_v1",
+        "interval_events_json_v1",
+        "interval_events_csv_v1"
+      ],
       "supported_threshold_profiles": [
         "smoke",
         "regression",
@@ -1734,12 +1738,6 @@
       ],
       "deprecation_message": "",
       "description": "ECG/PPG acquisition artifact scenarios with explicit interval ground truth.",
-      "detector_output_schemas": [
-        "interval_json_v1",
-        "interval_csv_v1",
-        "detection_json_v1",
-        "detection_csv_v2"
-      ],
       "difficulty": [
         "stress"
       ],
@@ -1762,16 +1760,17 @@
         "acquisition_fault"
       ],
       "generator_compatibility": {
-        "challenge_package_contract": "synsigra_challenge_package_v1",
-        "local_verifier_min_version": "0.2.0",
-        "minimum_generator_version": "0.5.0-dev",
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.4.0",
+        "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
           2,
           3,
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v1"
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -1862,9 +1861,9 @@
       "schema_version": 1,
       "scoreable_targets": [
         {
-          "accepted_interval_formats": [
-            "interval_json_v1",
-            "interval_csv_v1"
+          "accepted_formats": [
+            "interval_events_json_v1",
+            "interval_events_csv_v1"
           ],
           "case_count": 5,
           "case_ids": [
@@ -1883,9 +1882,9 @@
           "target": "signal_quality"
         },
         {
-          "accepted_detection_formats": [
-            "detection_json_v1",
-            "detection_csv_v2"
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
           "case_count": 1,
           "case_ids": [
@@ -1907,6 +1906,12 @@
         "pack_path": "../packs/signal_quality_v1.json",
         "source_content_sha256": "sha256:f2f718446a720b8872504965cb2dcc790ee150e0810defda041ab549af2839d6"
       },
+      "submission_output_schemas": [
+        "interval_events_json_v1",
+        "interval_events_csv_v1",
+        "point_events_json_v1",
+        "point_events_csv_v1"
+      ],
       "supported_threshold_profiles": [
         "smoke",
         "regression",
@@ -2083,10 +2088,6 @@
       ],
       "deprecation_message": "",
       "description": "Curated conduction, ST-T/ischemia, hypertrophy, infarction, lead-fault, and acquisition-fault reference cases.",
-      "detector_output_schemas": [
-        "interval_json_v1",
-        "interval_csv_v1"
-      ],
       "difficulty": [
         "stress"
       ],
@@ -2110,16 +2111,17 @@
         "acquisition_fault"
       ],
       "generator_compatibility": {
-        "challenge_package_contract": "synsigra_challenge_package_v1",
-        "local_verifier_min_version": "0.2.0",
-        "minimum_generator_version": "0.5.0-dev",
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.4.0",
+        "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
           2,
           3,
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v1"
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -2240,9 +2242,9 @@
       "schema_version": 1,
       "scoreable_targets": [
         {
-          "accepted_interval_formats": [
-            "interval_json_v1",
-            "interval_csv_v1"
+          "accepted_formats": [
+            "interval_events_json_v1",
+            "interval_events_csv_v1"
           ],
           "case_count": 1,
           "case_ids": [
@@ -2264,6 +2266,10 @@
         "pack_path": "../packs/ecg_morphology_stress_v1.json",
         "source_content_sha256": "sha256:94f845fb9721c215458c4296a0171e014febb4c7bc03734ba4fc9d2292f14806"
       },
+      "submission_output_schemas": [
+        "interval_events_json_v1",
+        "interval_events_csv_v1"
+      ],
       "supported_threshold_profiles": [
         "smoke",
         "regression",
@@ -2439,12 +2445,6 @@
       ],
       "deprecation_message": "",
       "description": "Linked ECG/PPG scenarios for pulse timing and peak detector QA.",
-      "detector_output_schemas": [
-        "detection_json_v1",
-        "detection_csv_v2",
-        "interval_json_v1",
-        "interval_csv_v1"
-      ],
       "difficulty": [
         "smoke"
       ],
@@ -2463,16 +2463,17 @@
         "ecg_ppg_alignment"
       ],
       "generator_compatibility": {
-        "challenge_package_contract": "synsigra_challenge_package_v1",
-        "local_verifier_min_version": "0.2.0",
-        "minimum_generator_version": "0.5.0-dev",
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.4.0",
+        "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
           2,
           3,
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v1"
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -2597,9 +2598,9 @@
       "schema_version": 1,
       "scoreable_targets": [
         {
-          "accepted_detection_formats": [
-            "detection_json_v1",
-            "detection_csv_v2"
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
           "case_count": 4,
           "case_ids": [
@@ -2617,9 +2618,9 @@
           "target": "ppg_systolic_peak"
         },
         {
-          "accepted_interval_formats": [
-            "interval_json_v1",
-            "interval_csv_v1"
+          "accepted_formats": [
+            "interval_events_json_v1",
+            "interval_events_csv_v1"
           ],
           "case_count": 2,
           "case_ids": [
@@ -2642,6 +2643,12 @@
         "pack_path": "../packs/ppg_alignment_v1.json",
         "source_content_sha256": "sha256:5355eeb0ce6aba1eee037f8016d025c5640b37895afe9d63e41daa31d12b54b4"
       },
+      "submission_output_schemas": [
+        "point_events_json_v1",
+        "point_events_csv_v1",
+        "interval_events_json_v1",
+        "interval_events_csv_v1"
+      ],
       "supported_threshold_profiles": [
         "smoke",
         "regression"
@@ -2809,13 +2816,6 @@
       ],
       "deprecation_message": "",
       "description": "Mixed ECG, PPG, HRV and artifact scenarios for end-to-end wearable algorithm stress testing.",
-      "detector_output_schemas": [
-        "detection_json_v1",
-        "detection_csv_v2",
-        "hrv_json_v1",
-        "interval_json_v1",
-        "interval_csv_v1"
-      ],
       "difficulty": [
         "stress"
       ],
@@ -2836,16 +2836,17 @@
         "timing"
       ],
       "generator_compatibility": {
-        "challenge_package_contract": "synsigra_challenge_package_v1",
-        "local_verifier_min_version": "0.2.0",
-        "minimum_generator_version": "0.5.0-dev",
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.4.0",
+        "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
           2,
           3,
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v1"
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -2961,9 +2962,9 @@
       "schema_version": 1,
       "scoreable_targets": [
         {
-          "accepted_detection_formats": [
-            "detection_json_v1",
-            "detection_csv_v2"
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
           "case_count": 2,
           "case_ids": [
@@ -2979,8 +2980,8 @@
           "target": "r_peak"
         },
         {
-          "accepted_user_output_formats": [
-            "hrv_json_v1"
+          "accepted_formats": [
+            "hrv_metrics_json_v1"
           ],
           "case_count": 1,
           "case_ids": [
@@ -2994,9 +2995,9 @@
           "target": "hrv"
         },
         {
-          "accepted_detection_formats": [
-            "detection_json_v1",
-            "detection_csv_v2"
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
           "case_count": 2,
           "case_ids": [
@@ -3012,9 +3013,9 @@
           "target": "ppg_systolic_peak"
         },
         {
-          "accepted_interval_formats": [
-            "interval_json_v1",
-            "interval_csv_v1"
+          "accepted_formats": [
+            "interval_events_json_v1",
+            "interval_events_csv_v1"
           ],
           "case_count": 1,
           "case_ids": [
@@ -3036,6 +3037,13 @@
         "pack_path": "../packs/combined_worst_case_v1.json",
         "source_content_sha256": "sha256:dd5a6a25a4ad6de6d75a42c1766a470a493f52701b6e21c2144444be2629a296"
       },
+      "submission_output_schemas": [
+        "point_events_json_v1",
+        "point_events_csv_v1",
+        "hrv_metrics_json_v1",
+        "interval_events_json_v1",
+        "interval_events_csv_v1"
+      ],
       "supported_threshold_profiles": [
         "smoke",
         "regression",
@@ -3177,11 +3185,6 @@
       ],
       "deprecation_message": "",
       "description": "Reproducible ECG, PPG, HRV, cardiorespiratory and synchronization stress for wearable algorithm QA.",
-      "detector_output_schemas": [
-        "detection_json_v1",
-        "detection_csv_v2",
-        "hrv_json_v1"
-      ],
       "difficulty": [
         "stress",
         "benchmark"
@@ -3207,16 +3210,17 @@
         "compact"
       ],
       "generator_compatibility": {
-        "challenge_package_contract": "synsigra_challenge_package_v1",
-        "local_verifier_min_version": "0.2.0",
-        "minimum_generator_version": "0.5.0-dev",
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.4.0",
+        "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
           2,
           3,
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v1"
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -3355,9 +3359,9 @@
       "schema_version": 1,
       "scoreable_targets": [
         {
-          "accepted_detection_formats": [
-            "detection_json_v1",
-            "detection_csv_v2"
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
           "case_count": 2,
           "case_ids": [
@@ -3373,9 +3377,9 @@
           "target": "r_peak"
         },
         {
-          "accepted_detection_formats": [
-            "detection_json_v1",
-            "detection_csv_v2"
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
           "case_count": 2,
           "case_ids": [
@@ -3391,8 +3395,8 @@
           "target": "ppg_systolic_peak"
         },
         {
-          "accepted_user_output_formats": [
-            "hrv_json_v1"
+          "accepted_formats": [
+            "hrv_metrics_json_v1"
           ],
           "case_count": 1,
           "case_ids": [
@@ -3413,6 +3417,11 @@
         "pack_path": "../packs/wearable_stress_v1.json",
         "source_content_sha256": "sha256:6c6b8d53a0f44c0baccca8aa77542120b1233b66476d3fa23c9199c91dbc182d"
       },
+      "submission_output_schemas": [
+        "point_events_json_v1",
+        "point_events_csv_v1",
+        "hrv_metrics_json_v1"
+      ],
       "supported_threshold_profiles": [
         "smoke",
         "regression",
@@ -3713,10 +3722,6 @@
       ],
       "deprecation_message": "",
       "description": "Curated green-PPG onset, peak, pulse-interval and pulse-rate algorithm QA cases.",
-      "detector_output_schemas": [
-        "detection_json_v1",
-        "detection_csv_v2"
-      ],
       "difficulty": [
         "benchmark",
         "stress"
@@ -3747,16 +3752,17 @@
         "arrhythmia_linked_pulse_loss"
       ],
       "generator_compatibility": {
-        "challenge_package_contract": "synsigra_challenge_package_v1",
-        "local_verifier_min_version": "0.2.0",
-        "minimum_generator_version": "0.5.0-dev",
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.4.0",
+        "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
           2,
           3,
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v1"
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -3844,9 +3850,9 @@
       "schema_version": 1,
       "scoreable_targets": [
         {
-          "accepted_detection_formats": [
-            "detection_json_v1",
-            "detection_csv_v2"
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
           "case_count": 9,
           "case_ids": [
@@ -3869,9 +3875,9 @@
           "target": "ppg_systolic_peak"
         },
         {
-          "accepted_detection_formats": [
-            "detection_json_v1",
-            "detection_csv_v2"
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
           "case_count": 9,
           "case_ids": [
@@ -3901,6 +3907,10 @@
         "pack_path": "../packs/ppg_benchmark_v1.json",
         "source_content_sha256": "sha256:eaded38d30d4682a2c9aaafea00b72b7d9c05b17f0280bc97171ac7780b4a36b"
       },
+      "submission_output_schemas": [
+        "point_events_json_v1",
+        "point_events_csv_v1"
+      ],
       "supported_threshold_profiles": [
         "smoke",
         "regression",
@@ -3935,7 +3945,7 @@
       "version": "1.1"
     },
     {
-      "case_count": 7,
+      "case_count": 8,
       "case_ids": [
         "clean_70",
         "slow_45",
@@ -3943,6 +3953,7 @@
         "clbbb",
         "ischemia_anterolateral",
         "afib_absent_p",
+        "mobitz_ii_nonconducted_p",
         "baseline_powerline"
       ],
       "cases": [
@@ -4061,6 +4072,25 @@
           ]
         },
         {
+          "case_id": "mobitz_ii_nonconducted_p",
+          "channel_count": 12,
+          "duration_seconds": 30,
+          "estimated_binary_signal_bytes": 1260000,
+          "estimated_package_bytes": 5712400,
+          "estimated_peak_memory_bytes": 8248576,
+          "estimated_waveform_csv_bytes": 3510256,
+          "reference_only_targets": [],
+          "sample_count": 15000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "rhythm_mobitz_ii_pause",
+          "scoreable_targets": [
+            "ecg_delineation"
+          ],
+          "targets": [
+            "ecg_delineation"
+          ]
+        },
+        {
           "case_id": "baseline_powerline",
           "channel_count": 12,
           "duration_seconds": 30,
@@ -4082,6 +4112,14 @@
       ],
       "catalog_scoring_mode": "local",
       "changelog": [
+        {
+          "changes": [
+            "Replaced generator beat identity in user output with temporal point events and explicit truth-side atrial/ventricular anchors.",
+            "Added present, absent, and not-evaluable truth states plus a non-conducted Mobitz II P-wave case."
+          ],
+          "date": "2026-07-17",
+          "version": "2.0"
+        },
         {
           "changes": [
             "Initial beta pack with exact lead-specific P/QRS/J/T fiducial scoring across seven curated cases."
@@ -4118,11 +4156,7 @@
         "ecg_delineation"
       ],
       "deprecation_message": "",
-      "description": "Curated exact-fiducial cases for lead-specific P, QRS, J-point, and T delineation QA.",
-      "detector_output_schemas": [
-        "delineation_json_v1",
-        "delineation_csv_v1"
-      ],
+      "description": "Curated lead-specific P, QRS, J-point, and T delineation QA with explicit atrial and ventricular truth anchors.",
       "difficulty": [
         "regression",
         "stress",
@@ -4131,36 +4165,39 @@
       "duration": {
         "maximum_case_seconds": 30,
         "minimum_case_seconds": 15,
-        "total_seconds": 160
+        "total_seconds": 190
       },
       "estimated_package": {
-        "bytes": 31203800,
+        "bytes": 36916200,
         "peak_memory_bytes": 8248576,
         "size_class": "medium"
       },
       "feature_tags": [
         "p_wave",
+        "nonconducted_p",
         "qrs",
         "j_point",
         "t_wave",
         "delineation",
         "lead_specific",
         "absent_wave",
+        "not_evaluable",
         "conduction",
         "repolarization",
         "artifact"
       ],
       "generator_compatibility": {
-        "challenge_package_contract": "synsigra_challenge_package_v1",
-        "local_verifier_min_version": "0.3.0",
-        "minimum_generator_version": "0.5.0-dev",
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.4.0",
+        "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
           2,
           3,
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v1"
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -4184,12 +4221,12 @@
       "modality": [
         "ECG"
       ],
-      "name": "ECG Delineation Verification Pack v1",
+      "name": "ECG Delineation Verification Pack v2",
       "not_recommended_for": [
         "Clinical delineation validation claims",
         "Patient QT database replacement",
         "Amplitude, interval, axis, or diagnostic statement scoring",
-        "Algorithms that cannot report beat and lead identity"
+        "Algorithms that cannot report event time, lead, and fiducial kind"
       ],
       "output_artifacts": [
         {
@@ -4229,12 +4266,12 @@
           "role": "edf_bdf"
         }
       ],
-      "pack_id": "ecg_delineation_v1",
+      "pack_id": "ecg_delineation_v2",
       "recommended_for": [
         "P onset, peak, and offset delineation algorithm QA",
         "QRS onset, J-point, and QRS offset timing regression",
         "T onset, peak, and offset delineation algorithm QA",
-        "Lead-specific absent-wave, rate, conduction, repolarization, and artifact stress tests"
+        "Lead-specific absent/not-evaluable wave, non-conducted atrial activity, rate, conduction, repolarization, and artifact stress tests"
       ],
       "recommended_profile": "regression",
       "reference_only_targets": [],
@@ -4246,11 +4283,11 @@
       "schema_version": 1,
       "scoreable_targets": [
         {
-          "accepted_delineation_formats": [
-            "delineation_json_v1",
-            "delineation_csv_v1"
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
-          "case_count": 7,
+          "case_count": 8,
           "case_ids": [
             "clean_70",
             "slow_45",
@@ -4258,6 +4295,7 @@
             "clbbb",
             "ischemia_anterolateral",
             "afib_absent_p",
+            "mobitz_ii_nonconducted_p",
             "baseline_powerline"
           ],
           "default_tolerance_seconds": 0.04,
@@ -4272,10 +4310,14 @@
       "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
-        "pack_fingerprint": "sha256:d96f1f9f438b575d64799b9a3ab2f2c77386248dddedc161184a83987e4b9d25",
-        "pack_path": "../packs/ecg_delineation_v1.json",
-        "source_content_sha256": "sha256:f2779deaee4e5bf59c85cc8e20d225fac6ef06eb88d0383ca3e2b377ad0f20dc"
+        "pack_fingerprint": "sha256:0fde81f6d2f900fb88a9383141d21d37a510427d758ace67f159f683d3de1a19",
+        "pack_path": "../packs/ecg_delineation_v2.json",
+        "source_content_sha256": "sha256:84e57e49f49179a42791eb50d4d1137d8b765b7b8c9781bba538788164e8eaa6"
       },
+      "submission_output_schemas": [
+        "point_events_json_v1",
+        "point_events_csv_v1"
+      ],
       "supported_threshold_profiles": [
         "smoke",
         "regression",
@@ -4301,18 +4343,18 @@
           "stress",
           "benchmark",
           "p_wave",
-          "qrs",
-          "j_point"
+          "nonconducted_p",
+          "qrs"
         ],
         "reference_only_before_job": false,
         "scoreable_before_job": true
       },
-      "version": "1.0"
+      "version": "2.0"
     }
   ],
   "product": "Synsigra Testbench",
   "release_set_id": "synsigra_curated_release_2026_07_17",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:da8b877854d836b7864ec721211ebbe879535e6d85fe37b1d735372504f9ab29"
+  "source_catalog_sha256": "sha256:19659385060a85b6898a1a7a4ff430121e4d902df353a5de6e779482b9ed5a9f"
 }

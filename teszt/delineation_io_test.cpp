@@ -15,34 +15,34 @@ namespace
 int main()
 {
     bool ok = true;
-    const std::string valid = "{\"schema_version\":1,\"algorithm\":{\"name\":\"delineator\",\"version\":\"2\"},\"target\":\"ecg_delineation\",\"scope\":{\"mode\":\"selected_beats\",\"beat_indices\":[\"18446744073709551615\",\"2\"],\"leads\":[\"V2\",\"II\"]},\"events\":[{\"beat_index\":\"2\",\"lead\":\"II\",\"kind\":\"qrs_onset\",\"time_seconds\":1.25,\"confidence\":0.9}]}";
+    const std::string valid = "{\"schema_version\":1,\"events\":[{\"time_seconds\":1.25,\"sample_index\":625,\"channel\":\"II\",\"label\":\"qrs_onset\",\"confidence\":0.9}]}";
     signal_synth::delineation_output_document document;
     signal_synth::delineation_io_result result;
-    ok &= check(signal_synth::parse_delineation_json_v1(valid, document, result) && result.success, "json_parse");
-    ok &= check(document.beat_indices.size() == 2u && document.beat_indices[1] == 18446744073709551615ULL, "uint64_identity");
-    ok &= check(document.leads.size() == 2u && document.leads[0] == "II" && document.leads[1] == "V2", "lead_order");
-    ok &= check(document.events.size() == 1u && document.events[0].kind == signal_synth::delineation_qrs_onset, "event_parse");
-    ok &= check(result.canonical_json.find("\"beat_index\":\"2\"") != std::string::npos, "json_identity_is_string");
-    ok &= check(result.canonical_csv.find("row_type,scope_mode,evaluated_beat_index") == 0u, "csv_header");
+    ok &= check(signal_synth::parse_delineation_point_events_json_v1(valid, document, result) && result.success, "json_parse");
+    ok &= check(document.events.size() == 1u && document.events[0].lead == "II" && document.events[0].kind == signal_synth::delineation_qrs_onset, "event_parse");
+    ok &= check(document.events[0].has_sample_index && document.events[0].sample_index == 625u, "sample_index_parse");
+    ok &= check(document.events[0].has_confidence && document.events[0].confidence == 0.9, "confidence_parse");
+    ok &= check(result.canonical_json.find("\"sample_index\":625") != std::string::npos && result.canonical_json.find("\"channel\":\"II\"") != std::string::npos && result.canonical_json.find("beat_index") == std::string::npos, "identity_free_json");
+    ok &= check(result.canonical_csv.find("time_seconds,sample_index,channel,label,confidence") == 0u, "csv_header");
 
     signal_synth::delineation_output_document round_trip;
     signal_synth::delineation_io_result round_trip_result;
-    ok &= check(signal_synth::parse_delineation_json_v1(result.canonical_json, round_trip, round_trip_result) && round_trip_result.canonical_json == result.canonical_json, "json_round_trip");
-    ok &= check(signal_synth::parse_delineation_csv_v1(result.canonical_csv, round_trip, round_trip_result) && round_trip_result.canonical_csv == result.canonical_csv, "csv_round_trip");
+    ok &= check(signal_synth::parse_delineation_point_events_json_v1(result.canonical_json, round_trip, round_trip_result) && round_trip_result.canonical_json == result.canonical_json, "json_round_trip");
+    ok &= check(signal_synth::parse_delineation_point_events_csv_v1(result.canonical_csv, round_trip, round_trip_result) && round_trip_result.canonical_csv == result.canonical_csv, "csv_round_trip");
 
-    const std::string empty = "{\"schema_version\":1,\"algorithm\":{\"name\":\"none\",\"version\":\"1\"},\"target\":\"ecg_delineation\",\"scope\":{\"mode\":\"all_beats\",\"leads\":[\"II\"]},\"events\":[]}";
-    ok &= check(signal_synth::parse_delineation_json_v1(empty, document, result) && document.events.empty(), "empty_predictions_valid");
-    const std::string leading_zero = "{\"schema_version\":1,\"algorithm\":{\"name\":\"x\",\"version\":\"1\"},\"target\":\"ecg_delineation\",\"scope\":{\"mode\":\"selected_beats\",\"beat_indices\":[\"01\"],\"leads\":[\"II\"]},\"events\":[]}";
-    ok &= check(!signal_synth::parse_delineation_json_v1(leading_zero, document, result), "noncanonical_identity_rejected");
-    const std::string duplicate = "{\"schema_version\":1,\"algorithm\":{\"name\":\"x\",\"version\":\"1\"},\"target\":\"ecg_delineation\",\"scope\":{\"mode\":\"all_beats\",\"leads\":[\"II\"]},\"events\":[{\"beat_index\":\"0\",\"lead\":\"II\",\"kind\":\"p_peak\",\"time_seconds\":1},{\"beat_index\":\"0\",\"lead\":\"II\",\"kind\":\"p_peak\",\"time_seconds\":1.1}]}";
-    ok &= check(!signal_synth::parse_delineation_json_v1(duplicate, document, result), "duplicate_identity_rejected");
-    const std::string outside_scope = "{\"schema_version\":1,\"algorithm\":{\"name\":\"x\",\"version\":\"1\"},\"target\":\"ecg_delineation\",\"scope\":{\"mode\":\"selected_beats\",\"beat_indices\":[\"0\"],\"leads\":[\"II\"]},\"events\":[{\"beat_index\":\"1\",\"lead\":\"II\",\"kind\":\"p_peak\",\"time_seconds\":1}]}";
-    ok &= check(!signal_synth::parse_delineation_json_v1(outside_scope, document, result), "event_scope_rejected");
-    const std::string no_scope_csv = "row_type,scope_mode,evaluated_beat_index,beat_index,lead,kind,time_seconds\nevent,,,0,II,r_peak,1\n";
-    ok &= check(!signal_synth::parse_delineation_csv_v1(no_scope_csv, document, result), "csv_scope_required");
-    const std::string unknown_column = "row_type,scope_mode,evaluated_beat_index,beat_index,lead,kind,time_seconds,extra\nscope,all_beats,,,II,,,x\n";
-    ok &= check(!signal_synth::parse_delineation_csv_v1(unknown_column, document, result), "unknown_csv_column_rejected");
-    const std::string incomplete_scope = "row_type,scope_mode,evaluated_beat_index,beat_index,lead,kind,time_seconds\nscope,selected_beats,1,,II,,\nscope,selected_beats,2,,V2,,\n";
-    ok &= check(!signal_synth::parse_delineation_csv_v1(incomplete_scope, document, result), "incomplete_scope_grid_rejected");
+    const std::string empty = "{\"schema_version\":1,\"events\":[]}";
+    ok &= check(signal_synth::parse_delineation_point_events_json_v1(empty, document, result) && document.events.empty(), "empty_predictions_valid");
+    const std::string duplicate = "{\"schema_version\":1,\"events\":[{\"time_seconds\":1,\"channel\":\"II\",\"label\":\"p_peak\"},{\"time_seconds\":1,\"channel\":\"II\",\"label\":\"p_peak\"}]}";
+    ok &= check(!signal_synth::parse_delineation_point_events_json_v1(duplicate, document, result), "duplicate_event_rejected");
+    const std::string legacy_identity = "{\"schema_version\":1,\"events\":[{\"time_seconds\":1,\"channel\":\"II\",\"label\":\"p_peak\",\"beat_index\":\"1\"}]}";
+    ok &= check(!signal_synth::parse_delineation_point_events_json_v1(legacy_identity, document, result), "generator_identity_rejected");
+    const std::string unknown_label = "{\"schema_version\":1,\"events\":[{\"time_seconds\":1,\"channel\":\"II\",\"label\":\"u_peak\"}]}";
+    ok &= check(!signal_synth::parse_delineation_point_events_json_v1(unknown_label, document, result), "unknown_label_rejected");
+    const std::string unknown_lead = "{\"schema_version\":1,\"events\":[{\"time_seconds\":1,\"channel\":\"ECG\",\"label\":\"p_peak\"}]}";
+    ok &= check(!signal_synth::parse_delineation_point_events_json_v1(unknown_lead, document, result), "unknown_lead_rejected");
+    const std::string missing_channel_csv = "time_seconds,sample_index,channel,label,confidence\n1,,,p_peak,\n";
+    ok &= check(!signal_synth::parse_delineation_point_events_csv_v1(missing_channel_csv, document, result), "csv_channel_required");
+    const std::string unknown_column = "time_seconds,sample_index,channel,label,confidence,extra\n1,,II,p_peak,,x\n";
+    ok &= check(!signal_synth::parse_delineation_point_events_csv_v1(unknown_column, document, result), "unknown_csv_column_rejected");
     return ok ? 0 : 1;
 }

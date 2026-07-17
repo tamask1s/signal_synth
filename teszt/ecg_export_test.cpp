@@ -116,7 +116,7 @@ int main()
     ok &= check(hrv_metrics && hrv_metrics->content.find("\"definition_version\":\"synsigra_hrv_metrics_v1\"") != std::string::npos && hrv_metrics->content.find("\"tachogram\":[") != std::string::npos, "hrv_metrics_contract");
     ok &= check(metrics && metrics->content.find("\"sd1_seconds\":") != std::string::npos && metrics->content.find("\"lf_hf_ratio\":") != std::string::npos && metrics->content.find("\"assertions\":[") != std::string::npos, "metrics_contract");
     ok &= check(metadata && metadata->content.find("\"channels\":[{\"name\":\"I\",\"unit\":\"mV\"}") != std::string::npos && metadata->content.find("{\"name\":\"V6\",\"unit\":\"mV\"}]") != std::string::npos && metadata->content.find("\"git_commit\":") != std::string::npos, "channel_metadata_contract");
-    ok &= check(provenance && provenance->content.find("\"metadata_type\":\"synsigra_export_provenance\"") != std::string::npos && provenance->content.find("\"git_commit\":") != std::string::npos && provenance->content.find("\"package_contract_version\":\"synsigra_challenge_package_v1\"") != std::string::npos && provenance->content.find("\"scoring_manifest_contract_version\":\"synsigra_scoring_manifest_v1\"") != std::string::npos, "provenance_contract");
+    ok &= check(provenance && provenance->content.find("\"metadata_type\":\"synsigra_export_provenance\"") != std::string::npos && provenance->content.find("\"git_commit\":") != std::string::npos && provenance->content.find("\"package_contract_version\":\"synsigra_challenge_package_v2\"") != std::string::npos && provenance->content.find("\"scoring_manifest_contract_version\":\"synsigra_scoring_manifest_v2\"") != std::string::npos, "provenance_contract");
     const std::string generation_fingerprint = json_u64_field("generation_fingerprint", render.document_identity.generation_fingerprint);
     const std::string resolved_generation_fingerprint = json_u64_field("resolved_generation_fingerprint", render.resolved_document_identity.generation_fingerprint);
     const std::string run_fingerprint = json_u64_field("ecg_run_fingerprint", render.scenario_report.run_fingerprint());
@@ -150,8 +150,8 @@ int main()
     signal_synth::ecg_render_bundle incomplete;
     signal_synth::ecg_export_bundle preserved_export = bundle;
     ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 19, "failed_export_is_transactional");
-    ok &= check(std::string(signal_synth::signal_synth_generator_version()) == "0.5.0-dev", "runtime_generator_version");
-    ok &= check(std::string(signal_synth::signal_synth_package_contract_version()) == "synsigra_challenge_package_v1" && std::string(signal_synth::signal_synth_scoring_manifest_contract_version()) == "synsigra_scoring_manifest_v1" && std::string(signal_synth::signal_synth_verifier_version()) == "0.5.0-dev", "runtime_contract_versions");
+    ok &= check(std::string(signal_synth::signal_synth_generator_version()) == "0.6.0-dev", "runtime_generator_version");
+    ok &= check(std::string(signal_synth::signal_synth_package_contract_version()) == "synsigra_challenge_package_v2" && std::string(signal_synth::signal_synth_scoring_manifest_contract_version()) == "synsigra_scoring_manifest_v2" && std::string(signal_synth::signal_synth_verifier_version()) == "0.6.0-dev", "runtime_contract_versions");
 
     signal_synth::ecg_scenario_document paced_document = document;
     paced_document.schema_version = 2;

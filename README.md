@@ -20,8 +20,9 @@ and pulse-interval/rate metrics. Generic interval scoring supports rhythm
 episodes and global or channel-specific signal-quality outputs with time
 coverage, IoU, boundary error, false-alarm, and confusion metrics.
 Lead-specific ECG delineation scoring covers P onset/peak/offset, QRS onset
-and offset, J point, and T onset/peak/offset with explicit all-beat or selected
-beat scope and absent-wave handling.
+and offset, J point, and T onset/peak/offset with temporal event matching,
+truth-side atrial/ventricular anchors, and explicit present, absent, and
+not-evaluable states.
 
 ## ECG model status
 
@@ -165,15 +166,22 @@ External beta users install the generator-free wheel supplied with the
 release:
 
 ```bash
-python -m pip install synsigra-0.3.0-py3-none-any.whl
+python -m pip install synsigra-0.4.0-py3-none-any.whl
 ```
 
 Run local verification:
 
 ```bash
-synsigra-verify package.zip user-outputs/ verification-results/ --profile regression
+synsigra-verify package.zip submission/ verification-results/ --profile regression
 ```
 
-The verifier reads package manifests, case summaries, annotations, user detection files, and threshold profiles locally. It does not invoke the C++ generator. It writes `verification_summary.json`, `verification_summary.csv`, `verification_report.html`, and per-case evidence under `verification/`. Exit code `0` means pass, `1` means verification failure, and `2` means invalid CLI usage. Built-in profiles are `smoke`, `regression`, `stress`, and `benchmark`.
+Each challenge supplies `user-output-template/`; the user records algorithm
+identity once in `submission.json` and fills the declared output files. The
+verifier reads package ground truth and the explicit submission locally. It
+does not invoke the C++ generator. It writes `verification_summary.json`,
+`verification_summary.csv`, `verification_report.html`, and per-case evidence
+under `verification/`. Exit code `0` means pass, `1` means verification
+failure, and `2` means invalid CLI usage. Built-in profiles are `smoke`,
+`regression`, `stress`, and `benchmark`.
 
 See `python/README.md` and `doc/PYTHON_DISTRIBUTION.md` for packaging, smoke-test, and release guidance.

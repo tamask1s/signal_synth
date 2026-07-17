@@ -267,25 +267,25 @@ namespace
         return 0.0;
     }
 
-    std::vector<std::string> target_detector_output_schemas(const std::string& target)
+    std::vector<std::string> target_submission_output_schemas(const std::string& target)
     {
         std::vector<std::string> output;
         if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset" || target == "ecg_beat_classification")
         {
-            output.push_back("detection_json_v1");
-            output.push_back("detection_csv_v2");
+            output.push_back("point_events_json_v1");
+            output.push_back("point_events_csv_v1");
         }
         else if (target == "hrv")
-            output.push_back("hrv_json_v1");
+            output.push_back("hrv_metrics_json_v1");
         else if (target == "rhythm_episode" || target == "signal_quality")
         {
-            output.push_back("interval_json_v1");
-            output.push_back("interval_csv_v1");
+            output.push_back("interval_events_json_v1");
+            output.push_back("interval_events_csv_v1");
         }
         else if (target == "ecg_delineation")
         {
-            output.push_back("delineation_json_v1");
-            output.push_back("delineation_csv_v1");
+            output.push_back("point_events_json_v1");
+            output.push_back("point_events_csv_v1");
         }
         return output;
     }
@@ -372,8 +372,8 @@ namespace
         write_string_array(output, case_ids_for_target(analysis, target.target));
         if (scoreable)
         {
-            output << ",\"detector_output_schemas\":";
-            write_string_array(output, target_detector_output_schemas(target.target));
+            output << ",\"accepted_formats\":";
+            write_string_array(output, target_submission_output_schemas(target.target));
             output << ",\"primary_metric\":" << json_string(target_primary_metric(target.target));
             const double tolerance = target_default_tolerance_seconds(target.target);
             if (tolerance > 0.0)
@@ -404,14 +404,14 @@ namespace
         output << ']';
     }
 
-    void write_detector_output_schemas(std::ostringstream& output, const signal_synth::scenario_pack_analysis& analysis)
+    void write_submission_output_schemas(std::ostringstream& output, const signal_synth::scenario_pack_analysis& analysis)
     {
         std::vector<std::string> schemas;
         for (std::size_t i = 0; i < analysis.targets.size(); ++i)
         {
             if (!target_is_scoreable(analysis.targets[i]))
                 continue;
-            const std::vector<std::string> target_schemas = target_detector_output_schemas(analysis.targets[i].target);
+            const std::vector<std::string> target_schemas = target_submission_output_schemas(analysis.targets[i].target);
             for (std::size_t schema_index = 0; schema_index < target_schemas.size(); ++schema_index)
                 append_unique(schemas, target_schemas[schema_index]);
         }
@@ -774,7 +774,7 @@ namespace signal_synth
                << ",\"pack_version\":" << json_string(analysis.pack_version)
                << ",\"scoring_mode\":" << json_string(analysis_scoring_mode(analysis))
                << ",\"recommended_verifier_profile\":" << json_string(recommended_profile_for_analysis(analysis))
-               << ",\"generator_compatibility\":{\"pack_schema_version\":1,\"scenario_schema_versions\":[2,3,4],\"challenge_package_contract\":\"synsigra_challenge_package_v1\",\"scoring_manifest_contract\":\"synsigra_scoring_manifest_v1\"}"
+               << ",\"generator_compatibility\":{\"pack_schema_version\":1,\"scenario_schema_versions\":[2,3,4],\"challenge_package_contract\":\"synsigra_challenge_package_v2\",\"scoring_manifest_contract\":\"synsigra_scoring_manifest_v2\"}"
                << ",\"summary\":{\"case_count\":" << analysis.case_count
                << ",\"total_duration_seconds\":" << analysis.total_duration_seconds
                << ",\"total_sample_count\":" << analysis.total_sample_count
@@ -783,8 +783,8 @@ namespace signal_synth
         write_target_contract_array(output, analysis, true);
         output << ",\"reference_only_targets\":";
         write_target_contract_array(output, analysis, false);
-        output << ",\"detector_output_schemas\":";
-        write_detector_output_schemas(output, analysis);
+        output << ",\"submission_output_schemas\":";
+        write_submission_output_schemas(output, analysis);
         output << ",\"output_artifacts\":";
         write_output_artifacts(output, analysis);
         output << ",\"targets\":[";

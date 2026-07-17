@@ -5,17 +5,17 @@ import io
 import json
 import math
 import os
-import shlex
 import shutil
 
 from .challenge import ChallengePackage, load_challenge
-from .detections import DetectionDocument, load_detections
-from .delineation import delineation_truth_from_annotations, load_delineations, score_delineation_events
+from .detections import load_detections
+from .delineation import delineation_scope_from_entry, delineation_truth_from_annotations, load_delineations, score_delineation_events
 from .intervals import IntervalEvent, load_intervals, score_interval_events
 from .profiles import load_threshold_profile
+from .submission import SubmissionError, load_submission
 
 
-SCORING_VERSION = "synsigra-python-local-v2"
+SCORING_VERSION = "synsigra-python-local-v3"
 LIMITATION_TEXT = "Synthetic engineering QA evidence; not diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment."
 BEAT_CLASSES = ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "unscored"]
 SCORED_BEAT_CLASSES = set(["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape"])
@@ -53,19 +53,21 @@ class _TruthEvent(object):
         self.missing_pulse_window = bool(missing_pulse_window)
 
 
-def verify_package(challenge, detections_dir, out_dir, cases=None, targets=None, profile="regression", force=False):
-    """Verify user detections against a Synsigra challenge package locally.
+def verify_package(challenge, submission_dir, out_dir, cases=None, targets=None, profile="regression", force=False):
+    """Verify a declared user submission against a Synsigra challenge locally.
 
     This verifier uses only challenge package contents: manifest metadata,
-    annotations, case summaries, and user detection output files. It does not
+    annotations, case summaries, and declared user output files. It does not
     invoke the signal generator or require generator source code.
     """
     package, owned = _as_package(challenge)
     try:
-        if not os.path.isdir(detections_dir):
-            raise VerificationError("detections directory does not exist: %s" % detections_dir)
         integrity = package.verify_integrity()
         scoring_manifest = package.scoring_manifest()
+        try:
+            submission = load_submission(submission_dir, package, scoring_manifest)
+        except SubmissionError as error:
+            raise VerificationError(str(error))
         threshold_profile = load_threshold_profile(profile)
         _prepare_output_dir(out_dir, force)
         selected_cases = _normalize_filter(cases)
@@ -89,13 +91,13 @@ def verify_package(challenge, detections_dir, out_dir, cases=None, targets=None,
                 if target not in ("r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality", "ecg_delineation"):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
-                result = _verify_case_target(package, case, case_summary, annotations, entry, detections_dir, out_dir)
+                result = _verify_case_target(package, case, case_summary, annotations, entry, submission, out_dir)
                 results.append(result)
 
         if not results:
             messages.append("no scoreable case-target pairs matched the selected filters")
 
-        summary = _build_verification_summary(package, scoring_manifest, integrity, results, messages, threshold_profile)
+        summary = _build_verification_summary(package, scoring_manifest, submission, integrity, results, messages, threshold_profile)
         json_path = os.path.join(out_dir, "verification_summary.json")
         csv_path = os.path.join(out_dir, "verification_summary.csv")
         html_path = os.path.join(out_dir, "verification_report.html")
@@ -108,65 +110,76 @@ def verify_package(challenge, detections_dir, out_dir, cases=None, targets=None,
             package.close()
 
 
-def _verify_case_target(package, case, case_summary, annotations, entry, detections_dir, out_dir):
+def _verify_case_target(package, case, case_summary, annotations, entry, submission, out_dir):
     target = entry.get("target", "")
-    relative_out = _target_output_relative_path(entry, case.id, case_summary.get("targets", []), target)
+    relative_out = _target_output_relative_path(case.id, case_summary.get("targets", []), target)
     target_dir = os.path.join(out_dir, relative_out)
     _ensure_dir(target_dir)
-    detection_path = _find_detection_file(detections_dir, entry, case.id, case_summary.get("targets", []), target)
-    if detection_path is None:
-        return _error_result(package, case, case_summary, entry, target_dir, "missing_detection", "no detection file found for %s/%s" % (case.id, target))
+    submitted = submission.output(case.id, target)
+    if submitted is None:
+        return _error_result(package, case, case_summary, entry, target_dir, "missing_submission_entry", "submission has no output entry for %s/%s" % (case.id, target))
+    detection_path = submission.path(submitted)
+    if not os.path.isfile(detection_path):
+        return _error_result(package, case, case_summary, entry, target_dir, "missing_output", "submission output file is missing for %s/%s: %s" % (case.id, target, submitted.relative_path))
+    algorithm = dict(submission.algorithm)
     try:
         if target == "hrv":
-            user_output = _load_hrv_user_output(detection_path)
+            user_output = _load_hrv_user_output(detection_path, submitted.format)
             report_json = _score_hrv(package, case, case_summary, user_output)
+            report_json["algorithm"] = algorithm
             report_csv = _hrv_csv(report_json)
             report_html = _hrv_html(report_json)
-            input_identity = {
-                "path": detection_path,
-                "format": "hrv_json_v1",
-                "algorithm": dict(user_output.get("algorithm", {})),
-                "event_count": len(user_output.get("rr_intervals", [])),
-            }
+            input_identity = _submission_output_identity(detection_path, submitted.relative_path, submitted.format, target, algorithm, "rr_interval_count", len(user_output.get("rr_intervals", [])))
+            report_json["submission_output"] = input_identity
             _write_json(os.path.join(target_dir, "comparison.json"), report_json)
             _write_text(os.path.join(target_dir, "comparison.csv"), report_csv)
             _write_text(os.path.join(target_dir, "comparison_report.html"), report_html)
             return _case_result_from_report(case, case_summary, target, relative_out, detection_path, input_identity, report_json)
         if target in ("rhythm_episode", "signal_quality"):
-            intervals = load_intervals(detection_path, target=target)
+            intervals = load_intervals(detection_path, target=target, format_name=submitted.format)
             report_json = _score_interval_detection(package, case, case_summary, annotations, intervals, entry)
+            report_json["algorithm"] = algorithm
+            identity = _submission_output_identity(detection_path, submitted.relative_path, submitted.format, target, algorithm, "interval_count", len(intervals))
+            report_json["submission_output"] = identity
             report_csv = _interval_comparison_csv(report_json)
             report_html = _interval_comparison_html(report_json)
             _write_json(os.path.join(target_dir, "comparison.json"), report_json)
             _write_text(os.path.join(target_dir, "comparison.csv"), report_csv)
             _write_text(os.path.join(target_dir, "comparison_report.html"), report_html)
-            identity = {"path": intervals.path, "format": "interval_json_v1" if intervals.raw else "interval_csv_v1", "algorithm": {"name": intervals.algorithm_name, "version": intervals.algorithm_version}, "interval_count": len(intervals)}
             return _case_result_from_report(case, case_summary, target, relative_out, detection_path, identity, report_json)
         if target == "ecg_delineation":
-            delineations = load_delineations(detection_path)
+            delineations = load_delineations(detection_path, format_name=submitted.format)
             report_json = _score_delineation(package, case, case_summary, annotations, delineations, entry)
+            report_json["algorithm"] = algorithm
+            identity = _submission_output_identity(detection_path, submitted.relative_path, submitted.format, target, algorithm, "event_count", len(delineations))
+            report_json["submission_output"] = identity
             report_csv = _delineation_comparison_csv(report_json)
             report_html = _delineation_comparison_html(report_json)
             _write_json(os.path.join(target_dir, "comparison.json"), report_json)
             _write_text(os.path.join(target_dir, "comparison.csv"), report_csv)
             _write_text(os.path.join(target_dir, "comparison_report.html"), report_html)
-            identity = {"path": delineations.path, "format": "delineation_json_v1" if delineations.raw else "delineation_csv_v1", "algorithm": {"name": delineations.algorithm_name, "version": delineations.algorithm_version}, "event_count": len(delineations)}
             return _case_result_from_report(case, case_summary, target, relative_out, detection_path, identity, report_json)
-        detections = load_detections(detection_path, target=target)
+        detections = load_detections(detection_path, target=target, format_name=submitted.format)
         if target == "ecg_beat_classification":
             report_json = _score_beat_classification(package, case, case_summary, annotations, detections, entry)
+        else:
+            report_json = _score_event_detection(package, case, case_summary, annotations, detections, entry)
+        identity = _submission_output_identity(detection_path, submitted.relative_path, submitted.format, target, algorithm, "event_count", len(detections))
+        report_json["algorithm"] = algorithm
+        report_json["submission_output"] = identity
+        if target == "ecg_beat_classification":
             report_csv = _beat_classification_csv(report_json)
             report_html = _beat_classification_html(report_json)
         else:
-            report_json = _score_event_detection(package, case, case_summary, annotations, detections, entry)
             report_csv = _event_comparison_csv(report_json)
             report_html = _event_comparison_html(report_json)
         _write_json(os.path.join(target_dir, "comparison.json"), report_json)
         _write_text(os.path.join(target_dir, "comparison.csv"), report_csv)
         _write_text(os.path.join(target_dir, "comparison_report.html"), report_html)
-        return _case_result_from_report(case, case_summary, target, relative_out, detection_path, _detection_identity(detections), report_json)
+        return _case_result_from_report(case, case_summary, target, relative_out, detection_path, identity, report_json)
     except Exception as error:
-        return _error_result(package, case, case_summary, entry, target_dir, "scoring_error", str(error), detection_path)
+        message = "%s/%s: %s" % (case.id, target, str(error))
+        return _error_result(package, case, case_summary, entry, target_dir, "scoring_error", message, detection_path)
 
 
 def _score_interval_detection(package, case, case_summary, annotations, intervals, entry):
@@ -206,29 +219,32 @@ def _score_interval_detection(package, case, case_summary, annotations, interval
 
 def _score_delineation(package, case, case_summary, annotations, delineations, entry):
     tolerance_seconds = float(entry.get("default_tolerance_seconds", 0.040))
+    pairing_window_seconds = float(entry.get("default_pairing_window_seconds", 0.200))
     duration_seconds = float(case_summary.get("render", {}).get("duration_seconds", annotations.get("duration_seconds", 0.0)))
-    truth = delineation_truth_from_annotations(annotations, delineations)
-    comparison = score_delineation_events(truth, delineations.events, duration_seconds, tolerance_seconds, delineations.leads)
+    scope = delineation_scope_from_entry(entry)
+    truth = delineation_truth_from_annotations(annotations, scope, duration_seconds)
+    comparison = score_delineation_events(truth, delineations.events, duration_seconds, scope, tolerance_seconds, pairing_window_seconds)
     scenario_identity = _scenario_identity(case, case_summary, annotations)
     scenario_identity["duration_seconds"] = duration_seconds
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "score_type": "ecg_delineation_qa",
         "scoring_version": SCORING_VERSION,
         "package": _package_identity(package),
         "scenario": scenario_identity,
         "target": "ecg_delineation",
-        "algorithm": {"name": delineations.algorithm_name, "version": delineations.algorithm_version},
-        "scope": {"mode": delineations.scope_mode, "beat_indices": [str(item) for item in delineations.beat_indices], "leads": list(delineations.leads)},
-        "options": {"tolerance_seconds": tolerance_seconds},
+        "scope": {"mode": "selected_windows" if scope.windows else "all_record", "leads": list(scope.leads), "windows": [{"start_seconds": item[0], "end_seconds": item[1]} for item in scope.windows]},
+        "options": {"tolerance_seconds": tolerance_seconds, "pairing_window_seconds": pairing_window_seconds},
         "overall": comparison["overall"],
         "by_kind": comparison["by_kind"],
         "by_lead": comparison["by_lead"],
         "by_kind_lead": comparison["by_kind_lead"],
+        "truth": comparison["truth"],
         "matches": comparison["matches"],
         "missing_events": comparison["missing_events"],
         "unexpected_events": comparison["unexpected_events"],
-        "notes": ["Events are paired by beat, lead, and kind identity; undefined zero-denominator metrics are null.", LIMITATION_TEXT],
+        "excluded_predictions": comparison["excluded_predictions"],
+        "notes": ["Predictions are paired by lead, kind, and time; generator anchor identities remain truth/report metadata.", LIMITATION_TEXT],
     }
 
 
@@ -274,7 +290,6 @@ def _score_event_detection(package, case, case_summary, annotations, detections,
         "scoring_version": SCORING_VERSION,
         "package": _package_identity(package),
         "scenario": _scenario_identity(case, case_summary, annotations),
-        "detection_input": _detection_identity(detections),
         "comparison": result,
         "notes": [LIMITATION_TEXT],
     }
@@ -301,27 +316,30 @@ def _score_beat_classification(package, case, case_summary, annotations, detecti
         "package": _package_identity(package),
         "scenario": _scenario_identity(case, case_summary, annotations),
         "algorithm": {"name": detections.algorithm_name, "version": detections.algorithm_version},
-        "detection_input": _detection_identity(detections),
         "intended_use": "synthetic engineering algorithm testing and QA",
         "not_for": "diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
     })
     return result
 
 
-def _load_hrv_user_output(path):
+def _load_hrv_user_output(path, format_name=None):
     with open(path, "r") as handle:
-        document = json.load(handle)
+        document = json.load(handle, object_pairs_hook=_unique_json_object_pairs)
     if not isinstance(document, dict) or isinstance(document.get("schema_version"), bool) or document.get("schema_version") != 1:
         raise VerificationError("HRV output must be a schema_version 1 JSON object")
-    allowed = set(["schema_version", "algorithm", "metrics", "rr_intervals"])
+    customer_payload = format_name == "hrv_metrics_json_v1"
+    allowed = set(["schema_version", "metrics", "rr_intervals"] + ([] if customer_payload else ["algorithm"]))
+    if customer_payload and set(document.keys()) != allowed:
+        raise VerificationError("HRV metric JSON must contain only schema_version, metrics, and rr_intervals")
     unknown = sorted(set(document.keys()) - allowed)
     if unknown:
         raise VerificationError("unknown HRV output field: %s" % unknown[0])
-    algorithm = document.get("algorithm")
-    if not isinstance(algorithm, dict) or not isinstance(algorithm.get("name"), str) or not algorithm.get("name") or not isinstance(algorithm.get("version"), str):
-        raise VerificationError("HRV output algorithm must contain non-empty name and string version")
-    if set(algorithm.keys()) - set(["name", "version"]):
-        raise VerificationError("HRV output algorithm contains unknown fields")
+    if not customer_payload:
+        algorithm = document.get("algorithm")
+        if not isinstance(algorithm, dict) or not isinstance(algorithm.get("name"), str) or not algorithm.get("name") or not isinstance(algorithm.get("version"), str):
+            raise VerificationError("HRV output algorithm must contain non-empty name and string version")
+        if set(algorithm.keys()) - set(["name", "version"]):
+            raise VerificationError("HRV output algorithm contains unknown fields")
     metrics = document.get("metrics")
     if not isinstance(metrics, dict):
         raise VerificationError("HRV output metrics must be an object")
@@ -333,11 +351,15 @@ def _load_hrv_user_output(path):
     intervals = document.get("rr_intervals", [])
     if not isinstance(intervals, list):
         raise VerificationError("HRV rr_intervals must be an array")
+    interval_times = set()
     for index, item in enumerate(intervals):
         if not isinstance(item, dict) or set(item.keys()) - set(["beat_time_seconds", "rr_seconds"]):
             raise VerificationError("HRV rr_intervals[%s] has invalid fields" % index)
         if not _finite_non_negative(item.get("beat_time_seconds")) or not _finite_positive(item.get("rr_seconds")):
             raise VerificationError("HRV rr_intervals[%s] requires non-negative time and positive RR" % index)
+        if float(item["beat_time_seconds"]) in interval_times:
+            raise VerificationError("HRV output contains duplicate RR interval beat times")
+        interval_times.add(float(item["beat_time_seconds"]))
     if not metrics and not intervals:
         raise VerificationError("HRV output requires at least one metric or RR interval")
     return document
@@ -897,68 +919,11 @@ def _case_scoring_entries(scoring_manifest, case_id, case_summary):
     return list(case_summary.get("scoring", []))
 
 
-def _find_detection_file(detections_dir, entry, case_id, case_targets, target):
-    candidates = []
-    for item in entry.get("recommended_files", []):
-        recommended = item.get("path", "")
-        if recommended:
-            candidates.extend(_candidate_paths_from_recommended(detections_dir, recommended))
-    for name in _fallback_detection_names(case_id, case_targets, target):
-        candidates.append(os.path.join(detections_dir, name))
-    seen = set()
-    for path in candidates:
-        normalized = os.path.normpath(path)
-        if normalized in seen:
-            continue
-        seen.add(normalized)
-        if os.path.isfile(normalized):
-            return normalized
-    return None
-
-
-def _candidate_paths_from_recommended(detections_dir, recommended):
-    normalized = recommended.replace("\\", "/")
-    if os.path.isabs(normalized) or ".." in normalized.split("/"):
-        return []
-    candidates = [os.path.join(detections_dir, normalized), os.path.join(detections_dir, os.path.basename(normalized))]
-    parts = normalized.split("/")
-    if parts and parts[0] == "detections":
-        candidates.insert(0, os.path.join(detections_dir, "/".join(parts[1:])))
-    return candidates
-
-
-def _fallback_detection_names(case_id, case_targets, target):
-    names = []
-    stem = _detection_stem_for_target(case_id, case_targets, target)
-    for suffix in (".json", ".csv"):
-        names.append(stem + suffix)
-        names.append(case_id + "_" + target + suffix)
-        names.append(case_id + suffix)
-    if target == "ecg_beat_classification":
-        names.extend([case_id + "_beat_classes.json", case_id + "_beat_classes.csv", case_id + "_beat_classification.json", case_id + "_beat_classification.csv"])
-    if target == "r_peak":
-        names.extend([case_id + "_rpeaks.json", case_id + "_rpeaks.csv"])
-    if target == "ppg_systolic_peak":
-        names.extend([case_id + "_ppg_peaks.json", case_id + "_ppg_peaks.csv"])
-    if target == "ppg_pulse_onset":
-        names.extend([case_id + "_ppg_onsets.json", case_id + "_ppg_onsets.csv"])
-    return names
-
-
 def _detection_stem_for_target(case_id, case_targets, target):
     return case_id if len(case_targets) <= 1 else case_id + "_" + target
 
 
-def _target_output_relative_path(entry, case_id, case_targets, target):
-    command = entry.get("score_command", "")
-    if command:
-        try:
-            tokens = shlex.split(command)
-            for index, token in enumerate(tokens):
-                if token == "--out" and index + 1 < len(tokens):
-                    return _safe_relative_path(tokens[index + 1])
-        except ValueError:
-            pass
+def _target_output_relative_path(case_id, case_targets, target):
     return _safe_relative_path("verification/" + _detection_stem_for_target(case_id, case_targets, target))
 
 
@@ -969,7 +934,7 @@ def _safe_relative_path(path):
     return normalized
 
 
-def _case_result_from_report(case, case_summary, target, relative_out, detection_path, detection_identity, report_json):
+def _case_result_from_report(case, case_summary, target, relative_out, submission_path, submission_identity, report_json):
     result = {
         "case_id": case.id,
         "scenario_id": case_summary.get("scenario_id", case.scenario_id),
@@ -978,8 +943,8 @@ def _case_result_from_report(case, case_summary, target, relative_out, detection
         "success": True,
         "report_path": relative_out + "/comparison.json",
         "report_directory": relative_out,
-        "detection_input": detection_identity,
-        "detection_input_sha256": _sha256_file(detection_path),
+        "submission_output": submission_identity,
+        "submission_output_sha256": _sha256_file(submission_path),
     }
     if target == "ecg_beat_classification":
         result["score_type"] = "classification"
@@ -1008,7 +973,7 @@ def _case_result_from_report(case, case_summary, target, relative_out, detection
         result["record_duration_seconds"] = float(report_json.get("scenario", {}).get("duration_seconds", 0.0))
     elif target == "ecg_delineation":
         result["score_type"] = "ecg_delineation"
-        result["exclusion_policy"] = "Only fiducials present in the declared lead/beat scope are truth; absent waves are not counted as misses."
+        result["exclusion_policy"] = "Present truth is scored, predictions for absent waves are false positives, and predictions inside not-evaluable wave windows are excluded."
         result["summary"] = dict(report_json.get("overall", {}))
         result["by_kind"] = list(report_json.get("by_kind", []))
         result["by_lead"] = list(report_json.get("by_lead", []))
@@ -1060,8 +1025,8 @@ def _error_result(package, case, case_summary, entry, target_dir, status, messag
         "notes": [LIMITATION_TEXT],
     }
     if detection_path is not None:
-        report["detection_input_path"] = detection_path
-        report["detection_input_sha256"] = _sha256_file(detection_path)
+        report["submission_output_path"] = detection_path
+        report["submission_output_sha256"] = _sha256_file(detection_path)
     _write_json(os.path.join(target_dir, "comparison.json"), report)
     _write_text(os.path.join(target_dir, "comparison.csv"), "status,message\n%s,%s\n" % (status, _csv_cell(message)))
     _write_text(os.path.join(target_dir, "comparison_report.html"), _error_html(report))
@@ -1077,7 +1042,7 @@ def _error_result(package, case, case_summary, entry, target_dir, status, messag
     }
 
 
-def _build_verification_summary(package, scoring_manifest, integrity, results, messages, threshold_profile):
+def _build_verification_summary(package, scoring_manifest, submission, integrity, results, messages, threshold_profile):
     targets = _aggregate_targets(results)
     scoring_success = bool(results) and all(item.get("success", False) for item in results)
     policy = _evaluate_policy(targets, threshold_profile)
@@ -1100,6 +1065,7 @@ def _build_verification_summary(package, scoring_manifest, integrity, results, m
         "threshold_profile": threshold_profile,
         "policy": policy,
         "package": _package_identity(package, scoring_manifest),
+        "submission": {"contract": "synsigra_submission_v1", "challenge": dict(submission.challenge), "algorithm": dict(submission.algorithm), "output_count": len(submission.outputs)},
         "integrity": integrity,
         "case_target_count": len(results),
         "scored_case_target_count": sum(1 for item in results if item.get("success", False)),
@@ -1469,20 +1435,23 @@ def _interval_comparison_html(report_json):
 def _delineation_comparison_csv(report_json):
     output = io.StringIO()
     writer = csv.writer(output, lineterminator="\n")
-    writer.writerow(["row_type", "group_type", "kind", "lead", "beat_index", "ground_truth_time_seconds", "prediction_time_seconds", "ground_truth_count", "prediction_count", "paired_count", "within_tolerance_count", "missing_prediction_count", "unexpected_prediction_count", "out_of_tolerance_count", "false_negative_count", "false_positive_count", "sensitivity", "positive_predictive_value", "f1_score", "mean_absolute_error_seconds", "p95_absolute_error_seconds"])
+    writer.writerow(["row_type", "group_type", "kind", "lead", "anchor_type", "anchor_index", "ground_truth_time_seconds", "prediction_time_seconds", "present_truth_count", "absent_truth_count", "not_evaluable_truth_count", "prediction_count", "excluded_prediction_count", "paired_count", "within_tolerance_count", "missing_prediction_count", "unexpected_prediction_count", "out_of_tolerance_count", "false_negative_count", "false_positive_count", "sensitivity", "positive_predictive_value", "f1_score", "mean_absolute_error_seconds", "p95_absolute_error_seconds"])
     groups = [("overall", "", "", report_json.get("overall", {}))]
     groups.extend(("kind", item.get("kind", ""), "", item.get("metrics", {})) for item in report_json.get("by_kind", []))
     groups.extend(("lead", "", item.get("lead", ""), item.get("metrics", {})) for item in report_json.get("by_lead", []))
     groups.extend(("kind_lead", item.get("kind", ""), item.get("lead", ""), item.get("metrics", {})) for item in report_json.get("by_kind_lead", []))
     for group_type, kind, lead, metrics in groups:
         timing = metrics.get("timing_error_seconds", {})
-        writer.writerow(["metrics", group_type, kind, lead, "", "", "", metrics.get("ground_truth_count", 0), metrics.get("prediction_count", 0), metrics.get("paired_count", 0), metrics.get("within_tolerance_count", 0), metrics.get("missing_prediction_count", 0), metrics.get("unexpected_prediction_count", 0), metrics.get("out_of_tolerance_count", 0), metrics.get("false_negative_count", 0), metrics.get("false_positive_count", 0), _csv_optional(metrics.get("sensitivity")), _csv_optional(metrics.get("positive_predictive_value")), _csv_optional(metrics.get("f1_score")), _csv_optional(timing.get("mean_absolute")), _csv_optional(timing.get("p95_absolute"))])
+        writer.writerow(["metrics", group_type, kind, lead, "", "", "", "", metrics.get("ground_truth_count", 0), metrics.get("absent_truth_count", 0), metrics.get("not_evaluable_truth_count", 0), metrics.get("prediction_count", 0), metrics.get("excluded_prediction_count", 0), metrics.get("paired_count", 0), metrics.get("within_tolerance_count", 0), metrics.get("missing_prediction_count", 0), metrics.get("unexpected_prediction_count", 0), metrics.get("out_of_tolerance_count", 0), metrics.get("false_negative_count", 0), metrics.get("false_positive_count", 0), _csv_optional(metrics.get("sensitivity")), _csv_optional(metrics.get("positive_predictive_value")), _csv_optional(metrics.get("f1_score")), _csv_optional(timing.get("mean_absolute")), _csv_optional(timing.get("p95_absolute"))])
     for item in report_json.get("matches", []):
-        writer.writerow(["match" if item.get("within_tolerance") else "out_of_tolerance", "", item.get("kind", ""), item.get("lead", ""), item.get("beat_index", ""), item.get("ground_truth_time_seconds", ""), item.get("prediction_time_seconds", "")])
+        writer.writerow(["match" if item.get("within_tolerance") else "out_of_tolerance", "", item.get("kind", ""), item.get("lead", ""), item.get("anchor_type", ""), item.get("anchor_index", ""), item.get("ground_truth_time_seconds", ""), item.get("prediction_time_seconds", "")])
     for item in report_json.get("missing_events", []):
-        writer.writerow(["missing", "", item.get("kind", ""), item.get("lead", ""), item.get("beat_index", ""), item.get("time_seconds", "")])
+        writer.writerow(["missing", "", item.get("kind", ""), item.get("lead", ""), item.get("anchor_type", ""), item.get("anchor_index", ""), item.get("time_seconds", "")])
     for item in report_json.get("unexpected_events", []):
-        writer.writerow(["unexpected", "", item.get("kind", ""), item.get("lead", ""), item.get("beat_index", ""), "", item.get("time_seconds", "")])
+        writer.writerow(["unexpected", "", item.get("kind", ""), item.get("lead", ""), "", "", "", item.get("time_seconds", "")])
+    for item in report_json.get("excluded_predictions", []):
+        event = item.get("event", {})
+        writer.writerow(["excluded_" + item.get("reason", ""), "", event.get("kind", ""), event.get("lead", ""), "", "", "", event.get("time_seconds", "")])
     return output.getvalue()
 
 
@@ -1491,8 +1460,8 @@ def _delineation_comparison_html(report_json):
     groups = [("Overall", report_json.get("overall", {}))] + [(item.get("kind", ""), item.get("metrics", {})) for item in report_json.get("by_kind", [])]
     for label, metrics in groups:
         timing = metrics.get("timing_error_seconds", {})
-        rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (_h(label), metrics.get("ground_truth_count", 0), metrics.get("prediction_count", 0), metrics.get("within_tolerance_count", 0), metrics.get("missing_prediction_count", 0), metrics.get("unexpected_prediction_count", 0), _h(_display_optional(metrics.get("f1_score"))), _h(_display_optional(timing.get("mean_absolute"))), _h(_display_optional(timing.get("p95_absolute")))))
-    return _html_page("ECG Delineation QA Report", "<h1>ECG Delineation QA Report</h1><p class=\"notice\">%s</p><p>Scope: %s | Leads: %s | Tolerance: %s s</p><table><tr><th>Group</th><th>Truth</th><th>Predicted</th><th>Within tolerance</th><th>Missing</th><th>Unexpected</th><th>F1</th><th>MAE (s)</th><th>P95 (s)</th></tr>%s</table>" % (_h(LIMITATION_TEXT), _h(report_json.get("scope", {}).get("mode", "")), _h(", ".join(report_json.get("scope", {}).get("leads", []))), report_json.get("options", {}).get("tolerance_seconds", ""), "".join(rows)))
+        rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (_h(label), metrics.get("ground_truth_count", 0), metrics.get("absent_truth_count", 0), metrics.get("not_evaluable_truth_count", 0), metrics.get("prediction_count", 0), metrics.get("excluded_prediction_count", 0), metrics.get("within_tolerance_count", 0), metrics.get("missing_prediction_count", 0), metrics.get("unexpected_prediction_count", 0), _h(_display_optional(metrics.get("f1_score"))), _h(_display_optional(timing.get("mean_absolute"))), _h(_display_optional(timing.get("p95_absolute")))))
+    return _html_page("ECG Delineation QA Report", "<h1>ECG Delineation QA Report</h1><p class=\"notice\">%s</p><p>Scope: %s | Leads: %s | Tolerance: %s s</p><table><tr><th>Group</th><th>Present truth</th><th>Absent</th><th>Not evaluable</th><th>Predicted</th><th>Excluded</th><th>Within tolerance</th><th>Missing</th><th>Unexpected</th><th>F1</th><th>MAE (s)</th><th>P95 (s)</th></tr>%s</table>" % (_h(LIMITATION_TEXT), _h(report_json.get("scope", {}).get("mode", "")), _h(", ".join(report_json.get("scope", {}).get("leads", []))), report_json.get("options", {}).get("tolerance_seconds", ""), "".join(rows)))
 
 
 def _event_bin(item):
@@ -1713,16 +1682,25 @@ def _finite_positive(value):
     return _finite_non_negative(value) and float(value) > 0.0
 
 
-def _detection_identity(detections):
-    if not isinstance(detections, DetectionDocument):
-        raise TypeError("detections must be a DetectionDocument")
-    return {
-        "path": detections.path,
-        "sha256": _sha256_file(detections.path),
-        "target": detections.target,
-        "algorithm": {"name": detections.algorithm_name, "version": detections.algorithm_version},
-        "event_count": len(detections),
+def _submission_output_identity(path, relative_path, format_name, target, algorithm, count_name, count):
+    output = {
+        "path": relative_path,
+        "sha256": _sha256_file(path),
+        "target": target,
+        "format": format_name,
+        "algorithm": dict(algorithm),
     }
+    output[count_name] = count
+    return output
+
+
+def _unique_json_object_pairs(pairs):
+    output = {}
+    for key, value in pairs:
+        if key in output:
+            raise VerificationError("duplicate JSON object key: %s" % key)
+        output[key] = value
+    return output
 
 
 def _scenario_identity(case, case_summary, annotations):

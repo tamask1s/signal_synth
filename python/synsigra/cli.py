@@ -12,7 +12,7 @@ def main(argv=None):
         argv = argv[1:]
     parser = argparse.ArgumentParser(prog="synsigra-verify", description="Verify local algorithm outputs against a Synsigra challenge package.")
     parser.add_argument("challenge", help="Challenge package directory, .zip archive, or .synsigra archive.")
-    parser.add_argument("detections_dir", help="Directory containing user detection JSON/CSV files.")
+    parser.add_argument("submission_dir", help="Submission directory containing submission.json and declared user output files.")
     parser.add_argument("output_dir", help="New output directory for verification reports.")
     parser.add_argument("--case", dest="cases", action="append", help="Restrict verification to a case id. Can be repeated.")
     parser.add_argument("--target", dest="targets", action="append", help="Restrict verification to a target. Can be repeated.")
@@ -20,7 +20,7 @@ def main(argv=None):
     parser.add_argument("--force", action="store_true", help="Replace output_dir if it already exists.")
     args = parser.parse_args(argv)
     try:
-        report = verify_package(args.challenge, args.detections_dir, args.output_dir, cases=args.cases, targets=args.targets, profile=args.profile, force=args.force)
+        report = verify_package(args.challenge, args.submission_dir, args.output_dir, cases=args.cases, targets=args.targets, profile=args.profile, force=args.force)
     except (ChallengeIntegrityError, ThresholdProfileError, VerificationError, OSError, ValueError) as error:
         print("status=failed")
         print("error=%s" % str(error))

@@ -4,13 +4,18 @@
 
 **Version:** 1.0
 
-**Status:** Verified
+**Status:** Superseded
 
 **Owner role:** Engineering
 
 **Date:** 2026-07-17
 
 **Implementation issue:** [signal_synth#75](https://github.com/tamask1s/signal_synth/issues/75)
+
+> Superseded on 2026-07-17 by
+> [SYN-INC-055](055_UNIFIED_SUBMISSION_AND_DELINEATION_V2.md). The v1 contract
+> below is retained only as an implementation-history record and is not a
+> supported customer interface.
 
 ## 1. Purpose
 

@@ -26,13 +26,13 @@ def main():
     catalog = load_json(catalog_path)
     assert catalog["schema_version"] == 1
     assert catalog["catalog_id"] == "synsigra_verification_packs"
-    assert catalog["version"] == "1.6"
+    assert catalog["version"] == "1.7"
     assert "clinical validation" in catalog["not_for"].lower()
 
     expected = set([
         "r_peak_stress_v1", "hrv_v1", "ecg_beat_classification_v1", "ecg_rhythm_v1",
         "signal_quality_v1", "ecg_morphology_stress_v1", "ppg_alignment_v1", "combined_worst_case_v1",
-        "wearable_stress_v1", "ppg_benchmark_v1", "ecg_delineation_v1",
+        "wearable_stress_v1", "ppg_benchmark_v1", "ecg_delineation_v2",
     ])
     seen = set()
     for entry in catalog["packs"]:
@@ -42,7 +42,7 @@ def main():
         assert entry["modality"] and entry["targets"] and entry["difficulty"] and entry["feature_tags"]
         assert entry["scoring_mode"] in ("local", "mixed", "reference_only")
         assert entry["release_status"] == "beta"
-        assert entry["release_date"] == ("2026-07-17" if pack_id == "ecg_delineation_v1" else "2026-07-06")
+        assert entry["release_date"] == ("2026-07-17" if pack_id == "ecg_delineation_v2" else "2026-07-06")
         assert "deprecation_message" in entry
         assert entry["recommended_for"] and entry["not_recommended_for"] and entry["changelog"]
         if entry["scoring_mode"] == "reference_only":
@@ -56,7 +56,7 @@ def main():
             assert entry["release_status"] == "beta"
             assert entry["supported_threshold_profiles"] == ["smoke", "regression", "stress", "benchmark"]
             assert entry["recommended_for"] and entry["not_recommended_for"] and entry["changelog"]
-            assert entry["generator_compatibility"]["challenge_package_contract"] == "synsigra_challenge_package_v1"
+            assert entry["generator_compatibility"]["challenge_package_contract"] == "synsigra_challenge_package_v2"
         pack_path = os.path.normpath(os.path.join(os.path.dirname(catalog_path), entry["path"]))
         assert os.path.isfile(pack_path)
         assert run([cli, "pack", "validate", pack_path]).startswith("status=valid\n")

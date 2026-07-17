@@ -12,12 +12,13 @@ import sys
 EXPORTER_VERSION = "synsigra_curated_pack_metadata_export_v1"
 METADATA_TYPE = "synsigra_curated_pack_catalog"
 DEFAULT_GENERATOR_COMPATIBILITY = {
-    "minimum_generator_version": "0.5.0-dev",
+    "minimum_generator_version": "0.6.0-dev",
     "pack_schema_version": 1,
     "scenario_schema_versions": [2, 3, 4],
-    "challenge_package_contract": "synsigra_challenge_package_v1",
-    "scoring_manifest_contract": "synsigra_scoring_manifest_v1",
-    "local_verifier_min_version": "0.2.0",
+    "challenge_package_contract": "synsigra_challenge_package_v2",
+    "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+    "submission_contract": "synsigra_submission_v1",
+    "local_verifier_min_version": "0.4.0",
 }
 
 
@@ -25,7 +26,7 @@ TARGET_CONTRACTS = {
     "r_peak": {
         "scoreable": True,
         "score_type": "event_detection",
-        "accepted_detection_formats": ["detection_json_v1", "detection_csv_v2"],
+        "accepted_formats": ["point_events_json_v1", "point_events_csv_v1"],
         "default_tolerance_seconds": 0.05,
         "primary_metric": "f1_score",
         "description": "R-peak detector event timing against exact synthetic beat annotations.",
@@ -33,7 +34,7 @@ TARGET_CONTRACTS = {
     "ppg_systolic_peak": {
         "scoreable": True,
         "score_type": "event_detection",
-        "accepted_detection_formats": ["detection_json_v1", "detection_csv_v2"],
+        "accepted_formats": ["point_events_json_v1", "point_events_csv_v1"],
         "default_tolerance_seconds": 0.08,
         "primary_metric": "f1_score",
         "description": "PPG systolic peak event timing against exact synthetic pulse annotations.",
@@ -41,7 +42,7 @@ TARGET_CONTRACTS = {
     "ppg_pulse_onset": {
         "scoreable": True,
         "score_type": "event_detection",
-        "accepted_detection_formats": ["detection_json_v1", "detection_csv_v2"],
+        "accepted_formats": ["point_events_json_v1", "point_events_csv_v1"],
         "default_tolerance_seconds": 0.05,
         "primary_metric": "f1_score",
         "description": "PPG pulse onset event timing against exact synthetic pulse annotations.",
@@ -49,7 +50,7 @@ TARGET_CONTRACTS = {
     "ecg_beat_classification": {
         "scoreable": True,
         "score_type": "classification",
-        "accepted_detection_formats": ["detection_json_v1", "detection_csv_v2"],
+        "accepted_formats": ["point_events_json_v1", "point_events_csv_v1"],
         "default_tolerance_seconds": 0.075,
         "primary_metric": "micro_f1_score",
         "description": "Beat-level ECG class labels with exact synthetic beat timing.",
@@ -57,14 +58,14 @@ TARGET_CONTRACTS = {
     "hrv": {
         "scoreable": True,
         "score_type": "hrv_metrics",
-        "accepted_user_output_formats": ["hrv_json_v1"],
+        "accepted_formats": ["hrv_metrics_json_v1"],
         "primary_metric": "metric_pass_fraction",
         "description": "HRV metric and RR-interval scoring against exact synthetic tachogram ground truth.",
     },
     "signal_quality": {
         "scoreable": True,
         "score_type": "interval_detection",
-        "accepted_interval_formats": ["interval_json_v1", "interval_csv_v1"],
+        "accepted_formats": ["interval_events_json_v1", "interval_events_csv_v1"],
         "default_minimum_iou": 0.1,
         "primary_metric": "time_f1_score",
         "description": "Signal-quality interval labels and channels scored against exact synthetic artifact ground truth.",
@@ -72,7 +73,7 @@ TARGET_CONTRACTS = {
     "rhythm_episode": {
         "scoreable": True,
         "score_type": "interval_detection",
-        "accepted_interval_formats": ["interval_json_v1", "interval_csv_v1"],
+        "accepted_formats": ["interval_events_json_v1", "interval_events_csv_v1"],
         "default_minimum_iou": 0.1,
         "primary_metric": "time_f1_score",
         "description": "Rhythm episode labels and boundaries scored against exact synthetic episode ground truth.",
@@ -80,7 +81,7 @@ TARGET_CONTRACTS = {
     "ecg_delineation": {
         "scoreable": True,
         "score_type": "ecg_delineation",
-        "accepted_delineation_formats": ["delineation_json_v1", "delineation_csv_v1"],
+        "accepted_formats": ["point_events_json_v1", "point_events_csv_v1"],
         "default_tolerance_seconds": 0.04,
         "primary_metric": "f1_score",
         "description": "Lead-specific P, QRS, J-point, and T fiducial timing against exact synthetic construction ground truth.",
@@ -305,13 +306,12 @@ def output_artifacts(scoreable_targets, reference_targets):
     return artifacts
 
 
-def detector_output_schemas(scoreable_targets):
+def submission_output_schemas(scoreable_targets):
     schemas = []
     for target in scoreable_targets:
-        for key in ("accepted_detection_formats", "accepted_user_output_formats", "accepted_interval_formats", "accepted_delineation_formats"):
-            for schema in target.get(key, []):
-                if schema not in schemas:
-                    schemas.append(schema)
+        for schema in target.get("accepted_formats", []):
+            if schema not in schemas:
+                schemas.append(schema)
     return schemas
 
 
@@ -392,7 +392,7 @@ def pack_metadata(catalog_path, source_root, entry, pack, analysis, validate_inf
         "targets": effective_targets(analysis),
         "scoreable_targets": scoreable_targets,
         "reference_only_targets": reference_targets,
-        "detector_output_schemas": detector_output_schemas(scoreable_targets),
+        "submission_output_schemas": submission_output_schemas(scoreable_targets),
         "local_verifier_smoke_tests": local_verifier_smoke_tests(scoreable_targets),
         "threshold_profile_contract": {
             "supported_profiles": supported_threshold_profiles,

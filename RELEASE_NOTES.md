@@ -3,6 +3,22 @@
 This file records public engineering-verification release notes for the
 `signal_synth` core generator and local verifier contracts.
 
+## 0.6.0-dev
+
+Status: active development baseline.
+
+- Replaced target-specific customer output discovery with the strict
+  `synsigra_submission_v1` manifest and generated `user-output-template/`.
+- Unified customer point and interval payloads while retaining typed adapters;
+  algorithm provenance is supplied once and preserved for JSON and CSV.
+- Released the generator-free `synsigra` 0.4.0 verifier wheel and one canonical
+  `synsigra-verify <challenge> <submission> <results>` workflow.
+- Replaced ECG delineation v1 with atrial-aware delineation v2, explicit
+  present/absent/not-evaluable truth, temporal matching, and a curated Mobitz
+  II non-conducted P-wave case.
+- Bumped challenge, scoring-manifest, integration, and curated-catalog
+  contracts for the private-beta breaking change.
+
 ## 0.5.0-dev
 
 Status: active development baseline.

@@ -905,7 +905,7 @@ namespace signal_synth
 
     const char* signal_synth_generator_version()
     {
-        return "0.5.0-dev";
+        return "0.6.0-dev";
     }
 
     const char* signal_synth_generator_git_commit()
@@ -920,12 +920,12 @@ namespace signal_synth
 
     const char* signal_synth_package_contract_version()
     {
-        return "synsigra_challenge_package_v1";
+        return "synsigra_challenge_package_v2";
     }
 
     const char* signal_synth_scoring_manifest_contract_version()
     {
-        return "synsigra_scoring_manifest_v1";
+        return "synsigra_scoring_manifest_v2";
     }
 
     const char* signal_synth_verifier_version()

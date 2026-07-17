@@ -199,7 +199,7 @@ namespace signal_synth
 
     const char* synsigra_integration_contract_version()
     {
-        return "synsigra_core_integration_v1";
+        return "synsigra_core_integration_v2";
     }
 
     std::string synsigra_integration_contract_json()
@@ -212,6 +212,8 @@ namespace signal_synth
                << ",\"contracts\":{\"cpp_facade\":" << json_text(synsigra_api_version())
                << ",\"challenge_package\":" << json_text(signal_synth_package_contract_version())
                << ",\"scoring_manifest\":" << json_text(signal_synth_scoring_manifest_contract_version())
+               << ",\"submission\":\"synsigra_submission_v1\""
+               << ",\"submission_formats\":\"synsigra_submission_formats_v1\""
                << ",\"scenario_authoring\":" << json_text(scenario_authoring_metadata_version())
                << ",\"scenario_templates\":" << json_text(scenario_template_catalog_version()) << "}"
                << ",\"cli\":{\"challenge_command\":\"signal-synth pack challenge <pack.json> --out <new-directory>\""
@@ -220,7 +222,9 @@ namespace signal_synth
                << ",\"interval_targets\":[\"rhythm_episode\",\"signal_quality\"]"
                << ",\"interval_output_schemas\":[\"interval_json_v1\",\"interval_csv_v1\"]"
                << ",\"delineation_targets\":[\"ecg_delineation\"]"
-               << ",\"delineation_output_schemas\":[\"delineation_json_v1\",\"delineation_csv_v1\"]}}";
+               << ",\"delineation_output_schemas\":[\"point_events_json_v1\",\"point_events_csv_v1\"]"
+               << ",\"customer_verification_command\":\"synsigra-verify <challenge> <submission-directory> <result-directory>\""
+               << ",\"customer_output_schemas\":[\"point_events_json_v1\",\"point_events_csv_v1\",\"interval_events_json_v1\",\"interval_events_csv_v1\",\"hrv_metrics_json_v1\"]}}";
         return output.str();
     }
 

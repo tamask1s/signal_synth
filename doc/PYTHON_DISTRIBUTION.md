@@ -9,7 +9,7 @@ This document tracks the release-grade distribution path for the user-facing `sy
 - Supported local verification command:
 
 ```bash
-synsigra-verify package.zip detections/ verification-results/ --profile regression
+synsigra-verify package.zip submission/ verification-results/ --profile regression
 ```
 
 The verifier must be usable by algorithm developers and CI systems without building the C++ signal generator.
@@ -30,7 +30,7 @@ python -m pip install .
 External beta users receive and install the generator-free wheel:
 
 ```bash
-python -m pip install synsigra-0.3.0-py3-none-any.whl
+python -m pip install synsigra-0.4.0-py3-none-any.whl
 ```
 
 Build local distribution artifacts:
@@ -50,13 +50,14 @@ Smoke test the built wheel/sdist:
 Before publishing or handing the package to external beta users:
 
 1. `python -m pip install .` succeeds from a clean environment.
-2. `synsigra-verify --help` prints package, detections directory, output directory, profile, case, target, and force options.
+2. `synsigra-verify --help` prints challenge, submission directory, output directory, profile, case, target, and force options.
 3. The verifier runs without requiring the C++ source tree for downloaded challenge packages.
 4. Built-in profiles are documented: `smoke`, `regression`, `stress`, `benchmark`.
-5. The verifier returns non-zero on failed integrity checks, missing detections, scoring failures, and failed threshold profiles.
+5. The verifier returns non-zero on failed integrity checks, malformed/missing submission outputs, scoring failures, and failed threshold profiles.
 6. Machine-readable output location is documented for CI users.
-7. The top-level README and `python/README.md` describe the same canonical workflow.
-8. The GitHub Actions Python package workflow passes.
+7. The challenge-generated `user-output-template/` is sufficient to prepare a submission without source-code inspection.
+8. The top-level README and `python/README.md` describe the same canonical workflow.
+9. The GitHub Actions Python package workflow passes.
 
 ## CI contract
 

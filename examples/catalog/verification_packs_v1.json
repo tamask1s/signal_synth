@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "1.6",
+  "version": "1.7",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -41,12 +41,13 @@
         }
       ],
       "generator_compatibility": {
-        "minimum_generator_version": "0.5.0-dev",
+        "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [2, 3, 4],
-        "challenge_package_contract": "synsigra_challenge_package_v1",
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v1",
-        "local_verifier_min_version": "0.2.0"
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1",
+        "local_verifier_min_version": "0.4.0"
       }
     },
     {
@@ -386,15 +387,15 @@
       ]
     },
     {
-      "pack_id": "ecg_delineation_v1",
-      "path": "../packs/ecg_delineation_v1.json",
+      "pack_id": "ecg_delineation_v2",
+      "path": "../packs/ecg_delineation_v2.json",
       "modality": ["ECG"],
       "targets": ["ecg_delineation"],
       "difficulty": ["regression", "stress", "benchmark"],
       "recommended_profile": "regression",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
       "scoring_mode": "local",
-      "feature_tags": ["p_wave", "qrs", "j_point", "t_wave", "delineation", "lead_specific", "absent_wave", "conduction", "repolarization", "artifact"],
+      "feature_tags": ["p_wave", "nonconducted_p", "qrs", "j_point", "t_wave", "delineation", "lead_specific", "absent_wave", "not_evaluable", "conduction", "repolarization", "artifact"],
       "release_status": "beta",
       "release_date": "2026-07-17",
       "deprecation_message": "",
@@ -402,15 +403,23 @@
         "P onset, peak, and offset delineation algorithm QA",
         "QRS onset, J-point, and QRS offset timing regression",
         "T onset, peak, and offset delineation algorithm QA",
-        "Lead-specific absent-wave, rate, conduction, repolarization, and artifact stress tests"
+        "Lead-specific absent/not-evaluable wave, non-conducted atrial activity, rate, conduction, repolarization, and artifact stress tests"
       ],
       "not_recommended_for": [
         "Clinical delineation validation claims",
         "Patient QT database replacement",
         "Amplitude, interval, axis, or diagnostic statement scoring",
-        "Algorithms that cannot report beat and lead identity"
+        "Algorithms that cannot report event time, lead, and fiducial kind"
       ],
       "changelog": [
+        {
+          "version": "2.0",
+          "date": "2026-07-17",
+          "changes": [
+            "Replaced generator beat identity in user output with temporal point events and explicit truth-side atrial/ventricular anchors.",
+            "Added present, absent, and not-evaluable truth states plus a non-conducted Mobitz II P-wave case."
+          ]
+        },
         {
           "version": "1.0",
           "date": "2026-07-17",
@@ -420,12 +429,13 @@
         }
       ],
       "generator_compatibility": {
-        "minimum_generator_version": "0.5.0-dev",
+        "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [2, 3, 4],
-        "challenge_package_contract": "synsigra_challenge_package_v1",
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v1",
-        "local_verifier_min_version": "0.3.0"
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1",
+        "local_verifier_min_version": "0.4.0"
       }
     }
   ]

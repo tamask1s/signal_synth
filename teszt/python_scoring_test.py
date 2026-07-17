@@ -1,3 +1,4 @@
+import csv
 import json
 import os
 import shutil
@@ -7,6 +8,7 @@ import tempfile
 import zipfile
 
 import synsigra as ss
+from synsigra.delineation import DelineationScope, delineation_truth_from_annotations
 
 
 def run(command):
@@ -47,9 +49,9 @@ def create_challenge_with_cli(source_dir, work_dir, cli):
         "name": "Python Scoring Challenge",
         "version": "1",
         "description": "Python scoring integration test challenge.",
-        "targets": ["r_peak", "ppg_systolic_peak", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality"],
+        "targets": ["r_peak", "ppg_systolic_peak", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality", "ecg_delineation"],
         "scenarios": [
-            {"id": "clean_ecg", "path": "scenarios/clean_ecg.json", "targets": ["r_peak", "ecg_beat_classification"]},
+            {"id": "clean_ecg", "path": "scenarios/clean_ecg.json", "targets": ["r_peak", "ecg_beat_classification", "ecg_delineation"]},
             {"id": "ppg_clean", "path": "scenarios/ppg_clean.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
             {"id": "ppg_stress", "path": "scenarios/ppg_stress.json", "targets": ["ppg_systolic_peak"]},
             {"id": "ppg_motion", "path": "scenarios/ppg_motion.json", "targets": ["ppg_systolic_peak"]},
@@ -91,7 +93,7 @@ def beat_classifications(annotations):
     ]
 
 
-def hrv_output(case, perturb=False):
+def hrv_output(case, perturb=False, customer=False):
     truth = case.hrv_metrics()
     accepted = [item for item in truth["tachogram"] if not item["excluded"]]
     mean_rr = truth["time_domain"]["mean_rr_seconds"]
@@ -100,12 +102,14 @@ def hrv_output(case, perturb=False):
         mean_rr += 0.040
         intervals = intervals[1:]
         intervals[0]["rr_seconds"] += 0.030
-    return {
+    output = {
         "schema_version": 1,
-        "algorithm": {"name": "python_test_hrv", "version": "1"},
         "metrics": {"mean_rr_seconds": mean_rr, "rmssd_seconds": truth["time_domain"]["rmssd_seconds"]},
         "rr_intervals": intervals,
     }
+    if not customer:
+        output["algorithm"] = {"name": "python_test_hrv", "version": "1"}
+    return output
 
 
 def write_detections(path, target, events):
@@ -124,6 +128,31 @@ def write_intervals(path, target, intervals):
         "target": target,
         "intervals": intervals,
     })
+
+
+def write_point_events(path, events):
+    write_json(path, {"schema_version": 1, "events": events})
+
+
+def write_point_events_csv(path, events):
+    with open(path, "w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["time_seconds", "channel", "label"])
+        writer.writeheader()
+        for event in events:
+            writer.writerow({name: event.get(name, "") for name in writer.fieldnames})
+
+
+def write_interval_events(path, intervals):
+    write_json(path, {"schema_version": 1, "intervals": intervals})
+
+
+def submission_paths(challenge_dir, destination):
+    shutil.copytree(os.path.join(challenge_dir, "user-output-template"), destination)
+    manifest_path = os.path.join(destination, "submission.json")
+    manifest = read_json(manifest_path)
+    manifest["algorithm"] = {"name": "python_test_algorithm", "version": "1"}
+    write_json(manifest_path, manifest)
+    return dict(((item["case_id"], item["target"]), os.path.join(destination, *item["path"].split("/"))) for item in manifest["outputs"])
 
 
 def zip_directory(source, archive_path):
@@ -159,8 +188,8 @@ def main():
     assert challenge.case_ids() == ["clean_ecg", "ppg_clean", "ppg_stress", "ppg_motion", "hrv_mild", "rhythm_episode", "signal_quality"]
     provenance = read_json(os.path.join(challenge_dir, "provenance.json"))
     assert provenance["metadata_type"] == "synsigra_package_provenance"
-    assert provenance["generator"]["version"] == "0.5.0-dev"
-    assert provenance["verifier"]["package_contract_version"] == "synsigra_challenge_package_v1"
+    assert provenance["generator"]["version"] == "0.6.0-dev"
+    assert provenance["verifier"]["package_contract_version"] == "synsigra_challenge_package_v2"
     assert "clinical validation" in provenance["claim_boundary"]["not_for"]
     assert os.path.exists(os.path.join(challenge_dir, "ENGINEERING_CLAIM_BOUNDARY.txt"))
     case_provenance = read_json(os.path.join(challenge_dir, "cases", "clean_ecg", "provenance.json"))
@@ -172,7 +201,14 @@ def main():
     assert integrity["ok"] and integrity["checked_file_count"] > 0
     scoring_manifest = challenge.scoring_manifest()
     assert scoring_manifest["cases"][0]["case_summary_path"] == "cases/clean_ecg/case_summary.json"
-    assert scoring_manifest["cases"][0]["scoring"][0]["score_command"].startswith("signal-synth compare r_peak")
+    assert scoring_manifest["submission_contract_version"] == "synsigra_submission_v1"
+    assert scoring_manifest["submission_template_path"] == "user-output-template/submission.json"
+    assert scoring_manifest["submission_format_contract_path"] == "user-output-template/formats.json"
+    format_contract = read_json(os.path.join(challenge_dir, "user-output-template", "formats.json"))
+    assert format_contract["contract"] == "synsigra_submission_formats_v1"
+    assert format_contract["target_adapters"]["ecg_beat_classification"]["required_record_fields"] == ["time_seconds", "label"]
+    assert format_contract["target_adapters"]["ecg_delineation"]["required_record_fields"] == ["time_seconds", "channel", "label"]
+    assert scoring_manifest["cases"][0]["scoring"][0]["accepted_formats"] == ["point_events_json_v1", "point_events_csv_v1"]
     case_summary = challenge.case("clean_ecg").case_summary()
     assert case_summary["case_id"] == "clean_ecg"
     assert case_summary["render"]["sample_rate_hz"] == 500
@@ -200,32 +236,49 @@ def main():
     assert archive_challenge.case("clean_ecg").scenario_id == challenge.case("clean_ecg").scenario_id
     archive_challenge.close()
 
-    detections_dir = os.path.join(work_dir, "detections")
-    os.makedirs(detections_dir)
-    rpeak_path = os.path.join(detections_dir, "clean_ecg.json")
-    rpeak_recommended_path = os.path.join(detections_dir, "clean_ecg_r_peak.json")
-    ppg_path = os.path.join(detections_dir, "ppg_clean.json")
-    ppg_recommended_path = os.path.join(detections_dir, "ppg_clean_ppg_systolic_peak.json")
-    ppg_onset_path = os.path.join(detections_dir, "ppg_clean_ppg_pulse_onset.json")
-    ppg_stress_path = os.path.join(detections_dir, "ppg_stress.json")
-    ppg_motion_path = os.path.join(detections_dir, "ppg_motion.json")
-    beat_class_path = os.path.join(detections_dir, "clean_ecg_beat_classes.json")
-    beat_class_recommended_path = os.path.join(detections_dir, "clean_ecg_ecg_beat_classification.json")
-    hrv_path = os.path.join(detections_dir, "hrv_mild.json")
-    rhythm_interval_path = os.path.join(detections_dir, "rhythm_episode.json")
-    quality_interval_path = os.path.join(detections_dir, "signal_quality.json")
+    direct_inputs_dir = os.path.join(work_dir, "direct_inputs")
+    os.makedirs(direct_inputs_dir)
+    rpeak_path = os.path.join(direct_inputs_dir, "clean_ecg.json")
+    ppg_path = os.path.join(direct_inputs_dir, "ppg_clean.json")
+    ppg_onset_path = os.path.join(direct_inputs_dir, "ppg_clean_ppg_pulse_onset.json")
+    ppg_stress_path = os.path.join(direct_inputs_dir, "ppg_stress.json")
+    ppg_motion_path = os.path.join(direct_inputs_dir, "ppg_motion.json")
+    beat_class_path = os.path.join(direct_inputs_dir, "clean_ecg_beat_classes.json")
+    hrv_path = os.path.join(direct_inputs_dir, "hrv_mild.json")
+    rhythm_interval_path = os.path.join(direct_inputs_dir, "rhythm_episode.json")
+    quality_interval_path = os.path.join(direct_inputs_dir, "signal_quality.json")
     write_detections(rpeak_path, "r_peak", rpeak_detections(challenge.case("clean_ecg").annotations()))
-    shutil.copyfile(rpeak_path, rpeak_recommended_path)
     write_detections(ppg_path, "ppg_systolic_peak", ppg_detections(challenge.case("ppg_clean").annotations()))
-    shutil.copyfile(ppg_path, ppg_recommended_path)
     write_detections(ppg_onset_path, "ppg_pulse_onset", ppg_onset_detections(challenge.case("ppg_clean").annotations()))
     write_detections(ppg_stress_path, "ppg_systolic_peak", ppg_detections(challenge.case("ppg_stress").annotations()))
     write_detections(ppg_motion_path, "ppg_systolic_peak", ppg_detections(challenge.case("ppg_motion").annotations()))
     write_detections(beat_class_path, "ecg_beat_classification", beat_classifications(challenge.case("clean_ecg").annotations()))
-    shutil.copyfile(beat_class_path, beat_class_recommended_path)
     write_json(hrv_path, hrv_output(challenge.case("hrv_mild")))
     write_intervals(rhythm_interval_path, "rhythm_episode", [{"start_seconds": item["start_seconds"], "end_seconds": item["end_seconds"], "label": item["kind"], "channel": "global"} for item in challenge.case("rhythm_episode").annotations()["episodes"] if item.get("present", True) and item["kind"] in ("psvt", "svarr")])
     write_intervals(quality_interval_path, "signal_quality", [{"start_seconds": item["start_seconds"], "end_seconds": item["end_seconds"], "label": item["type"], "channel": "global"} for item in challenge.case("signal_quality").annotations()["artifact_intervals"]])
+
+    submission_dir = os.path.join(work_dir, "submission")
+    output_paths = submission_paths(challenge_dir, submission_dir)
+    submission_manifest_path = os.path.join(submission_dir, "submission.json")
+    submission_manifest = read_json(submission_manifest_path)
+    motion_output = next(item for item in submission_manifest["outputs"] if item["case_id"] == "ppg_motion" and item["target"] == "ppg_systolic_peak")
+    os.remove(output_paths[("ppg_motion", "ppg_systolic_peak")])
+    motion_output["format"] = "point_events_csv_v1"
+    motion_output["path"] = os.path.splitext(motion_output["path"])[0] + ".csv"
+    write_json(submission_manifest_path, submission_manifest)
+    output_paths[("ppg_motion", "ppg_systolic_peak")] = os.path.join(submission_dir, *motion_output["path"].split("/"))
+    write_point_events(output_paths[("clean_ecg", "r_peak")], rpeak_detections(challenge.case("clean_ecg").annotations()))
+    write_point_events(output_paths[("clean_ecg", "ecg_beat_classification")], beat_classifications(challenge.case("clean_ecg").annotations()))
+    delineation_scope = DelineationScope(["II", "V2"])
+    delineation_truth = delineation_truth_from_annotations(challenge.case("clean_ecg").annotations(), delineation_scope, 10.0)
+    write_point_events(output_paths[("clean_ecg", "ecg_delineation")], [{"time_seconds": item.time_seconds, "channel": item.lead, "label": item.kind} for item in delineation_truth if item.status == "present"])
+    write_point_events(output_paths[("ppg_clean", "ppg_systolic_peak")], ppg_detections(challenge.case("ppg_clean").annotations()))
+    write_point_events(output_paths[("ppg_clean", "ppg_pulse_onset")], ppg_onset_detections(challenge.case("ppg_clean").annotations()))
+    write_point_events(output_paths[("ppg_stress", "ppg_systolic_peak")], ppg_detections(challenge.case("ppg_stress").annotations()))
+    write_point_events_csv(output_paths[("ppg_motion", "ppg_systolic_peak")], ppg_detections(challenge.case("ppg_motion").annotations()))
+    write_json(output_paths[("hrv_mild", "hrv")], hrv_output(challenge.case("hrv_mild"), customer=True))
+    write_interval_events(output_paths[("rhythm_episode", "rhythm_episode")], [{"start_seconds": item["start_seconds"], "end_seconds": item["end_seconds"], "label": item["kind"], "channel": "global"} for item in challenge.case("rhythm_episode").annotations()["episodes"] if item.get("present", True) and item["kind"] in ("psvt", "svarr")])
+    write_interval_events(output_paths[("signal_quality", "signal_quality")], [{"start_seconds": item["start_seconds"], "end_seconds": item["end_seconds"], "label": item["type"], "channel": "global"} for item in challenge.case("signal_quality").annotations()["artifact_intervals"]])
 
     rpeak_detections_doc = ss.load_detections(rpeak_path, target="r_peak")
     ppg_detections_doc = ss.load_detections(ppg_path, target="ppg_systolic_peak")
@@ -283,14 +336,18 @@ def main():
     assert quality_interval_report.json["overall"]["time_f1_score"] == 1
 
     local_verify_dir = os.path.join(work_dir, "local_verify")
-    local_report = ss.verify_package(archive_path, detections_dir, local_verify_dir)
+    local_report = ss.verify_package(archive_path, submission_dir, local_verify_dir)
     assert local_report.summary["success"]
     assert local_report.summary["package"]["package_id"] == "python_scoring_challenge"
-    assert local_report.summary["case_target_count"] == 9
-    assert local_report.summary["passed_case_target_count"] == 9
+    assert local_report.summary["case_target_count"] == 10
+    assert local_report.summary["passed_case_target_count"] == 10
     assert local_report.summary["policy"]["profile_id"] == "regression"
     assert local_report.summary["policy"]["passed"]
     assert read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_r_peak", "comparison.json"))["comparison"]["metrics"]["total"]["f1_score"] == 1
+    rpeak_submission = read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_r_peak", "comparison.json"))["submission_output"]
+    assert rpeak_submission["format"] == "point_events_json_v1"
+    assert rpeak_submission["algorithm"] == {"name": "python_test_algorithm", "version": "1"}
+    assert rpeak_submission["target"] == "r_peak" and rpeak_submission["sha256"].startswith("sha256:")
     assert read_json(os.path.join(local_verify_dir, "verification", "ppg_clean_ppg_systolic_peak", "comparison.json"))["comparison"]["metrics"]["total"]["f1_score"] == 1
     local_onset = read_json(os.path.join(local_verify_dir, "verification", "ppg_clean_ppg_pulse_onset", "comparison.json"))["comparison"]
     cpp_onset_dir = os.path.join(work_dir, "cpp_ppg_onset")
@@ -305,6 +362,10 @@ def main():
     motion_metrics = read_json(os.path.join(local_verify_dir, "verification", "ppg_motion", "comparison.json"))["comparison"]["metrics"]
     assert motion_metrics["motion"]["ground_truth_count"] > 0
     assert motion_metrics["motion"]["true_positive_count"] == motion_metrics["motion"]["ground_truth_count"]
+    motion_submission = read_json(os.path.join(local_verify_dir, "verification", "ppg_motion", "comparison.json"))["submission_output"]
+    assert motion_submission["format"] == "point_events_csv_v1"
+    assert motion_submission["algorithm"] == {"name": "python_test_algorithm", "version": "1"}
+    assert motion_submission["target"] == "ppg_systolic_peak" and motion_submission["sha256"].startswith("sha256:")
     cpp_stress_dir = os.path.join(work_dir, "cpp_ppg_stress")
     run([cli, "compare", "ppg_systolic_peak", challenge.case("ppg_stress").scenario_path, ppg_stress_path, "--out", cpp_stress_dir])
     python_stress = read_json(os.path.join(local_verify_dir, "verification", "ppg_stress", "comparison.json"))["comparison"]
@@ -318,6 +379,10 @@ def main():
     for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
         assert python_motion[key] == cpp_motion[key]
     assert read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_ecg_beat_classification", "comparison.json"))["summary"]["micro_f1_score"] == 1
+    delineation_report = read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_ecg_delineation", "comparison.json"))
+    assert delineation_report["overall"]["f1_score"] == 1
+    assert delineation_report["schema_version"] == 2
+    assert any(item["anchor_type"] == "atrial_event" for item in delineation_report["truth"])
     assert read_json(os.path.join(local_verify_dir, "verification", "hrv_mild", "comparison.json"))["metric_pass_fraction"] == 1
     local_rhythm_interval = read_json(os.path.join(local_verify_dir, "verification", "rhythm_episode", "comparison.json"))
     local_quality_interval = read_json(os.path.join(local_verify_dir, "verification", "signal_quality", "comparison.json"))
@@ -331,27 +396,33 @@ def main():
         assert "Synsigra Local Verification Report" in handle.read()
 
     cli_verify_dir = os.path.join(work_dir, "cli_verify")
-    cli_output = run([sys.executable, "-m", "synsigra.cli", "verify", archive_path, detections_dir, cli_verify_dir])
+    cli_output = run([sys.executable, "-m", "synsigra.cli", "verify", archive_path, submission_dir, cli_verify_dir])
     assert "status=passed" in cli_output
     assert read_json(os.path.join(cli_verify_dir, "verification_summary.json"))["success"]
 
     degraded_dir = os.path.join(work_dir, "degraded")
-    os.makedirs(degraded_dir)
+    shutil.copytree(submission_dir, degraded_dir)
+    degraded_outputs = dict(((item["case_id"], item["target"]), os.path.join(degraded_dir, *item["path"].split("/"))) for item in read_json(os.path.join(degraded_dir, "submission.json"))["outputs"])
+    degraded_direct_dir = os.path.join(work_dir, "degraded_direct")
+    os.makedirs(degraded_direct_dir)
     degraded_rpeaks = rpeak_detections(challenge.case("clean_ecg").annotations())
     degraded_rpeaks[0]["time_seconds"] += 0.020
     degraded_rpeaks = degraded_rpeaks[:-1]
     degraded_rpeaks.append({"time_seconds": 100.0, "label": "r"})
-    degraded_rpeak_path = os.path.join(degraded_dir, "clean_ecg_r_peak.json")
+    degraded_rpeak_path = os.path.join(degraded_direct_dir, "clean_ecg_r_peak.json")
     write_detections(degraded_rpeak_path, "r_peak", degraded_rpeaks)
+    write_point_events(degraded_outputs[("clean_ecg", "r_peak")], degraded_rpeaks)
 
     degraded_classes = beat_classifications(challenge.case("clean_ecg").annotations())
     degraded_classes[0]["label"] = "ventricular_ectopic"
     degraded_classes = degraded_classes[:-1]
-    degraded_class_path = os.path.join(degraded_dir, "clean_ecg_ecg_beat_classification.json")
+    degraded_class_path = os.path.join(degraded_direct_dir, "clean_ecg_ecg_beat_classification.json")
     write_detections(degraded_class_path, "ecg_beat_classification", degraded_classes)
+    write_point_events(degraded_outputs[("clean_ecg", "ecg_beat_classification")], degraded_classes)
 
-    degraded_hrv_path = os.path.join(degraded_dir, "hrv_mild.json")
+    degraded_hrv_path = os.path.join(degraded_direct_dir, "hrv_mild.json")
     write_json(degraded_hrv_path, hrv_output(challenge.case("hrv_mild"), perturb=True))
+    write_json(degraded_outputs[("hrv_mild", "hrv")], hrv_output(challenge.case("hrv_mild"), perturb=True, customer=True))
 
     degraded_verify_dir = os.path.join(work_dir, "degraded_verify")
     degraded_report = ss.verify_package(challenge_dir, degraded_dir, degraded_verify_dir, cases=["clean_ecg", "hrv_mild"], profile="regression")
