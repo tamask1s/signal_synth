@@ -12,6 +12,7 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/ecg_morphology.h
     src/ecg_scenario.h
     src/ecg_scenario_json.h
+    src/ecg_render.h
     src/ecg_export.h
     src/ecg_wfdb_export.h
     src/ecg_edf_bdf_export.h
@@ -39,6 +40,7 @@ add_library(
     src/ecg_morphology.cpp
     src/ecg_scenario.cpp
     src/ecg_scenario_json.cpp
+    src/ecg_render.cpp
     src/ecg_export.cpp
     src/ecg_wfdb_export.cpp
     src/ecg_edf_bdf_export.cpp

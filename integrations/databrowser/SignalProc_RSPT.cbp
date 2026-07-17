@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="SignalProc_RSPT" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="../../SigForge/SignalProcessors/SignalProc_RSPT" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="../../SigForge/App/" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Option host_application="../../SigForge/App/SigForge.exe" />
+				<Option run_host_application_in_terminal="0" />
+				<Option createDefFile="1" />
+				<Option createStaticLib="1" />
+				<Compiler>
+					<Add option="-Wall" />
+					<Add option="-pg" />
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="../../SigForge/SignalProcessors/SignalProc_RSPT" prefix_auto="1" extension_auto="1" />
+				<Option working_dir="../../SigForge/App/" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Option host_application="../../SigForge/App/SigForge.exe" />
+				<Option run_host_application_in_terminal="0" />
+				<Option createDefFile="1" />
+				<Option createStaticLib="1" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-std=c++11" />
+			<Add option="-std=c99" />
+			<Add option="-DBUILDING_DLL=1" />
+			<Add option="-DZZLIB" />
+			<Add directory="../Controls" />
+			<Add directory="../DataStructures" />
+			<Add directory="../../../../Libs/3rdParty/LIB_ZAX_JSON" />
+		</Compiler>
+		<Linker>
+			<Add option="-Wl,--add-stdcall-alias" />
+			<Add option="../DataStructures/libDataStructures.a" />
+			<Add library="gmon" />
+		</Linker>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/ecg_analysis.cpp" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/ecg_analysis.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/filter.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/iir_filter_opt.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_filter/fir_filter.cpp" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_filter/iir_filter.cpp" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_filter/iir_filter_design.cpp" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_fwht/fwht.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_fwht/fwht.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_hzr/hzr_crc32c.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_hzr/hzr_crc32c.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_hzr/hzr_crc32c_armv8.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_hzr/hzr_crc32c_armv8.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_hzr/hzr_crc32c_sse4.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_hzr/hzr_crc32c_sse4.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_hzr/hzr_decode.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_hzr/hzr_encode.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_hzr/hzr_internal.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_hzr/libhzr.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_lz4/lz4.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_lz4/lz4.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_lz4/lz4hc.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_lz4/lz4hc.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_ring_buffer/ring_buffers.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_signalpacker/signal_packer_base.cpp" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_signalpacker/signal_packer_base.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_signalpacker/signal_packer_dct.cpp" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_signalpacker/signal_packer_hadamard.cpp" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_signalpacker/signal_packer_hzr.cpp" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_signalpacker/signal_packer_xdelta_hzr.cpp" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_signalpacker/utils.cpp" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_signalpacker/utils.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_stat/rolling_window_median.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_zaxtensor/ZaxJsonParser.cpp" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_zaxtensor/ZaxJsonParser.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_zaxtensor/ZaxTensor.cpp" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_zaxtensor/ZaxTensor.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_zzip/ac-common.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_zzip/block.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_zzip/bwt.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_zzip/coding.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_zzip/global.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_zzip/struct_model0.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_zzip/struct_model1.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_zzip/zzip.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/lib_zzip/zzlib.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/peak_detector.h" />
+		<Unit filename="../../../../Libs/3rdParty/LIB_RSPT/lib_rspt/signal_packer.h" />
+		<Unit filename="ecg_model.cpp" />
+		<Unit filename="ecg_model.h" />
+		<Unit filename="clinical_ecg.cpp" />
+		<Unit filename="clinical_ecg.h" />
+		<Unit filename="ecg_scenario.cpp" />
+		<Unit filename="ecg_scenario.h" />
+		<Unit filename="ecg_morphology.cpp" />
+		<Unit filename="ecg_morphology.h" />
+		<Unit filename="ecg_scenario_json.cpp" />
+		<Unit filename="ecg_scenario_json.h" />
+		<Unit filename="ecg_render.cpp" />
+		<Unit filename="ecg_render.h" />
+		<Unit filename="hrv_metrics.cpp" />
+		<Unit filename="hrv_metrics.h" />
+		<Unit filename="ppg_model.cpp" />
+		<Unit filename="ppg_model.h" />
+		<Unit filename="scenario_stress.cpp" />
+		<Unit filename="scenario_stress.h" />
+		<Unit filename="signal_quality.cpp" />
+		<Unit filename="signal_quality.h" />
+		<Unit filename="SignalProc_RSPT.cpp" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

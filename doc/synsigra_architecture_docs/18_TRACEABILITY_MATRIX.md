@@ -70,6 +70,7 @@ The authoritative implementation/result details remain in the linked issues.
 | `TRC-ECG-PACE-001` | `REQ-ECG-PACE-001..004` | ECG paced rhythm scenarios | `src/clinical_ecg.*`, `src/ecg_scenario.*`, `src/ecg_scenario_json.*`, `src/ecg_export.*`, `src/ecg_beat_classification.*`, `src/ecg_wfdb_export.*` | `TEST-ECG-PHANTOM-001`, `TEST-ECG-SCENARIO-001`, `TEST-ECG-JSON-001`, `TEST-ECG-EXPORT-001`, `TEST-ECG-BEAT-CLASS-001`, `TEST-WFDB-EXPORT-001`, `TEST-CLI-001` | [signal_synth#46](https://github.com/tamask1s/signal_synth/issues/46) |
 | `TRC-ECG-AQ-001` | `REQ-ECG-AQ-001..005` | ECG acquisition and lead-fault scenario pack | `src/signal_quality.*`, `src/ecg_scenario_json.*`, `src/ecg_export.*`, `examples/scenarios/packs/`, `examples/packs/` | `TEST-SIGNAL-QUALITY-001`, `TEST-ECG-JSON-001`, `TEST-ECG-EXPORT-001`, `TEST-CLI-001`, `TEST-ECG-PACK-001` | [signal_synth#47](https://github.com/tamask1s/signal_synth/issues/47) |
 | `TRC-API-002` | `REQ-API-001..003`, `REQ-NFR-003`, `REQ-NFR-008`, `REQ-VER-001` | DataBrowser fixed-label safety correction | SVN `SignalProc_RSPT.cpp` | Standalone guard-buffer test and manual DataBrowser integration; automated app-build gap | [signal_synth#22](https://github.com/tamask1s/signal_synth/issues/22) |
+| `TRC-DATABROWSER-001` | `REQ-API-001..003`, `REQ-NFR-003`, `REQ-NFR-008`, supporting ECG/PPG foundation requirements | Generation-only DataBrowser synchronization | `src/ecg_render.*`, `integrations/databrowser/`, `examples/databrowser/077..079` | `TEST-DATABROWSER-GCC49-001`, SHA-256 dry-run sync check, manual Windows UI gap | [signal_synth#72](https://github.com/tamask1s/signal_synth/issues/72) |
 | `TRC-DSP-001` | Supporting `REQ-NFR-003`, `REQ-NFR-008` | Shared DSP ownership | RSPT FIR design API | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#1](https://github.com/tamask1s/rspt_module/issues/1) |
 | `TRC-DSP-002` | Supporting `REQ-NFR-008` | IIR coefficient contract | RSPT IIR/filter consumers | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#2](https://github.com/tamask1s/rspt_module/issues/2) |
 
@@ -105,6 +106,7 @@ The authoritative implementation/result details remain in the linked issues.
 | `TEST-HRV-SCORING-001` | `teszt/hrv_scoring_test.cpp` | Strict HRV user-output parsing, metric tolerance scoring, accepted-RR matching, report contracts, and rejection behavior |
 | `TEST-CLI-001` | `teszt/cli_test.cmake` | CLI file/stdin, stdout/stderr, exit codes, size limit, pack rendering/scoring, and challenge package generation |
 | `TEST-BUILD-001` | `teszt/package_smoke/` | Installed package discovery, public-header compilation, link and execution |
+| `TEST-DATABROWSER-GCC49-001` | `teszt/databrowser_generation_test.cpp` and generation-only CMake target | Strict C++11 generation subset, DataBrowser scripts 077-079, modern ECG/PPG adapter contract |
 | `CI-VER-001` | `.github/workflows/verification.yml` | Linux and Windows configure/build/test execution |
 
 ## 4. Evidence policy

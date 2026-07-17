@@ -102,6 +102,7 @@ Stable suite IDs use the form `TEST-<AREA>-<NNN>`. The current suites are:
 | `TEST-PPG-001` | Shared-timeline PPG waveform, linkage and fiducials | `teszt/ppg_model_test.cpp` |
 | `TEST-CLI-001` | CLI input, output, exit-code and size-limit contract | `teszt/cli_test.cmake` |
 | `TEST-BUILD-001` | Installed CMake package discovery, link and execution | `teszt/package_smoke/` |
+| `TEST-DATABROWSER-GCC49-001` | Strict C++11 generation subset and DataBrowser integration contract | `teszt/databrowser_generation_test.cpp` |
 
 `CI-VER-001` is the GitHub Actions procedure defined in
 `.github/workflows/verification.yml`. The default push and pull-request path is

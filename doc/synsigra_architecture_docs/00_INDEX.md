@@ -144,6 +144,9 @@ Implementation increment designs:
   ground-truth traces.
 - `increments/049_PPG_OPTICAL_MULTICHANNEL.md` defines optional red/infrared
   PPG waveform channels, channel metadata and multi-channel export contracts.
+- `increments/050_DATABROWSER_GENERATION_SYNC.md` defines the generation-only
+  Windows adapter, modern annotation/channel output, and SHA-256 synchronization
+  contract.
 
 Traceability demonstration:
 

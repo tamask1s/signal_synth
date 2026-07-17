@@ -59,6 +59,40 @@ signal_synth_add_test(challenge_package_test challenge_package_test.cpp TEST-CHA
 signal_synth_add_test(scenario_authoring_test scenario_authoring_test.cpp TEST-AUTHORING-001)
 signal_synth_add_test(scenario_stress_test scenario_stress_test.cpp TEST-SCENARIO-STRESS-001)
 
+add_library(
+    databrowser_generation_core
+    STATIC
+    ../src/ecg_model.cpp
+    ../src/clinical_ecg.cpp
+    ../src/ecg_morphology.cpp
+    ../src/ecg_scenario.cpp
+    ../src/ecg_scenario_json.cpp
+    ../src/ecg_render.cpp
+    ../src/hrv_metrics.cpp
+    ../src/ppg_model.cpp
+    ../src/scenario_stress.cpp
+    ../src/signal_quality.cpp)
+target_include_directories(databrowser_generation_core PUBLIC ../src)
+target_compile_features(databrowser_generation_core PUBLIC cxx_std_11)
+set_target_properties(databrowser_generation_core PROPERTIES CXX_EXTENSIONS OFF)
+if(MSVC)
+    target_compile_options(databrowser_generation_core PRIVATE /W4)
+else()
+    target_compile_options(databrowser_generation_core PRIVATE -Wall -Wextra -Wpedantic -pedantic-errors)
+endif()
+
+add_executable(databrowser_generation_test databrowser_generation_test.cpp)
+target_link_libraries(databrowser_generation_test PRIVATE databrowser_generation_core)
+target_compile_features(databrowser_generation_test PRIVATE cxx_std_11)
+set_target_properties(databrowser_generation_test PROPERTIES CXX_EXTENSIONS OFF)
+if(MSVC)
+    target_compile_options(databrowser_generation_test PRIVATE /W4)
+else()
+    target_compile_options(databrowser_generation_test PRIVATE -Wall -Wextra -Wpedantic -pedantic-errors)
+endif()
+add_test(NAME TEST-DATABROWSER-GCC49-001 COMMAND databrowser_generation_test)
+set_tests_properties(TEST-DATABROWSER-GCC49-001 PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/..")
+
 add_test(
     NAME TEST-BUILD-001
     COMMAND
