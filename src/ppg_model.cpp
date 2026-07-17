@@ -31,7 +31,6 @@ namespace
             && finite(config.dicrotic_amplitude_ratio) && config.dicrotic_amplitude_ratio >= 0.0 && config.dicrotic_amplitude_ratio <= 1.0
             && finite(config.pulse_delay_variation_ms) && config.pulse_delay_variation_ms >= 0.0 && config.pulse_delay_variation_ms <= 1000.0
             && finite(config.pulse_delay_variation_hz) && config.pulse_delay_variation_hz >= 0.0 && config.pulse_delay_variation_hz <= 10.0
-            && finite(config.clock_drift_ppm) && std::fabs(config.clock_drift_ppm) <= 100000.0
             && finite(config.pulse_delay_jitter_ms) && config.pulse_delay_jitter_ms >= 0.0 && config.pulse_delay_jitter_ms <= 1000.0
             && finite(config.low_frequency_amplitude_modulation_ratio) && config.low_frequency_amplitude_modulation_ratio >= 0.0 && config.low_frequency_amplitude_modulation_ratio <= 0.95
             && finite(config.low_frequency_amplitude_modulation_hz) && config.low_frequency_amplitude_modulation_hz > 0.0 && config.low_frequency_amplitude_modulation_hz <= 1.0
@@ -291,7 +290,7 @@ namespace signal_synth
     }
 
     ppg_config::ppg_config()
-        : enabled(false), pulse_delay_ms(180.0), rise_time_ms(120.0), decay_time_ms(300.0), amplitude_au(1.0), baseline_au(0.0), dicrotic_delay_ms(180.0), dicrotic_width_ms(80.0), dicrotic_amplitude_ratio(0.15), pulse_delay_variation_ms(0.0), pulse_delay_variation_hz(0.0), missing_pulse_every_n_beats(0), clock_drift_ppm(0.0), pulse_delay_jitter_ms(0.0), low_frequency_amplitude_modulation_ratio(0.0), low_frequency_amplitude_modulation_hz(0.1), rise_time_variation_ratio(0.0), decay_time_variation_ratio(0.0), pac_pulse_amplitude_scale(1.0), pvc_pulse_amplitude_scale(1.0), paced_pulse_amplitude_scale(1.0), seed(0x5050475f53545253ULL), red(), infrared(), perfusion_episodes()
+        : enabled(false), pulse_delay_ms(180.0), rise_time_ms(120.0), decay_time_ms(300.0), amplitude_au(1.0), baseline_au(0.0), dicrotic_delay_ms(180.0), dicrotic_width_ms(80.0), dicrotic_amplitude_ratio(0.15), pulse_delay_variation_ms(0.0), pulse_delay_variation_hz(0.0), missing_pulse_every_n_beats(0), pulse_delay_jitter_ms(0.0), low_frequency_amplitude_modulation_ratio(0.0), low_frequency_amplitude_modulation_hz(0.1), rise_time_variation_ratio(0.0), decay_time_variation_ratio(0.0), pac_pulse_amplitude_scale(1.0), pvc_pulse_amplitude_scale(1.0), paced_pulse_amplitude_scale(1.0), seed(0x5050475f53545253ULL), red(), infrared(), perfusion_episodes()
     {
         red.amplitude_gain = 0.85;
         red.baseline_au = 0.10;
@@ -444,8 +443,7 @@ namespace signal_synth
                 const bool arrhythmia_weak = arrhythmia_scale > 0.0 && arrhythmia_scale < 1.0;
                 const double variable_delay_ms = config_.pulse_delay_variation_ms * std::sin(2.0 * pi * config_.pulse_delay_variation_hz * beat.r_peak_time_seconds + variation_phase);
                 const double jitter_ms = config_.pulse_delay_jitter_ms * deterministic_signed(config_.seed, beat_index, 0x5054545f4a495454ULL);
-                const double drift_seconds = beat.r_peak_time_seconds * config_.clock_drift_ppm * 1e-6;
-                const double pulse_delay_seconds = (config_.pulse_delay_ms + variable_delay_ms + jitter_ms) / 1000.0 + drift_seconds;
+                const double pulse_delay_seconds = (config_.pulse_delay_ms + variable_delay_ms + jitter_ms) / 1000.0;
                 if (pulse_delay_seconds < 0.0)
                     return false;
                 const double low_frequency_scale = std::max(0.0, 1.0 + config_.low_frequency_amplitude_modulation_ratio * std::sin(2.0 * pi * config_.low_frequency_amplitude_modulation_hz * beat.r_peak_time_seconds + amplitude_phase));

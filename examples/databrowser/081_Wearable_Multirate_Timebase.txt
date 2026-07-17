@@ -1,0 +1,25 @@
+// Independent wearable clocks, sample rates, timestamp jitter and packet-loss truth.
+#define OUTPUT_BASE wearable_multirate_timebase
+
+DataDelete();
+
+GenerateWearableScenarioJSON(wearable_signals, wearable_timing, {
+  "schema_version": 5, "scenario_id": "wearable_databrowser_v5", "name": "Wearable multi-rate timebase", "description": "Independent ECG, PPG and accelerometer device clocks for visual QA.", "author": "Synsigra", "tags": ["multirate", "packet_loss", "timing", "wearable"], "duration_seconds": 20, "sample_rate_hz": 250, "seed": 7703001,
+  "ecg": {"heart_rate_bpm": 72, "rr_variability_seconds": 0.025, "ectopic_every_n_beats": 0, "second_degree_av_pattern": "unspecified", "q_wave_territory": "unspecified", "episode_type": "none", "episode_start_seconds": 2, "episode_duration_seconds": 4, "episode_rate_bpm": 170, "flutter_conduction_pattern": "fixed", "pacing_mode": "ventricular", "pacing_non_capture_every_n_beats": 0, "fidelity_policy": "allow_parameterized", "conditions": [{"code": "NORM", "severity": 1}]},
+  "ppg": {"enabled": true, "pulse_delay_ms": 180, "rise_time_ms": 120, "decay_time_ms": 300, "amplitude_au": 1, "baseline_au": 0, "dicrotic_delay_ms": 180, "dicrotic_width_ms": 80, "dicrotic_amplitude_ratio": 0.15, "pulse_delay_variation_ms": 12, "pulse_delay_variation_hz": 0.08, "missing_pulse_every_n_beats": 0, "seed": 7703002, "pulse_delay_jitter_ms": 4, "low_frequency_amplitude_modulation_ratio": 0.1, "low_frequency_amplitude_modulation_hz": 0.06, "rise_time_variation_ratio": 0.08, "decay_time_variation_ratio": 0.1, "pac_pulse_amplitude_scale": 1, "pvc_pulse_amplitude_scale": 1, "paced_pulse_amplitude_scale": 1, "perfusion_episodes": [], "red": {"enabled": true, "amplitude_gain": 0.82, "baseline_au": 0.1, "delay_ms": 8, "noise_std_au": 0.001, "seed": 7703003}, "infrared": {"enabled": true, "amplitude_gain": 1.18, "baseline_au": 0.18, "delay_ms": 14, "noise_std_au": 0.0008, "seed": 7703004}},
+  "randomization": {"enabled": false, "seed": 7703005, "envelopes": []},
+  "physiology": {"respiration_frequency_hz": 0.22, "respiratory_rr_amplitude_seconds": 0.025, "ecg_baseline_amplitude_mv": 0.06, "ppg_amplitude_modulation_ratio": 0.15, "activity_start_seconds": 4, "activity_duration_seconds": 12, "activity_intensity": 0.55, "seed": 7703006},
+  "output": {"compact": false, "retain_source_channels": true, "include_waveform_csv": true, "include_edf_bdf": false},
+  "wearable": {
+    "ecg": {"enabled": true, "sample_rate_hz": 250, "clock_offset_ms": 4, "clock_drift_ppm": 40, "timestamp_jitter_ms": 0.2, "packet_size_samples": 25, "packet_loss_probability": 0.01, "packet_loss_burst_packets": 2, "seed": 7703011},
+    "ppg": {"enabled": true, "sample_rate_hz": 100, "clock_offset_ms": 18, "clock_drift_ppm": -120, "timestamp_jitter_ms": 0.8, "packet_size_samples": 10, "packet_loss_probability": 0.08, "packet_loss_burst_packets": 3, "seed": 7703012},
+    "accelerometer": {"enabled": true, "sample_rate_hz": 50, "clock_offset_ms": -12, "clock_drift_ppm": 80, "timestamp_jitter_ms": 1.5, "packet_size_samples": 10, "packet_loss_probability": 0.04, "packet_loss_burst_packets": 3, "seed": 7703013}
+  }
+});
+
+SaveVarToFile(wearable_signals, CatStrings(OUTPUT_BASE, _signals.bin), 100, 8);
+SaveVarToFile(wearable_timing, CatStrings(OUTPUT_BASE, _timing.bin), 100, 8);
+DisplayData(wearable_signals, fit_width,, A2, 001);
+DisplayData(wearable_timing, fit_width,, A2, 001);
+SavePic(wearable_signals, CatStrings(OUTPUT_BASE, _signals.gif));
+SavePic(wearable_timing, CatStrings(OUTPUT_BASE, _timing.gif));

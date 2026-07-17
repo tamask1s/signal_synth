@@ -3,6 +3,7 @@
 #include "ecg_scenario.h"
 #include "ppg_model.h"
 #include "signal_quality.h"
+#include "wearable_timebase.h"
 
 #include <string>
 #include <vector>
@@ -110,6 +111,7 @@ namespace signal_synth
         physiology_coupling_config physiology;
         scenario_output_config output;
         signal_quality_config signal_quality;
+        wearable_timebase_config wearable;
 
         unsigned int sample_count() const;
     };

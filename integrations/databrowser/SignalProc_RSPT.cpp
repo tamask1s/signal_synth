@@ -32,6 +32,7 @@ using namespace std;
 #include "ecg_scenario_json.h"
 #include "ecg_render.h"
 #include "signal_quality.h"
+#include "wearable_timebase.h"
 
 CVariable_List*    m_variable_list_ref = 0; /// reference for the application's variable list.
 CSignalCodec_List* m_data_list_ref = 0;     /// reference for the application's data list.
@@ -1794,6 +1795,116 @@ char* GenerateECGScenarioJSON(char* output_name, char* scenario_json, char* anno
     return 0;
 }
 
+struct wearable_display_channel
+{
+    const signal_synth::wearable_stream_record* stream;
+    unsigned int source_channel;
+};
+
+void add_wearable_packet_markers(CVariable* output, unsigned int output_channel, const signal_synth::wearable_stream_record& stream)
+{
+    for (unsigned int i = 0; i < stream.packets.size(); ++i)
+    {
+        const signal_synth::wearable_packet_annotation& packet = stream.packets[i];
+        if (packet.dropped)
+            put_marker_interval(output, static_cast<double>(packet.first_sample_index) / stream.config.sample_rate_hz, static_cast<double>(packet.sample_count) / stream.config.sample_rate_hz, "GT dropped device packet", output_channel);
+    }
+}
+
+CVariable* create_wearable_signal_variable(const signal_synth::wearable_timebase_record& wearable)
+{
+    vector<wearable_display_channel> channels;
+    const signal_synth::wearable_stream_record* ecg = wearable.stream(signal_synth::wearable_stream_ecg);
+    const signal_synth::wearable_stream_record* ppg = wearable.stream(signal_synth::wearable_stream_ppg);
+    const signal_synth::wearable_stream_record* accelerometer = wearable.stream(signal_synth::wearable_stream_accelerometer);
+    if (ecg && ecg->channel_count() > signal_synth::clinical_lead_ii)
+        channels.push_back(wearable_display_channel{ecg, signal_synth::clinical_lead_ii});
+    if (ppg)
+        for (unsigned int channel = 0; channel < ppg->channel_count(); ++channel)
+            channels.push_back(wearable_display_channel{ppg, channel});
+    if (accelerometer && accelerometer->channel_count())
+        channels.push_back(wearable_display_channel{accelerometer, 0U});
+    if (channels.empty())
+        return 0;
+    vector<unsigned int> sizes(channels.size(), 0U);
+    for (unsigned int channel = 0; channel < channels.size(); ++channel)
+        sizes[channel] = channels[channel].stream->sample_count();
+    CVariable* output = NewCVariable();
+    output->Rebuild(channels.size(), sizes.data());
+    for (unsigned int channel = 0; channel < channels.size(); ++channel)
+    {
+        const signal_synth::wearable_stream_record& stream = *channels[channel].stream;
+        output->m_sample_rates.m_data[channel] = stream.config.sample_rate_hz;
+        const string label = string("Wearable ") + signal_synth::wearable_stream_kind_name(stream.kind) + " " + stream.channel_names[channels[channel].source_channel];
+        copy_fixed_string(output->m_labels.m_data[channel].s, label.c_str());
+        copy_fixed_string(output->m_vertical_units.m_data[channel].s, stream.channel_units[channels[channel].source_channel].c_str());
+        for (unsigned int sample = 0; sample < stream.sample_count(); ++sample)
+            output->m_data[channel][sample] = stream.samples[sample].received ? stream.channel_samples[channels[channel].source_channel][sample] : 0.0;
+        add_wearable_packet_markers(output, channel, stream);
+    }
+    return output;
+}
+
+CVariable* create_wearable_timing_variable(const signal_synth::wearable_timebase_record& wearable)
+{
+    if (wearable.streams.empty())
+        return 0;
+    vector<unsigned int> sizes(wearable.streams.size() * 2U, 0U);
+    for (unsigned int stream = 0; stream < wearable.streams.size(); ++stream)
+        sizes[2U * stream] = sizes[2U * stream + 1U] = wearable.streams[stream].sample_count();
+    CVariable* output = NewCVariable();
+    output->Rebuild(sizes.size(), sizes.data());
+    for (unsigned int stream_index = 0; stream_index < wearable.streams.size(); ++stream_index)
+    {
+        const signal_synth::wearable_stream_record& stream = wearable.streams[stream_index];
+        const unsigned int error_channel = 2U * stream_index;
+        const unsigned int availability_channel = error_channel + 1U;
+        output->m_sample_rates.m_data[error_channel] = stream.config.sample_rate_hz;
+        output->m_sample_rates.m_data[availability_channel] = stream.config.sample_rate_hz;
+        const string prefix = string("Wearable ") + signal_synth::wearable_stream_kind_name(stream.kind);
+        copy_fixed_string(output->m_labels.m_data[error_channel].s, (prefix + " timestamp error").c_str());
+        copy_fixed_string(output->m_labels.m_data[availability_channel].s, (prefix + " packet availability").c_str());
+        copy_fixed_string(output->m_vertical_units.m_data[error_channel].s, "ms");
+        copy_fixed_string(output->m_vertical_units.m_data[availability_channel].s, "bool");
+        for (unsigned int sample = 0; sample < stream.sample_count(); ++sample)
+        {
+            output->m_data[error_channel][sample] = 1000.0 * (stream.samples[sample].reported_device_time_seconds - stream.samples[sample].latent_time_seconds);
+            output->m_data[availability_channel][sample] = stream.samples[sample].received ? 1.0 : 0.0;
+        }
+        add_wearable_packet_markers(output, availability_channel, stream);
+    }
+    return output;
+}
+
+char* GenerateWearableScenarioJSON(char* signal_output_name, char* timing_output_name, char* scenario_json)
+{
+    if (!signal_output_name || !signal_output_name[0] || !timing_output_name || !timing_output_name[0] || !scenario_json)
+        return MakeString(NewChar, "ERROR: GenerateWearableScenarioJSON: not enough arguments.");
+    if (strcmp(signal_output_name, timing_output_name) == 0)
+        return MakeString(NewChar, "ERROR: GenerateWearableScenarioJSON: output names must differ.");
+    signal_synth::ecg_scenario_document document;
+    signal_synth::ecg_scenario_json_result json_result;
+    if (!signal_synth::parse_ecg_scenario_json(scenario_json, document, json_result))
+    {
+        if (!json_result.messages.empty())
+            return MakeString(NewChar, "ERROR: GenerateWearableScenarioJSON: ", json_result.messages[0].path.c_str(), ": ", json_result.messages[0].message.c_str());
+        return MakeString(NewChar, "ERROR: GenerateWearableScenarioJSON: scenario JSON parsing failed.");
+    }
+    signal_synth::ecg_render_bundle render;
+    signal_synth::ecg_document_render_result render_result;
+    if (!signal_synth::render_ecg_document(document, render, render_result) || render.wearable.streams.empty())
+        return MakeString(NewChar, "ERROR: GenerateWearableScenarioJSON: wearable render failed or no wearable streams were configured.");
+    CVariable* signals = create_wearable_signal_variable(render.wearable);
+    CVariable* timing = create_wearable_timing_variable(render.wearable);
+    if (!signals || !timing)
+        return MakeString(NewChar, "ERROR: GenerateWearableScenarioJSON: output variable creation failed.");
+    copy_fixed_string(signals->m_varname, signal_output_name);
+    copy_fixed_string(timing->m_varname, timing_output_name);
+    m_variable_list_ref->Insert(signal_output_name, signals);
+    m_variable_list_ref->Insert(timing_output_name, timing);
+    return 0;
+}
+
 extern "C"
 {
     char* __declspec (dllexport) Procedure(int a_procindx, char* a_statement_body, char* a_param1, char* a_param2, char* a_param3, char* a_param4, char* a_param5, char* a_param6, char* a_param7, char* a_param8, char* a_param9, char* a_param10, char* a_param11, char* a_param12)
@@ -1826,6 +1937,8 @@ extern "C"
             return GenerateSyntheticECGPPG(a_param1, a_param2, a_param3, a_param4, a_param5);
         case 12:
             return GenerateECGScenarioJSON(a_param1, a_param2, a_param3);
+        case 13:
+            return GenerateWearableScenarioJSON(a_param1, a_param2, a_param3);
         }
         return 0;
     }
@@ -1859,6 +1972,7 @@ extern "C"
         FunctionList.AddElement("GenerateECGQAScenario(ecg_outdataname, source_outdataname, assertion_outdataname, number_of_samples, sampling_rate, parameters, annotation_output)");
         FunctionList.AddElement("GenerateSyntheticECGPPG(outdataname, number_of_samples, sampling_rate, parameters, annotation_output)");
         FunctionList.AddElement("GenerateECGScenarioJSON(outdataname, scenario_json, annotation_output)");
+        FunctionList.AddElement("GenerateWearableScenarioJSON(signal_outdataname, timing_outdataname, scenario_json)");
         a_functionlibrary_reference->ParseFunctionList(&FunctionList);
         return FunctionList.m_size;
     }

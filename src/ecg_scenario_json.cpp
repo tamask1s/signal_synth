@@ -603,6 +603,73 @@ namespace
                << ",\"seed\":" << channel.seed << '}';
     }
 
+    void append_wearable_stream_json(std::ostringstream& output, const signal_synth::wearable_stream_config& stream)
+    {
+        output << "{\"enabled\":" << (stream.enabled ? "true" : "false");
+        if (stream.enabled)
+            output << ",\"sample_rate_hz\":" << stream.sample_rate_hz
+                   << ",\"clock_offset_ms\":" << format_double(stream.clock_offset_ms)
+                   << ",\"clock_drift_ppm\":" << format_double(stream.clock_drift_ppm)
+                   << ",\"timestamp_jitter_ms\":" << format_double(stream.timestamp_jitter_ms)
+                   << ",\"packet_size_samples\":" << stream.packet_size_samples
+                   << ",\"packet_loss_probability\":" << format_double(stream.packet_loss_probability)
+                   << ",\"packet_loss_burst_packets\":" << stream.packet_loss_burst_packets
+                   << ",\"seed\":" << stream.seed;
+        output << '}';
+    }
+
+    void parse_wearable_stream(const json_value* value, const std::string& path, signal_synth::wearable_stream_config& output, signal_synth::ecg_scenario_json_result& result)
+    {
+        if (!value)
+        {
+            add_message(result, signal_synth::ecg_json_missing_field, path, "required field is missing");
+            return;
+        }
+        if (value->type != json_value::object_kind)
+        {
+            add_message(result, signal_synth::ecg_json_type, path, "field has the wrong JSON type");
+            return;
+        }
+        const json_value* enabled = required(*value, "enabled", json_value::bool_kind, path, result);
+        if (!enabled)
+            return;
+        if (!enabled->boolean)
+        {
+            const char* fields[] = {"enabled"};
+            allowed_fields(*value, fields, 1u, path, result);
+            return;
+        }
+
+        const char* fields[] = {"enabled","sample_rate_hz","clock_offset_ms","clock_drift_ppm","timestamp_jitter_ms","packet_size_samples","packet_loss_probability","packet_loss_burst_packets","seed"};
+        allowed_fields(*value, fields, sizeof(fields) / sizeof(fields[0]), path, result);
+        const json_value* sample_rate = required(*value, fields[1], json_value::number_kind, path, result);
+        const json_value* offset = required(*value, fields[2], json_value::number_kind, path, result);
+        const json_value* drift = required(*value, fields[3], json_value::number_kind, path, result);
+        const json_value* jitter = required(*value, fields[4], json_value::number_kind, path, result);
+        const json_value* packet_size = required(*value, fields[5], json_value::number_kind, path, result);
+        const json_value* loss_probability = required(*value, fields[6], json_value::number_kind, path, result);
+        const json_value* burst_packets = required(*value, fields[7], json_value::number_kind, path, result);
+        const json_value* seed = required(*value, fields[8], json_value::number_kind, path, result);
+        unsigned long long sample_rate_integer = 0, packet_size_integer = 0, burst_integer = 0, seed_integer = 0;
+        if (sample_rate && !integral_number(*sample_rate, std::numeric_limits<unsigned int>::max(), sample_rate_integer))
+            add_message(result, signal_synth::ecg_json_range, path + ".sample_rate_hz", "field must be an unsigned integer");
+        if (packet_size && !integral_number(*packet_size, std::numeric_limits<unsigned int>::max(), packet_size_integer))
+            add_message(result, signal_synth::ecg_json_range, path + ".packet_size_samples", "field must be an unsigned integer");
+        if (burst_packets && !integral_number(*burst_packets, std::numeric_limits<unsigned int>::max(), burst_integer))
+            add_message(result, signal_synth::ecg_json_range, path + ".packet_loss_burst_packets", "field must be an unsigned integer");
+        if (seed && !integral_number(*seed, std::numeric_limits<unsigned long long>::max(), seed_integer))
+            add_message(result, signal_synth::ecg_json_range, path + ".seed", "seed must be an unsigned 64-bit decimal integer");
+        output.enabled = true;
+        if (sample_rate) output.sample_rate_hz = static_cast<unsigned int>(sample_rate_integer);
+        if (offset) output.clock_offset_ms = offset->number;
+        if (drift) output.clock_drift_ppm = drift->number;
+        if (jitter) output.timestamp_jitter_ms = jitter->number;
+        if (packet_size) output.packet_size_samples = static_cast<unsigned int>(packet_size_integer);
+        if (loss_probability) output.packet_loss_probability = loss_probability->number;
+        if (burst_packets) output.packet_loss_burst_packets = static_cast<unsigned int>(burst_integer);
+        if (seed) output.seed = seed_integer;
+    }
+
     const char* av_pattern_name(signal_synth::ecg_second_degree_av_pattern value)
     {
         switch (value)
@@ -837,7 +904,6 @@ namespace
             && config.pulse_delay_variation_ms == defaults.pulse_delay_variation_ms
             && config.pulse_delay_variation_hz == defaults.pulse_delay_variation_hz
             && config.missing_pulse_every_n_beats == defaults.missing_pulse_every_n_beats
-            && config.clock_drift_ppm == defaults.clock_drift_ppm
             && config.pulse_delay_jitter_ms == defaults.pulse_delay_jitter_ms
             && config.low_frequency_amplitude_modulation_ratio == defaults.low_frequency_amplitude_modulation_ratio
             && config.low_frequency_amplitude_modulation_hz == defaults.low_frequency_amplitude_modulation_hz
@@ -911,7 +977,6 @@ namespace
         return document.ppg.pulse_delay_variation_ms == ppg.pulse_delay_variation_ms
             && document.ppg.pulse_delay_variation_hz == ppg.pulse_delay_variation_hz
             && document.ppg.missing_pulse_every_n_beats == ppg.missing_pulse_every_n_beats
-            && document.ppg.clock_drift_ppm == ppg.clock_drift_ppm
             && document.ppg.seed == ppg.seed
             && !document.ecg.has_morphology_controls()
             && !document.ecg.qt_adaptation_enabled()
@@ -970,6 +1035,23 @@ namespace
             && document.ppg.perfusion_episodes.empty();
     }
 
+    bool default_v5_config(const signal_synth::ecg_scenario_document& document)
+    {
+        return signal_synth::wearable_stream_config_is_default(document.wearable.ecg)
+            && signal_synth::wearable_stream_config_is_default(document.wearable.ppg)
+            && signal_synth::wearable_stream_config_is_default(document.wearable.accelerometer);
+    }
+
+    bool accelerometer_source_available(const signal_synth::ecg_scenario_document& document)
+    {
+        if (document.physiology.activity_intensity > 0.0)
+            return true;
+        for (std::size_t i = 0; i < document.signal_quality.artifacts.size(); ++i)
+            if (signal_synth::signal_quality_artifact_is_motion(document.signal_quality.artifacts[i].type))
+                return true;
+        return false;
+    }
+
     bool valid_v3_config(const signal_synth::ecg_scenario_document& document)
     {
         const signal_synth::scenario_randomization_config& randomization = document.randomization;
@@ -1009,15 +1091,13 @@ namespace
             || document.ecg.has_condition(signal_synth::ecg_condition_psvt) || document.ecg.has_condition(signal_synth::ecg_condition_svarr)
             || document.ecg.has_condition(signal_synth::ecg_condition_1avb) || document.ecg.has_condition(signal_synth::ecg_condition_2avb) || document.ecg.has_condition(signal_synth::ecg_condition_3avb)))
             return false;
-        if ((physiology.ppg_amplitude_modulation_ratio > 0.0 || document.ppg.pulse_delay_variation_ms > 0.0 || document.ppg.missing_pulse_every_n_beats > 0 || document.ppg.clock_drift_ppm != 0.0) && !document.ppg.enabled)
+        if ((physiology.ppg_amplitude_modulation_ratio > 0.0 || document.ppg.pulse_delay_variation_ms > 0.0 || document.ppg.missing_pulse_every_n_beats > 0) && !document.ppg.enabled)
             return false;
         double minimum_pulse_delay_ms = document.ppg.pulse_delay_ms;
         for (std::size_t i = 0; i < randomization.envelopes.size(); ++i)
             if (randomization.envelopes[i].parameter == "ppg.pulse_delay_ms")
                 minimum_pulse_delay_ms = randomization.envelopes[i].minimum;
         minimum_pulse_delay_ms -= document.ppg.pulse_delay_variation_ms;
-        if (document.ppg.clock_drift_ppm < 0.0)
-            minimum_pulse_delay_ms += document.duration_seconds * document.ppg.clock_drift_ppm * 0.001;
         if (minimum_pulse_delay_ms < 0.0)
             return false;
         if (document.output.compact && (document.output.retain_source_channels || document.output.include_waveform_csv || document.output.include_edf_bdf))
@@ -1045,8 +1125,6 @@ namespace
             if (document.randomization.envelopes[i].parameter == "ppg.pulse_delay_ms")
                 minimum_pulse_delay_ms = document.randomization.envelopes[i].minimum;
         minimum_pulse_delay_ms -= document.ppg.pulse_delay_variation_ms + document.ppg.pulse_delay_jitter_ms;
-        if (document.ppg.clock_drift_ppm < 0.0)
-            minimum_pulse_delay_ms += document.duration_seconds * document.ppg.clock_drift_ppm * 0.001;
         if (minimum_pulse_delay_ms < 0.0)
             return false;
         for (std::size_t i = 0; i < document.ppg.perfusion_episodes.size(); ++i)
@@ -1058,10 +1136,16 @@ namespace
         return true;
     }
 
+    bool valid_v5_config(const signal_synth::ecg_scenario_document& document)
+    {
+        return valid_v4_config(document)
+            && signal_synth::validate_wearable_timebase_config(document.wearable, document.duration_seconds, document.ecg.sampling_rate_hz(), document.ppg.enabled, accelerometer_source_available(document));
+    }
+
     bool validate_document(const signal_synth::ecg_scenario_document& document, signal_synth::ecg_scenario_json_result& result, std::vector<std::string>& sorted_tags)
     {
-        if (document.schema_version < 1 || document.schema_version > 4)
-            add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema versions 1, 2, 3, and 4 are supported");
+        if (document.schema_version < 1 || document.schema_version > 5)
+            add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema versions 1, 2, 3, 4, and 5 are supported");
         if (document.schema_version == 1 && !default_ppg_config(document.ppg))
             add_message(result, signal_synth::ecg_json_semantic, "$.ppg", "schema version 1 cannot represent PPG configuration");
         if (document.schema_version == 1 && !default_hrv_config(document.hrv))
@@ -1078,8 +1162,12 @@ namespace
             add_message(result, signal_synth::ecg_json_range, "$", "invalid schema-v3 randomization, physiology, output, or PPG stress configuration");
         if (document.schema_version < 4 && !default_v4_config(document))
             add_message(result, signal_synth::ecg_json_semantic, "$.ppg", "PPG physiology-v2 and perfusion controls require schema version 4");
-        if (document.schema_version == 4 && !valid_v4_config(document))
+        if (document.schema_version >= 4 && !valid_v4_config(document))
             add_message(result, signal_synth::ecg_json_range, "$.ppg", "invalid schema-v4 PPG physiology or perfusion configuration");
+        if (document.schema_version < 5 && !default_v5_config(document))
+            add_message(result, signal_synth::ecg_json_semantic, "$.wearable", "multi-rate wearable timebase controls require schema version 5");
+        if (document.schema_version == 5 && !valid_v5_config(document))
+            add_message(result, signal_synth::ecg_json_range, "$.wearable", "invalid wearable timebase configuration or unavailable source stream");
         if (!signal_synth::validate_signal_quality_config(document.signal_quality, document.duration_seconds, document.ecg.sampling_rate_hz(), document.ppg.enabled))
             add_message(result, signal_synth::ecg_json_range, "$.artifacts", "invalid artifact configuration");
         if (!safe_identifier(document.scenario_id))
@@ -1226,7 +1314,6 @@ namespace
                 output << ",\"pulse_delay_variation_ms\":" << format_double(document.ppg.pulse_delay_variation_ms)
                        << ",\"pulse_delay_variation_hz\":" << format_double(document.ppg.pulse_delay_variation_hz)
                        << ",\"missing_pulse_every_n_beats\":" << document.ppg.missing_pulse_every_n_beats
-                       << ",\"clock_drift_ppm\":" << format_double(document.ppg.clock_drift_ppm)
                        << ",\"seed\":" << document.ppg.seed;
             if (document.schema_version >= 4)
             {
@@ -1282,6 +1369,16 @@ namespace
                    << ",\"retain_source_channels\":" << (document.output.retain_source_channels ? "true" : "false")
                    << ",\"include_waveform_csv\":" << (document.output.include_waveform_csv ? "true" : "false")
                    << ",\"include_edf_bdf\":" << (document.output.include_edf_bdf ? "true" : "false") << '}';
+        }
+        if (document.schema_version >= 5)
+        {
+            output << ",\"wearable\":{\"ecg\":";
+            append_wearable_stream_json(output, document.wearable.ecg);
+            output << ",\"ppg\":";
+            append_wearable_stream_json(output, document.wearable.ppg);
+            output << ",\"accelerometer\":";
+            append_wearable_stream_json(output, document.wearable.accelerometer);
+            output << '}';
         }
         if (!document.signal_quality.artifacts.empty())
         {
@@ -1418,7 +1515,7 @@ namespace signal_synth
             return false;
         }
 
-        const char* top_fields[] = {"schema_version","scenario_id","name","description","author","tags","duration_seconds","sample_rate_hz","seed","ecg","hrv","ppg","randomization","physiology","output","artifacts"};
+        const char* top_fields[] = {"schema_version","scenario_id","name","description","author","tags","duration_seconds","sample_rate_hz","seed","ecg","hrv","ppg","randomization","physiology","output","wearable","artifacts"};
         if (!allowed_fields(root, top_fields, sizeof(top_fields) / sizeof(top_fields[0]), "$", fresh_result))
         {
             result = fresh_result;
@@ -1442,8 +1539,8 @@ namespace signal_synth
         }
 
         unsigned long long integer = 0;
-        if (!integral_number(*schema, 4, integer) || integer < 1 || integer > 4)
-            add_message(fresh_result, ecg_json_schema_version, "$.schema_version", "only schema versions 1, 2, 3, and 4 are supported");
+        if (!integral_number(*schema, 5, integer) || integer < 1 || integer > 5)
+            add_message(fresh_result, ecg_json_schema_version, "$.schema_version", "only schema versions 1, 2, 3, 4, and 5 are supported");
         ecg_scenario_document document;
         document.schema_version = static_cast<unsigned int>(integer);
         document.ecg.clear_conditions();
@@ -1799,8 +1896,8 @@ namespace signal_synth
                 add_message(fresh_result, ecg_json_type, "$.ppg", "field has the wrong JSON type");
             else
             {
-                const char* ppg_fields[] = {"enabled","pulse_delay_ms","rise_time_ms","decay_time_ms","amplitude_au","baseline_au","dicrotic_delay_ms","dicrotic_width_ms","dicrotic_amplitude_ratio","pulse_delay_variation_ms","pulse_delay_variation_hz","missing_pulse_every_n_beats","clock_drift_ppm","seed","pulse_delay_jitter_ms","low_frequency_amplitude_modulation_ratio","low_frequency_amplitude_modulation_hz","rise_time_variation_ratio","decay_time_variation_ratio","pac_pulse_amplitude_scale","pvc_pulse_amplitude_scale","paced_pulse_amplitude_scale","perfusion_episodes","red","infrared"};
-                const std::size_t ppg_field_count = document.schema_version >= 4 ? sizeof(ppg_fields) / sizeof(ppg_fields[0]) : document.schema_version >= 3 ? 14u : 9u;
+                const char* ppg_fields[] = {"enabled","pulse_delay_ms","rise_time_ms","decay_time_ms","amplitude_au","baseline_au","dicrotic_delay_ms","dicrotic_width_ms","dicrotic_amplitude_ratio","pulse_delay_variation_ms","pulse_delay_variation_hz","missing_pulse_every_n_beats","seed","pulse_delay_jitter_ms","low_frequency_amplitude_modulation_ratio","low_frequency_amplitude_modulation_hz","rise_time_variation_ratio","decay_time_variation_ratio","pac_pulse_amplitude_scale","pvc_pulse_amplitude_scale","paced_pulse_amplitude_scale","perfusion_episodes","red","infrared"};
+                const std::size_t ppg_field_count = document.schema_version >= 4 ? sizeof(ppg_fields) / sizeof(ppg_fields[0]) : document.schema_version >= 3 ? 13u : 9u;
                 allowed_fields(*ppg, ppg_fields, ppg_field_count, "$.ppg", fresh_result);
                 const json_value* enabled = required(*ppg, "enabled", json_value::bool_kind, "$.ppg", fresh_result);
                 const json_value* pulse_delay = required(*ppg, "pulse_delay_ms", json_value::number_kind, "$.ppg", fresh_result);
@@ -1814,7 +1911,6 @@ namespace signal_synth
                 const json_value* delay_variation = member(*ppg, "pulse_delay_variation_ms");
                 const json_value* delay_frequency = member(*ppg, "pulse_delay_variation_hz");
                 const json_value* missing_pulse = member(*ppg, "missing_pulse_every_n_beats");
-                const json_value* clock_drift = member(*ppg, "clock_drift_ppm");
                 const json_value* ppg_seed = member(*ppg, "seed");
                 const json_value* delay_jitter = member(*ppg, "pulse_delay_jitter_ms");
                 const json_value* lf_amplitude = member(*ppg, "low_frequency_amplitude_modulation_ratio");
@@ -1832,7 +1928,6 @@ namespace signal_synth
                     delay_variation = required(*ppg, "pulse_delay_variation_ms", json_value::number_kind, "$.ppg", fresh_result);
                     delay_frequency = required(*ppg, "pulse_delay_variation_hz", json_value::number_kind, "$.ppg", fresh_result);
                     missing_pulse = required(*ppg, "missing_pulse_every_n_beats", json_value::number_kind, "$.ppg", fresh_result);
-                    clock_drift = required(*ppg, "clock_drift_ppm", json_value::number_kind, "$.ppg", fresh_result);
                     ppg_seed = required(*ppg, "seed", json_value::number_kind, "$.ppg", fresh_result);
                 }
                 if (document.schema_version >= 4)
@@ -1873,13 +1968,6 @@ namespace signal_synth
                         add_message(fresh_result, ecg_json_range, "$.ppg.missing_pulse_every_n_beats", "field must be an unsigned integer");
                     else
                         document.ppg.missing_pulse_every_n_beats = static_cast<unsigned int>(integer);
-                }
-                if (clock_drift)
-                {
-                    if (clock_drift->type != json_value::number_kind)
-                        add_message(fresh_result, ecg_json_type, "$.ppg.clock_drift_ppm", "field has the wrong JSON type");
-                    else
-                        document.ppg.clock_drift_ppm = clock_drift->number;
                 }
                 if (ppg_seed)
                 {
@@ -2071,6 +2159,25 @@ namespace signal_synth
                     if (csv) document.output.include_waveform_csv = csv->boolean;
                     if (edf) document.output.include_edf_bdf = edf->boolean;
                 }
+            }
+        }
+
+        const json_value* wearable = member(root, "wearable");
+        if (document.schema_version < 5 && wearable)
+            add_message(fresh_result, ecg_json_unknown_field, "$.wearable", "wearable timebase requires schema version 5");
+        if (document.schema_version == 5)
+        {
+            if (!wearable)
+                add_message(fresh_result, ecg_json_missing_field, "$.wearable", "required field is missing");
+            else if (wearable->type != json_value::object_kind)
+                add_message(fresh_result, ecg_json_type, "$.wearable", "field has the wrong JSON type");
+            else
+            {
+                const char* fields[] = {"ecg","ppg","accelerometer"};
+                allowed_fields(*wearable, fields, 3u, "$.wearable", fresh_result);
+                parse_wearable_stream(member(*wearable, fields[0]), "$.wearable.ecg", document.wearable.ecg, fresh_result);
+                parse_wearable_stream(member(*wearable, fields[1]), "$.wearable.ppg", document.wearable.ppg, fresh_result);
+                parse_wearable_stream(member(*wearable, fields[2]), "$.wearable.accelerometer", document.wearable.accelerometer, fresh_result);
             }
         }
 

@@ -80,7 +80,6 @@ namespace signal_synth
         double pulse_delay_variation_ms;
         double pulse_delay_variation_hz;
         unsigned int missing_pulse_every_n_beats;
-        double clock_drift_ppm;
         double pulse_delay_jitter_ms;
         double low_frequency_amplitude_modulation_ratio;
         double low_frequency_amplitude_modulation_hz;

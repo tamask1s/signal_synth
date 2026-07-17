@@ -56,6 +56,28 @@ class ChallengeCase(object):
     def waveform(self):
         return read_waveform_csv(self.file_path("waveform_csv"))
 
+    def _case_file_path(self, name):
+        relative_path = "cases/%s/%s" % (self.id, name)
+        if relative_path not in self.files:
+            raise KeyError(name)
+        return self.package.resolve(relative_path)
+
+    def wearable_samples(self, stream):
+        if stream not in ("ecg", "ppg", "accelerometer"):
+            raise ValueError("stream must be 'ecg', 'ppg', or 'accelerometer'")
+        return read_waveform_csv(self._case_file_path("wearable_%s_samples.csv" % stream))
+
+    def wearable_timestamp_truth(self):
+        return read_waveform_csv(self._case_file_path("wearable_timestamp_truth.csv"))
+
+    def wearable_timebase_truth(self):
+        with open(self._case_file_path("wearable_timebase_truth.json"), "r") as handle:
+            return json.load(handle)
+
+    def wearable_alignment_truth(self):
+        with open(self._case_file_path("wearable_alignment_truth.json"), "r") as handle:
+            return json.load(handle)
+
     def annotations(self):
         with open(self.file_path("annotations_json"), "r") as handle:
             return json.load(handle)

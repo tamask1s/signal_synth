@@ -11,7 +11,7 @@ provides the versioned product-facing QA scenario contract, complete PTB-XL
 condition catalog, strict validation, reproducibility fingerprint, and audit
 report. `ecg_morphology` measures deterministic beat-by-lead morphology from
 the generated 12-lead signal. `ecg_scenario_json` provides strict schema-v1
-through schema-v4 JSON parsing, canonical serialization, and SHA-256 document
+through schema-v5 JSON parsing, canonical serialization, and SHA-256 document
 identity. `ppg_model` generates a linked optical pulse channel with variable
 PTT, morphology, modulation, perfusion, weak-pulse, and missing-pulse ground
 truth from the exact ECG ventricular timeline. PPG QA includes deterministic
@@ -26,6 +26,10 @@ not-evaluable states.
 Generic measurement scoring uses one JSON/CSV contract for beat, lead, record,
 and paired-signal outputs, including ECG intervals, ST/T morphology, frontal
 axes, phenotype assertions, PTT, and ECG-to-PPG peak delay.
+`wearable_timebase` samples the final latent ECG, PPG, and accelerometer signals
+through independent device rates and clocks, with deterministic timestamp
+jitter, packet loss, exact latent mappings, and physiological-versus-device
+alignment truth.
 
 ## ECG model status
 
@@ -130,7 +134,7 @@ Use `-DSIGNAL_SYNTH_BUILD_CLI=OFF` for a library-only build.
 
 The render command creates deterministic scenario, metadata, waveform,
 annotation, metric, warning, provenance, claim-boundary, HTML, WFDB, EDF+,
-and BDF+ artifacts. Compact schema-v3/v4 scenarios retain WFDB while omitting
+and BDF+ artifacts. Compact schema-v3/v4/v5 scenarios retain WFDB while omitting
 redundant large waveform formats. Reports and exports are deterministic
 synthetic engineering verification evidence, not clinical validation.
 
@@ -170,7 +174,7 @@ External beta users install the generator-free wheel supplied with the
 release:
 
 ```bash
-python -m pip install synsigra-0.5.0-py3-none-any.whl
+python -m pip install synsigra-0.6.0-py3-none-any.whl
 ```
 
 Run local verification:

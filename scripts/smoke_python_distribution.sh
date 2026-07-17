@@ -75,7 +75,7 @@ python - <<'PY'
 import importlib.metadata
 import synsigra
 assert "site-packages" in synsigra.__file__, synsigra.__file__
-assert importlib.metadata.version("synsigra") == "0.5.0"
+assert importlib.metadata.version("synsigra") == "0.6.0"
 assert callable(synsigra.load_measurements)
 assert callable(synsigra.score_measurements)
 PY

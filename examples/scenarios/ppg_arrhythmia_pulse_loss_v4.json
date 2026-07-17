@@ -39,7 +39,6 @@
     "pulse_delay_variation_ms": 8,
     "pulse_delay_variation_hz": 0.08,
     "missing_pulse_every_n_beats": 0,
-    "clock_drift_ppm": 0,
     "seed": 67067011,
     "pulse_delay_jitter_ms": 4,
     "low_frequency_amplitude_modulation_ratio": 0.05,

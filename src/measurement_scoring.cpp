@@ -278,6 +278,42 @@ namespace
         return 0;
     }
 
+    const signal_synth::wearable_alignment_annotation* wearable_alignment(const signal_synth::ecg_render_bundle& render, unsigned long long beat_index)
+    {
+        for (std::size_t i = 0; i < render.wearable.alignments.size(); ++i)
+            if (render.wearable.alignments[i].ecg_beat_index == beat_index)
+                return &render.wearable.alignments[i];
+        return 0;
+    }
+
+    void add_device_alignment_truth(const signal_synth::ppg_pulse_annotation& pulse, const signal_synth::wearable_alignment_annotation& alignment, std::vector<signal_synth::measurement_truth>& output)
+    {
+        const bool onset_received = alignment.has_observed_onset_device_delta && alignment.ecg_r.received && alignment.ppg_onset.received;
+        const bool onset_absent = pulse.intentionally_missing || pulse.state == signal_synth::ppg_pulse_missing;
+        const signal_synth::measurement_status onset_status = onset_received ? signal_synth::measurement_valid : onset_absent ? signal_synth::measurement_absent : signal_synth::measurement_not_evaluable;
+        const char* onset_reason = onset_received ? "" : onset_absent ? "pulse_intentionally_missing" : alignment.has_observed_onset_device_delta ? "device_sample_dropped" : "pulse_out_of_record";
+        signal_synth::measurement_truth onset_delta = make_truth("device_timestamp_onset_delta", "s", onset_status, signal_synth::measurement_paired_signal, alignment.observed_onset_device_delta_seconds, 0.020, 5.0, onset_reason);
+        onset_delta.measurement.has_beat_index = true; onset_delta.measurement.beat_index = pulse.ecg_beat_index;
+        onset_delta.measurement.has_time_seconds = true; onset_delta.measurement.time_seconds = pulse.ecg_r_time_seconds;
+        onset_delta.measurement.channel = "wearable_ecg_r_to_ppg_onset";
+        output.push_back(onset_delta);
+        signal_synth::measurement_truth onset_error = make_truth("clock_and_sampling_onset_error", "s", onset_status, signal_synth::measurement_paired_signal, alignment.onset_observed_minus_physiological_seconds, 0.010, 0.0, onset_reason);
+        onset_error.measurement = onset_delta.measurement; onset_error.measurement.name = "clock_and_sampling_onset_error";
+        output.push_back(onset_error);
+
+        const bool peak_received = alignment.has_observed_peak_device_delta && alignment.ecg_r.received && alignment.ppg_peak.received;
+        const signal_synth::measurement_status peak_status = peak_received ? signal_synth::measurement_valid : onset_absent ? signal_synth::measurement_absent : signal_synth::measurement_not_evaluable;
+        const char* peak_reason = peak_received ? "" : onset_absent ? "pulse_intentionally_missing" : alignment.has_observed_peak_device_delta ? "device_sample_dropped" : "ppg_peak_not_measurable";
+        signal_synth::measurement_truth peak_delta = make_truth("device_timestamp_peak_delta", "s", peak_status, signal_synth::measurement_paired_signal, alignment.observed_peak_device_delta_seconds, 0.025, 5.0, peak_reason);
+        peak_delta.measurement.has_beat_index = true; peak_delta.measurement.beat_index = pulse.ecg_beat_index;
+        peak_delta.measurement.has_time_seconds = true; peak_delta.measurement.time_seconds = pulse.ecg_r_time_seconds;
+        peak_delta.measurement.channel = "wearable_ecg_r_to_ppg_peak";
+        output.push_back(peak_delta);
+        signal_synth::measurement_truth peak_error = make_truth("clock_and_sampling_peak_error", "s", peak_status, signal_synth::measurement_paired_signal, alignment.peak_observed_minus_physiological_seconds, 0.010, 0.0, peak_reason);
+        peak_error.measurement = peak_delta.measurement; peak_error.measurement.name = "clock_and_sampling_peak_error";
+        output.push_back(peak_error);
+    }
+
     void add_alignment_truth(const signal_synth::ecg_render_bundle& render, std::vector<signal_synth::measurement_truth>& output)
     {
         const signal_synth::ppg_pulse_annotation* pulses = render.ppg.pulses();
@@ -300,6 +336,9 @@ namespace
             peak.measurement.has_time_seconds = true; peak.measurement.time_seconds = pulse.ecg_r_time_seconds;
             peak.measurement.channel = "ecg_r_to_ppg_green_peak";
             output.push_back(peak);
+            const signal_synth::wearable_alignment_annotation* device = wearable_alignment(render, pulse.ecg_beat_index);
+            if (device)
+                add_device_alignment_truth(pulse, *device, output);
         }
     }
 

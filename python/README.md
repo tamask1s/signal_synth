@@ -7,7 +7,7 @@ and does not execute customer detector code.
 ## Install
 
 ```bash
-python -m pip install synsigra-0.5.0-py3-none-any.whl
+python -m pip install synsigra-0.6.0-py3-none-any.whl
 synsigra-verify --help
 ```
 
@@ -84,6 +84,19 @@ import synsigra
 
 report = synsigra.verify_package("challenge.synsigra", "submission", "results")
 assert report.summary["success"]
+```
+
+Schema-v5 wearable challenges expose independent device streams and their
+auditable clock mapping without shipping generator code:
+
+```python
+with synsigra.load_challenge("wearable.synsigra") as challenge:
+    case = challenge.cases[0]
+    ecg = case.wearable_samples("ecg")
+    ppg = case.wearable_samples("ppg")
+    timestamps = case.wearable_timestamp_truth()
+    timebase = case.wearable_timebase_truth()
+    alignment = case.wearable_alignment_truth()
 ```
 
 The pure-Python wheel supports CPython 3.8 through 3.11 on Linux, macOS and

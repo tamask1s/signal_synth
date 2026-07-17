@@ -14,7 +14,7 @@ METADATA_TYPE = "synsigra_curated_pack_catalog"
 DEFAULT_GENERATOR_COMPATIBILITY = {
     "minimum_generator_version": "0.6.0-dev",
     "pack_schema_version": 1,
-    "scenario_schema_versions": [2, 3, 4],
+    "scenario_schema_versions": [2, 3, 4, 5],
     "challenge_package_contract": "synsigra_challenge_package_v2",
     "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
     "submission_contract": "synsigra_submission_v1",
@@ -298,7 +298,7 @@ def channel_families(entry, analysis):
     return families
 
 
-def output_artifacts(scoreable_targets, reference_targets):
+def output_artifacts(scoreable_targets, reference_targets, analysis):
     artifacts = [
         {"role": "manifest_json", "required": True},
         {"role": "scoring_manifest_json", "required": True},
@@ -310,6 +310,11 @@ def output_artifacts(scoreable_targets, reference_targets):
         {"role": "wfdb", "required": True},
         {"role": "edf_bdf", "required": True},
     ]
+    roles = set(item["role"] for item in artifacts)
+    for item in analysis.get("output_artifacts", []):
+        if item["role"] not in roles:
+            artifacts.append(dict(item))
+            roles.add(item["role"])
     if any(item["target"] == "hrv" for item in scoreable_targets):
         artifacts.append({"role": "hrv_metrics_json", "required": True})
         artifacts.append({"role": "rr_tachogram_csv", "required": True})
@@ -432,7 +437,7 @@ def pack_metadata(catalog_path, source_root, entry, pack, analysis, validate_inf
             "size_class": size_class(analysis["summary"]["estimated_package_bytes"]),
             "peak_memory_bytes": analysis["summary"]["estimated_peak_memory_bytes"],
         },
-        "output_artifacts": output_artifacts(scoreable_targets, reference_targets),
+        "output_artifacts": output_artifacts(scoreable_targets, reference_targets, analysis),
         "ui": {
             "primary_badges": unique(list(entry.get("difficulty", [])) + list(entry.get("feature_tags", []))[:3]),
             "scoreable_before_job": bool(scoreable_targets),

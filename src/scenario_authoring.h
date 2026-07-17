@@ -35,6 +35,7 @@ namespace signal_synth
         unsigned int sampling_rate_hz;
         unsigned int sample_count;
         unsigned int channel_count;
+        bool wearable_timebase;
         unsigned long long estimated_waveform_csv_bytes;
         unsigned long long estimated_binary_signal_bytes;
         unsigned long long estimated_package_bytes;

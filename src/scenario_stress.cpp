@@ -193,6 +193,10 @@ namespace signal_synth
                 return false;
         if (!waveforms.ppg.empty() && waveforms.ppg.size() != sample_count)
             return false;
+        if (!waveforms.accelerometer.empty() && waveforms.accelerometer.size() != sample_count)
+            return false;
+        if (config.activity_intensity > 0.0 && waveforms.accelerometer.empty())
+            waveforms.accelerometer.assign(sample_count, 0.0);
         const double phase = 2.0 * pi * unit(config.seed, "respiration_phase");
         for (std::size_t sample = 0; sample < sample_count; ++sample)
         {
@@ -210,6 +214,8 @@ namespace signal_synth
                 const double modulation = std::max(0.0, 1.0 + config.ppg_amplitude_modulation_ratio * respiration - 0.55 * activity);
                 waveforms.ppg[sample] = ppg_baseline_au + centered * modulation + activity * 0.05 * signed_unit(config.seed ^ 0x5050474143544956ULL, sample);
             }
+            if (!waveforms.accelerometer.empty())
+                waveforms.accelerometer[sample] += activity * (0.7 * std::sin(2.0 * pi * 1.7 * time) + 0.3 * signed_unit(config.seed ^ 0x4143434143544956ULL, sample));
         }
         return true;
     }

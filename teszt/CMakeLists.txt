@@ -55,6 +55,8 @@ signal_synth_add_test(synsigra_api_test synsigra_api_test.cpp TEST-FACADE-001)
 signal_synth_add_test(challenge_package_test challenge_package_test.cpp TEST-CHALLENGE-PACKAGE-001)
 signal_synth_add_test(scenario_authoring_test scenario_authoring_test.cpp TEST-AUTHORING-001)
 signal_synth_add_test(scenario_stress_test scenario_stress_test.cpp TEST-SCENARIO-STRESS-001)
+signal_synth_add_test(wearable_timebase_test wearable_timebase_test.cpp TEST-WEARABLE-TIMEBASE-001)
+signal_synth_add_test(wearable_render_test wearable_render_test.cpp TEST-WEARABLE-RENDER-001)
 
 add_library(
     databrowser_generation_core
@@ -68,7 +70,8 @@ add_library(
     ../src/hrv_metrics.cpp
     ../src/ppg_model.cpp
     ../src/scenario_stress.cpp
-    ../src/signal_quality.cpp)
+    ../src/signal_quality.cpp
+    ../src/wearable_timebase.cpp)
 target_include_directories(databrowser_generation_core PUBLIC ../src)
 target_compile_features(databrowser_generation_core PUBLIC cxx_std_11)
 set_target_properties(databrowser_generation_core PROPERTIES CXX_EXTENSIONS OFF)
@@ -181,6 +184,13 @@ if(TARGET signal_synth_cli AND SIGNAL_SYNTH_PYTHON_EXECUTABLE)
         TEST-MEASUREMENT-PYTHON-001
         PROPERTIES
             ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python;SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..;SIGNAL_SYNTH_MEASUREMENT_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/measurement_python_work")
+    add_test(
+        NAME TEST-WEARABLE-PYTHON-001
+        COMMAND ${SIGNAL_SYNTH_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wearable_python_test.py)
+    set_tests_properties(
+        TEST-WEARABLE-PYTHON-001
+        PROPERTIES
+            ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python;SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..;SIGNAL_SYNTH_WEARABLE_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/wearable_python_work")
     add_test(
         NAME TEST-EDF-BDF-NATIVE-001
         COMMAND

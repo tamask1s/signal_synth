@@ -11,7 +11,7 @@ Status: active development baseline.
   `synsigra_submission_v1` manifest and generated `user-output-template/`.
 - Unified customer point and interval payloads while retaining typed adapters;
   algorithm provenance is supplied once and preserved for JSON and CSV.
-- Released the generator-free `synsigra` 0.5.0 verifier wheel and one canonical
+- Released the generator-free `synsigra` 0.6.0 verifier wheel and one canonical
   `synsigra-verify <challenge> <submission> <results>` workflow.
 - Replaced ECG delineation v1 with atrial-aware delineation v2, explicit
   present/absent/not-evaluable truth, temporal matching, and a curated Mobitz
@@ -21,6 +21,11 @@ Status: active development baseline.
   PTT, and ECG-to-PPG peak delay.
 - Bumped challenge, scoring-manifest, integration, and curated-catalog
   contracts for the private-beta breaking change.
+- Added schema-v5 multi-rate wearable acquisition with independent ECG, PPG,
+  and accelerometer clocks, deterministic resampling, timestamp jitter,
+  packet-loss truth, and device-versus-physiological ECG/PPG alignment.
+- Replaced `wearable_stress_v1` with `wearable_timebase_v2` and added
+  generator-free Python access to all wearable sample and timing artifacts.
 
 ## 0.5.0-dev
 

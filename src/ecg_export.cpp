@@ -221,6 +221,137 @@ namespace
         return output.str();
     }
 
+    const char* wearable_sample_artifact_name(signal_synth::wearable_stream_kind kind)
+    {
+        switch (kind)
+        {
+        case signal_synth::wearable_stream_ecg: return "wearable_ecg_samples.csv";
+        case signal_synth::wearable_stream_ppg: return "wearable_ppg_samples.csv";
+        case signal_synth::wearable_stream_accelerometer: return "wearable_accelerometer_samples.csv";
+        }
+        return "wearable_samples.csv";
+    }
+
+    std::string wearable_samples_csv(const signal_synth::wearable_stream_record& stream)
+    {
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << std::setprecision(std::numeric_limits<double>::max_digits10) << "sample_index,packet_index,device_timestamp_seconds";
+        for (std::size_t channel = 0; channel < stream.channel_names.size(); ++channel)
+            output << ',' << stream.channel_names[channel];
+        output << '\n';
+        for (std::size_t sample = 0; sample < stream.samples.size(); ++sample)
+        {
+            if (!stream.samples[sample].received)
+                continue;
+            output << stream.samples[sample].sample_index << ',' << stream.samples[sample].packet_index << ',' << stream.samples[sample].reported_device_time_seconds;
+            for (std::size_t channel = 0; channel < stream.channel_samples.size(); ++channel)
+                output << ',' << normalized_zero(stream.channel_samples[channel][sample]);
+            output << '\n';
+        }
+        return output.str();
+    }
+
+    std::string wearable_timestamp_truth_csv(const signal_synth::wearable_timebase_record& wearable)
+    {
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << std::setprecision(std::numeric_limits<double>::max_digits10)
+               << "stream,sample_index,packet_index,latent_time_seconds,ideal_device_time_seconds,reported_device_time_seconds,received\n";
+        for (std::size_t stream = 0; stream < wearable.streams.size(); ++stream)
+            for (std::size_t sample = 0; sample < wearable.streams[stream].samples.size(); ++sample)
+            {
+                const signal_synth::wearable_sample_mapping& item = wearable.streams[stream].samples[sample];
+                output << signal_synth::wearable_stream_kind_name(wearable.streams[stream].kind) << ',' << item.sample_index << ',' << item.packet_index
+                       << ',' << item.latent_time_seconds << ',' << item.ideal_device_time_seconds << ',' << item.reported_device_time_seconds << ',' << (item.received ? 1 : 0) << '\n';
+            }
+        return output.str();
+    }
+
+    void write_wearable_event_json(std::ostringstream& output, const signal_synth::wearable_event_mapping& event)
+    {
+        output << "{\"present\":" << boolean(event.present);
+        if (event.present)
+            output << ",\"latent_time_seconds\":" << event.latent_time_seconds
+                   << ",\"sample_index\":" << json_u64_string(event.sample_index)
+                   << ",\"reported_device_time_seconds\":" << event.reported_device_time_seconds
+                   << ",\"received\":" << boolean(event.received);
+        output << '}';
+    }
+
+    void write_optional_number(std::ostringstream& output, bool present, double value)
+    {
+        if (present) output << value;
+        else output << "null";
+    }
+
+    std::string wearable_timebase_truth_json(const signal_synth::wearable_timebase_record& wearable)
+    {
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << std::setprecision(std::numeric_limits<double>::max_digits10)
+               << "{\"schema_version\":1,\"contract\":\"synsigra_wearable_timebase_v2\",\"fingerprint\":" << json_string(wearable.fingerprint)
+               << ",\"latent_reference\":{\"duration_seconds\":" << wearable.duration_seconds << ",\"sample_rate_hz\":" << wearable.latent_sample_rate_hz << "}"
+               << ",\"mapping\":{\"clock_scale\":\"1 + clock_drift_ppm * 1e-6\",\"latent_time_seconds\":\"sample_index / (sample_rate_hz * clock_scale)\",\"ideal_device_time_seconds\":\"clock_offset_ms / 1000 + sample_index / sample_rate_hz\",\"reported_device_time_seconds\":\"ideal_device_time_seconds + deterministic_timestamp_jitter\",\"resampling\":\"linear_interpolation\"},\"streams\":[";
+        for (std::size_t stream_index = 0; stream_index < wearable.streams.size(); ++stream_index)
+        {
+            const signal_synth::wearable_stream_record& stream = wearable.streams[stream_index];
+            if (stream_index) output << ',';
+            output << "{\"kind\":" << json_string(signal_synth::wearable_stream_kind_name(stream.kind))
+                   << ",\"sample_rate_hz\":" << stream.config.sample_rate_hz
+                   << ",\"clock_offset_ms\":" << stream.config.clock_offset_ms
+                   << ",\"clock_drift_ppm\":" << stream.config.clock_drift_ppm
+                   << ",\"timestamp_jitter_ms\":" << stream.config.timestamp_jitter_ms
+                   << ",\"packet_size_samples\":" << stream.config.packet_size_samples
+                   << ",\"packet_loss_probability\":" << stream.config.packet_loss_probability
+                   << ",\"packet_loss_burst_packets\":" << stream.config.packet_loss_burst_packets
+                   << ",\"seed\":" << json_u64_string(stream.config.seed)
+                   << ",\"sample_count\":" << stream.sample_count() << ",\"received_sample_count\":" << stream.received_sample_count()
+                   << ",\"fingerprint\":" << json_string(stream.fingerprint) << ",\"channels\":[";
+            for (std::size_t channel = 0; channel < stream.channel_names.size(); ++channel)
+                output << (channel ? "," : "") << "{\"name\":" << json_string(stream.channel_names[channel]) << ",\"unit\":" << json_string(stream.channel_units[channel]) << '}';
+            output << "],\"packets\":[";
+            for (std::size_t packet = 0; packet < stream.packets.size(); ++packet)
+            {
+                const signal_synth::wearable_packet_annotation& item = stream.packets[packet];
+                output << (packet ? "," : "") << "{\"packet_index\":" << json_u64_string(item.packet_index)
+                       << ",\"first_sample_index\":" << json_u64_string(item.first_sample_index) << ",\"sample_count\":" << item.sample_count
+                       << ",\"first_latent_time_seconds\":" << item.first_latent_time_seconds << ",\"last_latent_time_seconds\":" << item.last_latent_time_seconds
+                       << ",\"first_reported_device_time_seconds\":" << item.first_reported_device_time_seconds << ",\"last_reported_device_time_seconds\":" << item.last_reported_device_time_seconds
+                       << ",\"dropped\":" << boolean(item.dropped) << '}';
+            }
+            output << "]}";
+        }
+        output << "]}";
+        return output.str();
+    }
+
+    std::string wearable_alignment_truth_json(const signal_synth::wearable_timebase_record& wearable)
+    {
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << std::setprecision(std::numeric_limits<double>::max_digits10)
+               << "{\"schema_version\":1,\"contract\":\"synsigra_wearable_alignment_v1\",\"time_domains\":{\"physiological\":\"latent_reference\",\"observed\":\"reported_device_timestamps\"},\"events\":[";
+        for (std::size_t i = 0; i < wearable.alignments.size(); ++i)
+        {
+            const signal_synth::wearable_alignment_annotation& item = wearable.alignments[i];
+            if (i) output << ',';
+            output << "{\"ecg_beat_index\":" << json_u64_string(item.ecg_beat_index) << ",\"intentionally_missing\":" << boolean(item.intentionally_missing) << ",\"ecg_r\":";
+            write_wearable_event_json(output, item.ecg_r);
+            output << ",\"ppg_onset\":"; write_wearable_event_json(output, item.ppg_onset);
+            output << ",\"ppg_peak\":"; write_wearable_event_json(output, item.ppg_peak);
+            output << ",\"physiological_onset_delay_seconds\":"; write_optional_number(output, item.has_physiological_onset_delay, item.physiological_onset_delay_seconds);
+            output << ",\"physiological_peak_delay_seconds\":"; write_optional_number(output, item.has_physiological_peak_delay, item.physiological_peak_delay_seconds);
+            output << ",\"observed_onset_device_delta_seconds\":"; write_optional_number(output, item.has_observed_onset_device_delta, item.observed_onset_device_delta_seconds);
+            output << ",\"onset_observed_minus_physiological_seconds\":"; write_optional_number(output, item.has_observed_onset_device_delta, item.onset_observed_minus_physiological_seconds);
+            output << ",\"observed_peak_device_delta_seconds\":"; write_optional_number(output, item.has_observed_peak_device_delta, item.observed_peak_device_delta_seconds);
+            output << ",\"peak_observed_minus_physiological_seconds\":"; write_optional_number(output, item.has_observed_peak_device_delta, item.peak_observed_minus_physiological_seconds);
+            output << '}';
+        }
+        output << "]}";
+        return output.str();
+    }
+
     void write_artifact_channels(std::ostringstream& output, const signal_synth::signal_quality_artifact_interval& artifact)
     {
         output << '[';
@@ -683,10 +814,12 @@ namespace
                    << ",\"seed\":" << render.ppg.channel_seed(channel) << '}';
         if (!render.signal_quality.accelerometer.empty())
             output << ",{\"name\":\"accel_motion\",\"unit\":\"g\",\"role\":\"motion_reference\"}";
-        output << "],\"timestamp_policy\":\"not_recorded_for_deterministic_local_export\""
+        output << "],\"timestamp_policy\":\"common_latent_reference\""
                << ",\"compact_output\":" << (render.resolved_document.output.compact ? "true" : "false")
                << ",\"source_channels_retained\":" << (render.resolved_document.output.retain_source_channels ? "true" : "false")
-               << "},\"intended_use\":\"synthetic engineering algorithm testing and QA\","
+               << "},\"wearable_timebase\":{\"enabled\":" << boolean(!render.wearable.streams.empty())
+               << ",\"stream_count\":" << render.wearable.streams.size()
+               << ",\"fingerprint\":" << json_string(render.wearable.fingerprint) << "},\"intended_use\":\"synthetic engineering algorithm testing and QA\","
                << "\"not_for\":\"diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment\"}";
         return output.str();
     }
@@ -721,7 +854,9 @@ namespace
                << ",\"lead_count\":" << render.record.lead_count()
                << ",\"ppg_channel_count\":" << render.ppg.channel_count()
                << ",\"has_ppg\":" << (render.ppg.sample_count() ? "true" : "false")
-               << ",\"has_motion_reference\":" << (render.signal_quality.accelerometer.empty() ? "false" : "true") << '}'
+               << ",\"has_motion_reference\":" << (render.signal_quality.accelerometer.empty() ? "false" : "true")
+               << ",\"wearable_stream_count\":" << render.wearable.streams.size()
+               << ",\"wearable_timebase_fingerprint\":" << json_string(render.wearable.fingerprint) << '}'
                << ",\"provenance_checklist\":["
                << "{\"item\":\"scenario_json\",\"artifact\":\"scenario.json\",\"required\":true},"
                << "{\"item\":\"metadata_json\",\"artifact\":\"metadata.json\",\"required\":true},"
@@ -738,7 +873,7 @@ namespace
                << ",\"verifies\":\"Package files are internally consistent with the generated synthetic scenario, ground-truth annotations and scoring contract.\""
                << ",\"does_not_verify\":\"Patient physiology, diagnostic performance on real populations, clinical safety, clinical effectiveness, or regulatory conformity.\""
                << ",\"not_for\":\"diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment\"}"
-               << ",\"determinism\":{\"byte_stable_export\":true,\"timestamp_policy\":\"not_recorded_for_deterministic_local_export\"}}";
+               << ",\"determinism\":{\"byte_stable_export\":true,\"timestamp_policy\":" << json_string(render.wearable.streams.empty() ? "common_latent_reference" : "common_latent_reference_with_explicit_wearable_device_time") << "}}";
         return output.str();
     }
 
@@ -964,6 +1099,15 @@ namespace signal_synth
         add_artifact(fresh, "provenance.json", "application/json", provenance_json(render));
         if (render.resolved_document.output.include_waveform_csv)
             add_artifact(fresh, "waveform.csv", "text/csv", waveform_csv(render));
+        if (!render.wearable.streams.empty())
+        {
+            for (std::size_t i = 0; i < render.wearable.streams.size(); ++i)
+                add_artifact(fresh, wearable_sample_artifact_name(render.wearable.streams[i].kind), "text/csv", wearable_samples_csv(render.wearable.streams[i]));
+            add_artifact(fresh, "wearable_timestamp_truth.csv", "text/csv", wearable_timestamp_truth_csv(render.wearable));
+            add_artifact(fresh, "wearable_timebase_truth.json", "application/json", wearable_timebase_truth_json(render.wearable));
+            if (render.wearable.stream(wearable_stream_ecg) && render.wearable.stream(wearable_stream_ppg))
+                add_artifact(fresh, "wearable_alignment_truth.json", "application/json", wearable_alignment_truth_json(render.wearable));
+        }
         add_artifact(fresh, "annotations.json", "application/json", annotations_json(render));
         add_artifact(fresh, "rr_tachogram.csv", "text/csv", rr_tachogram_csv(render));
         add_artifact(fresh, "hrv_metrics.json", "application/json", hrv_metrics_json(render));
@@ -975,6 +1119,7 @@ namespace signal_synth
             "Synsigra deterministic synthetic ECG engineering evidence package.\n"
             "Intended for research, development, software testing, and algorithm QA.\n"
             "See provenance.json for generator, build, scenario and package-contract identity.\n"
+            "Schema-v5 packages include explicit multi-rate wearable sample, timestamp, packet and alignment truth artifacts.\n"
             "See ENGINEERING_CLAIM_BOUNDARY.txt for the exact engineering QA claim boundary.\n"
             "Not for diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment.\n");
         wfdb_export_bundle wfdb;

@@ -560,6 +560,10 @@ namespace signal_synth
         case challenge_file_edf: return "edf";
         case challenge_file_bdf: return "bdf";
         case challenge_file_measurement_truth_json: return "measurement_truth_json";
+        case challenge_file_wearable_samples_csv: return "wearable_samples_csv";
+        case challenge_file_wearable_timestamp_truth_csv: return "wearable_timestamp_truth_csv";
+        case challenge_file_wearable_timebase_truth_json: return "wearable_timebase_truth_json";
+        case challenge_file_wearable_alignment_truth_json: return "wearable_alignment_truth_json";
         case challenge_file_other: return "other";
         }
         return "other";

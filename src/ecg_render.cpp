@@ -93,6 +93,61 @@ namespace
                 metrics.ppg_artifact_seconds += duration;
         }
     }
+
+    bool build_wearable_record(signal_synth::ecg_render_bundle& render)
+    {
+        if (render.resolved_document.schema_version < 5)
+            return true;
+        signal_synth::wearable_timebase_record wearable;
+        wearable.duration_seconds = render.resolved_document.duration_seconds;
+        wearable.latent_sample_rate_hz = render.record.sampling_rate_hz();
+        const unsigned int source_count = render.record.sample_count();
+        const unsigned int source_rate = render.record.sampling_rate_hz();
+
+        if (render.resolved_document.wearable.ecg.enabled)
+        {
+            std::vector<signal_synth::wearable_source_channel> channels;
+            for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead)
+            {
+                const double* samples = lead < render.signal_quality.ecg_leads.size() && render.signal_quality.ecg_leads[lead].size() == source_count ? &render.signal_quality.ecg_leads[lead][0] : render.record.lead_data(lead);
+                channels.push_back(signal_synth::wearable_source_channel(render.record.lead_name(lead), "mV", samples));
+            }
+            signal_synth::wearable_stream_record stream;
+            if (!signal_synth::render_wearable_stream(render.resolved_document.wearable.ecg, signal_synth::wearable_stream_ecg, wearable.duration_seconds, source_rate, source_count, channels, 4096u, stream))
+                return false;
+            wearable.streams.push_back(stream);
+        }
+        if (render.resolved_document.wearable.ppg.enabled)
+        {
+            std::vector<signal_synth::wearable_source_channel> channels;
+            for (unsigned int channel = 0; channel < render.ppg.channel_count(); ++channel)
+            {
+                const double* samples = channel == 0 && render.signal_quality.ppg.size() == source_count ? &render.signal_quality.ppg[0] : render.ppg.channel_samples(channel);
+                channels.push_back(signal_synth::wearable_source_channel(render.ppg.channel_name(channel), render.ppg.channel_unit(channel), samples));
+            }
+            signal_synth::wearable_stream_record stream;
+            if (!signal_synth::render_wearable_stream(render.resolved_document.wearable.ppg, signal_synth::wearable_stream_ppg, wearable.duration_seconds, source_rate, source_count, channels, 4096u, stream))
+                return false;
+            wearable.streams.push_back(stream);
+        }
+        if (render.resolved_document.wearable.accelerometer.enabled)
+        {
+            std::vector<signal_synth::wearable_source_channel> channels;
+            channels.push_back(signal_synth::wearable_source_channel("accel_motion", "g", render.signal_quality.accelerometer.empty() ? 0 : &render.signal_quality.accelerometer[0]));
+            signal_synth::wearable_stream_record stream;
+            if (!signal_synth::render_wearable_stream(render.resolved_document.wearable.accelerometer, signal_synth::wearable_stream_accelerometer, wearable.duration_seconds, source_rate, source_count, channels, 4096u, stream))
+                return false;
+            wearable.streams.push_back(stream);
+        }
+        const signal_synth::wearable_stream_record* ecg = wearable.stream(signal_synth::wearable_stream_ecg);
+        const signal_synth::wearable_stream_record* ppg = wearable.stream(signal_synth::wearable_stream_ppg);
+        if (ecg && ppg && !signal_synth::build_wearable_alignment_truth(render.record, render.ppg, *ecg, *ppg, wearable.alignments))
+            return false;
+        wearable.fingerprint = signal_synth::wearable_timebase_record_fingerprint(wearable);
+        render.wearable = wearable;
+        render.render_identity += ":wearable-" + wearable.fingerprint;
+        return true;
+    }
 }
 
 namespace signal_synth
@@ -176,6 +231,12 @@ namespace signal_synth
         if (fresh.ppg.sample_count() && !remeasure_ppg_fiducials(fresh.signal_quality.ppg.data(), static_cast<unsigned int>(fresh.signal_quality.ppg.size()), fresh.ppg))
         {
             fresh_result.messages.push_back("final PPG peak measurement failed");
+            result = fresh_result;
+            return false;
+        }
+        if (!build_wearable_record(fresh))
+        {
+            fresh_result.messages.push_back("wearable timebase rendering failed");
             result = fresh_result;
             return false;
         }

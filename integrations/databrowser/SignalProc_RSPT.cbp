@@ -147,6 +147,8 @@
 		<Unit filename="scenario_stress.h" />
 		<Unit filename="signal_quality.cpp" />
 		<Unit filename="signal_quality.h" />
+		<Unit filename="wearable_timebase.cpp" />
+		<Unit filename="wearable_timebase.h" />
 		<Unit filename="SignalProc_RSPT.cpp" />
 		<Extensions>
 			<code_completion />

@@ -1,5 +1,9 @@
 # Reproducible Wearable Stress Controls
 
+> Superseded by [SYN-INC-057](057_WEARABLE_TIMEBASE_V2.md). The historical
+> physiological stress controls remain valid, but the former
+> `ppg.clock_drift_ppm` field and `wearable_stress_v1` pack were removed.
+
 **Document ID:** SYN-INC-036
 
 **Version:** 1.0

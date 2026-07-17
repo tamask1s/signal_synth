@@ -30,7 +30,7 @@ python -m pip install .
 External beta users receive and install the generator-free wheel:
 
 ```bash
-python -m pip install synsigra-0.5.0-py3-none-any.whl
+python -m pip install synsigra-0.6.0-py3-none-any.whl
 ```
 
 Build local distribution artifacts:
@@ -43,6 +43,16 @@ Smoke test the built wheel/sdist:
 
 ```bash
 ./scripts/smoke_python_distribution.sh
+```
+
+For repeated development builds, keep the Git-ignored repo-local `.venv`
+instead of recreating a temporary environment:
+
+```bash
+python3.8 -m venv .venv
+.venv/bin/pip install build==1.2.2.post1 setuptools==75.3.2 wheel==0.45.1
+PYTHON=.venv/bin/python ./scripts/build_python_distribution.sh
+PYTHON=.venv/bin/python ./scripts/smoke_python_distribution.sh
 ```
 
 ## Release checklist

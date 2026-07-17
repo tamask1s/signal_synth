@@ -33,6 +33,7 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/scenario_authoring.h
     src/scenario_stress.h
     src/signal_quality.h
+    src/wearable_timebase.h
     src/ecg_pack.h
     src/ecg_pack_score.h)
 list(APPEND SIGNAL_SYNTH_PUBLIC_HEADERS src/ppg_model.h)
@@ -67,6 +68,7 @@ add_library(
     src/scenario_authoring.cpp
     src/scenario_stress.cpp
     src/signal_quality.cpp
+    src/wearable_timebase.cpp
     src/ecg_pack.cpp
     src/ecg_pack_score.cpp)
 target_sources(signal_synth PRIVATE src/ppg_model.cpp)

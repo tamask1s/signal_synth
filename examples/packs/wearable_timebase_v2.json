@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "pack_id": "wearable_timebase_v2",
+  "name": "Wearable Multi-rate Timebase Pack v2",
+  "version": "2.0",
+  "description": "Independent ECG, PPG and accelerometer clocks, resampling, timestamp jitter, packet loss and ECG-PPG alignment truth.",
+  "targets": ["r_peak", "ppg_systolic_peak", "ecg_ppg_alignment"],
+  "scenarios": [
+    {"id": "independent_clocks", "path": "../scenarios/packs/wearable_independent_clocks_v5.json", "targets": ["r_peak", "ppg_systolic_peak", "ecg_ppg_alignment"]},
+    {"id": "packet_loss_bursts", "path": "../scenarios/packs/wearable_packet_loss_v5.json", "targets": ["r_peak", "ppg_systolic_peak", "ecg_ppg_alignment"]}
+  ]
+}

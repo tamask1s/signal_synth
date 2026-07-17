@@ -19,6 +19,8 @@ src/scenario_stress.cpp|src/SignalProcessors/scenario_stress.cpp
 src/scenario_stress.h|src/SignalProcessors/scenario_stress.h
 src/signal_quality.cpp|src/SignalProcessors/signal_quality.cpp
 src/signal_quality.h|src/SignalProcessors/signal_quality.h
+src/wearable_timebase.cpp|src/SignalProcessors/wearable_timebase.cpp
+src/wearable_timebase.h|src/SignalProcessors/wearable_timebase.h
 integrations/databrowser/SignalProc_RSPT.cpp|src/SignalProcessors/SignalProc_RSPT.cpp
 integrations/databrowser/SignalProc_RSPT.cbp|src/SignalProcessors/SignalProc_RSPT.cbp
 examples/databrowser/067_ECG_PPG_GroundTruth.txt|SigForge/Scripts/067_ECG_PPG_GroundTruth.txt
@@ -35,3 +37,4 @@ examples/databrowser/077_ECG_Morphology_Population.txt|SigForge/Scripts/077_ECG_
 examples/databrowser/078_ECG_Dynamic_Repolarization.txt|SigForge/Scripts/078_ECG_Dynamic_Repolarization.txt
 examples/databrowser/079_PPG_Multichannel_Optical.txt|SigForge/Scripts/079_PPG_Multichannel_Optical.txt
 examples/databrowser/080_ECG_Delineation_GroundTruth.txt|SigForge/Scripts/080_ECG_Delineation_GroundTruth.txt
+examples/databrowser/081_Wearable_Multirate_Timebase.txt|SigForge/Scripts/081_Wearable_Multirate_Timebase.txt

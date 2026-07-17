@@ -17,6 +17,9 @@ namespace
         case signal_synth::challenge_file_waveform_csv:
             add_format_once(formats, "csv");
             break;
+        case signal_synth::challenge_file_wearable_samples_csv:
+            add_format_once(formats, "wearable_csv");
+            break;
         case signal_synth::challenge_file_wfdb_header:
         case signal_synth::challenge_file_wfdb_signal:
         case signal_synth::challenge_file_wfdb_annotation:
@@ -85,6 +88,14 @@ namespace signal_synth
             return challenge_file_ground_truth_metrics_json;
         if (artifact_name == "measurement_truth.json")
             return challenge_file_measurement_truth_json;
+        if (artifact_name == "wearable_ecg_samples.csv" || artifact_name == "wearable_ppg_samples.csv" || artifact_name == "wearable_accelerometer_samples.csv")
+            return challenge_file_wearable_samples_csv;
+        if (artifact_name == "wearable_timestamp_truth.csv")
+            return challenge_file_wearable_timestamp_truth_csv;
+        if (artifact_name == "wearable_timebase_truth.json")
+            return challenge_file_wearable_timebase_truth_json;
+        if (artifact_name == "wearable_alignment_truth.json")
+            return challenge_file_wearable_alignment_truth_json;
         if (artifact_name == "report.html")
             return challenge_file_report_html;
         if (artifact_name == "README.txt" || artifact_name == "ENGINEERING_CLAIM_BOUNDARY.txt")

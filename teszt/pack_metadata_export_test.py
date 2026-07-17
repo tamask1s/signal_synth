@@ -37,7 +37,7 @@ RELEASE_PACK_IDS = [
     "ecg_morphology_stress_v1",
     "ppg_alignment_v1",
     "combined_worst_case_v1",
-    "wearable_stress_v1",
+    "wearable_timebase_v2",
     "ppg_benchmark_v1",
     "ecg_delineation_v2",
 ]
@@ -48,7 +48,7 @@ def assert_release_pack_metadata(item):
     assert item["metadata_type"] == "synsigra_curated_pack_metadata"
     assert isinstance(item["version"], str) and item["version"]
     assert item["release_status"] == "beta"
-    expected_date = "2026-07-17" if item["pack_id"] == "ecg_delineation_v2" else "2026-07-06"
+    expected_date = "2026-07-17" if item["pack_id"] in ("ecg_delineation_v2", "wearable_timebase_v2") else "2026-07-06"
     assert item["release_date"] == expected_date
     assert item["recommended_for"] and item["not_recommended_for"] and item["changelog"]
     assert item["source"]["pack_fingerprint"].startswith("sha256:")
@@ -174,13 +174,13 @@ def assert_delineation_metadata(item):
     assert item["reference_only_targets"] == []
 
 
-def assert_measurement_metadata(item, target):
+def assert_measurement_metadata(item, target, verifier_version="0.5.0"):
     contracts = dict((entry["target"], entry) for entry in item["scoreable_targets"])
     assert target in contracts
     assert contracts[target]["score_type"] == "measurement"
     assert contracts[target]["accepted_formats"] == ["measurement_values_json_v1", "measurement_values_csv_v1"]
     assert contracts[target]["default_pairing_window_seconds"] == 0.2
-    assert item["generator_compatibility"]["local_verifier_min_version"] == "0.5.0"
+    assert item["generator_compatibility"]["local_verifier_min_version"] == verifier_version
     assert "measurement_truth_json" in [artifact["role"] for artifact in item["output_artifacts"]]
     assert item["reference_only_targets"] == []
 
@@ -204,7 +204,7 @@ def main():
         assert generated["release_set_id"] == "synsigra_curated_release_2026_07_17"
         assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
-        assert generated["catalog_version"] == "1.8"
+        assert generated["catalog_version"] == "1.9"
         assert generated["pack_count"] == 11
         assert [item["pack_id"] for item in generated["packs"]] == RELEASE_PACK_IDS
         for pack_id in RELEASE_PACK_IDS:
@@ -214,7 +214,9 @@ def main():
         assert_delineation_metadata(pack(generated, "ecg_delineation_v2"))
         assert_measurement_metadata(pack(generated, "ecg_morphology_stress_v1"), "morphology_assertions")
         assert_measurement_metadata(pack(generated, "ppg_alignment_v1"), "ecg_ppg_alignment")
-        assert_measurement_metadata(pack(generated, "wearable_stress_v1"), "ecg_ppg_alignment")
+        wearable = pack(generated, "wearable_timebase_v2")
+        assert_measurement_metadata(wearable, "ecg_ppg_alignment", "0.6.0")
+        assert {"wearable_samples_csv", "wearable_timestamp_truth_csv", "wearable_timebase_truth_json", "wearable_alignment_truth_json"}.issubset(set(artifact["role"] for artifact in wearable["output_artifacts"]))
 
         filtered_path = os.path.join(work_dir, "rpeak_only.json")
         run([sys.executable, script, "--cli", cli, "--catalog", catalog, "--source-root", source_dir, "--pack-id", "r_peak_stress_v1", "--out", filtered_path])

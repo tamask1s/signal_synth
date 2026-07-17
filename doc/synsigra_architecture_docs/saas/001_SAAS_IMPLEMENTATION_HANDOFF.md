@@ -2,7 +2,7 @@
 
 **Document ID:** SYN-SAAS-HANDOFF-001
 
-**Version:** 2.1
+**Version:** 2.2
 
 **Status:** Core contract closed; SaaS consumer migration required
 
@@ -52,8 +52,10 @@ Pack metadata export:
 - regenerate it with `scripts/export_curated_pack_metadata.py`;
 - it distinguishes declared targets, effective scoreable targets, and
   reference-only ground-truth outputs before job creation.
-- current consumer baseline is curated catalog `1.8` and generator-free
-  verifier `0.5.0`; packs declare their own minimum verifier version.
+- current consumer baseline is curated catalog `1.9` and generator-free
+  verifier `0.6.0`; packs declare their own minimum verifier version;
+- schema-v5 wearable cases expose independent device streams and must not be
+  normalized to one implicit sample rate or timestamp domain by the service.
 
 Python package:
 
@@ -151,6 +153,12 @@ Generated layout:
     hrv_metrics.json
     ground_truth_metrics.json
     measurement_truth.json       # when a measurement target is present
+    wearable_ecg_samples.csv     # schema-v5 wearable case
+    wearable_ppg_samples.csv     # when wearable PPG is enabled
+    wearable_accelerometer_samples.csv # when wearable accelerometer is enabled
+    wearable_timestamp_truth.csv # complete received/dropped sample mapping
+    wearable_timebase_truth.json # stream clocks and packet schedule
+    wearable_alignment_truth.json # when wearable ECG and PPG are enabled
     warnings.json
     report.html
     README.txt
@@ -279,6 +287,11 @@ Available from the core:
   build identity, package contract, scoring contract and verifier version;
 - package-level and per-case `ENGINEERING_CLAIM_BOUNDARY.txt` files record the
   deterministic engineering QA boundary.
+- schema-v5 challenge packages expose explicit `wearable_samples_csv`,
+  `wearable_timestamp_truth_csv`, `wearable_timebase_truth_json`, and
+  `wearable_alignment_truth_json` manifest roles;
+- `wearable_timebase_v2` replaces `wearable_stress_v1`, and the Python 0.6.0
+  package reads these artifacts without generator code.
 
 Required in the SaaS service layer after this closure:
 
@@ -303,6 +316,9 @@ Required in the SaaS service layer after this closure:
    record.
 5. Run a fresh-state end-to-end test that generates, downloads, verifies, and
    locally scores a current challenge package.
+6. Preserve every wearable artifact and its manifest role unchanged; expose
+   each stream's own rate, timestamps, and packet gaps instead of constructing
+   a common SaaS-side time axis.
 
 Do not add a compatibility parser for the old success format. If existing SaaS
 state contains only development data, reset it instead of introducing schema,

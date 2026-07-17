@@ -7,6 +7,7 @@
 #include "ppg_model.h"
 #include "scenario_stress.h"
 #include "signal_quality.h"
+#include "wearable_timebase.h"
 
 #include <string>
 #include <vector>
@@ -67,6 +68,7 @@ namespace signal_synth
         ecg_morphology_report morphology;
         ppg_record ppg;
         signal_quality_waveforms signal_quality;
+        wearable_timebase_record wearable;
         hrv_analysis_result hrv;
         ecg_ground_truth_metrics metrics;
     };

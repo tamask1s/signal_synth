@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "1.8",
+  "version": "1.9",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -326,47 +326,40 @@
       ]
     },
     {
-      "pack_id": "wearable_stress_v1",
-      "path": "../packs/wearable_stress_v1.json",
-      "modality": ["ECG", "PPG"],
-      "targets": ["r_peak", "hrv", "ppg_systolic_peak", "ecg_ppg_alignment"],
-      "difficulty": ["stress", "benchmark"],
+      "pack_id": "wearable_timebase_v2",
+      "path": "../packs/wearable_timebase_v2.json",
+      "modality": ["ECG", "PPG", "accelerometer"],
+      "targets": ["r_peak", "ppg_systolic_peak", "ecg_ppg_alignment"],
+      "difficulty": ["stress"],
       "recommended_profile": "stress",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
       "scoring_mode": "local",
-      "feature_tags": ["controlled_randomization", "respiration", "activity", "pulse_transit_delay", "missing_pulse", "clock_drift", "long_duration", "compact"],
+      "feature_tags": ["multirate", "clock_offset", "clock_drift", "timestamp_jitter", "resampling", "packet_loss", "packet_burst", "activity", "pulse_transit_delay"],
       "release_status": "beta",
-      "release_date": "2026-07-06",
+      "release_date": "2026-07-17",
       "deprecation_message": "",
       "recommended_for": [
-        "Wearable ECG/PPG algorithm stress and benchmark tests",
-        "Cardiorespiratory, activity and synchronization robustness checks",
-        "Long-duration compact challenge-package generation",
-        "R-peak, PPG peak, HRV and ECG/PPG timing measurement workflow integration"
+        "Multi-rate wearable detector and synchronization stress tests",
+        "Independent ECG, PPG and accelerometer clock robustness checks",
+        "Packet-loss and timestamp-jitter handling",
+        "Physiological versus device-domain ECG/PPG timing verification"
       ],
       "not_recommended_for": [
         "Minimal first-run examples",
         "Clinical wearable performance claims",
         "Standalone morphology diagnosis testing",
-        "PPG onset-specific benchmark scoring"
+        "Hardware-specific transport emulation"
       ],
       "changelog": [
         {
-          "version": "1.1",
+          "version": "2.0",
           "date": "2026-07-17",
           "changes": [
-            "Enabled local ECG/PPG alignment measurement scoring through the unified submission contract."
-          ]
-        },
-        {
-          "version": "1.0",
-          "date": "2026-07-06",
-          "changes": [
-            "Initial beta wearable stress pack with cardiorespiratory, activity, timing and compact long-duration cases."
+            "Replaced the ambiguous PPG clock control with independent device timebases, resampling and packet truth."
           ]
         }
       ],
-      "generator_compatibility": {"local_verifier_min_version": "0.5.0"}
+      "generator_compatibility": {"local_verifier_min_version": "0.6.0"}
     },
     {
       "pack_id": "ppg_benchmark_v1",

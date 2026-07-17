@@ -37,7 +37,11 @@ namespace signal_synth
         challenge_file_edf = 11,
         challenge_file_bdf = 12,
         challenge_file_measurement_truth_json = 13,
-        challenge_file_other = 14
+        challenge_file_wearable_samples_csv = 14,
+        challenge_file_wearable_timestamp_truth_csv = 15,
+        challenge_file_wearable_timebase_truth_json = 16,
+        challenge_file_wearable_alignment_truth_json = 17,
+        challenge_file_other = 18
     };
 
     struct challenge_package_json_message

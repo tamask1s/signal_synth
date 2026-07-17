@@ -31,7 +31,6 @@ namespace
         document.ppg.pulse_delay_variation_ms = 25.0;
         document.ppg.pulse_delay_variation_hz = 0.10;
         document.ppg.missing_pulse_every_n_beats = 7;
-        document.ppg.clock_drift_ppm = 300.0;
         document.ppg.seed = 64001;
         document.randomization.enabled = true;
         document.randomization.seed = 64002;

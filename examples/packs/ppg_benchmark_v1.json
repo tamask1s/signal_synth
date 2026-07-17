@@ -14,6 +14,6 @@
     {"id": "dropout", "path": "../scenarios/ppg_dropout_saturation_v4.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
     {"id": "weak_and_missing", "path": "../scenarios/ppg_weak_missing_v4.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
     {"id": "arrhythmia_pulse_loss", "path": "../scenarios/ppg_arrhythmia_pulse_loss_v4.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]},
-    {"id": "combined_wearable", "path": "../scenarios/packs/wearable_cardiorespiratory_stress_v3.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]}
+    {"id": "combined_wearable", "path": "../scenarios/packs/wearable_independent_clocks_v5.json", "targets": ["ppg_systolic_peak", "ppg_pulse_onset"]}
   ]
 }

@@ -1,6 +1,6 @@
 {
   "catalog_id": "synsigra_verification_packs",
-  "catalog_version": "1.8",
+  "catalog_version": "1.9",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "metadata_type": "synsigra_curated_pack_catalog",
   "metadata_version": "synsigra_curated_pack_metadata_export_v1",
@@ -597,7 +597,8 @@
         "scenario_schema_versions": [
           2,
           3,
-          4
+          4,
+          5
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -677,6 +678,14 @@
         {
           "required": true,
           "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "hrv_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "rr_tachogram_csv"
         },
         {
           "required": true,
@@ -961,7 +970,8 @@
         "scenario_schema_versions": [
           2,
           3,
-          4
+          4,
+          5
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -1372,7 +1382,8 @@
         "scenario_schema_versions": [
           2,
           3,
-          4
+          4,
+          5
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -1767,7 +1778,8 @@
         "scenario_schema_versions": [
           2,
           3,
-          4
+          4,
+          5
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2125,7 +2137,8 @@
         "scenario_schema_versions": [
           2,
           3,
-          4
+          4,
+          5
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2483,7 +2496,8 @@
         "scenario_schema_versions": [
           2,
           3,
-          4
+          4,
+          5
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2857,7 +2871,8 @@
         "scenario_schema_versions": [
           2,
           3,
-          4
+          4,
+          5
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2948,6 +2963,14 @@
         {
           "required": true,
           "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "hrv_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "rr_tachogram_csv"
         },
         {
           "required": true,
@@ -3095,22 +3118,22 @@
     {
       "case_count": 2,
       "case_ids": [
-        "cardiorespiratory_activity",
-        "long_duration_compact"
+        "independent_clocks",
+        "packet_loss_bursts"
       ],
       "cases": [
         {
-          "case_id": "cardiorespiratory_activity",
-          "channel_count": 13,
+          "case_id": "independent_clocks",
+          "channel_count": 16,
           "duration_seconds": 60,
-          "estimated_binary_signal_bytes": 1365000,
-          "estimated_package_bytes": 7260400,
-          "estimated_peak_memory_bytes": 8488576,
-          "estimated_waveform_csv_bytes": 3780256,
+          "estimated_binary_signal_bytes": 480000,
+          "estimated_package_bytes": 16170340,
+          "estimated_peak_memory_bytes": 11248776,
+          "estimated_waveform_csv_bytes": 4590256,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
-          "scenario_id": "wearable_cardiorespiratory_stress_v3",
+          "scenario_id": "wearable_independent_clocks_v5",
           "scoreable_targets": [
             "r_peak",
             "ppg_systolic_peak",
@@ -3123,28 +3146,26 @@
           ]
         },
         {
-          "case_id": "long_duration_compact",
-          "channel_count": 13,
-          "duration_seconds": 600,
-          "estimated_binary_signal_bytes": 1560000,
-          "estimated_package_bytes": 2945344,
-          "estimated_peak_memory_bytes": 19288576,
-          "estimated_waveform_csv_bytes": 0,
+          "case_id": "packet_loss_bursts",
+          "channel_count": 14,
+          "duration_seconds": 45,
+          "estimated_binary_signal_bytes": 315000,
+          "estimated_package_bytes": 10743840,
+          "estimated_peak_memory_bytes": 8302776,
+          "estimated_waveform_csv_bytes": 3037756,
           "reference_only_targets": [],
-          "sample_count": 60000,
-          "sampling_rate_hz": 100,
-          "scenario_id": "wearable_long_duration_compact_v3",
+          "sample_count": 11250,
+          "sampling_rate_hz": 250,
+          "scenario_id": "wearable_packet_loss_v5",
           "scoreable_targets": [
             "r_peak",
             "ppg_systolic_peak",
-            "ecg_ppg_alignment",
-            "hrv"
+            "ecg_ppg_alignment"
           ],
           "targets": [
             "r_peak",
             "ppg_systolic_peak",
-            "ecg_ppg_alignment",
-            "hrv"
+            "ecg_ppg_alignment"
           ]
         }
       ],
@@ -3152,17 +3173,10 @@
       "changelog": [
         {
           "changes": [
-            "Enabled local ECG/PPG alignment measurement scoring through the unified submission contract."
+            "Replaced the ambiguous PPG clock control with independent device timebases, resampling and packet truth."
           ],
           "date": "2026-07-17",
-          "version": "1.1"
-        },
-        {
-          "changes": [
-            "Initial beta wearable stress pack with cardiorespiratory, activity, timing and compact long-duration cases."
-          ],
-          "date": "2026-07-06",
-          "version": "1.0"
+          "version": "2.0"
         }
       ],
       "channels": {
@@ -3191,52 +3205,59 @@
               "ppg_green"
             ],
             "name": "green_ppg"
+          },
+          {
+            "channel_count": 1,
+            "channels": [
+              "accel_motion"
+            ],
+            "name": "motion_reference"
           }
         ],
-        "maximum_channel_count": 13,
-        "minimum_channel_count": 13
+        "maximum_channel_count": 16,
+        "minimum_channel_count": 14
       },
       "declared_targets": [
         "r_peak",
         "ppg_systolic_peak",
-        "ecg_ppg_alignment",
-        "hrv"
+        "ecg_ppg_alignment"
       ],
       "deprecation_message": "",
-      "description": "Reproducible ECG, PPG, HRV, cardiorespiratory and synchronization stress for wearable algorithm QA.",
+      "description": "Independent ECG, PPG and accelerometer clocks, resampling, timestamp jitter, packet loss and ECG-PPG alignment truth.",
       "difficulty": [
-        "stress",
-        "benchmark"
+        "stress"
       ],
       "duration": {
-        "maximum_case_seconds": 600,
-        "minimum_case_seconds": 60,
-        "total_seconds": 660
+        "maximum_case_seconds": 60,
+        "minimum_case_seconds": 45,
+        "total_seconds": 105
       },
       "estimated_package": {
-        "bytes": 10205744,
-        "peak_memory_bytes": 19288576,
-        "size_class": "small"
+        "bytes": 26914180,
+        "peak_memory_bytes": 11248776,
+        "size_class": "medium"
       },
       "feature_tags": [
-        "controlled_randomization",
-        "respiration",
-        "activity",
-        "pulse_transit_delay",
-        "missing_pulse",
+        "multirate",
+        "clock_offset",
         "clock_drift",
-        "long_duration",
-        "compact"
+        "timestamp_jitter",
+        "resampling",
+        "packet_loss",
+        "packet_burst",
+        "activity",
+        "pulse_transit_delay"
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v2",
-        "local_verifier_min_version": "0.5.0",
+        "local_verifier_min_version": "0.6.0",
         "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
           2,
           3,
-          4
+          4,
+          5
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -3265,16 +3286,6 @@
           "scope": "generator-free ECG/PPG measurement scoring parity test",
           "target": "ecg_ppg_alignment",
           "test_id": "TEST-MEASUREMENT-PYTHON-001"
-        },
-        {
-          "scope": "core HRV metric scoring smoke test",
-          "target": "hrv",
-          "test_id": "TEST-HRV-SCORING-001"
-        },
-        {
-          "scope": "local HRV user-output scoring smoke test",
-          "target": "hrv",
-          "test_id": "TEST-PYTHON-SCORING-001"
         }
       ],
       "messages": [],
@@ -3282,14 +3293,15 @@
       "metadata_version": "synsigra_curated_pack_metadata_export_v1",
       "modality": [
         "ECG",
-        "PPG"
+        "PPG",
+        "accelerometer"
       ],
-      "name": "Wearable ECG/PPG Stress Pack v1",
+      "name": "Wearable Multi-rate Timebase Pack v2",
       "not_recommended_for": [
         "Minimal first-run examples",
         "Clinical wearable performance claims",
         "Standalone morphology diagnosis testing",
-        "PPG onset-specific benchmark scoring"
+        "Hardware-specific transport emulation"
       ],
       "output_artifacts": [
         {
@@ -3330,31 +3342,38 @@
         },
         {
           "required": true,
-          "role": "hrv_metrics_json"
+          "role": "wearable_samples_csv"
         },
         {
           "required": true,
-          "role": "rr_tachogram_csv"
+          "role": "wearable_timestamp_truth_csv"
+        },
+        {
+          "required": true,
+          "role": "wearable_timebase_truth_json"
+        },
+        {
+          "required": true,
+          "role": "wearable_alignment_truth_json"
         },
         {
           "required": true,
           "role": "measurement_truth_json"
         }
       ],
-      "pack_id": "wearable_stress_v1",
+      "pack_id": "wearable_timebase_v2",
       "recommended_for": [
-        "Wearable ECG/PPG algorithm stress and benchmark tests",
-        "Cardiorespiratory, activity and synchronization robustness checks",
-        "Long-duration compact challenge-package generation",
-        "R-peak, PPG peak, HRV and ECG/PPG timing measurement workflow integration"
+        "Multi-rate wearable detector and synchronization stress tests",
+        "Independent ECG, PPG and accelerometer clock robustness checks",
+        "Packet-loss and timestamp-jitter handling",
+        "Physiological versus device-domain ECG/PPG timing verification"
       ],
       "recommended_profile": "stress",
       "reference_only_targets": [],
-      "release_date": "2026-07-06",
+      "release_date": "2026-07-17",
       "release_status": "beta",
       "sampling_rates_hz": [
-        250,
-        100
+        250
       ],
       "schema_version": 1,
       "scoreable_targets": [
@@ -3365,8 +3384,8 @@
           ],
           "case_count": 2,
           "case_ids": [
-            "cardiorespiratory_activity",
-            "long_duration_compact"
+            "independent_clocks",
+            "packet_loss_bursts"
           ],
           "default_tolerance_seconds": 0.05,
           "description": "R-peak detector event timing against exact synthetic beat annotations.",
@@ -3383,8 +3402,8 @@
           ],
           "case_count": 2,
           "case_ids": [
-            "cardiorespiratory_activity",
-            "long_duration_compact"
+            "independent_clocks",
+            "packet_loss_bursts"
           ],
           "default_tolerance_seconds": 0.08,
           "description": "PPG systolic peak event timing against exact synthetic pulse annotations.",
@@ -3401,8 +3420,8 @@
           ],
           "case_count": 2,
           "case_ids": [
-            "cardiorespiratory_activity",
-            "long_duration_compact"
+            "independent_clocks",
+            "packet_loss_bursts"
           ],
           "default_pairing_window_seconds": 0.2,
           "description": "Per-beat PTT and ECG-to-PPG peak delay scored as paired-signal measurements.",
@@ -3411,36 +3430,20 @@
           "scoreable": true,
           "support": "local_scoring",
           "target": "ecg_ppg_alignment"
-        },
-        {
-          "accepted_formats": [
-            "hrv_metrics_json_v1"
-          ],
-          "case_count": 1,
-          "case_ids": [
-            "long_duration_compact"
-          ],
-          "description": "HRV metric and RR-interval scoring against exact synthetic tachogram ground truth.",
-          "primary_metric": "metric_pass_fraction",
-          "score_type": "hrv_metrics",
-          "scoreable": true,
-          "support": "local_scoring",
-          "target": "hrv"
         }
       ],
       "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
-        "pack_fingerprint": "sha256:ebf24db75053aad6d69f76dc32850c6b3420e8f6acbff4d5a6b662300f87a91a",
-        "pack_path": "../packs/wearable_stress_v1.json",
-        "source_content_sha256": "sha256:1f66e419161124072ceb7e45dd96e9cbfa85702dcb0a74be42cf30a9746659de"
+        "pack_fingerprint": "sha256:19013ee680a00027a7a0c5eccaf147fa8000b1240fd407c5b256dce0844d2d53",
+        "pack_path": "../packs/wearable_timebase_v2.json",
+        "source_content_sha256": "sha256:b68421320e280555a316cf6472e82ac4fbd937b00414d5e80fc3a8ecb01e2cb8"
       },
       "submission_output_schemas": [
         "point_events_json_v1",
         "point_events_csv_v1",
         "measurement_values_json_v1",
-        "measurement_values_csv_v1",
-        "hrv_metrics_json_v1"
+        "measurement_values_csv_v1"
       ],
       "supported_threshold_profiles": [
         "smoke",
@@ -3451,8 +3454,7 @@
       "targets": [
         "r_peak",
         "ppg_systolic_peak",
-        "ecg_ppg_alignment",
-        "hrv"
+        "ecg_ppg_alignment"
       ],
       "threshold_profile_contract": {
         "policy_failure_exit_code": 1,
@@ -3467,15 +3469,14 @@
       "ui": {
         "primary_badges": [
           "stress",
-          "benchmark",
-          "controlled_randomization",
-          "respiration",
-          "activity"
+          "multirate",
+          "clock_offset",
+          "clock_drift"
         ],
         "reference_only_before_job": false,
         "scoreable_before_job": true
       },
-      "version": "1.1"
+      "version": "2.0"
     },
     {
       "case_count": 9,
@@ -3661,16 +3662,16 @@
         },
         {
           "case_id": "combined_wearable",
-          "channel_count": 13,
+          "channel_count": 16,
           "duration_seconds": 60,
-          "estimated_binary_signal_bytes": 1365000,
-          "estimated_package_bytes": 7260400,
-          "estimated_peak_memory_bytes": 8488576,
-          "estimated_waveform_csv_bytes": 3780256,
+          "estimated_binary_signal_bytes": 480000,
+          "estimated_package_bytes": 16170340,
+          "estimated_peak_memory_bytes": 11248776,
+          "estimated_waveform_csv_bytes": 4590256,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
-          "scenario_id": "wearable_cardiorespiratory_stress_v3",
+          "scenario_id": "wearable_independent_clocks_v5",
           "scoreable_targets": [
             "ppg_systolic_peak",
             "ppg_pulse_onset"
@@ -3733,7 +3734,7 @@
             "name": "motion_reference"
           }
         ],
-        "maximum_channel_count": 14,
+        "maximum_channel_count": 16,
         "minimum_channel_count": 13
       },
       "declared_targets": [
@@ -3752,8 +3753,8 @@
         "total_seconds": 480
       },
       "estimated_package": {
-        "bytes": 56440600,
-        "peak_memory_bytes": 8488576,
+        "bytes": 65350540,
+        "peak_memory_bytes": 11248776,
         "size_class": "medium"
       },
       "feature_tags": [
@@ -3779,7 +3780,8 @@
         "scenario_schema_versions": [
           2,
           3,
-          4
+          4,
+          5
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -3850,6 +3852,22 @@
         {
           "required": true,
           "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "wearable_samples_csv"
+        },
+        {
+          "required": true,
+          "role": "wearable_timestamp_truth_csv"
+        },
+        {
+          "required": true,
+          "role": "wearable_timebase_truth_json"
+        },
+        {
+          "required": true,
+          "role": "wearable_alignment_truth_json"
         }
       ],
       "pack_id": "ppg_benchmark_v1",
@@ -3923,9 +3941,9 @@
       "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
-        "pack_fingerprint": "sha256:ac37729c07a7d11e47ecbb927e83c6e7dc3d6026069fbaa68c32844355119d4a",
+        "pack_fingerprint": "sha256:6edbdd54741ac7c3a0f740da64605073478d6de461a0b0c9607b01a6123a58b7",
         "pack_path": "../packs/ppg_benchmark_v1.json",
-        "source_content_sha256": "sha256:eaded38d30d4682a2c9aaafea00b72b7d9c05b17f0280bc97171ac7780b4a36b"
+        "source_content_sha256": "sha256:0ce6e4dfc58d528fc3e35b0e04a37ef456df144e540af22476dd86748303b1a0"
       },
       "submission_output_schemas": [
         "point_events_json_v1",
@@ -4376,5 +4394,5 @@
   "release_set_id": "synsigra_curated_release_2026_07_17",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:50fd547d85206b4346b02a496fc89fa2fb07adc80d00a1f6f3d93635a908e3ce"
+  "source_catalog_sha256": "sha256:8e3f4bf6692c4bbf79205796c5d003b4a30ea632a5860cdfa494393dc8ea90a1"
 }
