@@ -11,6 +11,8 @@
 #include "hrv_scoring.h"
 #include "interval_io.h"
 #include "interval_scoring.h"
+#include "measurement_io.h"
+#include "measurement_scoring.h"
 #include "scenario_authoring.h"
 #include "synsigra_api.h"
 
@@ -80,6 +82,7 @@ namespace
                   << "       signal-synth compare <r_peak|ppg_systolic_peak|ppg_pulse_onset|ecg_beat_classification> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth interval score <rhythm_episode|signal_quality> <scenario.json|-> <intervals.csv|intervals.json> --out <new-directory> [--minimum-iou <ratio>]\n"
                   << "       signal-synth delineation score <scenario.json|-> <point-events.csv|point-events.json> --out <new-directory> [--tolerance-ms <ms>]\n"
+                  << "       signal-synth measurement score <morphology_assertions|ecg_ppg_alignment> <scenario.json|-> <measurements.csv|measurements.json> --out <new-directory> [--pairing-window-ms <ms>]\n"
                   << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack analyze <pack.json>\n"
@@ -396,7 +399,8 @@ namespace
         scoring_input_event = 0,
         scoring_input_hrv = 1,
         scoring_input_interval = 2,
-        scoring_input_delineation = 3
+        scoring_input_delineation = 3,
+        scoring_input_measurement = 4
     };
 
     bool scoring_command_for_target(const std::string& target, std::string& score_type, std::string& command_name, scoring_input_kind& input_kind);
@@ -423,6 +427,13 @@ namespace
             input_kind = scoring_input_delineation;
             return true;
         }
+        if (signal_synth::measurement_target_supported(target))
+        {
+            score_type = "measurement";
+            command_name = "measurement score " + target;
+            input_kind = scoring_input_measurement;
+            return true;
+        }
         signal_synth::interval_target interval_target;
         if (signal_synth::interval_target_from_name(target, interval_target))
         {
@@ -445,6 +456,8 @@ namespace
             return "hrv_metrics_json_v1";
         if (input_kind == scoring_input_interval)
             return "interval_events_json_v1";
+        if (input_kind == scoring_input_measurement)
+            return "measurement_values_json_v1";
         return "point_events_json_v1";
     }
 
@@ -454,6 +467,8 @@ namespace
             output << "[\"hrv_metrics_json_v1\"]";
         else if (input_kind == scoring_input_interval)
             output << "[\"interval_events_json_v1\",\"interval_events_csv_v1\"]";
+        else if (input_kind == scoring_input_measurement)
+            output << "[\"measurement_values_json_v1\",\"measurement_values_csv_v1\"]";
         else
             output << "[\"point_events_json_v1\",\"point_events_csv_v1\"]";
     }
@@ -481,6 +496,8 @@ namespace
                     output << ",\"default_minimum_iou\":0.1";
                 else if (input_kind == scoring_input_delineation)
                     output << ",\"default_tolerance_seconds\":0.04,\"default_pairing_window_seconds\":0.2,\"evaluation_scope\":{\"mode\":\"all_record\",\"leads\":[\"II\",\"V2\"]}";
+                else if (input_kind == scoring_input_measurement)
+                    output << ",\"default_pairing_window_seconds\":0.2,\"ground_truth_path\":" << json_text("cases/" + case_id + "/measurement_truth.json");
                 else if (input_kind == scoring_input_event)
                 {
                     signal_synth::ecg_compare_target compare_target;
@@ -503,6 +520,8 @@ namespace
             return "{\"schema_version\":1,\"metrics\":{},\"rr_intervals\":[]}\n";
         if (input_kind == scoring_input_interval)
             return "{\"schema_version\":1,\"intervals\":[]}\n";
+        if (input_kind == scoring_input_measurement)
+            return "{\"schema_version\":1,\"measurements\":[]}\n";
         return "{\"schema_version\":1,\"events\":[]}\n";
     }
 
@@ -541,7 +560,10 @@ namespace
             "{\"name\":\"point_events_csv_v1\",\"media_type\":\"text/csv\",\"columns\":[\"time_seconds\",\"sample_index\",\"channel\",\"label\",\"confidence\"],\"required_columns\":[\"time_seconds\"]},"
             "{\"name\":\"interval_events_json_v1\",\"media_type\":\"application/json\",\"container_fields\":[\"schema_version\",\"intervals\"],\"record_fields\":[\"start_seconds\",\"end_seconds\",\"label\",\"channel\",\"confidence\"],\"required_record_fields\":[\"start_seconds\",\"end_seconds\",\"label\"]},"
             "{\"name\":\"interval_events_csv_v1\",\"media_type\":\"text/csv\",\"columns\":[\"start_seconds\",\"end_seconds\",\"label\",\"channel\",\"confidence\"],\"required_columns\":[\"start_seconds\",\"end_seconds\",\"label\"]},"
-            "{\"name\":\"hrv_metrics_json_v1\",\"media_type\":\"application/json\",\"container_fields\":[\"schema_version\",\"metrics\",\"rr_intervals\"],\"rr_record_fields\":[\"beat_time_seconds\",\"rr_seconds\"]}],"
+            "{\"name\":\"hrv_metrics_json_v1\",\"media_type\":\"application/json\",\"container_fields\":[\"schema_version\",\"metrics\",\"rr_intervals\"],\"rr_record_fields\":[\"beat_time_seconds\",\"rr_seconds\"]},"
+            "{\"name\":\"measurement_values_json_v1\",\"media_type\":\"application/json\",\"container_fields\":[\"schema_version\",\"measurements\"],\"record_fields\":[\"name\",\"value\",\"unit\",\"status\",\"scope\",\"time_seconds\",\"beat_index\",\"channel\",\"formula\",\"confidence\"],\"required_record_fields\":[\"name\",\"unit\",\"status\",\"scope\"]},"
+            "{\"name\":\"measurement_values_csv_v1\",\"media_type\":\"text/csv\",\"columns\":[\"name\",\"value\",\"unit\",\"status\",\"scope\",\"time_seconds\",\"beat_index\",\"channel\",\"formula\",\"confidence\"],\"required_columns\":[\"name\",\"value\",\"unit\",\"status\",\"scope\",\"time_seconds\",\"beat_index\",\"channel\",\"formula\",\"confidence\"]}],"
+            "\"measurement_contract\":{\"statuses\":[\"valid\",\"undefined\",\"absent\",\"not_evaluable\"],\"scopes\":[\"record\",\"lead\",\"beat\",\"beat_lead\",\"paired_signal\"],\"units\":[\"s\",\"mV\",\"mV/s\",\"deg\",\"count\",\"ratio\",\"%\",\"bpm\",\"a.u.\",\"bool\"],\"qt_formulas\":[\"fixed\",\"bazett\",\"fridericia\",\"framingham\",\"hodges\"]},"
             "\"target_adapters\":{"
             "\"r_peak\":{\"format_family\":\"point_events\",\"required_record_fields\":[\"time_seconds\"]},"
             "\"ppg_systolic_peak\":{\"format_family\":\"point_events\",\"required_record_fields\":[\"time_seconds\"]},"
@@ -550,7 +572,9 @@ namespace
             "\"ecg_delineation\":{\"format_family\":\"point_events\",\"channel\":\"standard_ecg_lead\",\"label\":\"fiducial_kind\",\"required_record_fields\":[\"time_seconds\",\"channel\",\"label\"]},"
             "\"hrv\":{\"format_family\":\"hrv_metrics\"},"
             "\"rhythm_episode\":{\"format_family\":\"interval_events\",\"channel\":\"global\"},"
-            "\"signal_quality\":{\"format_family\":\"interval_events\",\"channel\":\"global_or_physical_channel\"}}}\n";
+            "\"signal_quality\":{\"format_family\":\"interval_events\",\"channel\":\"global_or_physical_channel\"},"
+            "\"morphology_assertions\":{\"format_family\":\"measurement_values\",\"scopes\":[\"record\",\"lead\",\"beat\",\"beat_lead\"]},"
+            "\"ecg_ppg_alignment\":{\"format_family\":\"measurement_values\",\"scopes\":[\"paired_signal\"]}}}\n";
     }
 
     void add_submission_template_files(signal_synth::challenge_package_build_options& options, const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_json_result& identity, const std::vector<pack_render_row>& rows)
@@ -694,6 +718,8 @@ namespace
                     output << ",\"default_minimum_iou\":0.1";
                 else if (input_kind == scoring_input_delineation)
                     output << ",\"default_tolerance_seconds\":0.04,\"default_pairing_window_seconds\":0.2,\"evaluation_scope\":{\"mode\":\"all_record\",\"leads\":[\"II\",\"V2\"]}";
+                else if (input_kind == scoring_input_measurement)
+                    output << ",\"default_pairing_window_seconds\":0.2";
                 else if (input_kind == scoring_input_event)
                 {
                     signal_synth::ecg_compare_target compare_target;
@@ -956,6 +982,119 @@ int main(int argc, char** argv)
             return 2;
         }
         return 0;
+    }
+    if (command == "measurement")
+    {
+        if (!((argc == 8 || argc == 10) && std::string(argv[2]) == "score" && std::string(argv[6]) == "--out" && (argc == 8 || std::string(argv[8]) == "--pairing-window-ms")))
+        {
+            print_usage();
+            return 2;
+        }
+        try
+        {
+            const std::string target(argv[3]);
+            if (!signal_synth::measurement_target_supported(target))
+            {
+                std::cerr << "error=MEASUREMENT_TARGET_FAILED path=$ message=target must be morphology_assertions or ecg_ppg_alignment\n";
+                return 2;
+            }
+            if (std::string(argv[4]) == "-" && std::string(argv[5]) == "-")
+            {
+                std::cerr << "error=INPUT_READ_FAILED path=- message=scenario and measurement output cannot both be read from stdin\n";
+                return 3;
+            }
+            std::string scenario_json;
+            std::string measurement_input;
+            if (!read_input(argv[4], scenario_json))
+            {
+                std::cerr << "error=INPUT_READ_FAILED path=" << argv[4] << " message=unable to read scenario input or input exceeds 16 MiB\n";
+                return 3;
+            }
+            if (!read_input(argv[5], measurement_input))
+            {
+                std::cerr << "error=INPUT_READ_FAILED path=" << argv[5] << " message=unable to read measurement input or input exceeds 16 MiB\n";
+                return 3;
+            }
+            signal_synth::ecg_scenario_document document;
+            signal_synth::ecg_scenario_json_result scenario_result;
+            if (!signal_synth::parse_ecg_scenario_json(scenario_json, document, scenario_result))
+            {
+                print_errors(scenario_result);
+                return 4;
+            }
+            signal_synth::measurement_output_document measurement_document;
+            signal_synth::measurement_io_result measurement_result;
+            const bool parsed = starts_with_json_object(measurement_input)
+                ? signal_synth::parse_measurement_values_json_v1(measurement_input, measurement_document, measurement_result)
+                : signal_synth::parse_measurement_values_csv_v1(measurement_input, measurement_document, measurement_result);
+            if (!parsed)
+            {
+                for (std::size_t i = 0; i < measurement_result.messages.size(); ++i)
+                {
+                    const signal_synth::measurement_io_message& message = measurement_result.messages[i];
+                    std::cerr << "error=" << signal_synth::measurement_io_message_code_name(message.code) << " path=" << message.path << " message=" << message.message << '\n';
+                }
+                if (measurement_result.messages.empty())
+                    std::cerr << "error=MEASUREMENT_IO_FAILED path=$ message=measurement import failed\n";
+                return 4;
+            }
+            signal_synth::measurement_score_options options;
+            if (argc == 10)
+            {
+                double pairing_window_ms = 0.0;
+                if (!parse_double_cell(argv[9], pairing_window_ms) || pairing_window_ms <= 0.0)
+                {
+                    std::cerr << "error=MEASUREMENT_OPTIONS_FAILED path=$ message=--pairing-window-ms must be positive\n";
+                    return 2;
+                }
+                options.pairing_window_seconds = pairing_window_ms / 1000.0;
+            }
+            signal_synth::ecg_render_bundle render;
+            signal_synth::ecg_document_render_result render_result;
+            if (!signal_synth::render_ecg_document(document, render, render_result))
+            {
+                std::cerr << "error=RENDER_FAILED path=$ message=" << (render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
+                return 4;
+            }
+            signal_synth::measurement_score_result score;
+            if (!signal_synth::score_measurement_output_to_render(render, target, measurement_document, options, score))
+            {
+                std::cerr << "error=MEASUREMENT_SCORE_FAILED path=$ message=" << (score.messages.empty() ? "measurement scoring failed" : score.messages[0]) << '\n';
+                return 4;
+            }
+            const std::string output_directory(argv[7]);
+            if (!create_directory(output_directory))
+            {
+                std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=output directory must be new and writable\n";
+                return 3;
+            }
+            if (!write_text_file(join_path(output_directory, "measurement_score.json"), signal_synth::measurement_score_result_json(render, score))
+                || !write_text_file(join_path(output_directory, "measurement_score.csv"), signal_synth::measurement_score_result_csv(score))
+                || !write_text_file(join_path(output_directory, "measurement_score_report.html"), signal_synth::measurement_score_report_html(render, score)))
+            {
+                std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=unable to write measurement scoring output files\n";
+                return 3;
+            }
+            std::cout << "status=measurement-scored\n"
+                      << "output_directory=" << output_directory << '\n'
+                      << "target=" << score.target << '\n'
+                      << "ground_truth_count=" << score.total.ground_truth_count << '\n'
+                      << "prediction_count=" << score.total.prediction_count << '\n'
+                      << "numeric_pair_count=" << score.total.numeric_pair_count << '\n'
+                      << "tolerance_pass_fraction=";
+            if (score.total.numeric_pair_count) std::cout << score.total.tolerance_pass_fraction; else std::cout << "NA";
+            std::cout << '\n';
+            return 0;
+        }
+        catch (const std::bad_alloc&)
+        {
+            std::cerr << "error=INTERNAL_ERROR path=$ message=memory allocation failed\n";
+        }
+        catch (...)
+        {
+            std::cerr << "error=INTERNAL_ERROR path=$ message=unexpected failure\n";
+        }
+        return 5;
     }
     if (command == "delineation")
     {
@@ -1689,6 +1828,11 @@ int main(int argc, char** argv)
                         const signal_synth::ecg_text_artifact& artifact = export_bundle.artifacts[artifact_index];
                         challenge_case.files.push_back(make_challenge_file("cases/" + pack_scenario.id + "/" + artifact.name, signal_synth::challenge_file_role_for_export_artifact(artifact.name), artifact.media_type, artifact.content));
                     }
+                    bool has_measurement_target = false;
+                    for (std::size_t target_index = 0; target_index < targets.size(); ++target_index)
+                        has_measurement_target = has_measurement_target || signal_synth::measurement_target_supported(targets[target_index]);
+                    if (has_measurement_target)
+                        challenge_case.files.push_back(make_challenge_file("cases/" + pack_scenario.id + "/measurement_truth.json", signal_synth::challenge_file_measurement_truth_json, "application/json", signal_synth::measurement_truth_bundle_json(render, targets)));
                     challenge_case.files.push_back(make_challenge_file("cases/" + pack_scenario.id + "/case_summary.json", signal_synth::challenge_file_metadata_json, "application/json", case_summary_json(pack_scenario, document, render, targets)));
                     challenge_cases.push_back(challenge_case);
                 }

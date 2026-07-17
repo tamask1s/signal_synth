@@ -36,7 +36,8 @@ namespace signal_synth
         challenge_file_wfdb_annotation = 10,
         challenge_file_edf = 11,
         challenge_file_bdf = 12,
-        challenge_file_other = 13
+        challenge_file_measurement_truth_json = 13,
+        challenge_file_other = 14
     };
 
     struct challenge_package_json_message

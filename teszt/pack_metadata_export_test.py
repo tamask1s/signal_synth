@@ -81,7 +81,7 @@ def assert_release_pack_metadata(item):
             assert target["case_count"] == len(target["case_ids"])
             assert target["case_ids"]
             assert target["support"] == "local_scoring"
-            assert target["score_type"] in ("event_detection", "classification", "hrv_metrics", "interval_detection", "ecg_delineation")
+            assert target["score_type"] in ("event_detection", "classification", "hrv_metrics", "interval_detection", "ecg_delineation", "measurement")
             assert target["accepted_formats"]
     else:
         assert not item["submission_output_schemas"]
@@ -174,6 +174,17 @@ def assert_delineation_metadata(item):
     assert item["reference_only_targets"] == []
 
 
+def assert_measurement_metadata(item, target):
+    contracts = dict((entry["target"], entry) for entry in item["scoreable_targets"])
+    assert target in contracts
+    assert contracts[target]["score_type"] == "measurement"
+    assert contracts[target]["accepted_formats"] == ["measurement_values_json_v1", "measurement_values_csv_v1"]
+    assert contracts[target]["default_pairing_window_seconds"] == 0.2
+    assert item["generator_compatibility"]["local_verifier_min_version"] == "0.5.0"
+    assert "measurement_truth_json" in [artifact["role"] for artifact in item["output_artifacts"]]
+    assert item["reference_only_targets"] == []
+
+
 def main():
     source_dir = os.environ["SIGNAL_SYNTH_SOURCE_DIR"]
     cli = os.environ["SIGNAL_SYNTH_CLI"]
@@ -193,7 +204,7 @@ def main():
         assert generated["release_set_id"] == "synsigra_curated_release_2026_07_17"
         assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
-        assert generated["catalog_version"] == "1.7"
+        assert generated["catalog_version"] == "1.8"
         assert generated["pack_count"] == 11
         assert [item["pack_id"] for item in generated["packs"]] == RELEASE_PACK_IDS
         for pack_id in RELEASE_PACK_IDS:
@@ -201,6 +212,9 @@ def main():
         assert_rpeak_metadata(pack(generated, "r_peak_stress_v1"))
         assert_ppg_benchmark_metadata(pack(generated, "ppg_benchmark_v1"))
         assert_delineation_metadata(pack(generated, "ecg_delineation_v2"))
+        assert_measurement_metadata(pack(generated, "ecg_morphology_stress_v1"), "morphology_assertions")
+        assert_measurement_metadata(pack(generated, "ppg_alignment_v1"), "ecg_ppg_alignment")
+        assert_measurement_metadata(pack(generated, "wearable_stress_v1"), "ecg_ppg_alignment")
 
         filtered_path = os.path.join(work_dir, "rpeak_only.json")
         run([sys.executable, script, "--cli", cli, "--catalog", catalog, "--source-root", source_dir, "--pack-id", "r_peak_stress_v1", "--out", filtered_path])

@@ -23,6 +23,9 @@ Lead-specific ECG delineation scoring covers P onset/peak/offset, QRS onset
 and offset, J point, and T onset/peak/offset with temporal event matching,
 truth-side atrial/ventricular anchors, and explicit present, absent, and
 not-evaluable states.
+Generic measurement scoring uses one JSON/CSV contract for beat, lead, record,
+and paired-signal outputs, including ECG intervals, ST/T morphology, frontal
+axes, phenotype assertions, PTT, and ECG-to-PPG peak delay.
 
 ## ECG model status
 
@@ -108,6 +111,7 @@ Validate and fingerprint a portable scenario document:
 /tmp/signal_synth-build/signal-synth render examples/scenarios/ecg_clean.json --out /tmp/ecg_clean_export
 /tmp/signal_synth-build/signal-synth interval score rhythm_episode examples/scenarios/catalog/rhythm_psvt_episode.json intervals.json --out /tmp/episode_score
 /tmp/signal_synth-build/signal-synth delineation score examples/scenarios/ecg_clean.json delineations.json --out /tmp/delineation_score
+/tmp/signal_synth-build/signal-synth measurement score morphology_assertions examples/scenarios/catalog/morph_clbbb.json measurements.json --out /tmp/measurement_score
 ```
 
 Discover the SaaS-safe form contract, scenario templates, and pack estimates:
@@ -166,7 +170,7 @@ External beta users install the generator-free wheel supplied with the
 release:
 
 ```bash
-python -m pip install synsigra-0.4.0-py3-none-any.whl
+python -m pip install synsigra-0.5.0-py3-none-any.whl
 ```
 
 Run local verification:

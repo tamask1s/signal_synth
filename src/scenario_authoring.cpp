@@ -12,7 +12,7 @@
 
 namespace
 {
-    const char* metadata_version = "synsigra_authoring_v8";
+    const char* metadata_version = "synsigra_authoring_v9";
     const char* template_version = "synsigra_templates_v3";
 
     struct field_definition
@@ -236,6 +236,8 @@ namespace
             return "interval_detection";
         if (target == "ecg_delineation")
             return "ecg_delineation";
+        if (target == "morphology_assertions" || target == "ecg_ppg_alignment")
+            return "measurement";
         return "generated_reference_only";
     }
 
@@ -249,6 +251,8 @@ namespace
             return "time_f1_score";
         if (target == "ecg_delineation")
             return "f1_score";
+        if (target == "morphology_assertions" || target == "ecg_ppg_alignment")
+            return "tolerance_pass_fraction";
         if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset")
             return "f1_score";
         return "";
@@ -286,6 +290,11 @@ namespace
         {
             output.push_back("point_events_json_v1");
             output.push_back("point_events_csv_v1");
+        }
+        else if (target == "morphology_assertions" || target == "ecg_ppg_alignment")
+        {
+            output.push_back("measurement_values_json_v1");
+            output.push_back("measurement_values_csv_v1");
         }
         return output;
     }
@@ -481,10 +490,8 @@ namespace signal_synth
 
     scenario_target_support scenario_target_support_for_name(const std::string& target)
     {
-        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset" || target == "ecg_beat_classification" || target == "hrv" || target == "rhythm_episode" || target == "signal_quality" || target == "ecg_delineation")
+        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset" || target == "ecg_beat_classification" || target == "hrv" || target == "rhythm_episode" || target == "signal_quality" || target == "ecg_delineation" || target == "morphology_assertions" || target == "ecg_ppg_alignment")
             return scenario_target_local_scoring;
-        if (target == "morphology_assertions" || target == "ecg_ppg_alignment")
-            return scenario_target_reference_only;
         return scenario_target_unsupported;
     }
 
@@ -650,8 +657,8 @@ namespace signal_synth
                << "{\"name\":\"rhythm_episode\",\"support\":\"local_scoring\",\"requires\":[\"ecg.episode_type!=none\"]},"
                << "{\"name\":\"signal_quality\",\"support\":\"local_scoring\",\"requires\":[\"artifacts.length>0\"]},"
                << "{\"name\":\"ecg_delineation\",\"support\":\"local_scoring\",\"requires\":[]},"
-               << "{\"name\":\"morphology_assertions\",\"support\":\"reference_only\",\"requires\":[\"ecg.conditions\"]},"
-               << "{\"name\":\"ecg_ppg_alignment\",\"support\":\"reference_only\",\"requires\":[\"ppg.enabled\"]}],"
+               << "{\"name\":\"morphology_assertions\",\"support\":\"local_scoring\",\"requires\":[\"ecg.conditions\"]},"
+               << "{\"name\":\"ecg_ppg_alignment\",\"support\":\"local_scoring\",\"requires\":[\"ppg.enabled\"]}],"
                << "\"cross_field_rules\":["
                << "{\"id\":\"sample_count\",\"expression\":\"duration_seconds * sample_rate_hz is an integer in [1,4294967295]\",\"message\":\"Duration and sample rate must produce a positive 32-bit sample count.\"},"
                << "{\"id\":\"hrv_window\",\"expression\":\"!hrv.enabled || duration_seconds >= 300\",\"message\":\"Enabled spectral HRV requires at least 300 seconds.\"},"

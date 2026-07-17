@@ -559,6 +559,7 @@ namespace signal_synth
         case challenge_file_wfdb_annotation: return "wfdb_annotation";
         case challenge_file_edf: return "edf";
         case challenge_file_bdf: return "bdf";
+        case challenge_file_measurement_truth_json: return "measurement_truth_json";
         case challenge_file_other: return "other";
         }
         return "other";
@@ -643,7 +644,7 @@ namespace signal_synth
                 add_message(fresh, challenge_package_json_range, path + ".media_type", "media_type must be a compact type/subtype value");
             if (!valid_sha256(file.sha256))
                 add_message(fresh, challenge_package_json_range, path + ".sha256", "sha256 must be sha256:<64 lowercase hex characters>");
-            if (file.role == challenge_file_annotations_json || file.role == challenge_file_ground_truth_metrics_json)
+            if (file.role == challenge_file_annotations_json || file.role == challenge_file_ground_truth_metrics_json || file.role == challenge_file_measurement_truth_json)
                 has_ground_truth = true;
         }
         if (!has_ground_truth)

@@ -25,6 +25,8 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/interval_scoring.h
     src/delineation_io.h
     src/delineation_scoring.h
+    src/measurement_io.h
+    src/measurement_scoring.h
     src/synsigra_api.h
     src/challenge_package.h
     src/challenge_assembly.h
@@ -57,6 +59,8 @@ add_library(
     src/interval_scoring.cpp
     src/delineation_io.cpp
     src/delineation_scoring.cpp
+    src/measurement_io.cpp
+    src/measurement_scoring.cpp
     src/synsigra_api.cpp
     src/challenge_package.cpp
     src/challenge_assembly.cpp

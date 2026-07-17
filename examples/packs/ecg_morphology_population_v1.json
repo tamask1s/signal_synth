@@ -2,7 +2,7 @@
   "schema_version": 1,
   "pack_id": "ecg_morphology_population_v1",
   "name": "ECG Morphology Population Variation",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Replayable normal-rhythm morphology variation cases for detector and morphology-sensitive algorithm QA.",
   "targets": ["r_peak", "morphology_assertions"],
   "scenarios": [

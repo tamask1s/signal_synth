@@ -24,6 +24,10 @@ def _delineation_thresholds(f1_score, max_mae):
     return {"overall": {"f1_score": {"min": f1_score}, "mean_absolute_error_seconds": {"max": max_mae}}}
 
 
+def _measurement_thresholds(pass_fraction, status_fraction):
+    return {"overall": {"truth_match_fraction": {"min": pass_fraction}, "prediction_match_fraction": {"min": pass_fraction}, "tolerance_pass_fraction": {"min": pass_fraction}, "status_match_fraction": {"min": status_fraction}}}
+
+
 BUILTIN_THRESHOLD_PROFILES = {
     "smoke": {
         "schema_version": 1,
@@ -33,6 +37,7 @@ BUILTIN_THRESHOLD_PROFILES = {
             "event_detection": _event_thresholds(0.70, 0.75, 0.50, 0.080),
             "interval_detection": _interval_thresholds(0.60, 0.40, 0.500),
             "ecg_delineation": _delineation_thresholds(0.60, 0.080),
+            "measurement": _measurement_thresholds(0.70, 0.70),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.70}}, "per_class": {"f1_score": {"min": 0.50}}},
             "hrv": {"summary": {"metric_pass_fraction": {"min": 0.70}}, "rr": {"pass_fraction": {"min": 0.70}}},
         },
@@ -45,6 +50,7 @@ BUILTIN_THRESHOLD_PROFILES = {
             "event_detection": _event_thresholds(0.90, 0.95, 0.70, 0.050),
             "interval_detection": _interval_thresholds(0.85, 0.75, 0.200),
             "ecg_delineation": _delineation_thresholds(0.85, 0.040),
+            "measurement": _measurement_thresholds(0.90, 0.90),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.90}}, "per_class": {"f1_score": {"min": 0.80}}},
             "hrv": {"summary": {"metric_pass_fraction": {"min": 0.90}}, "rr": {"pass_fraction": {"min": 0.90}}},
         },
@@ -57,6 +63,7 @@ BUILTIN_THRESHOLD_PROFILES = {
             "event_detection": _event_thresholds(0.75, 0.90, 0.60, 0.080),
             "interval_detection": _interval_thresholds(0.65, 0.50, 0.400),
             "ecg_delineation": _delineation_thresholds(0.65, 0.080),
+            "measurement": _measurement_thresholds(0.75, 0.75),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.75}}, "per_class": {"f1_score": {"min": 0.60}}},
             "hrv": {"summary": {"metric_pass_fraction": {"min": 0.75}}, "rr": {"pass_fraction": {"min": 0.75}}},
         },
@@ -69,6 +76,7 @@ BUILTIN_THRESHOLD_PROFILES = {
             "event_detection": _event_thresholds(0.95, 0.98, 0.80, 0.030),
             "interval_detection": _interval_thresholds(0.95, 0.90, 0.100),
             "ecg_delineation": _delineation_thresholds(0.95, 0.020),
+            "measurement": _measurement_thresholds(0.95, 0.95),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.95}}, "per_class": {"f1_score": {"min": 0.90}}},
             "hrv": {"summary": {"metric_pass_fraction": {"min": 1.0}}, "rr": {"pass_fraction": {"min": 0.95}}},
         },
@@ -95,12 +103,17 @@ PROFILE_SCHEMA = {
     "ecg_delineation": {
         "overall": set(["sensitivity", "positive_predictive_value", "f1_score", "within_tolerance_fraction", "mean_absolute_error_seconds", "p95_absolute_error_seconds"]),
     },
+    "measurement": {
+        "overall": set(["truth_match_fraction", "prediction_match_fraction", "tolerance_pass_fraction", "status_match_fraction", "assertion_agreement_fraction"]),
+    },
 }
 PROFILE_SCHEMA["r_peak"] = PROFILE_SCHEMA["event_detection"]
 PROFILE_SCHEMA["ppg_systolic_peak"] = PROFILE_SCHEMA["event_detection"]
 PROFILE_SCHEMA["ppg_pulse_onset"] = PROFILE_SCHEMA["event_detection"]
 PROFILE_SCHEMA["rhythm_episode"] = PROFILE_SCHEMA["interval_detection"]
 PROFILE_SCHEMA["signal_quality"] = PROFILE_SCHEMA["interval_detection"]
+PROFILE_SCHEMA["morphology_assertions"] = PROFILE_SCHEMA["measurement"]
+PROFILE_SCHEMA["ecg_ppg_alignment"] = PROFILE_SCHEMA["measurement"]
 
 
 def load_threshold_profile(profile="regression"):

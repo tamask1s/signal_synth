@@ -26,7 +26,7 @@ def main():
     catalog = load_json(catalog_path)
     assert catalog["schema_version"] == 1
     assert catalog["catalog_id"] == "synsigra_verification_packs"
-    assert catalog["version"] == "1.7"
+    assert catalog["version"] == "1.8"
     assert "clinical validation" in catalog["not_for"].lower()
 
     expected = set([

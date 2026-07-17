@@ -7,7 +7,7 @@ and does not execute customer detector code.
 ## Install
 
 ```bash
-python -m pip install synsigra-0.4.0-py3-none-any.whl
+python -m pip install synsigra-0.5.0-py3-none-any.whl
 synsigra-verify --help
 ```
 
@@ -54,6 +54,13 @@ Rhythm and signal-quality outputs use `interval_events_json_v1` or
 `interval_events_csv_v1` with half-open `[start_seconds,end_seconds)` bounds,
 label and channel. HRV uses `hrv_metrics_json_v1`. The generated manifest lists
 the accepted formats for every target.
+
+Morphology and ECG/PPG alignment use one measurement payload family. JSON uses
+`measurement_values_json_v1`; CSV uses the exact columns
+`name,value,unit,status,scope,time_seconds,beat_index,channel,formula,confidence`.
+Status is one of `valid`, `undefined`, `absent`, or `not_evaluable`. Beat-level
+outputs may use a decimal-string beat index or a time anchor; record, lead, and
+paired-signal outputs use the same contract.
 
 ## Reports
 

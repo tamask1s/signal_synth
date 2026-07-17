@@ -2,7 +2,7 @@
   "schema_version": 1,
   "pack_id": "wearable_stress_v1",
   "name": "Wearable ECG/PPG Stress Pack v1",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Reproducible ECG, PPG, HRV, cardiorespiratory and synchronization stress for wearable algorithm QA.",
   "targets": ["r_peak", "ppg_systolic_peak", "ecg_ppg_alignment", "hrv"],
   "scenarios": [

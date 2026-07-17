@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "1.7",
+  "version": "1.8",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -212,24 +212,31 @@
       "difficulty": ["stress"],
       "recommended_profile": "stress",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
-      "scoring_mode": "mixed",
+      "scoring_mode": "local",
       "feature_tags": ["conduction", "st_t", "ischemia", "hypertrophy", "infarction", "lead_fault", "acquisition_fault"],
       "release_status": "beta",
       "release_date": "2026-07-06",
       "deprecation_message": "",
       "recommended_for": [
-        "Reference morphology and condition assertion export",
+        "Local PR, QRS, QT, QTc, ST, T-amplitude and frontal-axis measurement scoring",
+        "Automated phenotype-assertion measurement agreement checks",
         "Visual QA of conduction, ST-T, hypertrophy and infarction phenotypes",
-        "Stress input generation for morphology-sensitive algorithms",
-        "Future morphology-scoring contract development"
+        "Stress tests for morphology-sensitive ECG algorithms"
       ],
       "not_recommended_for": [
-        "Automated local morphology scoring in the current release",
         "Diagnostic ECG interpretation claims",
         "Clinical ischemia or infarction validation",
+        "Patient-derived normal-range claims",
         "Pure HRV or PPG tests"
       ],
       "changelog": [
+        {
+          "version": "1.1",
+          "date": "2026-07-17",
+          "changes": [
+            "Added JSON/CSV measurement submissions and local timing, amplitude, axis, and phenotype-assertion scoring."
+          ]
+        },
         {
           "version": "1.0",
           "date": "2026-07-06",
@@ -237,7 +244,8 @@
             "Initial beta reference-only ECG morphology pack with condition assertions and signal-quality references."
           ]
         }
-      ]
+      ],
+      "generator_compatibility": {"local_verifier_min_version": "0.5.0"}
     },
     {
       "pack_id": "ppg_alignment_v1",
@@ -247,14 +255,14 @@
       "difficulty": ["smoke"],
       "recommended_profile": "smoke",
       "supported_threshold_profiles": ["smoke", "regression"],
-      "scoring_mode": "mixed",
+      "scoring_mode": "local",
       "feature_tags": ["pulse_transit_delay", "ecg_ppg_alignment"],
       "release_status": "beta",
       "release_date": "2026-07-06",
       "deprecation_message": "",
       "recommended_for": [
         "PPG systolic peak smoke testing",
-        "ECG-to-PPG timing and pulse-transit-delay reference checks",
+        "Local ECG-to-PPG onset PTT and systolic-peak-delay measurement scoring",
         "Multimodal pipeline integration tests",
         "Detector tests that need linked ECG and PPG channels"
       ],
@@ -266,13 +274,21 @@
       ],
       "changelog": [
         {
+          "version": "1.1",
+          "date": "2026-07-17",
+          "changes": [
+            "Added paired-signal measurement submissions and local PTT/peak-delay scoring."
+          ]
+        },
+        {
           "version": "1.0",
           "date": "2026-07-06",
           "changes": [
             "Initial beta PPG alignment pack with systolic-peak scoring and ECG/PPG timing references."
           ]
         }
-      ]
+      ],
+      "generator_compatibility": {"local_verifier_min_version": "0.5.0"}
     },
     {
       "pack_id": "combined_worst_case_v1",
@@ -317,7 +333,7 @@
       "difficulty": ["stress", "benchmark"],
       "recommended_profile": "stress",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
-      "scoring_mode": "mixed",
+      "scoring_mode": "local",
       "feature_tags": ["controlled_randomization", "respiration", "activity", "pulse_transit_delay", "missing_pulse", "clock_drift", "long_duration", "compact"],
       "release_status": "beta",
       "release_date": "2026-07-06",
@@ -326,7 +342,7 @@
         "Wearable ECG/PPG algorithm stress and benchmark tests",
         "Cardiorespiratory, activity and synchronization robustness checks",
         "Long-duration compact challenge-package generation",
-        "R-peak, PPG peak and HRV workflow integration"
+        "R-peak, PPG peak, HRV and ECG/PPG timing measurement workflow integration"
       ],
       "not_recommended_for": [
         "Minimal first-run examples",
@@ -336,13 +352,21 @@
       ],
       "changelog": [
         {
+          "version": "1.1",
+          "date": "2026-07-17",
+          "changes": [
+            "Enabled local ECG/PPG alignment measurement scoring through the unified submission contract."
+          ]
+        },
+        {
           "version": "1.0",
           "date": "2026-07-06",
           "changes": [
             "Initial beta wearable stress pack with cardiorespiratory, activity, timing and compact long-duration cases."
           ]
         }
-      ]
+      ],
+      "generator_compatibility": {"local_verifier_min_version": "0.5.0"}
     },
     {
       "pack_id": "ppg_benchmark_v1",

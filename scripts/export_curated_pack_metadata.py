@@ -87,16 +87,20 @@ TARGET_CONTRACTS = {
         "description": "Lead-specific P, QRS, J-point, and T fiducial timing against exact synthetic construction ground truth.",
     },
     "morphology_assertions": {
-        "scoreable": False,
-        "score_type": "generated_reference_only",
-        "reference_artifacts": ["conditions", "fiducials", "annotations_json", "case_summary_json"],
-        "description": "Generated ECG morphology and condition assertions. No local scoring policy is defined yet.",
+        "scoreable": True,
+        "score_type": "measurement",
+        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "default_pairing_window_seconds": 0.2,
+        "primary_metric": "tolerance_pass_fraction",
+        "description": "Beat-, lead-, record-, axis-, and phenotype-level ECG measurements scored against exact synthetic ground truth.",
     },
     "ecg_ppg_alignment": {
-        "scoreable": False,
-        "score_type": "generated_reference_only",
-        "reference_artifacts": ["ecg_ppg_timing", "ppg_fiducials", "annotations_json", "case_summary_json"],
-        "description": "Generated ECG-to-PPG timing reference. No local scoring policy is defined yet.",
+        "scoreable": True,
+        "score_type": "measurement",
+        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "default_pairing_window_seconds": 0.2,
+        "primary_metric": "tolerance_pass_fraction",
+        "description": "Per-beat PTT and ECG-to-PPG peak delay scored as paired-signal measurements.",
     },
 }
 
@@ -146,6 +150,14 @@ LOCAL_VERIFIER_SMOKE_TESTS = {
     "ecg_delineation": [
         {"test_id": "TEST-DELINEATION-SCORING-001", "scope": "core lead-specific delineation scoring smoke test"},
         {"test_id": "TEST-DELINEATION-PYTHON-001", "scope": "generator-free delineation scoring and C++/Python parity test"},
+    ],
+    "morphology_assertions": [
+        {"test_id": "TEST-MEASUREMENT-SCORING-001", "scope": "core morphology measurement scoring smoke test"},
+        {"test_id": "TEST-MEASUREMENT-PYTHON-001", "scope": "generator-free morphology measurement scoring parity test"},
+    ],
+    "ecg_ppg_alignment": [
+        {"test_id": "TEST-MEASUREMENT-SCORING-001", "scope": "core paired-signal measurement scoring smoke test"},
+        {"test_id": "TEST-MEASUREMENT-PYTHON-001", "scope": "generator-free ECG/PPG measurement scoring parity test"},
     ],
 }
 
@@ -301,6 +313,8 @@ def output_artifacts(scoreable_targets, reference_targets):
     if any(item["target"] == "hrv" for item in scoreable_targets):
         artifacts.append({"role": "hrv_metrics_json", "required": True})
         artifacts.append({"role": "rr_tachogram_csv", "required": True})
+    if any(item["score_type"] == "measurement" for item in scoreable_targets):
+        artifacts.append({"role": "measurement_truth_json", "required": True})
     if reference_targets:
         artifacts.append({"role": "reference_ground_truth", "required": True, "targets": [item["target"] for item in reference_targets]})
     return artifacts

@@ -1,6 +1,6 @@
 {
   "catalog_id": "synsigra_verification_packs",
-  "catalog_version": "1.7",
+  "catalog_version": "1.8",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "metadata_type": "synsigra_curated_pack_catalog",
   "metadata_version": "synsigra_curated_pack_metadata_export_v1",
@@ -1960,13 +1960,13 @@
           "estimated_package_bytes": 3021400,
           "estimated_peak_memory_bytes": 4648576,
           "estimated_waveform_csv_bytes": 1755256,
-          "reference_only_targets": [
-            "morphology_assertions"
-          ],
+          "reference_only_targets": [],
           "sample_count": 7500,
           "sampling_rate_hz": 500,
           "scenario_id": "morph_clbbb",
-          "scoreable_targets": [],
+          "scoreable_targets": [
+            "morphology_assertions"
+          ],
           "targets": [
             "morphology_assertions"
           ]
@@ -1979,13 +1979,13 @@
           "estimated_package_bytes": 3021400,
           "estimated_peak_memory_bytes": 4648576,
           "estimated_waveform_csv_bytes": 1755256,
-          "reference_only_targets": [
-            "morphology_assertions"
-          ],
+          "reference_only_targets": [],
           "sample_count": 7500,
           "sampling_rate_hz": 500,
           "scenario_id": "morph_iscal",
-          "scoreable_targets": [],
+          "scoreable_targets": [
+            "morphology_assertions"
+          ],
           "targets": [
             "morphology_assertions"
           ]
@@ -1998,13 +1998,13 @@
           "estimated_package_bytes": 3021400,
           "estimated_peak_memory_bytes": 4648576,
           "estimated_waveform_csv_bytes": 1755256,
-          "reference_only_targets": [
-            "morphology_assertions"
-          ],
+          "reference_only_targets": [],
           "sample_count": 7500,
           "sampling_rate_hz": 500,
           "scenario_id": "morph_lvh",
-          "scoreable_targets": [],
+          "scoreable_targets": [
+            "morphology_assertions"
+          ],
           "targets": [
             "morphology_assertions"
           ]
@@ -2017,13 +2017,13 @@
           "estimated_package_bytes": 3021400,
           "estimated_peak_memory_bytes": 4648576,
           "estimated_waveform_csv_bytes": 1755256,
-          "reference_only_targets": [
-            "morphology_assertions"
-          ],
+          "reference_only_targets": [],
           "sample_count": 7500,
           "sampling_rate_hz": 500,
           "scenario_id": "morph_imi",
-          "scoreable_targets": [],
+          "scoreable_targets": [
+            "morphology_assertions"
+          ],
           "targets": [
             "morphology_assertions"
           ]
@@ -2048,8 +2048,15 @@
           ]
         }
       ],
-      "catalog_scoring_mode": "mixed",
+      "catalog_scoring_mode": "local",
       "changelog": [
+        {
+          "changes": [
+            "Added JSON/CSV measurement submissions and local timing, amplitude, axis, and phenotype-assertion scoring."
+          ],
+          "date": "2026-07-17",
+          "version": "1.1"
+        },
         {
           "changes": [
             "Initial beta reference-only ECG morphology pack with condition assertions and signal-quality references."
@@ -2087,7 +2094,7 @@
         "signal_quality"
       ],
       "deprecation_message": "",
-      "description": "Curated conduction, ST-T/ischemia, hypertrophy, infarction, lead-fault, and acquisition-fault reference cases.",
+      "description": "Curated conduction, ST-T/ischemia, hypertrophy, infarction, lead-fault, and acquisition-fault measurement QA cases.",
       "difficulty": [
         "stress"
       ],
@@ -2112,7 +2119,7 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v2",
-        "local_verifier_min_version": "0.4.0",
+        "local_verifier_min_version": "0.5.0",
         "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
@@ -2129,6 +2136,16 @@
       },
       "local_verifier_smoke_tests": [
         {
+          "scope": "core morphology measurement scoring smoke test",
+          "target": "morphology_assertions",
+          "test_id": "TEST-MEASUREMENT-SCORING-001"
+        },
+        {
+          "scope": "generator-free morphology measurement scoring parity test",
+          "target": "morphology_assertions",
+          "test_id": "TEST-MEASUREMENT-PYTHON-001"
+        },
+        {
           "scope": "core signal-quality interval scoring smoke test",
           "target": "signal_quality",
           "test_id": "TEST-INTERVAL-SCORING-001"
@@ -2139,14 +2156,7 @@
           "test_id": "TEST-PYTHON-SCORING-001"
         }
       ],
-      "messages": [
-        {
-          "code": "REFERENCE_ONLY_TARGET",
-          "message": "morphology_assertions exports ground truth but has no local scoring policy.",
-          "path": "$.targets",
-          "severity": "warning"
-        }
-      ],
+      "messages": [],
       "metadata_type": "synsigra_curated_pack_metadata",
       "metadata_version": "synsigra_curated_pack_metadata_export_v1",
       "modality": [
@@ -2154,9 +2164,9 @@
       ],
       "name": "ECG Morphology Stress Pack v1",
       "not_recommended_for": [
-        "Automated local morphology scoring in the current release",
         "Diagnostic ECG interpretation claims",
         "Clinical ischemia or infarction validation",
+        "Patient-derived normal-range claims",
         "Pure HRV or PPG tests"
       ],
       "output_artifacts": [
@@ -2198,42 +2208,18 @@
         },
         {
           "required": true,
-          "role": "reference_ground_truth",
-          "targets": [
-            "morphology_assertions"
-          ]
+          "role": "measurement_truth_json"
         }
       ],
       "pack_id": "ecg_morphology_stress_v1",
       "recommended_for": [
-        "Reference morphology and condition assertion export",
+        "Local PR, QRS, QT, QTc, ST, T-amplitude and frontal-axis measurement scoring",
+        "Automated phenotype-assertion measurement agreement checks",
         "Visual QA of conduction, ST-T, hypertrophy and infarction phenotypes",
-        "Stress input generation for morphology-sensitive algorithms",
-        "Future morphology-scoring contract development"
+        "Stress tests for morphology-sensitive ECG algorithms"
       ],
       "recommended_profile": "stress",
-      "reference_only_targets": [
-        {
-          "case_count": 4,
-          "case_ids": [
-            "clbbb",
-            "ischemia_anterolateral",
-            "lvh",
-            "inferior_infarction"
-          ],
-          "description": "Generated ECG morphology and condition assertions. No local scoring policy is defined yet.",
-          "reference_artifacts": [
-            "conditions",
-            "fiducials",
-            "annotations_json",
-            "case_summary_json"
-          ],
-          "score_type": "generated_reference_only",
-          "scoreable": false,
-          "support": "reference_only",
-          "target": "morphology_assertions"
-        }
-      ],
+      "reference_only_targets": [],
       "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
@@ -2241,6 +2227,26 @@
       ],
       "schema_version": 1,
       "scoreable_targets": [
+        {
+          "accepted_formats": [
+            "measurement_values_json_v1",
+            "measurement_values_csv_v1"
+          ],
+          "case_count": 4,
+          "case_ids": [
+            "clbbb",
+            "ischemia_anterolateral",
+            "lvh",
+            "inferior_infarction"
+          ],
+          "default_pairing_window_seconds": 0.2,
+          "description": "Beat-, lead-, record-, axis-, and phenotype-level ECG measurements scored against exact synthetic ground truth.",
+          "primary_metric": "tolerance_pass_fraction",
+          "score_type": "measurement",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "morphology_assertions"
+        },
         {
           "accepted_formats": [
             "interval_events_json_v1",
@@ -2259,14 +2265,16 @@
           "target": "signal_quality"
         }
       ],
-      "scoring_mode": "mixed",
+      "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
-        "pack_fingerprint": "sha256:e24fc01f4e5162326cfd312f657a38a88c34a54e7d4a1dfb1ab640f93cac58ef",
+        "pack_fingerprint": "sha256:acce50f6a1baba2c58494d4ffd2ec8708f88f9bb1f023fee3c8f33d9d7380fdc",
         "pack_path": "../packs/ecg_morphology_stress_v1.json",
-        "source_content_sha256": "sha256:94f845fb9721c215458c4296a0171e014febb4c7bc03734ba4fc9d2292f14806"
+        "source_content_sha256": "sha256:5fd67552df438af307d654e0fca16689d3e1bdd605f3e29dce9b18471f74ca44"
       },
       "submission_output_schemas": [
+        "measurement_values_json_v1",
+        "measurement_values_csv_v1",
         "interval_events_json_v1",
         "interval_events_csv_v1"
       ],
@@ -2297,10 +2305,10 @@
           "st_t",
           "ischemia"
         ],
-        "reference_only_before_job": true,
+        "reference_only_before_job": false,
         "scoreable_before_job": true
       },
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "case_count": 4,
@@ -2319,14 +2327,13 @@
           "estimated_package_bytes": 4168400,
           "estimated_peak_memory_bytes": 6008576,
           "estimated_waveform_csv_bytes": 2520256,
-          "reference_only_targets": [
-            "ecg_ppg_alignment"
-          ],
+          "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
           "scenario_id": "ppg_delay_180",
           "scoreable_targets": [
-            "ppg_systolic_peak"
+            "ppg_systolic_peak",
+            "ecg_ppg_alignment"
           ],
           "targets": [
             "ppg_systolic_peak",
@@ -2341,14 +2348,13 @@
           "estimated_package_bytes": 4168400,
           "estimated_peak_memory_bytes": 6008576,
           "estimated_waveform_csv_bytes": 2520256,
-          "reference_only_targets": [
-            "ecg_ppg_alignment"
-          ],
+          "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
           "scenario_id": "ppg_delay_260",
           "scoreable_targets": [
-            "ppg_systolic_peak"
+            "ppg_systolic_peak",
+            "ecg_ppg_alignment"
           ],
           "targets": [
             "ppg_systolic_peak",
@@ -2398,8 +2404,15 @@
           ]
         }
       ],
-      "catalog_scoring_mode": "mixed",
+      "catalog_scoring_mode": "local",
       "changelog": [
+        {
+          "changes": [
+            "Added paired-signal measurement submissions and local PTT/peak-delay scoring."
+          ],
+          "date": "2026-07-17",
+          "version": "1.1"
+        },
         {
           "changes": [
             "Initial beta PPG alignment pack with systolic-peak scoring and ECG/PPG timing references."
@@ -2444,7 +2457,7 @@
         "ecg_ppg_alignment"
       ],
       "deprecation_message": "",
-      "description": "Linked ECG/PPG scenarios for pulse timing and peak detector QA.",
+      "description": "Linked ECG/PPG scenarios for pulse timing, PTT measurement, and peak detector QA.",
       "difficulty": [
         "smoke"
       ],
@@ -2464,7 +2477,7 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v2",
-        "local_verifier_min_version": "0.4.0",
+        "local_verifier_min_version": "0.5.0",
         "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
@@ -2486,6 +2499,16 @@
           "test_id": "TEST-PYTHON-SCORING-001"
         },
         {
+          "scope": "core paired-signal measurement scoring smoke test",
+          "target": "ecg_ppg_alignment",
+          "test_id": "TEST-MEASUREMENT-SCORING-001"
+        },
+        {
+          "scope": "generator-free ECG/PPG measurement scoring parity test",
+          "target": "ecg_ppg_alignment",
+          "test_id": "TEST-MEASUREMENT-PYTHON-001"
+        },
+        {
           "scope": "core signal-quality interval scoring smoke test",
           "target": "signal_quality",
           "test_id": "TEST-INTERVAL-SCORING-001"
@@ -2496,14 +2519,7 @@
           "test_id": "TEST-PYTHON-SCORING-001"
         }
       ],
-      "messages": [
-        {
-          "code": "REFERENCE_ONLY_TARGET",
-          "message": "ecg_ppg_alignment exports ground truth but has no local scoring policy.",
-          "path": "$.targets",
-          "severity": "warning"
-        }
-      ],
+      "messages": [],
       "metadata_type": "synsigra_curated_pack_metadata",
       "metadata_version": "synsigra_curated_pack_metadata_export_v1",
       "modality": [
@@ -2556,40 +2572,18 @@
         },
         {
           "required": true,
-          "role": "reference_ground_truth",
-          "targets": [
-            "ecg_ppg_alignment"
-          ]
+          "role": "measurement_truth_json"
         }
       ],
       "pack_id": "ppg_alignment_v1",
       "recommended_for": [
         "PPG systolic peak smoke testing",
-        "ECG-to-PPG timing and pulse-transit-delay reference checks",
+        "Local ECG-to-PPG onset PTT and systolic-peak-delay measurement scoring",
         "Multimodal pipeline integration tests",
         "Detector tests that need linked ECG and PPG channels"
       ],
       "recommended_profile": "smoke",
-      "reference_only_targets": [
-        {
-          "case_count": 2,
-          "case_ids": [
-            "delay_180",
-            "delay_260"
-          ],
-          "description": "Generated ECG-to-PPG timing reference. No local scoring policy is defined yet.",
-          "reference_artifacts": [
-            "ecg_ppg_timing",
-            "ppg_fiducials",
-            "annotations_json",
-            "case_summary_json"
-          ],
-          "score_type": "generated_reference_only",
-          "scoreable": false,
-          "support": "reference_only",
-          "target": "ecg_ppg_alignment"
-        }
-      ],
+      "reference_only_targets": [],
       "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
@@ -2619,6 +2613,24 @@
         },
         {
           "accepted_formats": [
+            "measurement_values_json_v1",
+            "measurement_values_csv_v1"
+          ],
+          "case_count": 2,
+          "case_ids": [
+            "delay_180",
+            "delay_260"
+          ],
+          "default_pairing_window_seconds": 0.2,
+          "description": "Per-beat PTT and ECG-to-PPG peak delay scored as paired-signal measurements.",
+          "primary_metric": "tolerance_pass_fraction",
+          "score_type": "measurement",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "ecg_ppg_alignment"
+        },
+        {
+          "accepted_formats": [
             "interval_events_json_v1",
             "interval_events_csv_v1"
           ],
@@ -2636,16 +2648,18 @@
           "target": "signal_quality"
         }
       ],
-      "scoring_mode": "mixed",
+      "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
-        "pack_fingerprint": "sha256:71a2f4956ac86db4669e69d6b0758432f34eada0023474d98754b9eca275bf18",
+        "pack_fingerprint": "sha256:f723de1aa29f10b7d9415670325cc308a80ea35f7e7cb6246f31c90d655d03fe",
         "pack_path": "../packs/ppg_alignment_v1.json",
-        "source_content_sha256": "sha256:5355eeb0ce6aba1eee037f8016d025c5640b37895afe9d63e41daa31d12b54b4"
+        "source_content_sha256": "sha256:1c8422d223f33caa9a7b49c6399c0c1056e4e916e9c8972a36e9e82064d6d2d3"
       },
       "submission_output_schemas": [
         "point_events_json_v1",
         "point_events_csv_v1",
+        "measurement_values_json_v1",
+        "measurement_values_csv_v1",
         "interval_events_json_v1",
         "interval_events_csv_v1"
       ],
@@ -2672,10 +2686,10 @@
           "pulse_transit_delay",
           "ecg_ppg_alignment"
         ],
-        "reference_only_before_job": true,
+        "reference_only_before_job": false,
         "scoreable_before_job": true
       },
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "case_count": 4,
@@ -3093,15 +3107,14 @@
           "estimated_package_bytes": 7260400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
-          "reference_only_targets": [
-            "ecg_ppg_alignment"
-          ],
+          "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
           "scenario_id": "wearable_cardiorespiratory_stress_v3",
           "scoreable_targets": [
             "r_peak",
-            "ppg_systolic_peak"
+            "ppg_systolic_peak",
+            "ecg_ppg_alignment"
           ],
           "targets": [
             "r_peak",
@@ -3117,15 +3130,14 @@
           "estimated_package_bytes": 2945344,
           "estimated_peak_memory_bytes": 19288576,
           "estimated_waveform_csv_bytes": 0,
-          "reference_only_targets": [
-            "ecg_ppg_alignment"
-          ],
+          "reference_only_targets": [],
           "sample_count": 60000,
           "sampling_rate_hz": 100,
           "scenario_id": "wearable_long_duration_compact_v3",
           "scoreable_targets": [
             "r_peak",
             "ppg_systolic_peak",
+            "ecg_ppg_alignment",
             "hrv"
           ],
           "targets": [
@@ -3136,8 +3148,15 @@
           ]
         }
       ],
-      "catalog_scoring_mode": "mixed",
+      "catalog_scoring_mode": "local",
       "changelog": [
+        {
+          "changes": [
+            "Enabled local ECG/PPG alignment measurement scoring through the unified submission contract."
+          ],
+          "date": "2026-07-17",
+          "version": "1.1"
+        },
         {
           "changes": [
             "Initial beta wearable stress pack with cardiorespiratory, activity, timing and compact long-duration cases."
@@ -3211,7 +3230,7 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v2",
-        "local_verifier_min_version": "0.4.0",
+        "local_verifier_min_version": "0.5.0",
         "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
@@ -3238,6 +3257,16 @@
           "test_id": "TEST-PYTHON-SCORING-001"
         },
         {
+          "scope": "core paired-signal measurement scoring smoke test",
+          "target": "ecg_ppg_alignment",
+          "test_id": "TEST-MEASUREMENT-SCORING-001"
+        },
+        {
+          "scope": "generator-free ECG/PPG measurement scoring parity test",
+          "target": "ecg_ppg_alignment",
+          "test_id": "TEST-MEASUREMENT-PYTHON-001"
+        },
+        {
           "scope": "core HRV metric scoring smoke test",
           "target": "hrv",
           "test_id": "TEST-HRV-SCORING-001"
@@ -3248,14 +3277,7 @@
           "test_id": "TEST-PYTHON-SCORING-001"
         }
       ],
-      "messages": [
-        {
-          "code": "REFERENCE_ONLY_TARGET",
-          "message": "ecg_ppg_alignment exports ground truth but has no local scoring policy.",
-          "path": "$.targets",
-          "severity": "warning"
-        }
-      ],
+      "messages": [],
       "metadata_type": "synsigra_curated_pack_metadata",
       "metadata_version": "synsigra_curated_pack_metadata_export_v1",
       "modality": [
@@ -3316,10 +3338,7 @@
         },
         {
           "required": true,
-          "role": "reference_ground_truth",
-          "targets": [
-            "ecg_ppg_alignment"
-          ]
+          "role": "measurement_truth_json"
         }
       ],
       "pack_id": "wearable_stress_v1",
@@ -3327,29 +3346,10 @@
         "Wearable ECG/PPG algorithm stress and benchmark tests",
         "Cardiorespiratory, activity and synchronization robustness checks",
         "Long-duration compact challenge-package generation",
-        "R-peak, PPG peak and HRV workflow integration"
+        "R-peak, PPG peak, HRV and ECG/PPG timing measurement workflow integration"
       ],
       "recommended_profile": "stress",
-      "reference_only_targets": [
-        {
-          "case_count": 2,
-          "case_ids": [
-            "cardiorespiratory_activity",
-            "long_duration_compact"
-          ],
-          "description": "Generated ECG-to-PPG timing reference. No local scoring policy is defined yet.",
-          "reference_artifacts": [
-            "ecg_ppg_timing",
-            "ppg_fiducials",
-            "annotations_json",
-            "case_summary_json"
-          ],
-          "score_type": "generated_reference_only",
-          "scoreable": false,
-          "support": "reference_only",
-          "target": "ecg_ppg_alignment"
-        }
-      ],
+      "reference_only_targets": [],
       "release_date": "2026-07-06",
       "release_status": "beta",
       "sampling_rates_hz": [
@@ -3396,6 +3396,24 @@
         },
         {
           "accepted_formats": [
+            "measurement_values_json_v1",
+            "measurement_values_csv_v1"
+          ],
+          "case_count": 2,
+          "case_ids": [
+            "cardiorespiratory_activity",
+            "long_duration_compact"
+          ],
+          "default_pairing_window_seconds": 0.2,
+          "description": "Per-beat PTT and ECG-to-PPG peak delay scored as paired-signal measurements.",
+          "primary_metric": "tolerance_pass_fraction",
+          "score_type": "measurement",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "ecg_ppg_alignment"
+        },
+        {
+          "accepted_formats": [
             "hrv_metrics_json_v1"
           ],
           "case_count": 1,
@@ -3410,16 +3428,18 @@
           "target": "hrv"
         }
       ],
-      "scoring_mode": "mixed",
+      "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
-        "pack_fingerprint": "sha256:7560711e322729fd7d04266a458fbb3a2b8791c6499b7b2aaf9d8fca8e5d1783",
+        "pack_fingerprint": "sha256:ebf24db75053aad6d69f76dc32850c6b3420e8f6acbff4d5a6b662300f87a91a",
         "pack_path": "../packs/wearable_stress_v1.json",
-        "source_content_sha256": "sha256:6c6b8d53a0f44c0baccca8aa77542120b1233b66476d3fa23c9199c91dbc182d"
+        "source_content_sha256": "sha256:1f66e419161124072ceb7e45dd96e9cbfa85702dcb0a74be42cf30a9746659de"
       },
       "submission_output_schemas": [
         "point_events_json_v1",
         "point_events_csv_v1",
+        "measurement_values_json_v1",
+        "measurement_values_csv_v1",
         "hrv_metrics_json_v1"
       ],
       "supported_threshold_profiles": [
@@ -3452,10 +3472,10 @@
           "respiration",
           "activity"
         ],
-        "reference_only_before_job": true,
+        "reference_only_before_job": false,
         "scoreable_before_job": true
       },
-      "version": "1.0"
+      "version": "1.1"
     },
     {
       "case_count": 9,
@@ -4356,5 +4376,5 @@
   "release_set_id": "synsigra_curated_release_2026_07_17",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:19659385060a85b6898a1a7a4ff430121e4d902df353a5de6e779482b9ed5a9f"
+  "source_catalog_sha256": "sha256:50fd547d85206b4346b02a496fc89fa2fb07adc80d00a1f6f3d93635a908e3ce"
 }

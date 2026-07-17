@@ -49,6 +49,8 @@ signal_synth_add_test(interval_io_test interval_io_test.cpp TEST-INTERVAL-IO-001
 signal_synth_add_test(interval_scoring_test interval_scoring_test.cpp TEST-INTERVAL-SCORING-001)
 signal_synth_add_test(delineation_io_test delineation_io_test.cpp TEST-DELINEATION-IO-001)
 signal_synth_add_test(delineation_scoring_test delineation_scoring_test.cpp TEST-DELINEATION-SCORING-001)
+signal_synth_add_test(measurement_io_test measurement_io_test.cpp TEST-MEASUREMENT-IO-001)
+signal_synth_add_test(measurement_scoring_test measurement_scoring_test.cpp TEST-MEASUREMENT-SCORING-001)
 signal_synth_add_test(synsigra_api_test synsigra_api_test.cpp TEST-FACADE-001)
 signal_synth_add_test(challenge_package_test challenge_package_test.cpp TEST-CHALLENGE-PACKAGE-001)
 signal_synth_add_test(scenario_authoring_test scenario_authoring_test.cpp TEST-AUTHORING-001)
@@ -172,6 +174,13 @@ if(TARGET signal_synth_cli AND SIGNAL_SYNTH_PYTHON_EXECUTABLE)
         TEST-DELINEATION-PYTHON-001
         PROPERTIES
             ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python;SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..;SIGNAL_SYNTH_DELINEATION_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/delineation_python_work")
+    add_test(
+        NAME TEST-MEASUREMENT-PYTHON-001
+        COMMAND ${SIGNAL_SYNTH_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/measurement_python_test.py)
+    set_tests_properties(
+        TEST-MEASUREMENT-PYTHON-001
+        PROPERTIES
+            ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python;SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..;SIGNAL_SYNTH_MEASUREMENT_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/measurement_python_work")
     add_test(
         NAME TEST-EDF-BDF-NATIVE-001
         COMMAND

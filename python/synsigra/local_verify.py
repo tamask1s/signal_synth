@@ -11,11 +11,12 @@ from .challenge import ChallengePackage, load_challenge
 from .detections import load_detections
 from .delineation import delineation_scope_from_entry, delineation_truth_from_annotations, load_delineations, score_delineation_events
 from .intervals import IntervalEvent, load_intervals, score_interval_events
+from .measurements import load_measurement_truth, load_measurements, measurement_comparison_csv, measurement_comparison_html, score_measurements
 from .profiles import load_threshold_profile
 from .submission import SubmissionError, load_submission
 
 
-SCORING_VERSION = "synsigra-python-local-v3"
+SCORING_VERSION = "synsigra-python-local-v4"
 LIMITATION_TEXT = "Synthetic engineering QA evidence; not diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment."
 BEAT_CLASSES = ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "unscored"]
 SCORED_BEAT_CLASSES = set(["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape"])
@@ -88,7 +89,7 @@ def verify_package(challenge, submission_dir, out_dir, cases=None, targets=None,
                 if not entry.get("supported", False):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
-                if target not in ("r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality", "ecg_delineation"):
+                if target not in ("r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality", "ecg_delineation", "morphology_assertions", "ecg_ppg_alignment"):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
                 result = _verify_case_target(package, case, case_summary, annotations, entry, submission, out_dir)
@@ -123,6 +124,24 @@ def _verify_case_target(package, case, case_summary, annotations, entry, submiss
         return _error_result(package, case, case_summary, entry, target_dir, "missing_output", "submission output file is missing for %s/%s: %s" % (case.id, target, submitted.relative_path))
     algorithm = dict(submission.algorithm)
     try:
+        if target in ("morphology_assertions", "ecg_ppg_alignment"):
+            predictions = load_measurements(detection_path, format_name=submitted.format)
+            truth_path = entry.get("ground_truth_path", "")
+            if not truth_path:
+                raise VerificationError("measurement scoring entry has no ground_truth_path")
+            truth = load_measurement_truth(package.resolve(truth_path), target)
+            report_json = score_measurements(truth, predictions, target, float(entry.get("default_pairing_window_seconds", 0.2)))
+            report_json["scoring_version"] = SCORING_VERSION
+            report_json["package"] = _package_identity(package)
+            report_json["scenario"] = _scenario_identity(case, case_summary, annotations)
+            report_json["algorithm"] = algorithm
+            report_json["notes"] = ["Undefined, absent, and not-evaluable states are explicit and are not coerced to numeric zero.", LIMITATION_TEXT]
+            identity = _submission_output_identity(detection_path, submitted.relative_path, submitted.format, target, algorithm, "measurement_count", len(predictions))
+            report_json["submission_output"] = identity
+            _write_json(os.path.join(target_dir, "comparison.json"), report_json)
+            _write_text(os.path.join(target_dir, "comparison.csv"), measurement_comparison_csv(report_json))
+            _write_text(os.path.join(target_dir, "comparison_report.html"), measurement_comparison_html(report_json))
+            return _case_result_from_report(case, case_summary, target, relative_out, detection_path, identity, report_json)
         if target == "hrv":
             user_output = _load_hrv_user_output(detection_path, submitted.format)
             report_json = _score_hrv(package, case, case_summary, user_output)
@@ -978,6 +997,13 @@ def _case_result_from_report(case, case_summary, target, relative_out, submissio
         result["by_kind"] = list(report_json.get("by_kind", []))
         result["by_lead"] = list(report_json.get("by_lead", []))
         result["_delineation_errors"] = [float(item["error_seconds"]) for item in report_json.get("matches", [])]
+    elif target in ("morphology_assertions", "ecg_ppg_alignment"):
+        result["score_type"] = "measurement"
+        result["exclusion_policy"] = "Measurement identity includes name, unit, scope, channel, formula, and beat/time anchor; explicit non-valid states are status-scored without numeric error."
+        result["summary"] = dict(report_json.get("overall", {}))
+        result["by_measurement"] = list(report_json.get("by_measurement", []))
+        result["by_channel"] = list(report_json.get("by_channel", []))
+        result["_measurement_errors"] = [{"name": item["name"], "channel": item["channel"], "error": float(item["signed_error"])} for item in report_json.get("matches", []) if item.get("numeric_pair", False)]
     else:
         result["score_type"] = "event_detection"
         result["exclusion_policy"] = "All events are scored in total; clean and artifact bins partition events by target-affecting half-open artifact intervals [start,end)."
@@ -1054,6 +1080,7 @@ def _build_verification_summary(package, scoring_manifest, submission, integrity
         public_result.pop("_interval_onset_errors", None)
         public_result.pop("_interval_offset_errors", None)
         public_result.pop("_delineation_errors", None)
+        public_result.pop("_measurement_errors", None)
         public_results.append(public_result)
     return {
         "schema_version": 1,
@@ -1102,6 +1129,8 @@ def _aggregate_targets(results):
             _aggregate_interval_result(aggregate, result)
         if result.get("score_type") == "ecg_delineation" and result.get("success", False):
             _aggregate_delineation_result(aggregate, result)
+        if result.get("score_type") == "measurement" and result.get("success", False):
+            _aggregate_measurement_result(aggregate, result)
     ordered = []
     for target in sorted(aggregates.keys()):
         aggregate = aggregates[target]
@@ -1120,6 +1149,8 @@ def _aggregate_targets(results):
             _finalize_interval_aggregate(aggregate)
         if aggregate.get("score_type") == "ecg_delineation":
             _finalize_delineation_aggregate(aggregate)
+        if aggregate.get("score_type") == "measurement":
+            _finalize_measurement_aggregate(aggregate)
         ordered.append(aggregate)
     return ordered
 
@@ -1311,6 +1342,80 @@ def _finalize_delineation_aggregate(aggregate):
     metrics["p95_absolute_error_seconds"] = absolute[int(math.ceil(0.95 * len(absolute))) - 1] if absolute else None
 
 
+def _aggregate_measurement_result(aggregate, result):
+    if aggregate.get("score_type") != "measurement":
+        aggregate["score_type"] = "measurement"
+        aggregate["overall"] = _empty_measurement_metrics()
+        aggregate["by_measurement"] = {}
+        aggregate["by_channel"] = {}
+        aggregate["_errors"] = []
+        aggregate["_errors_by_measurement"] = {}
+        aggregate["_errors_by_channel"] = {}
+    _accumulate_measurement_metrics(aggregate["overall"], result.get("summary", {}))
+    for item in result.get("by_measurement", []):
+        name = item.get("name", "")
+        if name not in aggregate["by_measurement"]:
+            aggregate["by_measurement"][name] = _empty_measurement_metrics()
+        _accumulate_measurement_metrics(aggregate["by_measurement"][name], item.get("metrics", {}))
+    for item in result.get("by_channel", []):
+        channel = item.get("channel", "")
+        if channel not in aggregate["by_channel"]:
+            aggregate["by_channel"][channel] = _empty_measurement_metrics()
+        _accumulate_measurement_metrics(aggregate["by_channel"][channel], item.get("metrics", {}))
+    for item in result.get("_measurement_errors", []):
+        error = float(item["error"])
+        aggregate["_errors"].append(error)
+        aggregate["_errors_by_measurement"].setdefault(item["name"], []).append(error)
+        aggregate["_errors_by_channel"].setdefault(item["channel"], []).append(error)
+
+
+def _finalize_measurement_aggregate(aggregate):
+    _finalize_measurement_metrics(aggregate["overall"], aggregate.pop("_errors"))
+    measurement_errors = aggregate.pop("_errors_by_measurement")
+    channel_errors = aggregate.pop("_errors_by_channel")
+    measurement_rows = []
+    for name in sorted(aggregate["by_measurement"]):
+        metrics = aggregate["by_measurement"][name]
+        _finalize_measurement_metrics(metrics, measurement_errors.get(name, []))
+        measurement_rows.append({"name": name, "metrics": metrics})
+    channel_rows = []
+    for channel in sorted(aggregate["by_channel"]):
+        metrics = aggregate["by_channel"][channel]
+        _finalize_measurement_metrics(metrics, channel_errors.get(channel, []))
+        channel_rows.append({"channel": channel, "metrics": metrics})
+    aggregate["by_measurement"] = measurement_rows
+    aggregate["by_channel"] = channel_rows
+
+
+def _empty_measurement_metrics():
+    names = ("ground_truth_count", "valid_truth_count", "undefined_truth_count", "absent_truth_count", "not_evaluable_truth_count", "prediction_count", "matched_count", "numeric_pair_count", "tolerance_pass_count", "status_match_count", "status_mismatch_count", "missing_count", "extra_count", "assertion_comparable_count", "assertion_agreement_count")
+    output = dict((name, 0) for name in names)
+    output.update({"tolerance_pass_fraction": None, "status_match_fraction": None, "assertion_agreement_fraction": None, "truth_match_fraction": None, "prediction_match_fraction": None, "error": _empty_measurement_error()})
+    return output
+
+
+def _empty_measurement_error():
+    return dict((name, None) for name in ("bias", "mean_absolute", "root_mean_square", "median_absolute", "p95_absolute", "maximum_absolute"))
+
+
+def _accumulate_measurement_metrics(destination, source):
+    for name in ("ground_truth_count", "valid_truth_count", "undefined_truth_count", "absent_truth_count", "not_evaluable_truth_count", "prediction_count", "matched_count", "numeric_pair_count", "tolerance_pass_count", "status_match_count", "status_mismatch_count", "missing_count", "extra_count", "assertion_comparable_count", "assertion_agreement_count"):
+        destination[name] += int(source.get(name, 0))
+
+
+def _finalize_measurement_metrics(metrics, errors):
+    metrics["tolerance_pass_fraction"] = float(metrics["tolerance_pass_count"]) / metrics["numeric_pair_count"] if metrics["numeric_pair_count"] else None
+    metrics["status_match_fraction"] = float(metrics["status_match_count"]) / metrics["matched_count"] if metrics["matched_count"] else None
+    metrics["assertion_agreement_fraction"] = float(metrics["assertion_agreement_count"]) / metrics["assertion_comparable_count"] if metrics["assertion_comparable_count"] else None
+    metrics["truth_match_fraction"] = float(metrics["matched_count"]) / metrics["ground_truth_count"] if metrics["ground_truth_count"] else None
+    metrics["prediction_match_fraction"] = float(metrics["matched_count"]) / metrics["prediction_count"] if metrics["prediction_count"] else None
+    absolute = sorted(abs(item) for item in errors)
+    metrics["error"] = _empty_measurement_error()
+    if absolute:
+        middle = len(absolute) // 2
+        metrics["error"] = {"bias": _mean(errors), "mean_absolute": _mean(absolute), "root_mean_square": _rms(absolute), "median_absolute": absolute[middle] if len(absolute) & 1 else 0.5 * (absolute[middle - 1] + absolute[middle]), "p95_absolute": absolute[int(math.ceil(0.95 * len(absolute))) - 1], "maximum_absolute": absolute[-1]}
+
+
 def _evaluate_policy(targets, profile):
     checks = []
     target_results = []
@@ -1326,6 +1431,8 @@ def _evaluate_policy(targets, profile):
             definition_name = "interval_detection"
         elif score_type == "ecg_delineation" and definition_name not in definitions:
             definition_name = "ecg_delineation"
+        elif score_type == "measurement" and definition_name not in definitions:
+            definition_name = "measurement"
         definition = definitions.get(definition_name, {})
         target_checks = []
         if score_type == "event_detection":
@@ -1350,6 +1457,10 @@ def _evaluate_policy(targets, profile):
             overall = target.get("overall", {})
             applicable = int(overall.get("ground_truth_count", 0)) > 0 or int(overall.get("prediction_count", 0)) > 0
             target_checks.extend(_threshold_checks(target["target"], "overall", overall, definition.get("overall", {}), applicable))
+        elif score_type == "measurement":
+            overall = target.get("overall", {})
+            applicable = int(overall.get("ground_truth_count", 0)) > 0 or int(overall.get("prediction_count", 0)) > 0
+            target_checks.extend(_threshold_checks(target["target"], "overall", overall, definition.get("overall", {}), applicable))
         target_passed = bool(target_checks) and all(item["passed"] for item in target_checks if item["applicable"])
         target["policy"] = {"profile_id": profile["profile_id"], "passed": target_passed, "checks": target_checks}
         target_results.append({"target": target["target"], "passed": target_passed, "check_count": len(target_checks)})
@@ -1371,8 +1482,9 @@ def _evaluate_policy(targets, profile):
 def _threshold_checks(target, section, metrics, limits, applicable):
     checks = []
     for metric_name in sorted(limits.keys()):
-        actual_present = metric_name in metrics and isinstance(metrics.get(metric_name), (int, float))
-        actual = float(metrics.get(metric_name, 0.0))
+        value = metrics.get(metric_name)
+        actual_present = metric_name in metrics and not isinstance(value, bool) and isinstance(value, (int, float))
+        actual = float(value) if actual_present else 0.0
         for operator in ("min", "max"):
             if operator not in limits[metric_name]:
                 continue
@@ -1520,12 +1632,12 @@ def _hrv_csv(report_json):
 def _summary_csv(summary):
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["case_id", "scenario_id", "target", "status", "score_type", "ground_truth_count", "detection_count", "true_positive_count", "false_positive_count", "false_negative_count", "f1_score", "accuracy", "micro_f1_score", "hrv_metric_pass_fraction", "interval_time_f1_score", "interval_temporal_iou", "threshold_profile", "package_policy_passed", "report_path", "message"])
+    writer.writerow(["case_id", "scenario_id", "target", "status", "score_type", "ground_truth_count", "detection_count", "true_positive_count", "false_positive_count", "false_negative_count", "f1_score", "accuracy", "micro_f1_score", "hrv_metric_pass_fraction", "interval_time_f1_score", "interval_temporal_iou", "measurement_tolerance_pass_fraction", "measurement_status_match_fraction", "threshold_profile", "package_policy_passed", "report_path", "message"])
     for item in summary["cases"]:
         metric_data = item.get("metrics", {})
         total = metric_data.get("total", {}) if isinstance(metric_data, dict) else {}
         classification = item.get("summary", {})
-        writer.writerow([item.get("case_id", ""), item.get("scenario_id", ""), item.get("target", ""), item.get("status", ""), item.get("score_type", ""), total.get("ground_truth_count", ""), total.get("detection_count", ""), total.get("true_positive_count", ""), total.get("false_positive_count", ""), total.get("false_negative_count", ""), total.get("f1_score", ""), classification.get("accuracy", ""), classification.get("micro_f1_score", ""), classification.get("metric_pass_fraction", ""), _csv_optional(classification.get("time_f1_score")), _csv_optional(classification.get("temporal_iou")), summary["policy"]["profile_id"], int(summary["policy"]["passed"]), item.get("report_path", ""), item.get("message", "")])
+        writer.writerow([item.get("case_id", ""), item.get("scenario_id", ""), item.get("target", ""), item.get("status", ""), item.get("score_type", ""), total.get("ground_truth_count", classification.get("ground_truth_count", "")), total.get("detection_count", ""), total.get("true_positive_count", ""), total.get("false_positive_count", ""), total.get("false_negative_count", ""), total.get("f1_score", ""), classification.get("accuracy", ""), classification.get("micro_f1_score", ""), classification.get("metric_pass_fraction", ""), _csv_optional(classification.get("time_f1_score")), _csv_optional(classification.get("temporal_iou")), _csv_optional(classification.get("tolerance_pass_fraction")), _csv_optional(classification.get("status_match_fraction")), summary["policy"]["profile_id"], int(summary["policy"]["passed"]), item.get("report_path", ""), item.get("message", "")])
     return output.getvalue()
 
 
@@ -1573,7 +1685,7 @@ def _summary_html(summary):
     for item in summary["cases"]:
         metric_data = item.get("metrics", {})
         event_f1 = metric_data.get("total", {}).get("f1_score", "") if isinstance(metric_data, dict) else ""
-        metric = item.get("summary", {}).get("micro_f1_score", item.get("summary", {}).get("metric_pass_fraction", item.get("summary", {}).get("time_f1_score", event_f1)))
+        metric = item.get("summary", {}).get("micro_f1_score", item.get("summary", {}).get("metric_pass_fraction", item.get("summary", {}).get("time_f1_score", item.get("summary", {}).get("tolerance_pass_fraction", event_f1))))
         rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (_h(item.get("case_id", "")), _h(item.get("target", "")), _h(item.get("status", "")), _h(str(metric)), _h(item.get("report_path", ""))))
     failed_checks = [item for item in summary["policy"]["checks"] if item["applicable"] and not item["passed"]]
     check_rows = ["<tr><td>%s</td><td>%s</td><td>%s</td><td>%.6g</td><td>%s %.6g</td></tr>" % (_h(item["target"]), _h(item["section"]), _h(item["metric"]), item["actual"], _h(item["operator"]), item["threshold"]) for item in failed_checks]

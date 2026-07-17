@@ -83,6 +83,8 @@ namespace signal_synth
             return challenge_file_annotations_json;
         if (artifact_name == "ground_truth_metrics.json" || artifact_name == "hrv_metrics.json")
             return challenge_file_ground_truth_metrics_json;
+        if (artifact_name == "measurement_truth.json")
+            return challenge_file_measurement_truth_json;
         if (artifact_name == "report.html")
             return challenge_file_report_html;
         if (artifact_name == "README.txt" || artifact_name == "ENGINEERING_CLAIM_BOUNDARY.txt")

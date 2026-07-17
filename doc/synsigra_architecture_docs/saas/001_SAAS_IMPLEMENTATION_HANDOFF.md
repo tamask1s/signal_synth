@@ -52,6 +52,8 @@ Pack metadata export:
 - regenerate it with `scripts/export_curated_pack_metadata.py`;
 - it distinguishes declared targets, effective scoreable targets, and
   reference-only ground-truth outputs before job creation.
+- current consumer baseline is curated catalog `1.8` and generator-free
+  verifier `0.5.0`; packs declare their own minimum verifier version.
 
 Python package:
 
@@ -148,6 +150,7 @@ Generated layout:
     rr_tachogram.csv
     hrv_metrics.json
     ground_truth_metrics.json
+    measurement_truth.json       # when a measurement target is present
     warnings.json
     report.html
     README.txt
@@ -174,6 +177,9 @@ The customer point-event schemas are `point_events_json_v1` and
 `interval_events_csv_v1`; HRV uses `hrv_metrics_json_v1`. ECG delineation
 predictions contain event time, lead and kind only. Atrial/ventricular anchor
 identity and truth evaluability remain report-side metadata.
+Morphology and ECG/PPG alignment use `measurement_values_json_v1` or
+`measurement_values_csv_v1`; the package-internal `measurement_truth.json`
+must be copied unchanged and must never be reconstructed by the SaaS.
 
 `manifest.json` lists all package and case files except itself. This avoids a
 self-referential hash. Every listed file has path, role, media type, SHA-256,

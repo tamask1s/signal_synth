@@ -9,6 +9,7 @@ from .challenge import ChallengeCase, ChallengeIntegrityError, ChallengePackage,
 from .detections import DetectionDocument, DetectionEvent, load_detections
 from .delineation import DelineationDocument, DelineationEvent, load_delineations
 from .intervals import IntervalDocument, IntervalEvent, load_intervals
+from .measurements import MeasurementError, load_measurement_truth, load_measurements, score_measurements
 from .local_verify import VerificationError, VerificationReport, verify_package
 from .profiles import ThresholdProfileError, load_threshold_profile, threshold_profile_names
 from .submission import Submission, SubmissionError, SubmissionOutput, load_submission
@@ -24,6 +25,7 @@ __all__ = [
     "DelineationEvent",
     "IntervalDocument",
     "IntervalEvent",
+    "MeasurementError",
     "ScoreReport",
     "Submission",
     "SubmissionError",
@@ -40,11 +42,14 @@ __all__ = [
     "load_detections",
     "load_delineations",
     "load_intervals",
+    "load_measurement_truth",
+    "load_measurements",
     "load_submission",
     "load_threshold_profile",
     "score_hrv",
     "score_delineation",
     "score_intervals",
+    "score_measurements",
     "score_pack",
     "score_rhythm_episodes",
     "score_signal_quality",

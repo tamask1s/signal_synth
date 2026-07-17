@@ -72,6 +72,15 @@ class ChallengeCase(object):
     def hrv_metrics(self):
         return self.package.read_json("cases/%s/hrv_metrics.json" % self.id)
 
+    def measurement_truth(self, target=None):
+        document = self.package.read_json("cases/%s/measurement_truth.json" % self.id)
+        if target is None:
+            return document
+        matches = [item for item in document.get("targets", []) if item.get("target") == target]
+        if len(matches) != 1:
+            raise KeyError(target)
+        return list(matches[0].get("measurements", []))
+
     def warnings(self):
         return self.package.read_json("cases/%s/warnings.json" % self.id)
 
