@@ -47,6 +47,14 @@ namespace
         return output;
     }
 
+    std::string json_u64_string(unsigned long long value)
+    {
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << '"' << value << '"';
+        return output.str();
+    }
+
     std::string html_text(const std::string& value)
     {
         std::string output;
@@ -332,7 +340,7 @@ namespace
         output.imbue(std::locale::classic());
         output << std::setprecision(std::numeric_limits<double>::max_digits10);
         output << "{\"schema_version\":1,\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint)
-               << ",\"generation_fingerprint\":" << render.document_identity.generation_fingerprint
+               << ",\"generation_fingerprint\":" << json_u64_string(render.document_identity.generation_fingerprint)
                << ",\"render_identity\":" << json_string(render.render_identity)
                << ",\"beats\":[";
         for (unsigned int i = 0; i < render.record.beat_count(); ++i)
@@ -645,11 +653,11 @@ namespace
                << ",\"build_identity\":" << json_string(signal_synth::signal_synth_build_identity())
                << "},\"scenario\":{\"id\":" << json_string(render.document.scenario_id)
                << ",\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint)
-               << ",\"generation_fingerprint\":" << render.document_identity.generation_fingerprint
+               << ",\"generation_fingerprint\":" << json_u64_string(render.document_identity.generation_fingerprint)
                << ",\"resolved_document_fingerprint\":" << json_string(render.resolved_document_identity.document_fingerprint)
-               << ",\"resolved_generation_fingerprint\":" << render.resolved_document_identity.generation_fingerprint
+               << ",\"resolved_generation_fingerprint\":" << json_u64_string(render.resolved_document_identity.generation_fingerprint)
                << ",\"render_identity\":" << json_string(render.render_identity)
-               << ",\"ecg_run_fingerprint\":" << render.scenario_report.run_fingerprint()
+               << ",\"ecg_run_fingerprint\":" << json_u64_string(render.scenario_report.run_fingerprint())
                << ",\"scenario_schema_version\":" << render.document.schema_version
                << ",\"engine_version\":" << render.scenario_report.engine_version()
                << ",\"seed\":" << render.resolved_document.ecg.seed()
@@ -699,11 +707,11 @@ namespace
                << ",\"scoring_manifest_contract_version\":" << json_string(signal_synth::signal_synth_scoring_manifest_contract_version()) << '}'
                << ",\"scenario\":{\"id\":" << json_string(render.document.scenario_id)
                << ",\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint)
-               << ",\"generation_fingerprint\":" << render.document_identity.generation_fingerprint
+               << ",\"generation_fingerprint\":" << json_u64_string(render.document_identity.generation_fingerprint)
                << ",\"resolved_document_fingerprint\":" << json_string(render.resolved_document_identity.document_fingerprint)
-               << ",\"resolved_generation_fingerprint\":" << render.resolved_document_identity.generation_fingerprint
+               << ",\"resolved_generation_fingerprint\":" << json_u64_string(render.resolved_document_identity.generation_fingerprint)
                << ",\"render_identity\":" << json_string(render.render_identity)
-               << ",\"ecg_run_fingerprint\":" << render.scenario_report.run_fingerprint()
+               << ",\"ecg_run_fingerprint\":" << json_u64_string(render.scenario_report.run_fingerprint())
                << ",\"scenario_schema_version\":" << render.document.schema_version
                << ",\"engine_version\":" << render.scenario_report.engine_version()
                << ",\"seed\":" << render.resolved_document.ecg.seed() << '}'

@@ -72,6 +72,14 @@ namespace
         return output;
     }
 
+    std::string json_u64_string(unsigned long long value)
+    {
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << '"' << value << '"';
+        return output.str();
+    }
+
     std::string html_text(const std::string& value)
     {
         std::string output;
@@ -625,7 +633,7 @@ namespace signal_synth
                << json_string(signal_synth_generator_version())
                << "},\"scenario\":{\"id\":" << json_string(render.document.scenario_id)
                << ",\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint)
-               << ",\"generation_fingerprint\":" << render.document_identity.generation_fingerprint
+               << ",\"generation_fingerprint\":" << json_u64_string(render.document_identity.generation_fingerprint)
                << ",\"render_identity\":" << json_string(render.render_identity)
                << "},\"comparison\":{\"target\":" << json_string(result.target_name)
                << ",\"tolerance_seconds\":" << result.tolerance_seconds

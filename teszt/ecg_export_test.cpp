@@ -22,6 +22,13 @@ namespace
         return count;
     }
 
+    std::string json_u64_field(const char* name, unsigned long long value)
+    {
+        std::ostringstream output;
+        output << '"' << name << "\":\"" << value << '"';
+        return output.str();
+    }
+
     bool same_artifacts(const signal_synth::ecg_export_bundle& left, const signal_synth::ecg_export_bundle& right)
     {
         if (left.artifacts.size() != right.artifacts.size())
@@ -60,7 +67,9 @@ int main()
     document.scenario_id = "export_test";
     document.name = "<Export & Report>";
     document.description = "Deterministic export";
+    document.duration_seconds = 8.0;
     document.tags.push_back("export");
+    document.ecg.set_seed(1);
 
     signal_synth::ecg_render_bundle render;
     signal_synth::ecg_export_result result;
@@ -107,6 +116,14 @@ int main()
     ok &= check(metrics && metrics->content.find("\"sd1_seconds\":") != std::string::npos && metrics->content.find("\"lf_hf_ratio\":") != std::string::npos && metrics->content.find("\"assertions\":[") != std::string::npos, "metrics_contract");
     ok &= check(metadata && metadata->content.find("\"channels\":[{\"name\":\"I\",\"unit\":\"mV\"}") != std::string::npos && metadata->content.find("{\"name\":\"V6\",\"unit\":\"mV\"}]") != std::string::npos && metadata->content.find("\"git_commit\":") != std::string::npos, "channel_metadata_contract");
     ok &= check(provenance && provenance->content.find("\"metadata_type\":\"synsigra_export_provenance\"") != std::string::npos && provenance->content.find("\"git_commit\":") != std::string::npos && provenance->content.find("\"package_contract_version\":\"synsigra_challenge_package_v1\"") != std::string::npos && provenance->content.find("\"scoring_manifest_contract_version\":\"synsigra_scoring_manifest_v1\"") != std::string::npos, "provenance_contract");
+    const std::string generation_fingerprint = json_u64_field("generation_fingerprint", render.document_identity.generation_fingerprint);
+    const std::string resolved_generation_fingerprint = json_u64_field("resolved_generation_fingerprint", render.resolved_document_identity.generation_fingerprint);
+    const std::string run_fingerprint = json_u64_field("ecg_run_fingerprint", render.scenario_report.run_fingerprint());
+    ok &= check(render.document_identity.generation_fingerprint > 9223372036854775807ULL, "generation_fingerprint_fixture_exceeds_signed_range");
+    ok &= check(render.scenario_report.run_fingerprint() > 9223372036854775807ULL, "run_fingerprint_fixture_exceeds_signed_range");
+    ok &= check(annotations && annotations->content.find(generation_fingerprint) != std::string::npos, "annotation_fingerprint_is_decimal_string");
+    ok &= check(metadata && metadata->content.find(generation_fingerprint) != std::string::npos && metadata->content.find(resolved_generation_fingerprint) != std::string::npos && metadata->content.find(run_fingerprint) != std::string::npos, "metadata_fingerprints_are_decimal_strings");
+    ok &= check(provenance && provenance->content.find(generation_fingerprint) != std::string::npos && provenance->content.find(resolved_generation_fingerprint) != std::string::npos && provenance->content.find(run_fingerprint) != std::string::npos, "provenance_fingerprints_are_decimal_strings");
     ok &= check(claim_boundary && claim_boundary->content.find("engineering QA and algorithm verification") != std::string::npos && claim_boundary->content.find("clinical validation certification") != std::string::npos, "claim_boundary_contract");
     ok &= check(readme && readme->content.find("provenance.json") != std::string::npos && readme->content.find("ENGINEERING_CLAIM_BOUNDARY.txt") != std::string::npos, "readme_provenance_pointer");
     ok &= check(report && report->content.find("&lt;Export &amp; Report&gt;") != std::string::npos && report->content.find("<polyline") != std::string::npos, "html_escape_and_actual_plot");

@@ -274,6 +274,16 @@ The implemented local schema-v1 ECG package contains:
 - WFDB `synsigra.hea`, `synsigra.dat`, and `synsigra.atr`;
 - EDF+/BDF+ `synsigra.edf`, `synsigra.bdf`, and sidecar metadata.
 
+Unsigned 64-bit identity values are encoded in JSON as canonical decimal
+strings. In particular, `generation_fingerprint`,
+`resolved_generation_fingerprint`, and `ecg_run_fingerprint` contain only the
+digits `0` through `9` and no leading sign. This preserves all 64 bits for
+JavaScript and JSON libraries limited to signed 64-bit integers. The C++ API
+continues to expose these values as `unsigned long long`; only their JSON wire
+representation is textual. SHA-256 and composite render identities were
+already strings. Readers of historical packages should continue to accept the
+legacy numeric representation.
+
 The artifact bytes intentionally omit wall-clock time so local regeneration is
 deterministic. A future SaaS audit record may add export time, customer,
 license, and download identity outside the render fingerprint.

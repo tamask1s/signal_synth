@@ -3,6 +3,7 @@
 
 #include <cmath>
 #include <iostream>
+#include <sstream>
 #include <vector>
 
 namespace
@@ -12,6 +13,13 @@ namespace
         if (!condition)
             std::cerr << "FAIL: " << name << '\n';
         return condition;
+    }
+
+    std::string generation_fingerprint_field(unsigned long long value)
+    {
+        std::ostringstream output;
+        output << "\"generation_fingerprint\":\"" << value << '"';
+        return output.str();
     }
 
     bool render_document(const signal_synth::ecg_scenario_document& document, signal_synth::ecg_render_bundle& render)
@@ -65,6 +73,7 @@ int main()
     signal_synth::ecg_scenario_document document;
     document.scenario_id = "compare_clean";
     document.duration_seconds = 8.0;
+    document.ecg.set_seed(1);
     signal_synth::ecg_render_bundle render;
     ok &= check(render_document(document, render), "render_clean_document");
 
@@ -137,6 +146,7 @@ int main()
     const std::string csv = signal_synth::ecg_compare_result_csv(result);
     const std::string html = signal_synth::ecg_compare_report_html(render, result);
     ok &= check(json.find("\"comparison\"") != std::string::npos && json.find("not a clinical validation certificate") != std::string::npos, "json_report_contract");
+    ok &= check(render.document_identity.generation_fingerprint > 9223372036854775807ULL && json.find(generation_fingerprint_field(render.document_identity.generation_fingerprint)) != std::string::npos, "json_fingerprint_is_decimal_string");
     ok &= check(csv.find("row_type,bin,ground_truth_index") == 0, "csv_report_contract");
     ok &= check(html.find("Algorithm Comparison Report") != std::string::npos && html.find("not diagnosis") != std::string::npos, "html_report_contract");
 
