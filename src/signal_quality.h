@@ -28,7 +28,8 @@ namespace signal_synth
         signal_quality_ppg_motion_burst = 16,
         signal_quality_ppg_motion_broadband = 17,
         signal_quality_ppg_ambient_light = 18,
-        signal_quality_ppg_sensor_saturation = 19
+        signal_quality_ppg_sensor_saturation = 19,
+        signal_quality_ecg_external_noise = 20
     };
 
     const char* signal_quality_artifact_type_name(signal_quality_artifact_type type);

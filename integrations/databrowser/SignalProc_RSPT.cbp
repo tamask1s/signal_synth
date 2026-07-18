@@ -149,6 +149,8 @@
 		<Unit filename="scenario_stress.h" />
 		<Unit filename="signal_quality.cpp" />
 		<Unit filename="signal_quality.h" />
+		<Unit filename="external_noise.cpp" />
+		<Unit filename="external_noise.h" />
 		<Unit filename="wearable_timebase.cpp" />
 		<Unit filename="wearable_timebase.h" />
 		<Unit filename="wearable_profiles.cpp" />

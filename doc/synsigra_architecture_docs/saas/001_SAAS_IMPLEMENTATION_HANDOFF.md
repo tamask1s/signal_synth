@@ -2,7 +2,7 @@
 
 **Document ID:** SYN-SAAS-HANDOFF-001
 
-**Version:** 2.2
+**Version:** 2.3
 
 **Status:** Core contract closed; SaaS consumer migration required
 
@@ -52,7 +52,7 @@ Pack metadata export:
 - regenerate it with `scripts/export_curated_pack_metadata.py`;
 - it distinguishes declared targets, effective scoreable targets, and
   reference-only ground-truth outputs before job creation.
-- current consumer baseline is curated catalog `1.9` and generator-free
+- current consumer baseline is curated catalog `2.4` and generator-free
   verifier `0.6.0`; packs declare their own minimum verifier version;
 - schema-v5 wearable cases expose independent device streams and must not be
   normalized to one implicit sample rate or timestamp domain by the service.
@@ -116,7 +116,7 @@ This detects an accidentally mismatched linked library, CLI binary, or image.
 Successful challenge stdout is one compact JSON document:
 
 ```json
-{"schema_version":1,"contract":"synsigra_core_integration_v2","status":"challenge_rendered","output_directory":"<path>","package_id":"<pack-id>","scenario_count":4,"pack_fingerprint":"sha256:<64-hex>","package_fingerprint":"sha256:<64-hex>","generator":{"name":"signal_synth","version":"<version>","git_commit":"<commit>","build_identity":"<identity>"},"contracts":{"challenge_package":"synsigra_challenge_package_v2","scoring_manifest":"synsigra_scoring_manifest_v2"}}
+{"schema_version":1,"contract":"synsigra_core_integration_v3","status":"challenge_rendered","output_directory":"<path>","package_id":"<pack-id>","scenario_count":4,"pack_fingerprint":"sha256:<64-hex>","package_fingerprint":"sha256:<64-hex>","generator":{"name":"signal_synth","version":"<version>","git_commit":"<commit>","build_identity":"<identity>"},"contracts":{"challenge_package":"synsigra_challenge_package_v2","scoring_manifest":"synsigra_scoring_manifest_v2"}}
 ```
 
 Failure behavior follows the repository CLI contract: non-zero exit code,
@@ -127,6 +127,16 @@ The output directory must not already exist. The CLI performs rollback of
 files/directories created during failed writes. SaaS orchestration may archive
 the directory after generation, but should preserve the manifest paths
 unchanged inside the archive.
+
+Schema-v8 scenarios may declare external-noise assets by stable ID, source,
+license, SHA-256, channel layout, sample rate, and redistribution policy. Asset
+bytes are deliberately outside scenario and pack JSON. The worker supplies an
+operator-approved private asset directory with `--noise-assets <directory>`;
+each file is named `<asset-id>.csv`. Missing, undeclared, duplicate, or
+checksum-mismatched assets are hard failures. The service must block challenge
+release when any selected asset is `local_only`. Source asset bytes must never
+be copied into a challenge package; only the rendered waveform, exact clean
+reference, noise truth, and declared provenance may be released.
 
 Generated layout:
 
@@ -153,6 +163,8 @@ Generated layout:
     hrv_metrics.json
     ground_truth_metrics.json
     measurement_truth.json       # when a measurement target is present
+    external_noise_truth.json    # schema-v8 external-noise case
+    external_noise_clean_ecg.csv # exact pre-external-noise ECG reference
     wearable_ecg_samples.csv     # schema-v5 wearable case
     wearable_ppg_samples.csv     # when wearable PPG is enabled
     wearable_accelerometer_samples.csv # when wearable accelerometer is enabled
@@ -305,6 +317,14 @@ Required in the SaaS service layer after this closure:
 - enforce organization/user authorization for package download;
 - ensure Python SDK can download and load the archived package shape chosen by
   the SaaS layer.
+- maintain a private approved-noise-asset registry keyed by manifest asset ID
+  and SHA-256; record license review and redistribution policy outside customer
+  input;
+- expose only approved asset choices in authoring UI/API, mount their immutable
+  bytes into workers, and enforce `external_noise_release_allowed` before
+  publishing artifacts;
+- preserve `external_noise_truth_json` and `external_noise_clean_ecg_csv`
+  exactly as generated while excluding source asset bytes from archives.
 
 ## 7. SaaS Consumer Migration
 
@@ -319,6 +339,9 @@ Required in the SaaS service layer after this closure:
 6. Preserve every wearable artifact and its manifest role unchanged; expose
    each stream's own rate, timestamps, and packet gaps instead of constructing
    a common SaaS-side time axis.
+7. For schema-v8 jobs, resolve every external asset from the operator-controlled
+   registry, verify the declared checksum, and reject release when the core
+   reports a local-only policy.
 
 Do not add a compatibility parser for the old success format. If existing SaaS
 state contains only development data, reset it instead of introducing schema,

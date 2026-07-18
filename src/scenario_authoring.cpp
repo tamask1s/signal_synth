@@ -12,7 +12,7 @@
 
 namespace
 {
-    const char* metadata_version = "synsigra_authoring_v14";
+    const char* metadata_version = "synsigra_authoring_v15";
     const char* template_version = "synsigra_templates_v4";
 
     struct field_definition
@@ -160,7 +160,7 @@ namespace
             message = "HRV scoring requires hrv.enabled=true and a supported analysis window.";
             return false;
         }
-        if (target == "signal_quality" && document.signal_quality.artifacts.empty())
+        if (target == "signal_quality" && document.signal_quality.artifacts.empty() && document.external_noise.intervals.empty())
         {
             message = "Signal-quality reference requires at least one artifact interval.";
             return false;
@@ -216,7 +216,8 @@ namespace
                 const unsigned long long stream_channels = i == 0u ? static_cast<unsigned int>(signal_synth::clinical_lead_count) : i == 1u ? 1u + (document.ppg.optical.enabled ? 2u : 0u) : 1u;
                 wearable_bytes += stream_samples * (sizeof(signal_synth::wearable_sample_mapping) + stream_channels * sizeof(double));
             }
-        return samples * (generation_double_channels + ppg_double_channels) * sizeof(double) + wearable_bytes + 1048576u;
+        const unsigned long long external_noise_double_channels = document.external_noise.intervals.empty() ? 0u : static_cast<unsigned long long>(signal_synth::clinical_lead_count);
+        return samples * (generation_double_channels + ppg_double_channels + external_noise_double_channels) * sizeof(double) + wearable_bytes + 1048576u;
     }
 
     void write_string_array(std::ostringstream& output, const std::vector<std::string>& values)
@@ -505,6 +506,7 @@ namespace
         bool has_optical = false;
         bool has_prv = false;
         bool has_respiration = false;
+        bool has_external_noise = false;
         std::vector<std::string> reference_targets;
         for (std::size_t i = 0; i < analysis.targets.size(); ++i)
         {
@@ -516,13 +518,18 @@ namespace
                 reference_targets.push_back(analysis.targets[i].target);
         }
         for (std::size_t i = 0; i < analysis.cases.size(); ++i)
+        {
             has_wearable = has_wearable || analysis.cases[i].wearable_timebase;
+            has_external_noise = has_external_noise || analysis.cases[i].external_noise;
+        }
         if (has_hrv)
             output << ",{\"role\":\"hrv_metrics_json\",\"required\":true},{\"role\":\"rr_tachogram_csv\",\"required\":true}";
         if (has_wearable)
             output << ",{\"role\":\"wearable_samples_csv\",\"required\":true},{\"role\":\"wearable_timestamp_truth_csv\",\"required\":true},{\"role\":\"wearable_timebase_truth_json\",\"required\":true},{\"role\":\"wearable_alignment_truth_json\",\"required\":true}";
         if (has_optical)
             output << ",{\"role\":\"ppg_optical_latent_csv\",\"required\":true},{\"role\":\"ppg_optical_truth_json\",\"required\":true}";
+        if (has_external_noise)
+            output << ",{\"role\":\"external_noise_truth_json\",\"required\":true},{\"role\":\"external_noise_clean_ecg_csv\",\"required\":true}";
         if (has_prv || has_respiration)
             output << ",{\"role\":\"cardiorespiratory_truth_json\",\"required\":true}";
         if (has_prv)
@@ -543,7 +550,7 @@ namespace signal_synth
 {
     scenario_pack_analysis_message::scenario_pack_analysis_message() : error(false), code(), path(), message() {}
     scenario_pack_case_analysis::scenario_pack_case_analysis()
-        : case_id(), scenario_id(), duration_seconds(0.0), sampling_rate_hz(0), sample_count(0), channel_count(0), wearable_timebase(false), estimated_waveform_csv_bytes(0), estimated_binary_signal_bytes(0), estimated_package_bytes(0), estimated_peak_memory_bytes(0), targets() {}
+        : case_id(), scenario_id(), duration_seconds(0.0), sampling_rate_hz(0), sample_count(0), channel_count(0), wearable_timebase(false), external_noise(false), external_noise_release_allowed(true), external_noise_asset_ids(), estimated_waveform_csv_bytes(0), estimated_binary_signal_bytes(0), estimated_package_bytes(0), estimated_peak_memory_bytes(0), targets() {}
     scenario_pack_target_analysis::scenario_pack_target_analysis() : target(), support(scenario_target_unsupported), case_count(0) {}
     scenario_pack_analysis::scenario_pack_analysis()
         : success(false), pack_id(), pack_version(), case_count(0), total_duration_seconds(0.0), total_sample_count(0), estimated_package_bytes(0), estimated_peak_memory_bytes(0), cases(), targets(), messages() {}
@@ -715,18 +722,20 @@ namespace signal_synth
             {"$.wearable.accelerometer.packet_loss_probability","Wearable accelerometer packet loss","wearable","number","slider","0","0","1","0.001","probability",0,"{\"path\":\"$.wearable.accelerometer.enabled\",\"equals\":true}",true},
             {"$.wearable.accelerometer.packet_loss_burst_packets","Wearable accelerometer loss burst","wearable","integer","number","1","1","1000","1","packets",0,"{\"path\":\"$.wearable.accelerometer.enabled\",\"equals\":true}",true},
             {"$.wearable.accelerometer.seed","Wearable accelerometer seed","wearable","uint64_string","text","\"77003\"",0,0,0,"",0,"{\"path\":\"$.wearable.accelerometer.enabled\",\"equals\":true}",true},
-            {"$.artifacts","Artifacts","artifacts","artifact_array","artifact_editor","[]","0","128",0,"items",0,0,true}
+            {"$.artifacts","Artifacts","artifacts","artifact_array","artifact_editor","[]","0","128",0,"items",0,0,true},
+            {"$.external_noise.assets","Approved noise assets","external_noise","external_noise_asset_array","approved_asset_picker","[]","0","64",0,"items",0,0,true},
+            {"$.external_noise.intervals","Calibrated noise intervals","external_noise","external_noise_interval_array","external_noise_interval_editor","[]","0","128",0,"items",0,0,true}
         };
 
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << "{\"schema_version\":1,\"metadata_version\":" << json_string(metadata_version)
-               << ",\"scenario_schema_version\":7,\"supported_scenario_schema_versions\":[2,3,4,5,6,7],\"groups\":["
+               << ",\"scenario_schema_version\":8,\"supported_scenario_schema_versions\":[2,3,4,5,6,7,8],\"groups\":["
                << "{\"id\":\"identity\",\"label\":\"Identity\"},{\"id\":\"render\",\"label\":\"Render\"},{\"id\":\"ecg\",\"label\":\"ECG\"},"
                << "{\"id\":\"ecg_extended\",\"label\":\"Extended ECG Morphology\"},"
                << "{\"id\":\"episode\",\"label\":\"Episode\"},{\"id\":\"hrv\",\"label\":\"HRV\"},{\"id\":\"ppg\",\"label\":\"PPG\"},"
                << "{\"id\":\"ppg_stress\",\"label\":\"PPG Timing Stress\"},{\"id\":\"ppg_physiology\",\"label\":\"PPG Physiology\"},{\"id\":\"ppg_optical\",\"label\":\"PPG Optical Physiology\"},{\"id\":\"ppg_optical_red\",\"label\":\"PPG Red Sensor\"},{\"id\":\"ppg_optical_infrared\",\"label\":\"PPG Infrared Sensor\"},{\"id\":\"randomization\",\"label\":\"Randomization\"},"
-               << "{\"id\":\"physiology\",\"label\":\"Physiology\"},{\"id\":\"output\",\"label\":\"Output\"},{\"id\":\"wearable\",\"label\":\"Wearable Timebase\"},{\"id\":\"artifacts\",\"label\":\"Artifacts\"}],\"fields\":[";
+               << "{\"id\":\"physiology\",\"label\":\"Physiology\"},{\"id\":\"output\",\"label\":\"Output\"},{\"id\":\"wearable\",\"label\":\"Wearable Timebase\"},{\"id\":\"artifacts\",\"label\":\"Artifacts\"},{\"id\":\"external_noise\",\"label\":\"External Noise\"}],\"fields\":[";
         for (std::size_t i = 0; i < sizeof(fields) / sizeof(fields[0]); ++i)
         {
             if (i) output << ',';
@@ -745,6 +754,24 @@ namespace signal_synth
                << "{\"name\":\"amplitude_mv\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":-2,\"maximum\":2,\"nonzero_absolute_minimum\":0.02,\"unit\":\"mV\"},"
                << "{\"name\":\"offset_ms\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":0,\"maximum\":500,\"unit\":\"ms\"},"
                << "{\"name\":\"duration_ms\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":8,\"maximum\":250,\"unit\":\"ms\"}],"
+               << "\"external_noise_asset_item_fields\":["
+               << "{\"name\":\"id\",\"value_type\":\"string\",\"control\":\"approved_asset_select\"},"
+               << "{\"name\":\"source_uri\",\"value_type\":\"string\",\"control\":\"readonly\"},"
+               << "{\"name\":\"license\",\"value_type\":\"string\",\"control\":\"readonly\"},"
+               << "{\"name\":\"content_sha256\",\"value_type\":\"string\",\"control\":\"readonly\"},"
+               << "{\"name\":\"sample_rate_hz\",\"value_type\":\"integer\",\"control\":\"readonly\"},"
+               << "{\"name\":\"channels\",\"value_type\":\"string_array\",\"control\":\"readonly\"},"
+               << "{\"name\":\"redistribution\",\"value_type\":\"string\",\"control\":\"readonly\"}],"
+               << "\"external_noise_interval_item_fields\":["
+               << "{\"name\":\"asset_id\",\"value_type\":\"string\",\"control\":\"approved_asset_select\"},"
+               << "{\"name\":\"asset_channel\",\"value_type\":\"string\",\"control\":\"asset_channel_select\"},"
+               << "{\"name\":\"start_seconds\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":0},"
+               << "{\"name\":\"duration_seconds\",\"value_type\":\"number\",\"control\":\"number\",\"exclusive_minimum\":0},"
+               << "{\"name\":\"asset_offset_seconds\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":0},"
+               << "{\"name\":\"target_snr_db\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":-40,\"maximum\":80,\"unit\":\"dB\"},"
+               << "{\"name\":\"taper_seconds\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":0},"
+               << "{\"name\":\"clip_limit_mv\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":0,\"unit\":\"mV\"},"
+               << "{\"name\":\"channels\",\"value_type\":\"string_array\",\"control\":\"channel_picker\"}],"
                << "\"ppg_perfusion_episode_item_fields\":["
                << "{\"name\":\"start_seconds\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":0,\"unit\":\"s\"},"
                << "{\"name\":\"duration_seconds\",\"value_type\":\"number\",\"control\":\"number\",\"exclusive_minimum\":0,\"unit\":\"s\"},"
@@ -799,7 +826,7 @@ namespace signal_synth
                << "{\"name\":\"ecg_beat_classification\",\"support\":\"local_scoring\",\"requires\":[]},"
                << "{\"name\":\"hrv\",\"support\":\"local_scoring\",\"requires\":[\"hrv.enabled\",\"duration_seconds>=300\"]},"
                << "{\"name\":\"rhythm_episode\",\"support\":\"local_scoring\",\"requires\":[\"ecg.rhythm_episodes.length>0\"]},"
-               << "{\"name\":\"signal_quality\",\"support\":\"local_scoring\",\"requires\":[\"artifacts.length>0\"]},"
+               << "{\"name\":\"signal_quality\",\"support\":\"local_scoring\",\"requires\":[\"artifacts.length>0 or external_noise.intervals.length>0\"]},"
                << "{\"name\":\"ecg_delineation\",\"support\":\"local_scoring\",\"requires\":[]},"
                << "{\"name\":\"morphology_assertions\",\"support\":\"local_scoring\",\"requires\":[\"ecg.conditions\"]},"
                << "{\"name\":\"ecg_ppg_alignment\",\"support\":\"local_scoring\",\"requires\":[\"ppg.enabled\"]},"
@@ -826,6 +853,7 @@ namespace signal_synth
                << "{\"id\":\"compact_output\",\"expression\":\"!output.compact || (!output.retain_source_channels && !output.include_waveform_csv && !output.include_edf_bdf)\",\"message\":\"Compact output omits source channels, waveform CSV, EDF and BDF.\"}"
                << ",{\"id\":\"extended_morphology_parent_bounds\",\"expression\":\"every extended component fits its parent P, QRS, T, or post-T window and component type/lead pairs are unique\",\"message\":\"Extended morphology components must fit their parent wave and cannot overlap another component of the same type on the same lead.\"}"
                << ",{\"id\":\"fusion_configuration\",\"expression\":\"fusion_every_n_beats == 0 ? fusion_ventricular_fraction == 0 : fusion_every_n_beats >= 2 and 0.1 <= fusion_ventricular_fraction <= 0.9\",\"message\":\"Fusion cadence and ventricular fraction must be configured together.\"}"
+               << ",{\"id\":\"external_noise_release\",\"expression\":\"challenge release requires every external noise asset redistribution != local_only\",\"message\":\"Local-only external noise cannot be released in a challenge package.\"}"
                << "]}";
         return output.str();
     }
@@ -883,6 +911,12 @@ namespace signal_synth
             item.sampling_rate_hz = document.ecg.sampling_rate_hz();
             item.sample_count = document.sample_count();
             item.wearable_timebase = !wearable_timebase_config_is_default(document.wearable);
+            item.external_noise = !document.external_noise.intervals.empty();
+            for (std::size_t asset = 0; asset < document.external_noise.assets.size(); ++asset)
+            {
+                item.external_noise_asset_ids.push_back(document.external_noise.assets[asset].id);
+                item.external_noise_release_allowed = item.external_noise_release_allowed && document.external_noise.assets[asset].redistribution != external_noise_local_only;
+            }
             bool has_accelerometer = document.physiology.activity_intensity > 0.0;
             for (std::size_t artifact = 0; artifact < document.signal_quality.artifacts.size(); ++artifact)
                 if (signal_quality_artifact_is_motion(document.signal_quality.artifacts[artifact].type))
@@ -935,7 +969,7 @@ namespace signal_synth
                << ",\"pack_version\":" << json_string(analysis.pack_version)
                << ",\"scoring_mode\":" << json_string(analysis_scoring_mode(analysis))
                << ",\"recommended_verifier_profile\":" << json_string(recommended_profile_for_analysis(analysis))
-               << ",\"generator_compatibility\":{\"pack_schema_version\":1,\"scenario_schema_versions\":[2,3,4,5,6,7],\"challenge_package_contract\":\"synsigra_challenge_package_v2\",\"scoring_manifest_contract\":\"synsigra_scoring_manifest_v2\"}"
+               << ",\"generator_compatibility\":{\"pack_schema_version\":1,\"scenario_schema_versions\":[2,3,4,5,6,7,8],\"challenge_package_contract\":\"synsigra_challenge_package_v2\",\"scoring_manifest_contract\":\"synsigra_scoring_manifest_v2\"}"
                << ",\"summary\":{\"case_count\":" << analysis.case_count
                << ",\"total_duration_seconds\":" << analysis.total_duration_seconds
                << ",\"total_sample_count\":" << analysis.total_sample_count
@@ -964,6 +998,11 @@ namespace signal_synth
                    << ",\"sample_count\":" << item.sample_count
                    << ",\"channel_count\":" << item.channel_count
                    << ",\"wearable_timebase\":" << (item.wearable_timebase ? "true" : "false")
+                   << ",\"external_noise\":" << (item.external_noise ? "true" : "false")
+                   << ",\"external_noise_release_allowed\":" << (item.external_noise_release_allowed ? "true" : "false")
+                   << ",\"external_noise_asset_ids\":";
+            write_string_array(output, item.external_noise_asset_ids);
+            output
                    << ",\"estimated_waveform_csv_bytes\":" << item.estimated_waveform_csv_bytes
                    << ",\"estimated_binary_signal_bytes\":" << item.estimated_binary_signal_bytes
                    << ",\"estimated_package_bytes\":" << item.estimated_package_bytes

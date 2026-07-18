@@ -1,6 +1,7 @@
 #include "ecg_render.h"
 #include "wearable_profiles.h"
 
+#include <cmath>
 #include <sstream>
 
 namespace
@@ -170,7 +171,7 @@ namespace signal_synth
     {
     }
 
-    bool render_ecg_document(const ecg_scenario_document& document, ecg_render_bundle& output, ecg_document_render_result& result)
+    bool render_ecg_document(const ecg_scenario_document& document, const std::vector<external_noise_asset_input>& external_noise_assets, ecg_render_bundle& output, ecg_document_render_result& result)
     {
         ecg_document_render_result fresh_result;
         ecg_render_bundle fresh;
@@ -248,6 +249,31 @@ namespace signal_synth
             result = fresh_result;
             return false;
         }
+        if (!fresh.resolved_document.external_noise.intervals.empty())
+        {
+            fresh.external_noise_clean_ecg_leads = fresh.signal_quality.ecg_leads;
+            std::vector<std::string> external_noise_messages;
+            if (!apply_external_noise(fresh.resolved_document.external_noise, external_noise_assets, fresh.record.sampling_rate_hz(), fresh.signal_quality.ecg_leads, fresh.external_noise, external_noise_messages))
+            {
+                fresh_result.messages = external_noise_messages;
+                if (fresh_result.messages.empty()) fresh_result.messages.push_back("external noise rendering failed");
+                result = fresh_result;
+                return false;
+            }
+            for (std::size_t i = 0; i < fresh.external_noise.intervals.size(); ++i)
+            {
+                const external_noise_interval_truth& truth = fresh.external_noise.intervals[i];
+                signal_quality_artifact_interval interval;
+                interval.type = signal_quality_ecg_external_noise;
+                interval.start_seconds = truth.start_seconds;
+                interval.end_seconds = truth.end_seconds;
+                interval.start_sample_index = static_cast<unsigned long long>(std::ceil(truth.start_seconds * fresh.record.sampling_rate_hz() - 1e-12));
+                interval.end_sample_index = static_cast<unsigned long long>(std::ceil(truth.end_seconds * fresh.record.sampling_rate_hz() - 1e-12)) - 1u;
+                interval.severity = 1.0;
+                for (std::size_t channel = 0; channel < truth.channels.size(); ++channel) interval.ecg_leads[truth.channels[channel].lead] = true;
+                fresh.signal_quality.artifacts.push_back(interval);
+            }
+        }
         if (!finalize_ppg_sensor(fresh.ppg, fresh.signal_quality, fresh.ppg_clipping_counts))
         {
             fresh_result.messages.push_back("PPG sensor rendering failed");
@@ -287,5 +313,11 @@ namespace signal_synth
         output = fresh;
         result = fresh_result;
         return true;
+    }
+
+    bool render_ecg_document(const ecg_scenario_document& document, ecg_render_bundle& output, ecg_document_render_result& result)
+    {
+        const std::vector<external_noise_asset_input> no_assets;
+        return render_ecg_document(document, no_assets, output, result);
     }
 }

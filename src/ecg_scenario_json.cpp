@@ -1160,6 +1160,11 @@ namespace
         return document.ecg.morphology_component_count() == 0 && document.ecg.fusion_every_n_beats() == 0;
     }
 
+    bool default_v8_config(const signal_synth::ecg_scenario_document& document)
+    {
+        return document.external_noise.assets.empty() && document.external_noise.intervals.empty();
+    }
+
     bool default_v5_config(const signal_synth::ecg_scenario_document& document)
     {
         return signal_synth::wearable_timebase_config_is_default(document.wearable);
@@ -1281,8 +1286,8 @@ namespace
 
     bool validate_document(const signal_synth::ecg_scenario_document& document, signal_synth::ecg_scenario_json_result& result, std::vector<std::string>& sorted_tags)
     {
-        if (document.schema_version < 1 || document.schema_version > 7)
-            add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema versions 1 through 7 are supported");
+        if (document.schema_version < 1 || document.schema_version > 8)
+            add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema versions 1 through 8 are supported");
         if (document.schema_version == 1 && !default_ppg_config(document.ppg))
             add_message(result, signal_synth::ecg_json_semantic, "$.ppg", "schema version 1 cannot represent PPG configuration");
         if (document.schema_version == 1 && !default_hrv_config(document.hrv))
@@ -1311,6 +1316,15 @@ namespace
             add_message(result, signal_synth::ecg_json_range, "$.ppg.optical", "invalid PPG optical physiology configuration");
         if (document.schema_version < 7 && !default_v7_config(document))
             add_message(result, signal_synth::ecg_json_semantic, "$.ecg.extended_morphology", "extended ECG morphology requires schema version 7");
+        if (document.schema_version < 8 && !default_v8_config(document))
+            add_message(result, signal_synth::ecg_json_semantic, "$.external_noise", "external noise requires schema version 8");
+        if (document.schema_version >= 8)
+        {
+            std::vector<std::string> external_noise_messages;
+            if (!signal_synth::validate_external_noise_config(document.external_noise, document.duration_seconds, document.ecg.sampling_rate_hz(), external_noise_messages))
+                for (std::size_t i = 0; i < external_noise_messages.size(); ++i)
+                    add_message(result, signal_synth::ecg_json_range, "$.external_noise", external_noise_messages[i]);
+        }
         if (!signal_synth::validate_signal_quality_config(document.signal_quality, document.duration_seconds, document.ecg.sampling_rate_hz(), document.ppg.enabled))
             add_message(result, signal_synth::ecg_json_range, "$.artifacts", "invalid artifact configuration");
         if (!safe_identifier(document.scenario_id))
@@ -1594,6 +1608,46 @@ namespace
             }
             output << ']';
         }
+        if (document.schema_version >= 8 && !default_v8_config(document))
+        {
+            output << ",\"external_noise\":{\"assets\":[";
+            for (std::size_t i = 0; i < document.external_noise.assets.size(); ++i)
+            {
+                const signal_synth::external_noise_asset_manifest& asset = document.external_noise.assets[i];
+                output << (i ? "," : "") << "{\"id\":" << escape_json(asset.id)
+                       << ",\"source_uri\":" << escape_json(asset.source_uri)
+                       << ",\"license\":" << escape_json(asset.license)
+                       << ",\"content_sha256\":" << escape_json(asset.content_sha256)
+                       << ",\"sample_rate_hz\":" << asset.sample_rate_hz
+                       << ",\"channels\":[";
+                for (std::size_t channel = 0; channel < asset.channels.size(); ++channel)
+                    output << (channel ? "," : "") << escape_json(asset.channels[channel]);
+                output << "],\"redistribution\":" << escape_json(signal_synth::external_noise_redistribution_name(asset.redistribution)) << '}';
+            }
+            output << "],\"intervals\":[";
+            for (std::size_t i = 0; i < document.external_noise.intervals.size(); ++i)
+            {
+                const signal_synth::external_noise_interval_config& interval = document.external_noise.intervals[i];
+                output << (i ? "," : "") << "{\"asset_id\":" << escape_json(interval.asset_id)
+                       << ",\"asset_channel\":" << escape_json(interval.asset_channel)
+                       << ",\"start_seconds\":" << format_double(interval.start_seconds)
+                       << ",\"duration_seconds\":" << format_double(interval.duration_seconds)
+                       << ",\"asset_offset_seconds\":" << format_double(interval.asset_offset_seconds)
+                       << ",\"target_snr_db\":" << format_double(interval.target_snr_db)
+                       << ",\"taper_seconds\":" << format_double(interval.taper_seconds)
+                       << ",\"clip_limit_mv\":" << format_double(interval.clip_limit_mv)
+                       << ",\"channels\":[";
+                bool first_channel = true;
+                for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead)
+                    if (interval.ecg_leads[lead])
+                    {
+                        output << (first_channel ? "" : ",") << escape_json(clinical_lead_json_name(lead));
+                        first_channel = false;
+                    }
+                output << "]}";
+            }
+            output << "]}";
+        }
         output << '}';
         return output.str();
     }
@@ -1694,7 +1748,7 @@ namespace signal_synth
             return false;
         }
 
-        const char* top_fields[] = {"schema_version","scenario_id","name","description","author","tags","duration_seconds","sample_rate_hz","seed","ecg","hrv","ppg","randomization","physiology","output","wearable","artifacts"};
+        const char* top_fields[] = {"schema_version","scenario_id","name","description","author","tags","duration_seconds","sample_rate_hz","seed","ecg","hrv","ppg","randomization","physiology","output","wearable","artifacts","external_noise"};
         if (!allowed_fields(root, top_fields, sizeof(top_fields) / sizeof(top_fields[0]), "$", fresh_result))
         {
             result = fresh_result;
@@ -1718,8 +1772,8 @@ namespace signal_synth
         }
 
         unsigned long long integer = 0;
-        if (!integral_number(*schema, 7, integer) || integer < 1 || integer > 7)
-            add_message(fresh_result, ecg_json_schema_version, "$.schema_version", "only schema versions 1 through 7 are supported");
+        if (!integral_number(*schema, 8, integer) || integer < 1 || integer > 8)
+            add_message(fresh_result, ecg_json_schema_version, "$.schema_version", "only schema versions 1 through 8 are supported");
         ecg_scenario_document document;
         document.schema_version = static_cast<unsigned int>(integer);
         document.ecg.clear_conditions();
@@ -2533,6 +2587,83 @@ namespace signal_synth
                     }
                     document.signal_quality.artifacts.push_back(artifact);
                 }
+            }
+        }
+
+        const json_value* external_noise = member(root, "external_noise");
+        if (document.schema_version < 8 && external_noise)
+            add_message(fresh_result, ecg_json_unknown_field, "$.external_noise", "external_noise requires schema version 8");
+        if (document.schema_version >= 8 && external_noise)
+        {
+            if (external_noise->type != json_value::object_kind)
+                add_message(fresh_result, ecg_json_type, "$.external_noise", "field has the wrong JSON type");
+            else
+            {
+                const char* fields[] = {"assets","intervals"};
+                allowed_fields(*external_noise, fields, 2u, "$.external_noise", fresh_result);
+                const json_value* assets = required(*external_noise, "assets", json_value::array_kind, "$.external_noise", fresh_result);
+                const json_value* intervals = required(*external_noise, "intervals", json_value::array_kind, "$.external_noise", fresh_result);
+                if (assets)
+                    for (std::size_t i = 0; i < assets->array.size(); ++i)
+                    {
+                        const std::string path = "$.external_noise.assets[" + json_index(i) + "]";
+                        const json_value& item = assets->array[i];
+                        if (item.type != json_value::object_kind) { add_message(fresh_result, ecg_json_type, path, "asset must be an object"); continue; }
+                        const char* asset_fields[] = {"id","source_uri","license","content_sha256","sample_rate_hz","channels","redistribution"};
+                        allowed_fields(item, asset_fields, 7u, path, fresh_result);
+                        const json_value* id = required(item, "id", json_value::string_kind, path, fresh_result);
+                        const json_value* source_uri = required(item, "source_uri", json_value::string_kind, path, fresh_result);
+                        const json_value* license = required(item, "license", json_value::string_kind, path, fresh_result);
+                        const json_value* checksum = required(item, "content_sha256", json_value::string_kind, path, fresh_result);
+                        const json_value* asset_rate = required(item, "sample_rate_hz", json_value::number_kind, path, fresh_result);
+                        const json_value* channels = required(item, "channels", json_value::array_kind, path, fresh_result);
+                        const json_value* redistribution = required(item, "redistribution", json_value::string_kind, path, fresh_result);
+                        if (!id || !source_uri || !license || !checksum || !asset_rate || !channels || !redistribution) continue;
+                        external_noise_asset_manifest asset;
+                        asset.id = id->string; asset.source_uri = source_uri->string; asset.license = license->string; asset.content_sha256 = checksum->string;
+                        if (!integral_number(*asset_rate, std::numeric_limits<unsigned int>::max(), integer)) add_message(fresh_result, ecg_json_range, path + ".sample_rate_hz", "sample rate must be an unsigned integer");
+                        else asset.sample_rate_hz = static_cast<unsigned int>(integer);
+                        if (!external_noise_redistribution_from_name(redistribution->string, asset.redistribution)) add_message(fresh_result, ecg_json_range, path + ".redistribution", "unknown redistribution mode");
+                        for (std::size_t channel = 0; channel < channels->array.size(); ++channel)
+                            if (channels->array[channel].type != json_value::string_kind) add_message(fresh_result, ecg_json_type, path + ".channels[" + json_index(channel) + "]", "channel must be a string");
+                            else asset.channels.push_back(channels->array[channel].string);
+                        document.external_noise.assets.push_back(asset);
+                    }
+                if (intervals)
+                    for (std::size_t i = 0; i < intervals->array.size(); ++i)
+                    {
+                        const std::string path = "$.external_noise.intervals[" + json_index(i) + "]";
+                        const json_value& item = intervals->array[i];
+                        if (item.type != json_value::object_kind) { add_message(fresh_result, ecg_json_type, path, "interval must be an object"); continue; }
+                        const char* interval_fields[] = {"asset_id","asset_channel","start_seconds","duration_seconds","asset_offset_seconds","target_snr_db","taper_seconds","clip_limit_mv","channels"};
+                        allowed_fields(item, interval_fields, 9u, path, fresh_result);
+                        const json_value* asset_id = required(item, "asset_id", json_value::string_kind, path, fresh_result);
+                        const json_value* asset_channel = required(item, "asset_channel", json_value::string_kind, path, fresh_result);
+                        const json_value* start = required(item, "start_seconds", json_value::number_kind, path, fresh_result);
+                        const json_value* interval_duration = required(item, "duration_seconds", json_value::number_kind, path, fresh_result);
+                        const json_value* offset = required(item, "asset_offset_seconds", json_value::number_kind, path, fresh_result);
+                        const json_value* snr = required(item, "target_snr_db", json_value::number_kind, path, fresh_result);
+                        const json_value* taper = required(item, "taper_seconds", json_value::number_kind, path, fresh_result);
+                        const json_value* clip = required(item, "clip_limit_mv", json_value::number_kind, path, fresh_result);
+                        const json_value* channels = required(item, "channels", json_value::array_kind, path, fresh_result);
+                        if (!asset_id || !asset_channel || !start || !interval_duration || !offset || !snr || !taper || !clip || !channels) continue;
+                        external_noise_interval_config interval;
+                        interval.asset_id = asset_id->string; interval.asset_channel = asset_channel->string; interval.start_seconds = start->number; interval.duration_seconds = interval_duration->number; interval.asset_offset_seconds = offset->number; interval.target_snr_db = snr->number; interval.taper_seconds = taper->number; interval.clip_limit_mv = clip->number;
+                        for (std::size_t channel = 0; channel < channels->array.size(); ++channel)
+                        {
+                            const std::string channel_path = path + ".channels[" + json_index(channel) + "]";
+                            if (channels->array[channel].type != json_value::string_kind) { add_message(fresh_result, ecg_json_type, channel_path, "channel must be a string"); continue; }
+                            if (channels->array[channel].string == "all" || channels->array[channel].string == "all_ecg") for (unsigned int lead = 0; lead < clinical_lead_count; ++lead) interval.ecg_leads[lead] = true;
+                            else
+                            {
+                                const int lead = clinical_lead_from_json_name(channels->array[channel].string);
+                                if (lead < 0) add_message(fresh_result, ecg_json_range, channel_path, "unknown ECG channel");
+                                else if (interval.ecg_leads[lead]) add_message(fresh_result, ecg_json_duplicate_tag, channel_path, "duplicate ECG channel");
+                                else interval.ecg_leads[lead] = true;
+                            }
+                        }
+                        document.external_noise.intervals.push_back(interval);
+                    }
             }
         }
 

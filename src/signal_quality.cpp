@@ -44,6 +44,8 @@ namespace
         case signal_synth::signal_quality_ppg_ambient_light:
         case signal_synth::signal_quality_ppg_sensor_saturation:
             return true;
+        case signal_synth::signal_quality_ecg_external_noise:
+            return false;
         }
         return false;
     }
@@ -316,6 +318,7 @@ namespace signal_synth
         case signal_quality_ppg_motion_broadband: return "ppg_motion_broadband";
         case signal_quality_ppg_ambient_light: return "ppg_ambient_light";
         case signal_quality_ppg_sensor_saturation: return "ppg_sensor_saturation";
+        case signal_quality_ecg_external_noise: return "ecg_external_noise";
         }
         return "unknown";
     }

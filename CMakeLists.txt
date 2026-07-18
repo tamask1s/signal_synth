@@ -34,6 +34,7 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/scenario_authoring.h
     src/scenario_stress.h
     src/signal_quality.h
+    src/external_noise.h
     src/realism_validation.h
     src/wearable_timebase.h
     src/wearable_profiles.h
@@ -72,6 +73,7 @@ add_library(
     src/scenario_authoring.cpp
     src/scenario_stress.cpp
     src/signal_quality.cpp
+    src/external_noise.cpp
     src/realism_validation.cpp
     src/wearable_timebase.cpp
     src/wearable_profiles.cpp

@@ -35,7 +35,7 @@ int main()
     bool ok = true;
     const std::string metadata = signal_synth::scenario_authoring_metadata_json();
     const std::string templates = signal_synth::scenario_template_catalog_json();
-    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v14"
+    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v15"
         && metadata.find("\"condition_count\"") == std::string::npos
         && metadata.find("\"code\":\"NORM\"") != std::string::npos
         && metadata.find("\"path\":\"$.hrv.target_sdnn_seconds\"") != std::string::npos
@@ -45,7 +45,8 @@ int main()
         && metadata.find("\"path\":\"$.output.compact\"") != std::string::npos
         && metadata.find("\"path\":\"$.wearable.ppg.clock_drift_ppm\"") != std::string::npos
         && metadata.find("\"path\":\"$.ppg.clock_drift_ppm\"") == std::string::npos
-        && metadata.find("\"scenario_schema_version\":7") != std::string::npos
+        && metadata.find("\"scenario_schema_version\":8") != std::string::npos
+        && metadata.find("\"path\":\"$.external_noise.assets\"") != std::string::npos
         && metadata.find("\"path\":\"$.ecg.extended_morphology.components\"") != std::string::npos
         && metadata.find("\"ecg_morphology_component_item_fields\"") != std::string::npos
         && metadata.find("\"path\":\"$.ppg.optical.profile_id\"") != std::string::npos

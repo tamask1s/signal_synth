@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "2.3",
+  "version": "2.4",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -613,6 +613,40 @@
         "minimum_generator_version": "0.6.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [4],
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1",
+        "local_verifier_min_version": "0.6.0"
+      }
+    },
+    {
+      "pack_id": "ecg_hybrid_noise_v1",
+      "path": "../packs/ecg_hybrid_noise_v1.json",
+      "modality": ["ECG"],
+      "targets": ["r_peak", "signal_quality"],
+      "difficulty": ["regression", "stress"],
+      "recommended_profile": "stress",
+      "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
+      "scoring_mode": "local",
+      "feature_tags": ["external_noise", "calibrated_snr", "baseline_wander", "muscle_noise", "electrode_motion", "clean_reference", "license_control"],
+      "release_status": "beta",
+      "release_date": "2026-07-17",
+      "deprecation_message": "",
+      "recommended_for": [
+        "R-peak and signal-quality algorithm stress testing at calibrated SNR",
+        "Clean-versus-noisy regression with exact interval and source provenance truth",
+        "Deployment-specific testing with separately approved real-noise assets"
+      ],
+      "not_recommended_for": [
+        "Redistribution of undeclared or local-only source assets",
+        "Clinical noise prevalence or diagnostic performance claims",
+        "Use without independent review of every external asset license"
+      ],
+      "changelog": [{"version": "1.0", "date": "2026-07-17", "changes": ["Initial beta pack with deterministic resampling, calibrated per-lead SNR, tapers, clean reference, clipping accounting and release gating."]}],
+      "generator_compatibility": {
+        "minimum_generator_version": "0.6.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [8],
         "challenge_package_contract": "synsigra_challenge_package_v2",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1",

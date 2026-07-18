@@ -119,6 +119,8 @@ namespace
             return render.cardiorespiratory.prv_available && render.cardiorespiratory.respiration_available && !render.signal_quality.accelerometer.empty() && render.cardiorespiratory.prv.metrics.excluded_interval_count > 0U;
         if (document.scenario_id == "advanced_rhythm_burden_v2")
             return render.record.episode_count() == 6u && render.record.episodes()[3].kind == signal_synth::clinical_episode_vf && render.record.episodes()[4].kind == signal_synth::clinical_episode_asystole;
+        if (document.scenario_id == "ecg_extended_morphology_demo_v7")
+            return document.ecg.morphology_component_count() == 7u && document.ecg.fusion_every_n_beats() == 4u && render.record.fiducial_count() > render.record.beat_count() * 12u;
         return false;
     }
 
@@ -190,6 +192,32 @@ namespace
             std::cerr << "Unexpected scenario count in " << path << ": " << count << '\n';
         return count == expected_scenarios;
     }
+
+    bool verify_external_noise_script()
+    {
+        const std::string script = read_text("examples/databrowser/087_ECG_Hybrid_External_Noise.txt");
+        const std::size_t call = script.find("GenerateECGExternalNoiseJSON(");
+        const std::size_t first = call == std::string::npos ? std::string::npos : script.find('{', call);
+        if (first == std::string::npos || script.find("SaveVarToFile") > script.find("DisplayData") || script.find(",, C,") != std::string::npos) return false;
+        unsigned int depth = 0; bool in_string = false; bool escaped = false;
+        for (std::size_t i = first; i < script.size(); ++i)
+        {
+            const char c = script[i];
+            if (in_string) { if (escaped) escaped = false; else if (c == '\\') escaped = true; else if (c == '"') in_string = false; continue; }
+            if (c == '"') in_string = true;
+            else if (c == '{') ++depth;
+            else if (c == '}' && --depth == 0)
+            {
+                signal_synth::ecg_scenario_document document; signal_synth::ecg_scenario_json_result json_result;
+                if (!signal_synth::parse_ecg_scenario_json(script.substr(first, i - first + 1), document, json_result)) return false;
+                signal_synth::external_noise_asset_input asset; asset.id = "synsigra_project_noise_v1"; asset.csv_content = read_text("examples/assets/noise/synsigra_project_noise_v1.csv");
+                std::vector<signal_synth::external_noise_asset_input> assets(1u, asset);
+                signal_synth::ecg_render_bundle render; signal_synth::ecg_document_render_result result;
+                return signal_synth::render_ecg_document(document, assets, render, result) && render.external_noise.intervals.size() == 3u && render.external_noise_clean_ecg_leads.size() == signal_synth::clinical_lead_count;
+            }
+        }
+        return false;
+    }
 }
 
 int main()
@@ -204,6 +232,8 @@ int main()
     ok &= check(verify_specialized_script("examples/databrowser/083_Wearable_Device_Site_Profiles.txt", "GenerateWearableScenarioJSON"), "wearable_profiles_script");
     ok &= check(verify_specialized_script("examples/databrowser/084_Cardiorespiratory_PRV_Respiration.txt", "GenerateCardiorespiratoryScenarioJSON"), "cardiorespiratory_script");
     ok &= check(verify_script("examples/databrowser/085_ECG_Advanced_Rhythm_Burden.txt", 2), "advanced_rhythm_script");
+    ok &= check(verify_script("examples/databrowser/086_ECG_Extended_Morphology.txt", 1), "extended_morphology_script");
+    ok &= check(verify_external_noise_script(), "external_noise_script");
 
     const std::string adapter = read_text("integrations/databrowser/SignalProc_RSPT.cpp");
     ok &= check(adapter.find("#include \"ecg_render.h\"") != std::string::npos && adapter.find("#include \"wearable_timebase.h\"") != std::string::npos && adapter.find("#include \"ecg_export.h\"") == std::string::npos, "adapter_uses_render_layer");
@@ -213,9 +243,10 @@ int main()
     ok &= check(adapter.find("GeneratePPGOpticalScenarioJSON") != std::string::npos && adapter.find("GT SpO2 target") != std::string::npos && adapter.find("GenerateSyntheticECGPPG") == std::string::npos, "adapter_optical_api");
     ok &= check(adapter.find("GenerateCardiorespiratoryScenarioJSON") != std::string::npos && adapter.find("GT respiration reference") != std::string::npos && adapter.find("GT PPG pulse interval") != std::string::npos, "adapter_cardiorespiratory_api");
     ok &= check(adapter.find("GT VF episode") != std::string::npos && adapter.find("GT asystole episode") != std::string::npos && adapter.find("rhythm_episodes") != std::string::npos, "adapter_advanced_rhythm_truth");
+    ok &= check(adapter.find("GenerateECGExternalNoiseJSON") != std::string::npos && adapter.find("GT achieved SNR II") != std::string::npos && adapter.find("external noise asset directory is required") != std::string::npos, "adapter_external_noise_api");
 
     const std::string project = read_text("integrations/databrowser/SignalProc_RSPT.cbp");
-    ok &= check(project.find("ecg_render.cpp") != std::string::npos && project.find("hrv_metrics.cpp") != std::string::npos && project.find("cardiorespiratory.cpp") != std::string::npos && project.find("scenario_stress.cpp") != std::string::npos && project.find("wearable_timebase.cpp") != std::string::npos && project.find("wearable_profiles.cpp") != std::string::npos, "codeblocks_generation_dependencies");
+    ok &= check(project.find("ecg_render.cpp") != std::string::npos && project.find("hrv_metrics.cpp") != std::string::npos && project.find("cardiorespiratory.cpp") != std::string::npos && project.find("scenario_stress.cpp") != std::string::npos && project.find("external_noise.cpp") != std::string::npos && project.find("wearable_timebase.cpp") != std::string::npos && project.find("wearable_profiles.cpp") != std::string::npos, "codeblocks_generation_dependencies");
     ok &= check(project.find("ecg_export.cpp") == std::string::npos && project.find("challenge_package.cpp") == std::string::npos && project.find("ecg_compare.cpp") == std::string::npos && project.find("synsigra_api.cpp") == std::string::npos && project.find("ecg_pack.cpp") == std::string::npos, "codeblocks_excludes_distribution_stack");
     return ok ? 0 : 1;
 }

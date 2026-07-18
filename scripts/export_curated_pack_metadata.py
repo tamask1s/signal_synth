@@ -14,7 +14,7 @@ METADATA_TYPE = "synsigra_curated_pack_catalog"
 DEFAULT_GENERATOR_COMPATIBILITY = {
     "minimum_generator_version": "0.6.0-dev",
     "pack_schema_version": 1,
-    "scenario_schema_versions": [2, 3, 4, 5, 6, 7],
+    "scenario_schema_versions": [2, 3, 4, 5, 6, 7, 8],
     "challenge_package_contract": "synsigra_challenge_package_v2",
     "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
     "submission_contract": "synsigra_submission_v1",
@@ -411,6 +411,9 @@ def case_metadata(case, scoreable_targets, reference_targets):
         "sampling_rate_hz": case["sampling_rate_hz"],
         "sample_count": case["sample_count"],
         "channel_count": case["channel_count"],
+        "external_noise": bool(case.get("external_noise", False)),
+        "external_noise_release_allowed": bool(case.get("external_noise_release_allowed", True)),
+        "external_noise_asset_ids": list(case.get("external_noise_asset_ids", [])),
         "estimated_waveform_csv_bytes": case["estimated_waveform_csv_bytes"],
         "estimated_binary_signal_bytes": case["estimated_binary_signal_bytes"],
         "estimated_package_bytes": case["estimated_package_bytes"],

@@ -43,7 +43,7 @@ namespace
 {
     const std::size_t maximum_input_size = 16u * 1024u * 1024u;
 
-    bool read_stream(std::istream& input, std::string& output)
+    bool read_stream_limited(std::istream& input, std::size_t maximum_size, std::string& output)
     {
         output.clear();
         char buffer[16384];
@@ -53,7 +53,7 @@ namespace
             const std::streamsize count = input.gcount();
             if (count > 0)
             {
-                if (output.size() > maximum_input_size - static_cast<std::size_t>(count))
+                if (output.size() > maximum_size - static_cast<std::size_t>(count))
                     return false;
                 output.append(buffer, static_cast<std::size_t>(count));
             }
@@ -61,12 +61,20 @@ namespace
         return input.eof();
     }
 
+    bool read_stream(std::istream& input, std::string& output) { return read_stream_limited(input, maximum_input_size, output); }
+
     bool read_input(const std::string& path, std::string& output)
     {
         if (path == "-")
             return read_stream(std::cin, output);
         std::ifstream file(path.c_str(), std::ios::in | std::ios::binary);
         return file && read_stream(file, output);
+    }
+
+    bool read_noise_asset(const std::string& path, std::string& output)
+    {
+        std::ifstream file(path.c_str(), std::ios::in | std::ios::binary);
+        return file && read_stream_limited(file, 512u * 1024u * 1024u, output);
     }
 
     bool file_exists(const std::string& path)
@@ -79,7 +87,7 @@ namespace
     {
         std::cerr << "usage: signal-synth contract\n"
                   << "       signal-synth <validate|fingerprint> <scenario.json|->\n"
-                  << "       signal-synth render <scenario.json|-> --out <new-directory>\n"
+                  << "       signal-synth render <scenario.json|-> --out <new-directory> [--noise-assets <directory>]\n"
                   << "       signal-synth compare <r_peak|ppg_systolic_peak|ppg_pulse_onset|ecg_beat_classification> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth interval score <rhythm_episode|signal_quality> <scenario.json|-> <intervals.csv|intervals.json> --out <new-directory> [--minimum-iou <ratio>]\n"
                   << "       signal-synth delineation score <scenario.json|-> <point-events.csv|point-events.json> --out <new-directory> [--tolerance-ms <ms>]\n"
@@ -87,9 +95,9 @@ namespace
                   << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack analyze <pack.json>\n"
-                  << "       signal-synth pack render <pack.json> --out <new-directory>\n"
-                  << "       signal-synth pack challenge <pack.json> --out <new-directory>\n"
-                  << "       signal-synth pack score <pack.json> <detections-directory> --out <new-directory>\n"
+                  << "       signal-synth pack render <pack.json> --out <new-directory> [--noise-assets <directory>]\n"
+                  << "       signal-synth pack challenge <pack.json> --out <new-directory> [--noise-assets <directory>]\n"
+                  << "       signal-synth pack score <pack.json> <detections-directory> --out <new-directory> [--noise-assets <directory>]\n"
                   << "       signal-synth authoring <schema|templates>\n";
     }
 
@@ -196,6 +204,29 @@ namespace
         if (last == '/' || last == '\\')
             return directory + name;
         return directory + "/" + name;
+    }
+
+    bool load_external_noise_assets(const signal_synth::ecg_scenario_document& document, const std::string& directory, std::vector<signal_synth::external_noise_asset_input>& assets, std::string& message)
+    {
+        assets.clear();
+        if (document.external_noise.assets.empty()) return true;
+        if (directory.empty()) { message = "scenario requires --noise-assets <directory>"; return false; }
+        for (std::size_t i = 0; i < document.external_noise.assets.size(); ++i)
+        {
+            signal_synth::external_noise_asset_input asset;
+            asset.id = document.external_noise.assets[i].id;
+            const std::string path = join_path(directory, asset.id + ".csv");
+            if (!read_noise_asset(path, asset.csv_content)) { message = "unable to read external noise asset or asset exceeds 512 MiB: " + path; return false; }
+            assets.push_back(asset);
+        }
+        return true;
+    }
+
+    bool render_document(const signal_synth::ecg_scenario_document& document, const std::string& noise_asset_directory, signal_synth::ecg_render_bundle& render, signal_synth::ecg_document_render_result& result, std::string& asset_error)
+    {
+        std::vector<signal_synth::external_noise_asset_input> assets;
+        if (!load_external_noise_assets(document, noise_asset_directory, assets, asset_error)) return false;
+        return signal_synth::render_ecg_document(document, assets, render, result);
     }
 
     std::string json_text(const std::string& value)
@@ -681,7 +712,13 @@ namespace
             write_artifact_channel_array(output, render, artifact);
             output << '}';
         }
-        output << "],\"scoring\":";
+        output << "],\"external_noise\":{\"enabled\":" << (!render.external_noise.intervals.empty() ? "true" : "false")
+               << ",\"release_allowed\":" << (render.external_noise.release_allowed ? "true" : "false")
+               << ",\"truth_path\":" << json_text(render.external_noise.intervals.empty() ? "" : "cases/" + pack_scenario.id + "/external_noise_truth.json")
+               << ",\"clean_reference_path\":" << json_text(render.external_noise.intervals.empty() ? "" : "cases/" + pack_scenario.id + "/external_noise_clean_ecg.csv")
+               << ",\"asset_ids\":[";
+        for (std::size_t i = 0; i < document.external_noise.assets.size(); ++i) output << (i ? "," : "") << json_text(document.external_noise.assets[i].id);
+        output << "]},\"scoring\":";
         write_scoring_entries(output, pack_scenario.id, "cases/" + pack_scenario.id + "/scenario.json", targets);
         output << '}';
         return output.str();
@@ -1596,13 +1633,16 @@ int main(int argc, char** argv)
         const bool pack_challenge = pack_action == "challenge";
         const bool pack_score = pack_action == "score";
         const bool pack_analyze = pack_action == "analyze";
-        if (((pack_render || pack_challenge) && (argc != 6 || std::string(argv[4]) != "--out")) || (pack_score && (argc != 7 || std::string(argv[5]) != "--out")) || (!pack_render && !pack_challenge && !pack_score && !pack_analyze && (argc != 4 || pack_action != "validate")) || (pack_analyze && argc != 4))
+        const bool render_arguments = (argc == 6 || (argc == 8 && std::string(argv[6]) == "--noise-assets")) && std::string(argv[4]) == "--out";
+        const bool score_arguments = (argc == 7 || (argc == 9 && std::string(argv[7]) == "--noise-assets")) && std::string(argv[5]) == "--out";
+        if (((pack_render || pack_challenge) && !render_arguments) || (pack_score && !score_arguments) || (!pack_render && !pack_challenge && !pack_score && !pack_analyze && (argc != 4 || pack_action != "validate")) || (pack_analyze && argc != 4))
         {
             print_usage();
             return 2;
         }
         try
         {
+            const std::string noise_asset_directory = (pack_render || pack_challenge) && argc == 8 ? argv[7] : pack_score && argc == 9 ? argv[8] : "";
             std::string json;
             if (!read_input(argv[3], json))
             {
@@ -1683,9 +1723,10 @@ int main(int argc, char** argv)
                     }
                     signal_synth::ecg_render_bundle render;
                     signal_synth::ecg_document_render_result render_result;
-                    if (!signal_synth::render_ecg_document(document, render, render_result))
+                    std::string asset_error;
+                    if (!render_document(document, noise_asset_directory, render, render_result, asset_error))
                     {
-                        std::cerr << "error=RENDER_FAILED path=" << pack_scenario.path << " message=" << (render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
+                        std::cerr << "error=RENDER_FAILED path=" << pack_scenario.path << " message=" << (!asset_error.empty() ? asset_error : render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
                         return 4;
                     }
                     std::string detection_path = join_path(detection_directory, pack_scenario.id + ".json");
@@ -1802,9 +1843,15 @@ int main(int argc, char** argv)
                 signal_synth::ecg_export_bundle export_bundle;
                 signal_synth::ecg_document_render_result render_result;
                 signal_synth::ecg_export_result export_result;
-                if (!signal_synth::render_ecg_document(document, render, render_result))
+                std::string asset_error;
+                if (!render_document(document, noise_asset_directory, render, render_result, asset_error))
                 {
-                    std::cerr << "error=RENDER_FAILED path=" << pack_scenario.path << " message=" << (render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
+                    std::cerr << "error=RENDER_FAILED path=" << pack_scenario.path << " message=" << (!asset_error.empty() ? asset_error : render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
+                    return 4;
+                }
+                if (pack_challenge && !render.external_noise.release_allowed)
+                {
+                    std::cerr << "error=EXTERNAL_NOISE_LICENSE_FAILED path=" << pack_scenario.path << " message=local_only external noise cannot enter a challenge package\n";
                     return 4;
                 }
                 if (!signal_synth::build_ecg_export_bundle(render, export_bundle, export_result))
@@ -1955,7 +2002,7 @@ int main(int argc, char** argv)
         return 5;
     }
     const bool render_command = command == "render";
-    if ((render_command && (argc != 5 || std::string(argv[3]) != "--out")) || (!render_command && (argc != 3 || (command != "validate" && command != "fingerprint"))))
+    if ((render_command && !((argc == 5 || (argc == 7 && std::string(argv[5]) == "--noise-assets")) && std::string(argv[3]) == "--out")) || (!render_command && (argc != 3 || (command != "validate" && command != "fingerprint"))))
     {
         print_usage();
         return 2;
@@ -1982,9 +2029,11 @@ int main(int argc, char** argv)
             signal_synth::ecg_export_bundle export_bundle;
             signal_synth::ecg_document_render_result render_result;
             signal_synth::ecg_export_result export_result;
-            if (!signal_synth::render_ecg_document(document, render, render_result))
+            const std::string noise_asset_directory = argc == 7 ? argv[6] : "";
+            std::string asset_error;
+            if (!render_document(document, noise_asset_directory, render, render_result, asset_error))
             {
-                std::cerr << "error=RENDER_FAILED path=$ message=" << (render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
+                std::cerr << "error=RENDER_FAILED path=$ message=" << (!asset_error.empty() ? asset_error : render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
                 return 4;
             }
             if (!signal_synth::build_ecg_export_bundle(render, export_bundle, export_result))

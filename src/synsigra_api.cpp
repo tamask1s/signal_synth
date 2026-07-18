@@ -132,6 +132,13 @@ namespace
         artifact.content = content;
         artifacts.push_back(artifact);
     }
+
+    std::vector<signal_synth::external_noise_asset_input> external_assets(const std::vector<signal_synth::synsigra_external_noise_asset>& source)
+    {
+        std::vector<signal_synth::external_noise_asset_input> output(source.size());
+        for (std::size_t i = 0; i < source.size(); ++i) { output[i].id = source[i].id; output[i].csv_content = source[i].csv_content; }
+        return output;
+    }
 }
 
 namespace signal_synth
@@ -194,12 +201,12 @@ namespace signal_synth
 
     const char* synsigra_api_version()
     {
-        return "1.0.0";
+        return "1.1.0";
     }
 
     const char* synsigra_integration_contract_version()
     {
-        return "synsigra_core_integration_v2";
+        return "synsigra_core_integration_v3";
     }
 
     std::string synsigra_integration_contract_json()
@@ -215,7 +222,9 @@ namespace signal_synth
                << ",\"submission\":\"synsigra_submission_v1\""
                << ",\"submission_formats\":\"synsigra_submission_formats_v1\""
                << ",\"scenario_authoring\":" << json_text(scenario_authoring_metadata_version())
-               << ",\"scenario_templates\":" << json_text(scenario_template_catalog_version()) << "}"
+               << ",\"scenario_templates\":" << json_text(scenario_template_catalog_version())
+               << ",\"external_noise_truth\":\"synsigra_external_noise_truth_v1\"}"
+               << ",\"external_noise\":{\"scenario_schema_version\":8,\"asset_transport\":\"in_memory_csv_registry\",\"asset_bytes_in_challenge\":false,\"release_gate\":\"external_noise_truth.release_allowed\",\"redistribution_modes\":[\"local_only\",\"rendered_output\",\"source_and_output\"]}"
                << ",\"cli\":{\"challenge_command\":\"signal-synth pack challenge <pack.json> --out <new-directory>\""
                << ",\"challenge_success_media_type\":\"application/json\""
                << ",\"comparison_targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ppg_pulse_onset\",\"ecg_beat_classification\"]"
@@ -260,7 +269,7 @@ namespace signal_synth
         return true;
     }
 
-    bool synsigra_render_scenario_json(const std::string& scenario_json, synsigra_render_result& result)
+    bool synsigra_render_scenario_json(const std::string& scenario_json, const std::vector<synsigra_external_noise_asset>& external_noise_assets, synsigra_render_result& result)
     {
         synsigra_render_result fresh;
         ecg_scenario_document document;
@@ -273,7 +282,7 @@ namespace signal_synth
         }
         ecg_render_bundle render;
         ecg_document_render_result render_result;
-        if (!render_ecg_document(document, render, render_result))
+        if (!render_ecg_document(document, external_assets(external_noise_assets), render, render_result))
         {
             copy_render_messages(render_result, fresh.messages);
             result = fresh;
@@ -294,7 +303,13 @@ namespace signal_synth
         return true;
     }
 
-    bool synsigra_compare_scenario_detections(const std::string& scenario_json, const std::vector<synsigra_detection_event>& detections, const synsigra_compare_options& options, synsigra_compare_result& result)
+    bool synsigra_render_scenario_json(const std::string& scenario_json, synsigra_render_result& result)
+    {
+        const std::vector<synsigra_external_noise_asset> no_assets;
+        return synsigra_render_scenario_json(scenario_json, no_assets, result);
+    }
+
+    bool synsigra_compare_scenario_detections(const std::string& scenario_json, const std::vector<synsigra_external_noise_asset>& external_noise_assets, const std::vector<synsigra_detection_event>& detections, const synsigra_compare_options& options, synsigra_compare_result& result)
     {
         synsigra_compare_result fresh;
         ecg_scenario_document document;
@@ -307,7 +322,7 @@ namespace signal_synth
         }
         ecg_render_bundle render;
         ecg_document_render_result render_result;
-        if (!render_ecg_document(document, render, render_result))
+        if (!render_ecg_document(document, external_assets(external_noise_assets), render, render_result))
         {
             copy_render_messages(render_result, fresh.messages);
             result = fresh;
@@ -365,5 +380,11 @@ namespace signal_synth
         fresh.success = true;
         result = fresh;
         return true;
+    }
+
+    bool synsigra_compare_scenario_detections(const std::string& scenario_json, const std::vector<synsigra_detection_event>& detections, const synsigra_compare_options& options, synsigra_compare_result& result)
+    {
+        const std::vector<synsigra_external_noise_asset> no_assets;
+        return synsigra_compare_scenario_detections(scenario_json, no_assets, detections, options, result);
     }
 }

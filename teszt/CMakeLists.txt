@@ -77,6 +77,7 @@ add_library(
     ../src/ppg_model.cpp
     ../src/scenario_stress.cpp
     ../src/signal_quality.cpp
+    ../src/external_noise.cpp
     ../src/wearable_timebase.cpp
     ../src/wearable_profiles.cpp)
 target_include_directories(databrowser_generation_core PUBLIC ../src)
@@ -99,6 +100,12 @@ else()
 endif()
 add_test(NAME TEST-DATABROWSER-GCC49-001 COMMAND databrowser_generation_test)
 set_tests_properties(TEST-DATABROWSER-GCC49-001 PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/..")
+
+add_executable(external_noise_test external_noise_test.cpp)
+target_link_libraries(external_noise_test PRIVATE signal_synth::signal_synth)
+target_compile_features(external_noise_test PRIVATE cxx_std_11)
+set_target_properties(external_noise_test PROPERTIES CXX_EXTENSIONS OFF)
+add_test(NAME TEST-EXTERNAL-NOISE-001 COMMAND external_noise_test)
 
 add_test(
     NAME TEST-BUILD-001

@@ -1,11 +1,11 @@
 {
   "catalog_id": "synsigra_verification_packs",
-  "catalog_version": "2.3",
+  "catalog_version": "2.4",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "metadata_type": "synsigra_curated_pack_catalog",
   "metadata_version": "synsigra_curated_pack_metadata_export_v1",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
-  "pack_count": 15,
+  "pack_count": 16,
   "packs": [
     {
       "case_count": 3,
@@ -23,6 +23,9 @@
           "estimated_package_bytes": 3918400,
           "estimated_peak_memory_bytes": 5848576,
           "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -44,6 +47,9 @@
           "estimated_package_bytes": 3918400,
           "estimated_peak_memory_bytes": 5848576,
           "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -65,6 +71,9 @@
           "estimated_package_bytes": 3918400,
           "estimated_peak_memory_bytes": 5848576,
           "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -385,6 +394,9 @@
           "estimated_package_bytes": 11060400,
           "estimated_peak_memory_bytes": 15448576,
           "estimated_waveform_csv_bytes": 7020256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 500,
@@ -406,6 +418,9 @@
           "estimated_package_bytes": 7472400,
           "estimated_peak_memory_bytes": 10648576,
           "estimated_waveform_csv_bytes": 4680256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 20000,
           "sampling_rate_hz": 500,
@@ -427,6 +442,9 @@
           "estimated_package_bytes": 7841400,
           "estimated_peak_memory_bytes": 11128576,
           "estimated_waveform_csv_bytes": 4914256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 21000,
           "sampling_rate_hz": 500,
@@ -724,6 +742,9 @@
           "estimated_package_bytes": 3918400,
           "estimated_peak_memory_bytes": 5848576,
           "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -743,6 +764,9 @@
           "estimated_package_bytes": 5491400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -762,6 +786,9 @@
           "estimated_package_bytes": 4190400,
           "estimated_peak_memory_bytes": 5848576,
           "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -781,6 +808,9 @@
           "estimated_package_bytes": 5695400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -1073,6 +1103,9 @@
           "estimated_package_bytes": 14970400,
           "estimated_peak_memory_bytes": 15448576,
           "estimated_waveform_csv_bytes": 7020256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
@@ -1092,6 +1125,9 @@
           "estimated_package_bytes": 14970400,
           "estimated_peak_memory_bytes": 15448576,
           "estimated_waveform_csv_bytes": 7020256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
@@ -1111,6 +1147,9 @@
           "estimated_package_bytes": 14970400,
           "estimated_peak_memory_bytes": 15448576,
           "estimated_waveform_csv_bytes": 7020256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
@@ -1130,6 +1169,9 @@
           "estimated_package_bytes": 14970400,
           "estimated_peak_memory_bytes": 15448576,
           "estimated_waveform_csv_bytes": 7020256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
@@ -1149,6 +1191,9 @@
           "estimated_package_bytes": 14970400,
           "estimated_peak_memory_bytes": 15448576,
           "estimated_waveform_csv_bytes": 7020256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
@@ -1168,6 +1213,9 @@
           "estimated_package_bytes": 14970400,
           "estimated_peak_memory_bytes": 15448576,
           "estimated_waveform_csv_bytes": 7020256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
@@ -1187,6 +1235,9 @@
           "estimated_package_bytes": 14970400,
           "estimated_peak_memory_bytes": 15448576,
           "estimated_waveform_csv_bytes": 7020256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
@@ -1206,6 +1257,9 @@
           "estimated_package_bytes": 14970400,
           "estimated_peak_memory_bytes": 15448576,
           "estimated_waveform_csv_bytes": 7020256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
@@ -1225,6 +1279,9 @@
           "estimated_package_bytes": 14970400,
           "estimated_peak_memory_bytes": 15448576,
           "estimated_waveform_csv_bytes": 7020256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
@@ -1312,7 +1369,8 @@
           4,
           5,
           6,
-          7
+          7,
+          8
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -1541,6 +1599,9 @@
           "estimated_package_bytes": 3918400,
           "estimated_peak_memory_bytes": 5848576,
           "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -1560,6 +1621,9 @@
           "estimated_package_bytes": 5712400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -1579,6 +1643,9 @@
           "estimated_package_bytes": 5712400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -1598,6 +1665,9 @@
           "estimated_package_bytes": 5695400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -1617,6 +1687,9 @@
           "estimated_package_bytes": 5695400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -1699,7 +1772,8 @@
           4,
           5,
           6,
-          7
+          7,
+          8
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -1879,6 +1953,9 @@
           "estimated_package_bytes": 5865400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -1900,6 +1977,9 @@
           "estimated_package_bytes": 5865400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -1921,6 +2001,9 @@
           "estimated_package_bytes": 4428400,
           "estimated_peak_memory_bytes": 5848576,
           "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -1942,6 +2025,9 @@
           "estimated_package_bytes": 5712400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -1965,6 +2051,9 @@
           "estimated_package_bytes": 5712400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -1986,6 +2075,9 @@
           "estimated_package_bytes": 5712400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -2007,6 +2099,9 @@
           "estimated_package_bytes": 5712400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -2028,6 +2123,9 @@
           "estimated_package_bytes": 5695400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -2125,7 +2223,8 @@
           4,
           5,
           6,
-          7
+          7,
+          8
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2366,6 +2465,9 @@
           "estimated_package_bytes": 5695400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -2385,6 +2487,9 @@
           "estimated_package_bytes": 5712400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -2404,6 +2509,9 @@
           "estimated_package_bytes": 5695400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -2423,6 +2531,9 @@
           "estimated_package_bytes": 6121400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -2444,6 +2555,9 @@
           "estimated_package_bytes": 6087400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -2535,7 +2649,8 @@
           4,
           5,
           6,
-          7
+          7,
+          8
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2740,6 +2855,9 @@
           "estimated_package_bytes": 3021400,
           "estimated_peak_memory_bytes": 4648576,
           "estimated_waveform_csv_bytes": 1755256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 7500,
           "sampling_rate_hz": 500,
@@ -2759,6 +2877,9 @@
           "estimated_package_bytes": 3021400,
           "estimated_peak_memory_bytes": 4648576,
           "estimated_waveform_csv_bytes": 1755256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 7500,
           "sampling_rate_hz": 500,
@@ -2778,6 +2899,9 @@
           "estimated_package_bytes": 3021400,
           "estimated_peak_memory_bytes": 4648576,
           "estimated_waveform_csv_bytes": 1755256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 7500,
           "sampling_rate_hz": 500,
@@ -2797,6 +2921,9 @@
           "estimated_package_bytes": 3021400,
           "estimated_peak_memory_bytes": 4648576,
           "estimated_waveform_csv_bytes": 1755256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 7500,
           "sampling_rate_hz": 500,
@@ -2816,6 +2943,9 @@
           "estimated_package_bytes": 5695400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -2908,7 +3038,8 @@
           4,
           5,
           6,
-          7
+          7,
+          8
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -3122,6 +3253,9 @@
           "estimated_package_bytes": 4168400,
           "estimated_peak_memory_bytes": 6008576,
           "estimated_waveform_csv_bytes": 2520256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -3143,6 +3277,9 @@
           "estimated_package_bytes": 4168400,
           "estimated_peak_memory_bytes": 6008576,
           "estimated_waveform_csv_bytes": 2520256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -3164,6 +3301,9 @@
           "estimated_package_bytes": 6121400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -3185,6 +3325,9 @@
           "estimated_package_bytes": 6087400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -3281,7 +3424,8 @@
           4,
           5,
           6,
-          7
+          7,
+          8
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -3518,6 +3662,9 @@
           "estimated_package_bytes": 4190400,
           "estimated_peak_memory_bytes": 5848576,
           "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -3537,6 +3684,9 @@
           "estimated_package_bytes": 14970400,
           "estimated_peak_memory_bytes": 15448576,
           "estimated_waveform_csv_bytes": 7020256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
@@ -3556,6 +3706,9 @@
           "estimated_package_bytes": 4168400,
           "estimated_peak_memory_bytes": 6008576,
           "estimated_waveform_csv_bytes": 2520256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -3575,6 +3728,9 @@
           "estimated_package_bytes": 6121400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -3670,7 +3826,8 @@
           4,
           5,
           6,
-          7
+          7,
+          8
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -3943,6 +4100,9 @@
           "estimated_package_bytes": 16170340,
           "estimated_peak_memory_bytes": 11248776,
           "estimated_waveform_csv_bytes": 4590256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
@@ -3966,6 +4126,9 @@
           "estimated_package_bytes": 10743840,
           "estimated_peak_memory_bytes": 8302776,
           "estimated_waveform_csv_bytes": 3037756,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 11250,
           "sampling_rate_hz": 250,
@@ -3989,6 +4152,9 @@
           "estimated_package_bytes": 9913208,
           "estimated_peak_memory_bytes": 9784720,
           "estimated_waveform_csv_bytes": 4320256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -4012,6 +4178,9 @@
           "estimated_package_bytes": 10854340,
           "estimated_peak_memory_bytes": 9868776,
           "estimated_waveform_csv_bytes": 4590256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -4035,6 +4204,9 @@
           "estimated_package_bytes": 10041340,
           "estimated_peak_memory_bytes": 9652776,
           "estimated_waveform_csv_bytes": 4590256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -4155,7 +4327,8 @@
           4,
           5,
           6,
-          7
+          7,
+          8
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -4421,6 +4594,9 @@
           "estimated_package_bytes": 4168400,
           "estimated_peak_memory_bytes": 6008576,
           "estimated_waveform_csv_bytes": 2520256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -4442,6 +4618,9 @@
           "estimated_package_bytes": 6665400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
@@ -4463,6 +4642,9 @@
           "estimated_package_bytes": 6665400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
@@ -4484,6 +4666,9 @@
           "estimated_package_bytes": 6665400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
@@ -4505,6 +4690,9 @@
           "estimated_package_bytes": 7074400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 4050256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
@@ -4526,6 +4714,9 @@
           "estimated_package_bytes": 6699400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
@@ -4547,6 +4738,9 @@
           "estimated_package_bytes": 6665400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 3780256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
@@ -4568,6 +4762,9 @@
           "estimated_package_bytes": 4576400,
           "estimated_peak_memory_bytes": 6008576,
           "estimated_waveform_csv_bytes": 2520256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 250,
@@ -4589,6 +4786,9 @@
           "estimated_package_bytes": 16170340,
           "estimated_peak_memory_bytes": 11248776,
           "estimated_waveform_csv_bytes": 4590256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
@@ -4704,7 +4904,8 @@
           4,
           5,
           6,
-          7
+          7,
+          8
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -4934,6 +5135,9 @@
           "estimated_package_bytes": 7381400,
           "estimated_peak_memory_bytes": 8488576,
           "estimated_waveform_csv_bytes": 4320256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 250,
@@ -4957,6 +5161,9 @@
           "estimated_package_bytes": 4740900,
           "estimated_peak_memory_bytes": 6628576,
           "estimated_waveform_csv_bytes": 3240256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 11250,
           "sampling_rate_hz": 250,
@@ -4980,6 +5187,9 @@
           "estimated_package_bytes": 4808900,
           "estimated_peak_memory_bytes": 6628576,
           "estimated_waveform_csv_bytes": 3240256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 11250,
           "sampling_rate_hz": 250,
@@ -5003,6 +5213,9 @@
           "estimated_package_bytes": 12278840,
           "estimated_peak_memory_bytes": 8698776,
           "estimated_waveform_csv_bytes": 3442756,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 11250,
           "sampling_rate_hz": 250,
@@ -5387,6 +5600,9 @@
           "estimated_package_bytes": 3918400,
           "estimated_peak_memory_bytes": 5848576,
           "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -5406,6 +5622,9 @@
           "estimated_package_bytes": 5491400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -5425,6 +5644,9 @@
           "estimated_package_bytes": 4190400,
           "estimated_peak_memory_bytes": 5848576,
           "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 10000,
           "sampling_rate_hz": 500,
@@ -5444,6 +5666,9 @@
           "estimated_package_bytes": 3021400,
           "estimated_peak_memory_bytes": 4648576,
           "estimated_waveform_csv_bytes": 1755256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 7500,
           "sampling_rate_hz": 500,
@@ -5463,6 +5688,9 @@
           "estimated_package_bytes": 3021400,
           "estimated_peak_memory_bytes": 4648576,
           "estimated_waveform_csv_bytes": 1755256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 7500,
           "sampling_rate_hz": 500,
@@ -5482,6 +5710,9 @@
           "estimated_package_bytes": 5865400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -5501,6 +5732,9 @@
           "estimated_package_bytes": 5712400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -5520,6 +5754,9 @@
           "estimated_package_bytes": 5695400,
           "estimated_peak_memory_bytes": 8248576,
           "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 15000,
           "sampling_rate_hz": 500,
@@ -5801,6 +6038,9 @@
           "estimated_package_bytes": 14110400,
           "estimated_peak_memory_bytes": 15928576,
           "estimated_waveform_csv_bytes": 7560256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
@@ -5822,6 +6062,9 @@
           "estimated_package_bytes": 14620400,
           "estimated_peak_memory_bytes": 15928576,
           "estimated_waveform_csv_bytes": 7560256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
@@ -5843,6 +6086,9 @@
           "estimated_package_bytes": 17260400,
           "estimated_peak_memory_bytes": 15928576,
           "estimated_waveform_csv_bytes": 8100256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
@@ -6154,11 +6400,305 @@
         "scoreable_before_job": true
       },
       "version": "1.0"
+    },
+    {
+      "case_count": 1,
+      "case_ids": [
+        "calibrated_noise"
+      ],
+      "cases": [
+        {
+          "case_id": "calibrated_noise",
+          "channel_count": 12,
+          "duration_seconds": 18,
+          "estimated_binary_signal_bytes": 756000,
+          "estimated_package_bytes": 3566400,
+          "estimated_peak_memory_bytes": 6232576,
+          "estimated_waveform_csv_bytes": 2106256,
+          "external_noise": true,
+          "external_noise_asset_ids": [
+            "synsigra_project_noise_v1"
+          ],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 9000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "ecg_hybrid_noise_v8",
+          "scoreable_targets": [
+            "r_peak",
+            "signal_quality"
+          ],
+          "targets": [
+            "r_peak",
+            "signal_quality"
+          ]
+        }
+      ],
+      "catalog_scoring_mode": "local",
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta pack with deterministic resampling, calibrated per-lead SNR, tapers, clean reference, clipping accounting and release gating."
+          ],
+          "date": "2026-07-17",
+          "version": "1.0"
+        }
+      ],
+      "channels": {
+        "families": [
+          {
+            "channel_count": 12,
+            "channels": [
+              "I",
+              "II",
+              "III",
+              "aVR",
+              "aVL",
+              "aVF",
+              "V1",
+              "V2",
+              "V3",
+              "V4",
+              "V5",
+              "V6"
+            ],
+            "name": "standard_12_lead_ecg"
+          }
+        ],
+        "maximum_channel_count": 12,
+        "minimum_channel_count": 12
+      },
+      "declared_targets": [
+        "r_peak",
+        "signal_quality"
+      ],
+      "deprecation_message": "",
+      "description": "Deterministic baseline-wander, muscle and electrode-motion stress intervals with exact clean reference, SNR and clipping truth.",
+      "difficulty": [
+        "regression",
+        "stress"
+      ],
+      "duration": {
+        "maximum_case_seconds": 18,
+        "minimum_case_seconds": 18,
+        "total_seconds": 18
+      },
+      "estimated_package": {
+        "bytes": 3566400,
+        "peak_memory_bytes": 6232576,
+        "size_class": "small"
+      },
+      "feature_tags": [
+        "external_noise",
+        "calibrated_snr",
+        "baseline_wander",
+        "muscle_noise",
+        "electrode_motion",
+        "clean_reference",
+        "license_control"
+      ],
+      "generator_compatibility": {
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.6.0",
+        "minimum_generator_version": "0.6.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [
+          8
+        ],
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
+      },
+      "limitations": {
+        "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
+        "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
+      },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "local event-detection scoring smoke test",
+          "target": "r_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
+          "scope": "core signal-quality interval scoring smoke test",
+          "target": "signal_quality",
+          "test_id": "TEST-INTERVAL-SCORING-001"
+        },
+        {
+          "scope": "local signal-quality interval scoring parity test",
+          "target": "signal_quality",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
+      "messages": [],
+      "metadata_type": "synsigra_curated_pack_metadata",
+      "metadata_version": "synsigra_curated_pack_metadata_export_v1",
+      "modality": [
+        "ECG"
+      ],
+      "name": "Calibrated hybrid ECG noise",
+      "not_recommended_for": [
+        "Redistribution of undeclared or local-only source assets",
+        "Clinical noise prevalence or diagnostic performance claims",
+        "Use without independent review of every external asset license"
+      ],
+      "output_artifacts": [
+        {
+          "required": true,
+          "role": "manifest_json"
+        },
+        {
+          "required": true,
+          "role": "scoring_manifest_json"
+        },
+        {
+          "required": true,
+          "role": "provenance_json"
+        },
+        {
+          "required": true,
+          "role": "engineering_claim_boundary_txt"
+        },
+        {
+          "required": true,
+          "role": "case_summary_json"
+        },
+        {
+          "required": true,
+          "role": "annotations_json"
+        },
+        {
+          "required": true,
+          "role": "waveform_csv"
+        },
+        {
+          "required": true,
+          "role": "wfdb"
+        },
+        {
+          "required": true,
+          "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
+        },
+        {
+          "required": true,
+          "role": "external_noise_truth_json"
+        },
+        {
+          "required": true,
+          "role": "external_noise_clean_ecg_csv"
+        }
+      ],
+      "pack_id": "ecg_hybrid_noise_v1",
+      "recommended_for": [
+        "R-peak and signal-quality algorithm stress testing at calibrated SNR",
+        "Clean-versus-noisy regression with exact interval and source provenance truth",
+        "Deployment-specific testing with separately approved real-noise assets"
+      ],
+      "recommended_profile": "stress",
+      "reference_only_targets": [],
+      "release_date": "2026-07-17",
+      "release_status": "beta",
+      "sampling_rates_hz": [
+        500
+      ],
+      "schema_version": 1,
+      "scoreable_targets": [
+        {
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
+          ],
+          "case_count": 1,
+          "case_ids": [
+            "calibrated_noise"
+          ],
+          "default_tolerance_seconds": 0.05,
+          "description": "R-peak detector event timing against exact synthetic beat annotations.",
+          "primary_metric": "f1_score",
+          "score_type": "event_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "r_peak"
+        },
+        {
+          "accepted_formats": [
+            "interval_events_json_v1",
+            "interval_events_csv_v1"
+          ],
+          "case_count": 1,
+          "case_ids": [
+            "calibrated_noise"
+          ],
+          "default_minimum_iou": 0.1,
+          "description": "Signal-quality interval labels and channels scored against exact synthetic artifact ground truth.",
+          "primary_metric": "time_f1_score",
+          "score_type": "interval_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "signal_quality"
+        }
+      ],
+      "scoring_mode": "local",
+      "source": {
+        "catalog_path": "examples/catalog/verification_packs_v1.json",
+        "pack_fingerprint": "sha256:cd270a92781b2697278833cbea1554f2b4a910611611268f70548c276bfe7026",
+        "pack_path": "../packs/ecg_hybrid_noise_v1.json",
+        "source_content_sha256": "sha256:a0ed7f4d615e83ab55986b0aaf3807095d680d61b3a659eaed3847e59ed918de"
+      },
+      "submission_output_schemas": [
+        "point_events_json_v1",
+        "point_events_csv_v1",
+        "interval_events_json_v1",
+        "interval_events_csv_v1"
+      ],
+      "supported_threshold_profiles": [
+        "smoke",
+        "regression",
+        "stress",
+        "benchmark"
+      ],
+      "targets": [
+        "r_peak",
+        "signal_quality"
+      ],
+      "threshold_profile_contract": {
+        "policy_failure_exit_code": 1,
+        "recommended_profile": "stress",
+        "supported_profiles": [
+          "smoke",
+          "regression",
+          "stress",
+          "benchmark"
+        ]
+      },
+      "ui": {
+        "primary_badges": [
+          "regression",
+          "stress",
+          "external_noise",
+          "calibrated_snr",
+          "baseline_wander"
+        ],
+        "reference_only_before_job": false,
+        "scoreable_before_job": true
+      },
+      "version": "1.0"
     }
   ],
   "product": "Synsigra Testbench",
   "release_set_id": "synsigra_curated_release_2026_07_17",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:7a32201315c496f1303ebd061098128b72decb1fdc49cba1e4a0e979bd95b5e7"
+  "source_catalog_sha256": "sha256:4e66727e5abf492fa530affc679dca23972ef9f91c57eddf4ce23ba2fa7af58d"
 }

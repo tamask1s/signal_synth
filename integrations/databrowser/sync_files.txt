@@ -21,6 +21,8 @@ src/scenario_stress.cpp|src/SignalProcessors/scenario_stress.cpp
 src/scenario_stress.h|src/SignalProcessors/scenario_stress.h
 src/signal_quality.cpp|src/SignalProcessors/signal_quality.cpp
 src/signal_quality.h|src/SignalProcessors/signal_quality.h
+src/external_noise.cpp|src/SignalProcessors/external_noise.cpp
+src/external_noise.h|src/SignalProcessors/external_noise.h
 src/wearable_timebase.cpp|src/SignalProcessors/wearable_timebase.cpp
 src/wearable_timebase.h|src/SignalProcessors/wearable_timebase.h
 src/wearable_profiles.cpp|src/SignalProcessors/wearable_profiles.cpp
@@ -47,3 +49,5 @@ examples/databrowser/083_Wearable_Device_Site_Profiles.txt|SigForge/Scripts/083_
 examples/databrowser/084_Cardiorespiratory_PRV_Respiration.txt|SigForge/Scripts/084_Cardiorespiratory_PRV_Respiration.txt
 examples/databrowser/085_ECG_Advanced_Rhythm_Burden.txt|SigForge/Scripts/085_ECG_Advanced_Rhythm_Burden.txt
 examples/databrowser/086_ECG_Extended_Morphology.txt|SigForge/Scripts/086_ECG_Extended_Morphology.txt
+examples/databrowser/087_ECG_Hybrid_External_Noise.txt|SigForge/Scripts/087_ECG_Hybrid_External_Noise.txt
+examples/assets/noise/synsigra_project_noise_v1.csv|SigForge/Scripts/ExternalNoiseAssets/synsigra_project_noise_v1.csv

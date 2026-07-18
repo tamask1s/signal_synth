@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <fstream>
+#include <sstream>
 using namespace std;
 
 #include "fileio2.h"
@@ -32,6 +34,7 @@ using namespace std;
 #include "ecg_scenario_json.h"
 #include "ecg_render.h"
 #include "signal_quality.h"
+#include "external_noise.h"
 #include "wearable_timebase.h"
 
 CVariable_List*    m_variable_list_ref = 0; /// reference for the application's variable list.
@@ -1730,6 +1733,99 @@ char* GenerateECGScenarioJSON(char* output_name, char* scenario_json, char* anno
     return 0;
 }
 
+bool load_external_noise_assets(const signal_synth::ecg_scenario_document& document, const char* directory, vector<signal_synth::external_noise_asset_input>& assets, string& error)
+{
+    if (document.external_noise.assets.empty()) return true;
+    if (!directory || !directory[0]) { error = "external noise asset directory is required"; return false; }
+    string base(directory);
+    if (!base.empty() && base[base.size() - 1U] != '/' && base[base.size() - 1U] != '\\') base += '/';
+    for (unsigned int i = 0; i < document.external_noise.assets.size(); ++i)
+    {
+        signal_synth::external_noise_asset_input asset;
+        asset.id = document.external_noise.assets[i].id;
+        const string path = base + asset.id + ".csv";
+        ifstream input(path.c_str(), ios::in | ios::binary);
+        if (!input) { error = "cannot open external noise asset: " + path; return false; }
+        ostringstream content; content << input.rdbuf();
+        if (!input.eof() && input.fail()) { error = "cannot read external noise asset: " + path; return false; }
+        asset.csv_content = content.str();
+        assets.push_back(asset);
+    }
+    return true;
+}
+
+CVariable* create_external_noise_truth_variable(const signal_synth::ecg_render_bundle& render)
+{
+    if (render.external_noise.intervals.empty() || render.external_noise_clean_ecg_leads.size() != signal_synth::clinical_lead_count) return 0;
+    const unsigned int channel_count = 5U;
+    vector<unsigned int> sizes(channel_count, render.record.sample_count());
+    CVariable* output = NewCVariable();
+    output->Rebuild(channel_count, sizes.data());
+    const char* labels[] = {"GT clean ECG II", "GT added external noise II", "GT target SNR II", "GT achieved SNR II", "GT external noise clipping II"};
+    const char* units[] = {"mV", "mV", "dB", "dB", "bool"};
+    for (unsigned int channel = 0; channel < channel_count; ++channel)
+    {
+        output->m_sample_rates.m_data[channel] = render.record.sampling_rate_hz();
+        copy_fixed_string(output->m_labels.m_data[channel].s, labels[channel]);
+        copy_fixed_string(output->m_vertical_units.m_data[channel].s, units[channel]);
+        fill(output->m_data[channel], output->m_data[channel] + render.record.sample_count(), 0.0);
+    }
+    const unsigned int lead = signal_synth::clinical_lead_ii;
+    for (unsigned int sample = 0; sample < render.record.sample_count(); ++sample)
+    {
+        output->m_data[0][sample] = render.external_noise_clean_ecg_leads[lead][sample];
+        output->m_data[1][sample] = render.signal_quality.ecg_leads[lead][sample] - render.external_noise_clean_ecg_leads[lead][sample];
+    }
+    for (unsigned int interval_index = 0; interval_index < render.external_noise.intervals.size(); ++interval_index)
+    {
+        const signal_synth::external_noise_interval_truth& interval = render.external_noise.intervals[interval_index];
+        for (unsigned int truth_index = 0; truth_index < interval.channels.size(); ++truth_index)
+        {
+            const signal_synth::external_noise_channel_truth& truth = interval.channels[truth_index];
+            if (truth.lead != lead) continue;
+            const unsigned int first = static_cast<unsigned int>(ceil(interval.start_seconds * render.record.sampling_rate_hz() - 1e-12));
+            const unsigned int past = static_cast<unsigned int>(ceil(interval.end_seconds * render.record.sampling_rate_hz() - 1e-12));
+            for (unsigned int sample = first; sample < past && sample < render.record.sample_count(); ++sample)
+            {
+                output->m_data[2][sample] = truth.target_snr_db;
+                output->m_data[3][sample] = truth.achieved_snr_db;
+                output->m_data[4][sample] = truth.clipping_count ? 1.0 : 0.0;
+            }
+        }
+    }
+    return output;
+}
+
+char* GenerateECGExternalNoiseJSON(char* signal_output_name, char* truth_output_name, char* scenario_json, char* asset_directory, char* annotation_output_text)
+{
+    if (!signal_output_name || !signal_output_name[0] || !truth_output_name || !truth_output_name[0] || !scenario_json || !asset_directory)
+        return MakeString(NewChar, "ERROR: GenerateECGExternalNoiseJSON: not enough arguments.");
+    if (strcmp(signal_output_name, truth_output_name) == 0)
+        return MakeString(NewChar, "ERROR: GenerateECGExternalNoiseJSON: output names must differ.");
+    clinical_annotation_output annotation_output;
+    if (!parse_clinical_annotation_output(annotation_output_text, annotation_output))
+        return MakeString(NewChar, "ERROR: GenerateECGExternalNoiseJSON: annotation output must be 1 (markers), 2 (channels), or 3 (none).");
+    signal_synth::ecg_scenario_document document;
+    signal_synth::ecg_scenario_json_result json_result;
+    if (!signal_synth::parse_ecg_scenario_json(scenario_json, document, json_result))
+        return MakeString(NewChar, "ERROR: GenerateECGExternalNoiseJSON: ", json_result.messages.empty() ? "scenario JSON parsing failed." : json_result.messages[0].message.c_str());
+    vector<signal_synth::external_noise_asset_input> assets;
+    string error;
+    if (!load_external_noise_assets(document, asset_directory, assets, error))
+        return MakeString(NewChar, "ERROR: GenerateECGExternalNoiseJSON: ", error.c_str());
+    signal_synth::ecg_render_bundle render;
+    signal_synth::ecg_document_render_result render_result;
+    if (!signal_synth::render_ecg_document(document, assets, render, render_result))
+        return MakeString(NewChar, "ERROR: GenerateECGExternalNoiseJSON: ", render_result.messages.empty() ? "render failed." : render_result.messages[0].c_str());
+    CVariable* truth = create_external_noise_truth_variable(render);
+    CVariable* signals = create_rendered_ecg_variable(signal_output_name, render, annotation_output);
+    if (!truth || !signals)
+        return MakeString(NewChar, "ERROR: GenerateECGExternalNoiseJSON: output variable creation failed.");
+    copy_fixed_string(truth->m_varname, truth_output_name);
+    m_variable_list_ref->Insert(truth_output_name, truth);
+    return 0;
+}
+
 double optical_truth_value(const signal_synth::ppg_optical_pulse_state& state, unsigned int channel)
 {
     if (channel == 0U) return state.spo2_percent;
@@ -2004,6 +2100,8 @@ extern "C"
             return GeneratePPGOpticalScenarioJSON(a_param1, a_param2, a_param3, a_param4);
         case 14:
             return GenerateCardiorespiratoryScenarioJSON(a_param1, a_param2, a_param3, a_param4);
+        case 15:
+            return GenerateECGExternalNoiseJSON(a_param1, a_param2, a_param3, a_param4, a_param5);
         }
         return 0;
     }
@@ -2039,6 +2137,7 @@ extern "C"
         FunctionList.AddElement("GenerateWearableScenarioJSON(signal_outdataname, timing_outdataname, scenario_json)");
         FunctionList.AddElement("GeneratePPGOpticalScenarioJSON(signal_outdataname, truth_outdataname, scenario_json, annotation_output)");
         FunctionList.AddElement("GenerateCardiorespiratoryScenarioJSON(signal_outdataname, truth_outdataname, scenario_json, annotation_output)");
+        FunctionList.AddElement("GenerateECGExternalNoiseJSON(signal_outdataname, truth_outdataname, scenario_json, asset_directory, annotation_output)");
         a_functionlibrary_reference->ParseFunctionList(&FunctionList);
         return FunctionList.m_size;
     }

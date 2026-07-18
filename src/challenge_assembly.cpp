@@ -84,7 +84,7 @@ namespace signal_synth
             return challenge_file_waveform_csv;
         if (artifact_name == "annotations.json")
             return challenge_file_annotations_json;
-        if (artifact_name == "ground_truth_metrics.json" || artifact_name == "hrv_metrics.json")
+        if (artifact_name == "ground_truth_metrics.json" || artifact_name == "hrv_metrics.json" || artifact_name == "external_noise_truth.json")
             return challenge_file_ground_truth_metrics_json;
         if (artifact_name == "measurement_truth.json")
             return challenge_file_measurement_truth_json;

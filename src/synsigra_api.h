@@ -28,6 +28,12 @@ namespace signal_synth
         std::string content;
     };
 
+    struct synsigra_external_noise_asset
+    {
+        std::string id;
+        std::string csv_content;
+    };
+
     struct synsigra_identity
     {
         synsigra_identity();
@@ -141,5 +147,7 @@ namespace signal_synth
     const char* synsigra_compare_target_name(synsigra_compare_target target);
     bool synsigra_validate_scenario_json(const std::string& scenario_json, synsigra_validation_result& result);
     bool synsigra_render_scenario_json(const std::string& scenario_json, synsigra_render_result& result);
+    bool synsigra_render_scenario_json(const std::string& scenario_json, const std::vector<synsigra_external_noise_asset>& external_noise_assets, synsigra_render_result& result);
     bool synsigra_compare_scenario_detections(const std::string& scenario_json, const std::vector<synsigra_detection_event>& detections, const synsigra_compare_options& options, synsigra_compare_result& result);
+    bool synsigra_compare_scenario_detections(const std::string& scenario_json, const std::vector<synsigra_external_noise_asset>& external_noise_assets, const std::vector<synsigra_detection_event>& detections, const synsigra_compare_options& options, synsigra_compare_result& result);
 }

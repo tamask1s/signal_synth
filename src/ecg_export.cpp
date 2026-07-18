@@ -236,6 +236,22 @@ namespace
         return output.str();
     }
 
+    std::string external_noise_clean_ecg_csv(const signal_synth::ecg_render_bundle& render)
+    {
+        std::ostringstream output;
+        output.imbue(std::locale::classic());
+        output << std::setprecision(std::numeric_limits<double>::max_digits10) << "sample_index,time_seconds";
+        for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead) output << ',' << render.record.lead_name(lead) << "_mv";
+        output << '\n';
+        for (unsigned int sample = 0; sample < render.record.sample_count(); ++sample)
+        {
+            output << sample << ',' << static_cast<double>(sample) / render.record.sampling_rate_hz();
+            for (unsigned int lead = 0; lead < render.record.lead_count(); ++lead) output << ',' << normalized_zero(render.external_noise_clean_ecg_leads[lead][sample]);
+            output << '\n';
+        }
+        return output.str();
+    }
+
     int ppg_channel_index(const signal_synth::ppg_record& record, signal_synth::ppg_channel_kind kind)
     {
         for (unsigned int channel = 0; channel < record.channel_count(); ++channel) if (record.channel_kind(channel) == kind) return static_cast<int>(channel);
@@ -944,7 +960,9 @@ namespace
                << ",\"source_channels_retained\":" << (render.resolved_document.output.retain_source_channels ? "true" : "false")
                << "},\"wearable_timebase\":{\"enabled\":" << boolean(!render.wearable.streams.empty())
                << ",\"stream_count\":" << render.wearable.streams.size()
-               << ",\"fingerprint\":" << json_string(render.wearable.fingerprint) << "},\"intended_use\":\"synthetic engineering algorithm testing and QA\","
+               << ",\"fingerprint\":" << json_string(render.wearable.fingerprint) << "},\"external_noise\":{\"enabled\":" << boolean(!render.external_noise.intervals.empty())
+               << ",\"interval_count\":" << render.external_noise.intervals.size()
+               << ",\"release_allowed\":" << boolean(render.external_noise.release_allowed) << "},\"intended_use\":\"synthetic engineering algorithm testing and QA\","
                << "\"not_for\":\"diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment\"}";
         return output.str();
     }
@@ -982,6 +1000,9 @@ namespace
                << ",\"has_motion_reference\":" << (render.signal_quality.accelerometer.empty() ? "false" : "true")
                << ",\"wearable_stream_count\":" << render.wearable.streams.size()
                << ",\"wearable_timebase_fingerprint\":" << json_string(render.wearable.fingerprint) << '}'
+               << ",\"external_noise\":{\"enabled\":" << boolean(!render.external_noise.intervals.empty())
+               << ",\"interval_count\":" << render.external_noise.intervals.size()
+               << ",\"release_allowed\":" << boolean(render.external_noise.release_allowed) << '}'
                << ",\"provenance_checklist\":["
                << "{\"item\":\"scenario_json\",\"artifact\":\"scenario.json\",\"required\":true},"
                << "{\"item\":\"metadata_json\",\"artifact\":\"metadata.json\",\"required\":true},"
@@ -1224,6 +1245,11 @@ namespace signal_synth
         add_artifact(fresh, "provenance.json", "application/json", provenance_json(render));
         if (render.resolved_document.output.include_waveform_csv)
             add_artifact(fresh, "waveform.csv", "text/csv", waveform_csv(render));
+        if (!render.external_noise.intervals.empty())
+        {
+            add_artifact(fresh, "external_noise_truth.json", "application/json", external_noise_truth_json(render.external_noise));
+            add_artifact(fresh, "external_noise_clean_ecg.csv", "text/csv", external_noise_clean_ecg_csv(render));
+        }
         if (!render.wearable.streams.empty())
         {
             for (std::size_t i = 0; i < render.wearable.streams.size(); ++i)

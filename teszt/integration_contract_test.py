@@ -19,8 +19,9 @@ assert contract_process.stderr == ""
 contract = json.loads(contract_process.stdout)
 assert contract_process.stdout.strip() == json.dumps(contract, separators=(",", ":"))
 assert contract["schema_version"] == 1
-assert contract["contract"] == "synsigra_core_integration_v2"
-assert contract["contracts"]["cpp_facade"] == "1.0.0"
+assert contract["contract"] == "synsigra_core_integration_v3"
+assert contract["external_noise"]["scenario_schema_version"] == 8
+assert contract["contracts"]["cpp_facade"] == "1.1.0"
 assert contract["contracts"]["challenge_package"] == "synsigra_challenge_package_v2"
 assert contract["contracts"]["scoring_manifest"] == "synsigra_scoring_manifest_v2"
 assert contract["contracts"]["submission"] == "synsigra_submission_v1"

@@ -3,6 +3,7 @@
 #include "cardiorespiratory.h"
 #include "clinical_ecg.h"
 #include "ecg_morphology.h"
+#include "external_noise.h"
 #include "ecg_scenario_json.h"
 #include "hrv_metrics.h"
 #include "ppg_model.h"
@@ -69,6 +70,8 @@ namespace signal_synth
         ecg_morphology_report morphology;
         ppg_record ppg;
         signal_quality_waveforms signal_quality;
+        std::vector<std::vector<double> > external_noise_clean_ecg_leads;
+        external_noise_result external_noise;
         std::vector<unsigned long long> ppg_clipping_counts;
         wearable_timebase_record wearable;
         hrv_analysis_result hrv;
@@ -85,4 +88,5 @@ namespace signal_synth
     };
 
     bool render_ecg_document(const ecg_scenario_document& document, ecg_render_bundle& output, ecg_document_render_result& result);
+    bool render_ecg_document(const ecg_scenario_document& document, const std::vector<external_noise_asset_input>& external_noise_assets, ecg_render_bundle& output, ecg_document_render_result& result);
 }
