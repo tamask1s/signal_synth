@@ -36,13 +36,20 @@ def main():
     realism_table = case.realism_table()
     population = challenge.realism_population()
     assert len(ecg) > len(ppg) > len(accelerometer) > 0
-    assert timebase["contract"] == "synsigra_wearable_timebase_v2"
+    assert timebase["contract"] == "synsigra_wearable_timebase_v3"
     assert [stream["kind"] for stream in timebase["streams"]] == ["ecg", "ppg", "accelerometer"]
+    assert [stream["profile_id"] for stream in timebase["streams"]] == ["clinical_12lead_reference_v1", "custom", "synthetic_activity_v1"]
     assert len(timestamps) == sum(stream["sample_count"] for stream in timebase["streams"])
     assert alignment["events"] and alignment["events"][0]["ecg_r"]["present"]
     assert realism["contract"] == "synsigra_realism_metrics_v1" and realism["single_score"] is None
     assert len(realism_table) == len(realism["metrics"])
     assert population["contract"] == "synsigra_realism_population_v1" and population["case_count"] == len(challenge.cases)
+    profile_case = challenge.case("patch_wrist")
+    profile_truth = profile_case.wearable_timebase_truth()
+    assert profile_truth["streams"][0]["profile_id"] == "patch_left_chest_vector_v1"
+    assert profile_truth["streams"][0]["resolved_profile"]["placement"] == "left_chest_patch_engineering_vector"
+    assert profile_truth["streams"][1]["profile_id"] == "wrist_reflectance_v1"
+    assert profile_case.wearable_samples("ecg").columns == ["sample_index", "packet_index", "device_timestamp_seconds", "ecg_patch_left_chest"]
     with open(os.path.join(challenge_dir, "manifest.json"), "r") as handle:
         manifest = json.load(handle)
     roles = [item["role"] for item in manifest["files"] if item["path"] in case.files]

@@ -35,6 +35,7 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/signal_quality.h
     src/realism_validation.h
     src/wearable_timebase.h
+    src/wearable_profiles.h
     src/ecg_pack.h
     src/ecg_pack_score.h)
 list(APPEND SIGNAL_SYNTH_PUBLIC_HEADERS src/ppg_model.h)
@@ -71,6 +72,7 @@ add_library(
     src/signal_quality.cpp
     src/realism_validation.cpp
     src/wearable_timebase.cpp
+    src/wearable_profiles.cpp
     src/ecg_pack.cpp
     src/ecg_pack_score.cpp)
 target_sources(signal_synth PRIVATE src/ppg_model.cpp)

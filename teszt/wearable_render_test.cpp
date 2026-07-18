@@ -74,7 +74,8 @@ int main()
     const signal_synth::wearable_stream_record* ecg = render.wearable.stream(signal_synth::wearable_stream_ecg);
     const signal_synth::wearable_stream_record* ppg = render.wearable.stream(signal_synth::wearable_stream_ppg);
     const signal_synth::wearable_stream_record* accel = render.wearable.stream(signal_synth::wearable_stream_accelerometer);
-    ok &= check(ecg && ppg && accel && ecg->config.sample_rate_hz == 200u && ppg->config.sample_rate_hz == 100u && accel->config.sample_rate_hz == 50u && ppg->channel_count() == 3u, "independent_streams");
+    ok &= check(ecg && ppg && accel && ecg->config.sample_rate_hz == 200u && ppg->config.sample_rate_hz == 100u && accel->config.sample_rate_hz == 50u && ppg->channel_count() == 3u
+        && ecg->profile_id == "clinical_12lead_reference_v1" && ppg->profile_id == "custom" && accel->profile_id == "synthetic_activity_v1", "independent_streams");
 
     signal_synth::ecg_export_bundle exports;
     signal_synth::ecg_export_result export_result;
@@ -83,7 +84,9 @@ int main()
     const signal_synth::ecg_text_artifact* timestamps = exports.find("wearable_timestamp_truth.csv");
     const signal_synth::ecg_text_artifact* timebase = exports.find("wearable_timebase_truth.json");
     const signal_synth::ecg_text_artifact* alignment = exports.find("wearable_alignment_truth.json");
-    ok &= check(ppg_samples && timestamps && timebase && alignment && line_count(ppg_samples->content) == ppg->received_sample_count() + 1u && timebase->content.find("linear_interpolation") != std::string::npos && alignment->content.find("observed_minus_physiological") != std::string::npos, "wearable_export_contract");
+    ok &= check(ppg_samples && timestamps && timebase && alignment && line_count(ppg_samples->content) == ppg->received_sample_count() + 1u && timebase->content.find("synsigra_wearable_timebase_v3") != std::string::npos
+        && timebase->content.find("\"profile_id\":\"clinical_12lead_reference_v1\"") != std::string::npos && timebase->content.find("\"resolved_profile\"") != std::string::npos
+        && timebase->content.find("linear_interpolation") != std::string::npos && alignment->content.find("observed_minus_physiological") != std::string::npos, "wearable_export_contract");
     ok &= check(signal_synth::challenge_file_role_for_export_artifact("wearable_ppg_samples.csv") == signal_synth::challenge_file_wearable_samples_csv && signal_synth::challenge_file_role_for_export_artifact("wearable_timestamp_truth.csv") == signal_synth::challenge_file_wearable_timestamp_truth_csv, "challenge_roles");
 
     std::vector<signal_synth::measurement_truth> measurements;

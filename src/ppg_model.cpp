@@ -33,8 +33,8 @@ namespace
     bool valid_optical_config(const signal_synth::ppg_optical_config& optical)
     {
         bool known_profile = false;
-        for (unsigned int i = 0; i < signal_synth::ppg_optical_profile_count(); ++i)
-            known_profile = known_profile || optical.profile_id == signal_synth::ppg_optical_profile_id(i);
+        for (unsigned int i = 0; i < signal_synth::ppg_site_profile_count(); ++i)
+            known_profile = known_profile || optical.profile_id == signal_synth::ppg_site_profile_id(i);
         if (!valid_optical_channel(optical.red) || !valid_optical_channel(optical.infrared)
             || !known_profile || optical.calibration_id.empty() || optical.calibration_id.size() > 128u
             || !finite(optical.calibration_intercept_percent) || !finite(optical.calibration_slope_percent) || optical.calibration_slope_percent >= -1e-12
@@ -368,51 +368,6 @@ namespace signal_synth
         infrared.seed = 0x5050475f49523131ULL;
     }
 
-    unsigned int ppg_optical_profile_count()
-    {
-        return 4u;
-    }
-
-    const char* ppg_optical_profile_id(unsigned int index)
-    {
-        const char* ids[] = {"custom", "finger_transmissive_v1", "wrist_reflectance_v1", "ear_reflectance_v1"};
-        return index < sizeof(ids) / sizeof(ids[0]) ? ids[index] : 0;
-    }
-
-    bool configure_ppg_optical_profile(const char* profile_id, ppg_optical_config& output)
-    {
-        if (!profile_id) return false;
-        const std::string id(profile_id);
-        ppg_optical_config fresh;
-        fresh.enabled = true;
-        fresh.profile_id = id;
-        if (id == "custom")
-        {
-        }
-        else if (id == "finger_transmissive_v1")
-        {
-            fresh.infrared_perfusion_index_percent = 2.0;
-            fresh.red.noise_std_au = 0.0005; fresh.red.motion_sensitivity = 0.8; fresh.red.ambient_sensitivity = 0.5; fresh.red.crosstalk_ratio = 0.005; fresh.red.maximum_output_au = 2.5; fresh.red.quantization_bits = 16u;
-            fresh.infrared.noise_std_au = 0.0004; fresh.infrared.motion_sensitivity = 0.6; fresh.infrared.ambient_sensitivity = 0.4; fresh.infrared.crosstalk_ratio = 0.005; fresh.infrared.maximum_output_au = 2.5; fresh.infrared.quantization_bits = 16u;
-        }
-        else if (id == "wrist_reflectance_v1")
-        {
-            fresh.infrared_perfusion_index_percent = 1.0;
-            fresh.red.dc_au = 1.4; fresh.red.delay_ms = 6.0; fresh.red.noise_std_au = 0.0015; fresh.red.motion_sensitivity = 1.6; fresh.red.ambient_sensitivity = 1.3; fresh.red.crosstalk_ratio = 0.03; fresh.red.maximum_output_au = 4.0; fresh.red.quantization_bits = 14u;
-            fresh.infrared.dc_au = 1.6; fresh.infrared.delay_ms = 10.0; fresh.infrared.noise_std_au = 0.0012; fresh.infrared.motion_sensitivity = 1.2; fresh.infrared.ambient_sensitivity = 1.0; fresh.infrared.crosstalk_ratio = 0.03; fresh.infrared.maximum_output_au = 4.0; fresh.infrared.quantization_bits = 14u;
-        }
-        else if (id == "ear_reflectance_v1")
-        {
-            fresh.infrared_perfusion_index_percent = 1.5;
-            fresh.red.dc_au = 1.1; fresh.red.delay_ms = 7.0; fresh.red.noise_std_au = 0.0008; fresh.red.motion_sensitivity = 0.9; fresh.red.ambient_sensitivity = 0.7; fresh.red.crosstalk_ratio = 0.015; fresh.red.maximum_output_au = 3.0; fresh.red.quantization_bits = 16u;
-            fresh.infrared.dc_au = 1.3; fresh.infrared.delay_ms = 10.0; fresh.infrared.noise_std_au = 0.0007; fresh.infrared.motion_sensitivity = 0.7; fresh.infrared.ambient_sensitivity = 0.5; fresh.infrared.crosstalk_ratio = 0.015; fresh.infrared.maximum_output_au = 3.0; fresh.infrared.quantization_bits = 16u;
-        }
-        else
-            return false;
-        output = fresh;
-        return true;
-    }
-
     ppg_perfusion_episode_config::ppg_perfusion_episode_config()
         : start_seconds(0.0), duration_seconds(1.0), amplitude_scale(0.35), rise_time_scale(1.0), decay_time_scale(1.0), weak_pulse_every_n_beats(0), weak_pulse_amplitude_scale(0.35), missing_pulse_every_n_beats(0)
     {
@@ -421,6 +376,55 @@ namespace signal_synth
     ppg_config::ppg_config()
         : enabled(false), pulse_delay_ms(180.0), rise_time_ms(120.0), decay_time_ms(300.0), amplitude_au(1.0), baseline_au(0.0), dicrotic_delay_ms(180.0), dicrotic_width_ms(80.0), dicrotic_amplitude_ratio(0.15), pulse_delay_variation_ms(0.0), pulse_delay_variation_hz(0.0), missing_pulse_every_n_beats(0), pulse_delay_jitter_ms(0.0), low_frequency_amplitude_modulation_ratio(0.0), low_frequency_amplitude_modulation_hz(0.1), rise_time_variation_ratio(0.0), decay_time_variation_ratio(0.0), pac_pulse_amplitude_scale(1.0), pvc_pulse_amplitude_scale(1.0), paced_pulse_amplitude_scale(1.0), seed(0x5050475f53545253ULL), optical(), perfusion_episodes()
     {
+    }
+
+    unsigned int ppg_site_profile_count()
+    {
+        return 4u;
+    }
+
+    const char* ppg_site_profile_id(unsigned int index)
+    {
+        const char* ids[] = {"custom", "finger_transmissive_v1", "wrist_reflectance_v1", "ear_reflectance_v1"};
+        return index < sizeof(ids) / sizeof(ids[0]) ? ids[index] : 0;
+    }
+
+    bool configure_ppg_site_profile(const char* profile_id, ppg_config& output)
+    {
+        if (!profile_id) return false;
+        const std::string id(profile_id);
+        ppg_config fresh;
+        fresh.enabled = true;
+        fresh.optical.enabled = true;
+        fresh.optical.profile_id = id;
+        if (id == "custom")
+        {
+        }
+        else if (id == "finger_transmissive_v1")
+        {
+            fresh.rise_time_ms = 115.0; fresh.decay_time_ms = 300.0; fresh.dicrotic_delay_ms = 180.0; fresh.dicrotic_width_ms = 80.0; fresh.dicrotic_amplitude_ratio = 0.15;
+            fresh.optical.infrared_perfusion_index_percent = 2.0;
+            fresh.optical.red.noise_std_au = 0.0005; fresh.optical.red.motion_sensitivity = 0.8; fresh.optical.red.ambient_sensitivity = 0.5; fresh.optical.red.crosstalk_ratio = 0.005; fresh.optical.red.maximum_output_au = 2.5; fresh.optical.red.quantization_bits = 16u;
+            fresh.optical.infrared.noise_std_au = 0.0004; fresh.optical.infrared.motion_sensitivity = 0.6; fresh.optical.infrared.ambient_sensitivity = 0.4; fresh.optical.infrared.crosstalk_ratio = 0.005; fresh.optical.infrared.maximum_output_au = 2.5; fresh.optical.infrared.quantization_bits = 16u;
+        }
+        else if (id == "wrist_reflectance_v1")
+        {
+            fresh.pulse_delay_ms = 220.0; fresh.rise_time_ms = 145.0; fresh.decay_time_ms = 360.0; fresh.amplitude_au = 0.75; fresh.dicrotic_delay_ms = 210.0; fresh.dicrotic_width_ms = 100.0; fresh.dicrotic_amplitude_ratio = 0.10; fresh.pulse_delay_jitter_ms = 8.0;
+            fresh.optical.infrared_perfusion_index_percent = 1.0;
+            fresh.optical.red.dc_au = 1.4; fresh.optical.red.delay_ms = 6.0; fresh.optical.red.noise_std_au = 0.0015; fresh.optical.red.motion_sensitivity = 1.6; fresh.optical.red.ambient_sensitivity = 1.3; fresh.optical.red.crosstalk_ratio = 0.03; fresh.optical.red.maximum_output_au = 4.0; fresh.optical.red.quantization_bits = 14u;
+            fresh.optical.infrared.dc_au = 1.6; fresh.optical.infrared.delay_ms = 10.0; fresh.optical.infrared.noise_std_au = 0.0012; fresh.optical.infrared.motion_sensitivity = 1.2; fresh.optical.infrared.ambient_sensitivity = 1.0; fresh.optical.infrared.crosstalk_ratio = 0.03; fresh.optical.infrared.maximum_output_au = 4.0; fresh.optical.infrared.quantization_bits = 14u;
+        }
+        else if (id == "ear_reflectance_v1")
+        {
+            fresh.pulse_delay_ms = 160.0; fresh.rise_time_ms = 100.0; fresh.decay_time_ms = 260.0; fresh.amplitude_au = 0.9; fresh.dicrotic_delay_ms = 155.0; fresh.dicrotic_width_ms = 70.0; fresh.dicrotic_amplitude_ratio = 0.18; fresh.pulse_delay_jitter_ms = 3.0;
+            fresh.optical.infrared_perfusion_index_percent = 1.5;
+            fresh.optical.red.dc_au = 1.1; fresh.optical.red.delay_ms = 7.0; fresh.optical.red.noise_std_au = 0.0008; fresh.optical.red.motion_sensitivity = 0.9; fresh.optical.red.ambient_sensitivity = 0.7; fresh.optical.red.crosstalk_ratio = 0.015; fresh.optical.red.maximum_output_au = 3.0; fresh.optical.red.quantization_bits = 16u;
+            fresh.optical.infrared.dc_au = 1.3; fresh.optical.infrared.delay_ms = 10.0; fresh.optical.infrared.noise_std_au = 0.0007; fresh.optical.infrared.motion_sensitivity = 0.7; fresh.optical.infrared.ambient_sensitivity = 0.5; fresh.optical.infrared.crosstalk_ratio = 0.015; fresh.optical.infrared.maximum_output_au = 3.0; fresh.optical.infrared.quantization_bits = 16u;
+        }
+        else
+            return false;
+        output = fresh;
+        return true;
     }
 
     ppg_optical_pulse_state::ppg_optical_pulse_state()

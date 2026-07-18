@@ -2,6 +2,7 @@
 
 #include "clinical_ecg.h"
 #include "ppg_model.h"
+#include "wearable_profiles.h"
 
 #include <algorithm>
 #include <cmath>
@@ -133,16 +134,18 @@ namespace
         hash.add_u64(config.seed);
     }
 
-    std::string stream_fingerprint(const signal_synth::wearable_stream_record& stream)
+    std::string compute_stream_fingerprint(const signal_synth::wearable_stream_record& stream)
     {
         fnv64 hash;
-        hash.add_string("synsigra_wearable_stream_v2");
+        hash.add_string("synsigra_wearable_stream_v3");
         hash.add_u64(static_cast<unsigned long long>(stream.kind));
         add_config(hash, stream.config);
+        hash.add_string(stream.profile_id);
         for (std::size_t channel = 0; channel < stream.channel_names.size(); ++channel)
         {
             hash.add_string(stream.channel_names[channel]);
             hash.add_string(stream.channel_units[channel]);
+            hash.add_u64(channel < stream.channel_clipping_counts.size() ? stream.channel_clipping_counts[channel] : 0u);
         }
         for (std::size_t sample = 0; sample < stream.samples.size(); ++sample)
         {
@@ -189,7 +192,7 @@ namespace signal_synth
     {
     }
 
-    wearable_timebase_config::wearable_timebase_config() : ecg(), ppg(), accelerometer()
+    wearable_timebase_config::wearable_timebase_config() : ecg_profile_id("clinical_12lead_reference_v1"), ecg(), ppg(), accelerometer()
     {
     }
 
@@ -213,7 +216,7 @@ namespace signal_synth
     }
 
     wearable_stream_record::wearable_stream_record()
-        : kind(wearable_stream_ecg), config(), channel_names(), channel_units(), channel_samples(), samples(), packets(), fingerprint()
+        : kind(wearable_stream_ecg), config(), profile_id(), channel_names(), channel_units(), channel_samples(), channel_clipping_counts(), samples(), packets(), fingerprint()
     {
     }
 
@@ -278,6 +281,15 @@ namespace signal_synth
             && config.seed == defaults.seed;
     }
 
+    bool wearable_timebase_config_is_default(const wearable_timebase_config& config)
+    {
+        const wearable_timebase_config defaults;
+        return config.ecg_profile_id == defaults.ecg_profile_id
+            && wearable_stream_config_is_default(config.ecg)
+            && wearable_stream_config_is_default(config.ppg)
+            && wearable_stream_config_is_default(config.accelerometer);
+    }
+
     unsigned int wearable_stream_sample_count(const wearable_stream_config& config, double duration_seconds)
     {
         if (!config.enabled || config.sample_rate_hz == 0 || !finite_value(duration_seconds) || duration_seconds <= 0.0 || !finite_value(config.clock_drift_ppm))
@@ -293,6 +305,8 @@ namespace signal_synth
     {
         const wearable_stream_config* streams[] = {&config.ecg, &config.ppg, &config.accelerometer};
         if (!config.ecg.enabled || !latent_sample_rate_hz || !finite_value(duration_seconds) || duration_seconds <= 0.0)
+            return false;
+        if (!validate_wearable_ecg_profile(config.ecg_profile_id.c_str(), config.ecg.sample_rate_hz))
             return false;
         if (config.ppg.enabled && !ppg_available)
             return false;
@@ -391,7 +405,8 @@ namespace signal_synth
                 annotation.dropped = dropped[packet];
                 fresh.packets.push_back(annotation);
             }
-            fresh.fingerprint = stream_fingerprint(fresh);
+            fresh.channel_clipping_counts.assign(fresh.channel_samples.size(), 0u);
+            fresh.fingerprint = compute_stream_fingerprint(fresh);
         }
         catch (...)
         {
@@ -468,10 +483,15 @@ namespace signal_synth
         return true;
     }
 
+    std::string wearable_stream_record_fingerprint(const wearable_stream_record& record)
+    {
+        return compute_stream_fingerprint(record);
+    }
+
     std::string wearable_timebase_record_fingerprint(const wearable_timebase_record& record)
     {
         fnv64 hash;
-        hash.add_string("synsigra_wearable_timebase_v2");
+        hash.add_string("synsigra_wearable_timebase_v3");
         hash.add_double(record.duration_seconds);
         hash.add_u64(record.latent_sample_rate_hz);
         for (std::size_t stream = 0; stream < record.streams.size(); ++stream)

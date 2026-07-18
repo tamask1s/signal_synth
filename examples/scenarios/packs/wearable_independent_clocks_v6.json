@@ -75,6 +75,7 @@
   },
   "output": {"compact": false, "retain_source_channels": true, "include_waveform_csv": true, "include_edf_bdf": false},
   "wearable": {
+    "ecg_profile_id": "clinical_12lead_reference_v1",
     "ecg": {"enabled": true, "sample_rate_hz": 250, "clock_offset_ms": 4, "clock_drift_ppm": 40, "timestamp_jitter_ms": 0.2, "packet_size_samples": 25, "packet_loss_probability": 0.002, "packet_loss_burst_packets": 2, "seed": 7701011},
     "ppg": {"enabled": true, "sample_rate_hz": 100, "clock_offset_ms": 18, "clock_drift_ppm": -120, "timestamp_jitter_ms": 0.8, "packet_size_samples": 10, "packet_loss_probability": 0.02, "packet_loss_burst_packets": 2, "seed": 7701012},
     "accelerometer": {"enabled": true, "sample_rate_hz": 50, "clock_offset_ms": -12, "clock_drift_ppm": 80, "timestamp_jitter_ms": 1.5, "packet_size_samples": 10, "packet_loss_probability": 0.01, "packet_loss_burst_packets": 3, "seed": 7701013}

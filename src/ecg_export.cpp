@@ -3,6 +3,7 @@
 #include "ecg_edf_bdf_export.h"
 #include "ecg_wfdb_export.h"
 #include "realism_validation.h"
+#include "wearable_profiles.h"
 
 #include <algorithm>
 #include <cmath>
@@ -247,7 +248,9 @@ namespace
     {
         const signal_synth::ppg_optical_config& config = render.ppg.optical_config();
         std::ostringstream output; output.imbue(std::locale::classic()); output << std::setprecision(std::numeric_limits<double>::max_digits10)
-            << "{\"schema_version\":1,\"contract\":\"synsigra_ppg_optical_truth_v2\",\"profile_id\":" << json_string(config.profile_id) << ",\"calibration\":{\"id\":" << json_string(config.calibration_id)
+            << "{\"schema_version\":1,\"contract\":\"synsigra_ppg_optical_truth_v2\",\"profile_id\":" << json_string(config.profile_id)
+            << ",\"resolved_site_parameters\":{\"pulse_delay_ms\":" << render.resolved_document.ppg.pulse_delay_ms << ",\"rise_time_ms\":" << render.resolved_document.ppg.rise_time_ms << ",\"decay_time_ms\":" << render.resolved_document.ppg.decay_time_ms << ",\"amplitude_au\":" << render.resolved_document.ppg.amplitude_au << ",\"dicrotic_delay_ms\":" << render.resolved_document.ppg.dicrotic_delay_ms << ",\"dicrotic_width_ms\":" << render.resolved_document.ppg.dicrotic_width_ms << ",\"dicrotic_amplitude_ratio\":" << render.resolved_document.ppg.dicrotic_amplitude_ratio << "}"
+            << ",\"calibration\":{\"id\":" << json_string(config.calibration_id)
             << ",\"equation\":\"spo2_percent = intercept_percent + slope_percent * ratio_of_ratios\",\"intercept_percent\":" << config.calibration_intercept_percent << ",\"slope_percent\":" << config.calibration_slope_percent
             << ",\"minimum_spo2_percent\":" << config.minimum_spo2_percent << ",\"maximum_spo2_percent\":" << config.maximum_spo2_percent << "},\"units\":{\"optical_amplitude\":\"a.u.\",\"perfusion_index\":\"%\",\"oxygen_saturation\":\"%\",\"time\":\"s\"},\"optical_equations\":{\"perfusion_index\":\"100 * AC / DC\",\"ratio_of_ratios\":\"(AC_red / DC_red) / (AC_infrared / DC_infrared)\"},\"channels\":[";
         for (unsigned int channel = 1u; channel < render.ppg.channel_count(); ++channel)
@@ -329,7 +332,7 @@ namespace
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << std::setprecision(std::numeric_limits<double>::max_digits10)
-               << "{\"schema_version\":1,\"contract\":\"synsigra_wearable_timebase_v2\",\"fingerprint\":" << json_string(wearable.fingerprint)
+               << "{\"schema_version\":2,\"contract\":\"synsigra_wearable_timebase_v3\",\"fingerprint\":" << json_string(wearable.fingerprint)
                << ",\"latent_reference\":{\"duration_seconds\":" << wearable.duration_seconds << ",\"sample_rate_hz\":" << wearable.latent_sample_rate_hz << "}"
                << ",\"mapping\":{\"clock_scale\":\"1 + clock_drift_ppm * 1e-6\",\"latent_time_seconds\":\"sample_index / (sample_rate_hz * clock_scale)\",\"ideal_device_time_seconds\":\"clock_offset_ms / 1000 + sample_index / sample_rate_hz\",\"reported_device_time_seconds\":\"ideal_device_time_seconds + deterministic_timestamp_jitter\",\"resampling\":\"linear_interpolation\"},\"streams\":[";
         for (std::size_t stream_index = 0; stream_index < wearable.streams.size(); ++stream_index)
@@ -337,6 +340,7 @@ namespace
             const signal_synth::wearable_stream_record& stream = wearable.streams[stream_index];
             if (stream_index) output << ',';
             output << "{\"kind\":" << json_string(signal_synth::wearable_stream_kind_name(stream.kind))
+                   << ",\"profile_id\":" << json_string(stream.profile_id)
                    << ",\"sample_rate_hz\":" << stream.config.sample_rate_hz
                    << ",\"clock_offset_ms\":" << stream.config.clock_offset_ms
                    << ",\"clock_drift_ppm\":" << stream.config.clock_drift_ppm
@@ -348,8 +352,16 @@ namespace
                    << ",\"sample_count\":" << stream.sample_count() << ",\"received_sample_count\":" << stream.received_sample_count()
                    << ",\"fingerprint\":" << json_string(stream.fingerprint) << ",\"channels\":[";
             for (std::size_t channel = 0; channel < stream.channel_names.size(); ++channel)
-                output << (channel ? "," : "") << "{\"name\":" << json_string(stream.channel_names[channel]) << ",\"unit\":" << json_string(stream.channel_units[channel]) << '}';
-            output << "],\"packets\":[";
+                output << (channel ? "," : "") << "{\"name\":" << json_string(stream.channel_names[channel]) << ",\"unit\":" << json_string(stream.channel_units[channel]) << ",\"clipping_count\":" << (channel < stream.channel_clipping_counts.size() ? stream.channel_clipping_counts[channel] : 0u) << '}';
+            output << ']';
+            const signal_synth::wearable_ecg_profile_info* profile = stream.kind == signal_synth::wearable_stream_ecg ? signal_synth::find_wearable_ecg_profile(stream.profile_id.c_str()) : 0;
+            if (profile)
+            {
+                output << ",\"resolved_profile\":{\"placement\":" << json_string(profile->placement) << ",\"channel_name\":" << json_string(profile->channel_name) << ",\"preserve_standard_12_lead\":" << boolean(profile->preserve_standard_12_lead) << ",\"lead_order\":[\"I\",\"II\",\"III\",\"aVR\",\"aVL\",\"aVF\",\"V1\",\"V2\",\"V3\",\"V4\",\"V5\",\"V6\"],\"lead_weights\":[";
+                for (unsigned int lead = 0; lead < 12u; ++lead) output << (lead ? "," : "") << profile->lead_weights[lead];
+                output << "],\"highpass_hz\":" << profile->highpass_hz << ",\"lowpass_hz\":" << profile->lowpass_hz << ",\"gain\":" << profile->gain << ",\"minimum_output_mv\":" << profile->minimum_output_mv << ",\"maximum_output_mv\":" << profile->maximum_output_mv << ",\"quantization_bits\":" << profile->quantization_bits << '}';
+            }
+            output << ",\"packets\":[";
             for (std::size_t packet = 0; packet < stream.packets.size(); ++packet)
             {
                 const signal_synth::wearable_packet_annotation& item = stream.packets[packet];

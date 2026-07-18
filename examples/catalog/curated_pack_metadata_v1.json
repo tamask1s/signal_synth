@@ -3219,10 +3219,13 @@
       "version": "1.0"
     },
     {
-      "case_count": 2,
+      "case_count": 5,
       "case_ids": [
         "independent_clocks",
-        "packet_loss_bursts"
+        "packet_loss_bursts",
+        "holter_finger",
+        "patch_wrist",
+        "watch_ear"
       ],
       "cases": [
         {
@@ -3270,6 +3273,75 @@
             "ppg_systolic_peak",
             "ecg_ppg_alignment"
           ]
+        },
+        {
+          "case_id": "holter_finger",
+          "channel_count": 15,
+          "duration_seconds": 30,
+          "estimated_binary_signal_bytes": 450000,
+          "estimated_package_bytes": 9913208,
+          "estimated_peak_memory_bytes": 9784720,
+          "estimated_waveform_csv_bytes": 4320256,
+          "reference_only_targets": [],
+          "sample_count": 15000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "wearable_holter_finger_v6",
+          "scoreable_targets": [
+            "r_peak",
+            "ppg_systolic_peak",
+            "ecg_ppg_alignment"
+          ],
+          "targets": [
+            "r_peak",
+            "ppg_systolic_peak",
+            "ecg_ppg_alignment"
+          ]
+        },
+        {
+          "case_id": "patch_wrist",
+          "channel_count": 16,
+          "duration_seconds": 30,
+          "estimated_binary_signal_bytes": 480000,
+          "estimated_package_bytes": 10854340,
+          "estimated_peak_memory_bytes": 9868776,
+          "estimated_waveform_csv_bytes": 4590256,
+          "reference_only_targets": [],
+          "sample_count": 15000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "wearable_patch_wrist_v6",
+          "scoreable_targets": [
+            "r_peak",
+            "ppg_systolic_peak",
+            "ecg_ppg_alignment"
+          ],
+          "targets": [
+            "r_peak",
+            "ppg_systolic_peak",
+            "ecg_ppg_alignment"
+          ]
+        },
+        {
+          "case_id": "watch_ear",
+          "channel_count": 16,
+          "duration_seconds": 30,
+          "estimated_binary_signal_bytes": 480000,
+          "estimated_package_bytes": 10041340,
+          "estimated_peak_memory_bytes": 9652776,
+          "estimated_waveform_csv_bytes": 4590256,
+          "reference_only_targets": [],
+          "sample_count": 15000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "wearable_watch_ear_v6",
+          "scoreable_targets": [
+            "r_peak",
+            "ppg_systolic_peak",
+            "ecg_ppg_alignment"
+          ],
+          "targets": [
+            "r_peak",
+            "ppg_systolic_peak",
+            "ecg_ppg_alignment"
+          ]
         }
       ],
       "catalog_scoring_mode": "local",
@@ -3280,6 +3352,13 @@
           ],
           "date": "2026-07-17",
           "version": "2.0"
+        },
+        {
+          "changes": [
+            "Added Holter, chest-patch and watch ECG profiles with finger, wrist and ear optical PPG site profiles."
+          ],
+          "date": "2026-07-17",
+          "version": "2.1"
         }
       ],
       "channels": {
@@ -3326,17 +3405,17 @@
         "ecg_ppg_alignment"
       ],
       "deprecation_message": "",
-      "description": "Independent ECG, PPG and accelerometer clocks, resampling, timestamp jitter, packet loss and ECG-PPG alignment truth.",
+      "description": "Independent wearable clocks, packet loss, device ECG vectors, PPG anatomical sites and ECG-PPG alignment truth.",
       "difficulty": [
         "stress"
       ],
       "duration": {
         "maximum_case_seconds": 60,
-        "minimum_case_seconds": 45,
-        "total_seconds": 105
+        "minimum_case_seconds": 30,
+        "total_seconds": 195
       },
       "estimated_package": {
-        "bytes": 26914180,
+        "bytes": 57723068,
         "peak_memory_bytes": 11248776,
         "size_class": "medium"
       },
@@ -3349,7 +3428,14 @@
         "packet_loss",
         "packet_burst",
         "activity",
-        "pulse_transit_delay"
+        "pulse_transit_delay",
+        "holter",
+        "patch",
+        "watch",
+        "finger",
+        "wrist",
+        "ear",
+        "device_profile"
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v2",
@@ -3482,14 +3568,16 @@
         "Multi-rate wearable detector and synchronization stress tests",
         "Independent ECG, PPG and accelerometer clock robustness checks",
         "Packet-loss and timestamp-jitter handling",
-        "Physiological versus device-domain ECG/PPG timing verification"
+        "Physiological versus device-domain ECG/PPG timing verification",
+        "Cross-device ECG vector and PPG anatomical-site robustness checks"
       ],
       "recommended_profile": "stress",
       "reference_only_targets": [],
       "release_date": "2026-07-17",
       "release_status": "beta",
       "sampling_rates_hz": [
-        250
+        250,
+        500
       ],
       "schema_version": 1,
       "scoreable_targets": [
@@ -3498,10 +3586,13 @@
             "point_events_json_v1",
             "point_events_csv_v1"
           ],
-          "case_count": 2,
+          "case_count": 5,
           "case_ids": [
             "independent_clocks",
-            "packet_loss_bursts"
+            "packet_loss_bursts",
+            "holter_finger",
+            "patch_wrist",
+            "watch_ear"
           ],
           "default_tolerance_seconds": 0.05,
           "description": "R-peak detector event timing against exact synthetic beat annotations.",
@@ -3516,10 +3607,13 @@
             "point_events_json_v1",
             "point_events_csv_v1"
           ],
-          "case_count": 2,
+          "case_count": 5,
           "case_ids": [
             "independent_clocks",
-            "packet_loss_bursts"
+            "packet_loss_bursts",
+            "holter_finger",
+            "patch_wrist",
+            "watch_ear"
           ],
           "default_tolerance_seconds": 0.08,
           "description": "PPG systolic peak event timing against exact synthetic pulse annotations.",
@@ -3534,10 +3628,13 @@
             "measurement_values_json_v1",
             "measurement_values_csv_v1"
           ],
-          "case_count": 2,
+          "case_count": 5,
           "case_ids": [
             "independent_clocks",
-            "packet_loss_bursts"
+            "packet_loss_bursts",
+            "holter_finger",
+            "patch_wrist",
+            "watch_ear"
           ],
           "default_pairing_window_seconds": 0.2,
           "description": "Per-beat PTT and ECG-to-PPG peak delay scored as paired-signal measurements.",
@@ -3551,9 +3648,9 @@
       "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
-        "pack_fingerprint": "sha256:408a231cbf5ccada564712579cadb5cc6cdd6d8a5744d01a8d9d16768fa15f07",
+        "pack_fingerprint": "sha256:89b843e3facf73985e932375f0ba528ad388e74fba5ed9b1839cf251b6c5b039",
         "pack_path": "../packs/wearable_timebase_v2.json",
-        "source_content_sha256": "sha256:1ae53c029972b0c6f5994e9d54990c54065184827b73ee24c4e031548d054b3d"
+        "source_content_sha256": "sha256:04c99862acda685d110b57ce37687979649379eb6b876fd83394e0cd87f5774c"
       },
       "submission_output_schemas": [
         "point_events_json_v1",
@@ -3592,7 +3689,7 @@
         "reference_only_before_job": false,
         "scoreable_before_job": true
       },
-      "version": "2.0"
+      "version": "2.1"
     },
     {
       "case_count": 9,
@@ -4984,5 +5081,5 @@
   "release_set_id": "synsigra_curated_release_2026_07_17",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:2f8d6205065abccdc42ba4efa89e1b01b40239f06230836d64bd0e3d678b4f10"
+  "source_catalog_sha256": "sha256:c78151c69795bd94ea1cd6fdbcbe5e638da58fef649baa14b0cd6509fa6e5552"
 }

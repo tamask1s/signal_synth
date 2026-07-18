@@ -1140,9 +1140,7 @@ namespace
 
     bool default_v5_config(const signal_synth::ecg_scenario_document& document)
     {
-        return signal_synth::wearable_stream_config_is_default(document.wearable.ecg)
-            && signal_synth::wearable_stream_config_is_default(document.wearable.ppg)
-            && signal_synth::wearable_stream_config_is_default(document.wearable.accelerometer);
+        return signal_synth::wearable_timebase_config_is_default(document.wearable);
     }
 
     bool accelerometer_source_available(const signal_synth::ecg_scenario_document& document)
@@ -1485,7 +1483,7 @@ namespace
         }
         if (document.schema_version == 5 || (document.schema_version >= 6 && !default_v5_config(document)))
         {
-            output << ",\"wearable\":{\"ecg\":";
+            output << ",\"wearable\":{\"ecg_profile_id\":" << escape_json(document.wearable.ecg_profile_id) << ",\"ecg\":";
             append_wearable_stream_json(output, document.wearable.ecg);
             output << ",\"ppg\":";
             append_wearable_stream_json(output, document.wearable.ppg);
@@ -2282,11 +2280,13 @@ namespace signal_synth
                 add_message(fresh_result, ecg_json_type, "$.wearable", "field has the wrong JSON type");
             else
             {
-                const char* fields[] = {"ecg","ppg","accelerometer"};
-                allowed_fields(*wearable, fields, 3u, "$.wearable", fresh_result);
-                parse_wearable_stream(member(*wearable, fields[0]), "$.wearable.ecg", document.wearable.ecg, fresh_result);
-                parse_wearable_stream(member(*wearable, fields[1]), "$.wearable.ppg", document.wearable.ppg, fresh_result);
-                parse_wearable_stream(member(*wearable, fields[2]), "$.wearable.accelerometer", document.wearable.accelerometer, fresh_result);
+                const char* fields[] = {"ecg_profile_id","ecg","ppg","accelerometer"};
+                allowed_fields(*wearable, fields, 4u, "$.wearable", fresh_result);
+                const json_value* ecg_profile = required(*wearable, fields[0], json_value::string_kind, "$.wearable", fresh_result);
+                if (ecg_profile) document.wearable.ecg_profile_id = ecg_profile->string;
+                parse_wearable_stream(member(*wearable, fields[1]), "$.wearable.ecg", document.wearable.ecg, fresh_result);
+                parse_wearable_stream(member(*wearable, fields[2]), "$.wearable.ppg", document.wearable.ppg, fresh_result);
+                parse_wearable_stream(member(*wearable, fields[3]), "$.wearable.accelerometer", document.wearable.accelerometer, fresh_result);
             }
         }
 

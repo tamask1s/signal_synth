@@ -1760,8 +1760,8 @@ CVariable* create_wearable_signal_variable(const signal_synth::wearable_timebase
     const signal_synth::wearable_stream_record* ecg = wearable.stream(signal_synth::wearable_stream_ecg);
     const signal_synth::wearable_stream_record* ppg = wearable.stream(signal_synth::wearable_stream_ppg);
     const signal_synth::wearable_stream_record* accelerometer = wearable.stream(signal_synth::wearable_stream_accelerometer);
-    if (ecg && ecg->channel_count() > signal_synth::clinical_lead_ii)
-        channels.push_back(wearable_display_channel{ecg, signal_synth::clinical_lead_ii});
+    if (ecg && ecg->channel_count())
+        channels.push_back(wearable_display_channel{ecg, ecg->channel_count() == signal_synth::clinical_lead_count ? signal_synth::clinical_lead_ii : 0U});
     if (ppg)
         for (unsigned int channel = 0; channel < ppg->channel_count(); ++channel)
             channels.push_back(wearable_display_channel{ppg, channel});

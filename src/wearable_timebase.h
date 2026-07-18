@@ -36,6 +36,7 @@ namespace signal_synth
     {
         wearable_timebase_config();
 
+        std::string ecg_profile_id;
         wearable_stream_config ecg;
         wearable_stream_config ppg;
         wearable_stream_config accelerometer;
@@ -83,9 +84,11 @@ namespace signal_synth
 
         wearable_stream_kind kind;
         wearable_stream_config config;
+        std::string profile_id;
         std::vector<std::string> channel_names;
         std::vector<std::string> channel_units;
         std::vector<std::vector<double> > channel_samples;
+        std::vector<unsigned long long> channel_clipping_counts;
         std::vector<wearable_sample_mapping> samples;
         std::vector<wearable_packet_annotation> packets;
         std::string fingerprint;
@@ -142,10 +145,12 @@ namespace signal_synth
     };
 
     bool wearable_stream_config_is_default(const wearable_stream_config& config);
+    bool wearable_timebase_config_is_default(const wearable_timebase_config& config);
     unsigned int wearable_stream_sample_count(const wearable_stream_config& config, double duration_seconds);
     bool validate_wearable_timebase_config(const wearable_timebase_config& config, double duration_seconds, unsigned int latent_sample_rate_hz, bool ppg_available, bool accelerometer_available);
     bool render_wearable_stream(const wearable_stream_config& config, wearable_stream_kind kind, double duration_seconds, unsigned int source_sample_rate_hz, unsigned int source_sample_count, const std::vector<wearable_source_channel>& source_channels, unsigned int chunk_size_samples, wearable_stream_record& output);
     bool map_wearable_event(const wearable_stream_record& stream, double latent_time_seconds, wearable_event_mapping& output);
     bool build_wearable_alignment_truth(const clinical_ecg_record& ecg, const ppg_record& ppg, const wearable_stream_record& ecg_stream, const wearable_stream_record& ppg_stream, std::vector<wearable_alignment_annotation>& output);
+    std::string wearable_stream_record_fingerprint(const wearable_stream_record& record);
     std::string wearable_timebase_record_fingerprint(const wearable_timebase_record& record);
 }

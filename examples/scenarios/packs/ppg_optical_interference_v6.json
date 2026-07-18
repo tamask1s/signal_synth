@@ -28,6 +28,7 @@
     {"type": "ppg_sensor_saturation", "start_seconds": 32, "duration_seconds": 6, "severity": 0.8, "seed": 8103103, "channels": ["all_ppg"]}
   ],
   "wearable": {
+    "ecg_profile_id": "clinical_12lead_reference_v1",
     "ecg": {"enabled": true, "sample_rate_hz": 250, "clock_offset_ms": 2, "clock_drift_ppm": 20, "timestamp_jitter_ms": 0.1, "packet_size_samples": 25, "packet_loss_probability": 0.002, "packet_loss_burst_packets": 1, "seed": 8103011},
     "ppg": {"enabled": true, "sample_rate_hz": 100, "clock_offset_ms": 15, "clock_drift_ppm": -80, "timestamp_jitter_ms": 0.7, "packet_size_samples": 10, "packet_loss_probability": 0.02, "packet_loss_burst_packets": 2, "seed": 8103012},
     "accelerometer": {"enabled": true, "sample_rate_hz": 50, "clock_offset_ms": -8, "clock_drift_ppm": 50, "timestamp_jitter_ms": 1.2, "packet_size_samples": 10, "packet_loss_probability": 0.01, "packet_loss_burst_packets": 2, "seed": 8103013}

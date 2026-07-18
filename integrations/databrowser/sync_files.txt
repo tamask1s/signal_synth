@@ -21,6 +21,8 @@ src/signal_quality.cpp|src/SignalProcessors/signal_quality.cpp
 src/signal_quality.h|src/SignalProcessors/signal_quality.h
 src/wearable_timebase.cpp|src/SignalProcessors/wearable_timebase.cpp
 src/wearable_timebase.h|src/SignalProcessors/wearable_timebase.h
+src/wearable_profiles.cpp|src/SignalProcessors/wearable_profiles.cpp
+src/wearable_profiles.h|src/SignalProcessors/wearable_profiles.h
 integrations/databrowser/SignalProc_RSPT.cpp|src/SignalProcessors/SignalProc_RSPT.cpp
 integrations/databrowser/SignalProc_RSPT.cbp|src/SignalProcessors/SignalProc_RSPT.cbp
 examples/databrowser/067_ECG_PPG_GroundTruth.txt|SigForge/Scripts/067_ECG_PPG_GroundTruth.txt
@@ -39,3 +41,4 @@ examples/databrowser/079_PPG_Multichannel_Optical.txt|SigForge/Scripts/079_PPG_M
 examples/databrowser/080_ECG_Delineation_GroundTruth.txt|SigForge/Scripts/080_ECG_Delineation_GroundTruth.txt
 examples/databrowser/081_Wearable_Multirate_Timebase.txt|SigForge/Scripts/081_Wearable_Multirate_Timebase.txt
 examples/databrowser/082_PPG_Optical_Physiology_V2.txt|SigForge/Scripts/082_PPG_Optical_Physiology_V2.txt
+examples/databrowser/083_Wearable_Device_Site_Profiles.txt|SigForge/Scripts/083_Wearable_Device_Site_Profiles.txt

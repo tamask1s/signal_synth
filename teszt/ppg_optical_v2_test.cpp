@@ -38,7 +38,7 @@ namespace
         document.ecg.set_sampling_rate_hz(250u);
         document.ecg.set_heart_rate_bpm(60.0);
         document.ppg.enabled = true;
-        signal_synth::configure_ppg_optical_profile("wrist_reflectance_v1", document.ppg.optical);
+        signal_synth::configure_ppg_site_profile("wrist_reflectance_v1", document.ppg);
         document.ppg.optical.red.sensor_gain = 1.05;
         document.ppg.optical.red.ambient_offset_au = 0.01;
         document.ppg.optical.red.crosstalk_ratio = 0.10;
@@ -64,11 +64,11 @@ namespace
 int main()
 {
     bool ok = true;
-    signal_synth::ppg_optical_config profile;
-    ok &= check(signal_synth::ppg_optical_profile_count() == 4u
-        && signal_synth::configure_ppg_optical_profile("finger_transmissive_v1", profile)
-        && profile.enabled && profile.profile_id == "finger_transmissive_v1" && profile.red.quantization_bits == 16u
-        && !signal_synth::configure_ppg_optical_profile("unknown", profile), "site_device_profiles");
+    signal_synth::ppg_config profile;
+    ok &= check(signal_synth::ppg_site_profile_count() == 4u
+        && signal_synth::configure_ppg_site_profile("finger_transmissive_v1", profile)
+        && profile.enabled && profile.optical.enabled && profile.optical.profile_id == "finger_transmissive_v1" && profile.optical.red.quantization_bits == 16u
+        && !signal_synth::configure_ppg_site_profile("unknown", profile), "site_device_profiles");
 
     signal_synth::ecg_scenario_document document = optical_document();
     signal_synth::ecg_scenario_json_result identity;

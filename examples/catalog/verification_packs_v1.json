@@ -334,7 +334,7 @@
       "recommended_profile": "stress",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
       "scoring_mode": "local",
-      "feature_tags": ["multirate", "clock_offset", "clock_drift", "timestamp_jitter", "resampling", "packet_loss", "packet_burst", "activity", "pulse_transit_delay"],
+      "feature_tags": ["multirate", "clock_offset", "clock_drift", "timestamp_jitter", "resampling", "packet_loss", "packet_burst", "activity", "pulse_transit_delay", "holter", "patch", "watch", "finger", "wrist", "ear", "device_profile"],
       "release_status": "beta",
       "release_date": "2026-07-17",
       "deprecation_message": "",
@@ -342,7 +342,8 @@
         "Multi-rate wearable detector and synchronization stress tests",
         "Independent ECG, PPG and accelerometer clock robustness checks",
         "Packet-loss and timestamp-jitter handling",
-        "Physiological versus device-domain ECG/PPG timing verification"
+        "Physiological versus device-domain ECG/PPG timing verification",
+        "Cross-device ECG vector and PPG anatomical-site robustness checks"
       ],
       "not_recommended_for": [
         "Minimal first-run examples",
@@ -356,6 +357,13 @@
           "date": "2026-07-17",
           "changes": [
             "Replaced the ambiguous PPG clock control with independent device timebases, resampling and packet truth."
+          ]
+        },
+        {
+          "version": "2.1",
+          "date": "2026-07-17",
+          "changes": [
+            "Added Holter, chest-patch and watch ECG profiles with finger, wrist and ear optical PPG site profiles."
           ]
         }
       ],

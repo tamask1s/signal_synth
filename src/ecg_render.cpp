@@ -1,4 +1,5 @@
 #include "ecg_render.h"
+#include "wearable_profiles.h"
 
 #include <sstream>
 
@@ -96,10 +97,7 @@ namespace
 
     bool build_wearable_record(signal_synth::ecg_render_bundle& render)
     {
-        if (render.resolved_document.schema_version < 5
-            || (signal_synth::wearable_stream_config_is_default(render.resolved_document.wearable.ecg)
-                && signal_synth::wearable_stream_config_is_default(render.resolved_document.wearable.ppg)
-                && signal_synth::wearable_stream_config_is_default(render.resolved_document.wearable.accelerometer)))
+        if (render.resolved_document.schema_version < 5 || signal_synth::wearable_timebase_config_is_default(render.resolved_document.wearable))
             return true;
         signal_synth::wearable_timebase_record wearable;
         wearable.duration_seconds = render.resolved_document.duration_seconds;
@@ -116,7 +114,7 @@ namespace
                 channels.push_back(signal_synth::wearable_source_channel(render.record.lead_name(lead), "mV", samples));
             }
             signal_synth::wearable_stream_record stream;
-            if (!signal_synth::render_wearable_stream(render.resolved_document.wearable.ecg, signal_synth::wearable_stream_ecg, wearable.duration_seconds, source_rate, source_count, channels, 4096u, stream))
+            if (!signal_synth::render_wearable_ecg_profile(render.resolved_document.wearable.ecg_profile_id.c_str(), render.resolved_document.wearable.ecg, wearable.duration_seconds, source_rate, source_count, channels, 4096u, stream))
                 return false;
             wearable.streams.push_back(stream);
         }
@@ -131,6 +129,10 @@ namespace
             signal_synth::wearable_stream_record stream;
             if (!signal_synth::render_wearable_stream(render.resolved_document.wearable.ppg, signal_synth::wearable_stream_ppg, wearable.duration_seconds, source_rate, source_count, channels, 4096u, stream))
                 return false;
+            stream.profile_id = render.ppg.optical_enabled() ? render.ppg.optical_config().profile_id : "green_generic_v1";
+            stream.channel_clipping_counts.assign(stream.channel_samples.size(), 0u);
+            for (std::size_t channel = 0; channel < stream.channel_clipping_counts.size() && channel < render.ppg_clipping_counts.size(); ++channel) stream.channel_clipping_counts[channel] = render.ppg_clipping_counts[channel];
+            stream.fingerprint = signal_synth::wearable_stream_record_fingerprint(stream);
             wearable.streams.push_back(stream);
         }
         if (render.resolved_document.wearable.accelerometer.enabled)
@@ -140,6 +142,8 @@ namespace
             signal_synth::wearable_stream_record stream;
             if (!signal_synth::render_wearable_stream(render.resolved_document.wearable.accelerometer, signal_synth::wearable_stream_accelerometer, wearable.duration_seconds, source_rate, source_count, channels, 4096u, stream))
                 return false;
+            stream.profile_id = "synthetic_activity_v1";
+            stream.fingerprint = signal_synth::wearable_stream_record_fingerprint(stream);
             wearable.streams.push_back(stream);
         }
         const signal_synth::wearable_stream_record* ecg = wearable.stream(signal_synth::wearable_stream_ecg);

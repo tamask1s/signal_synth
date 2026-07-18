@@ -85,10 +85,6 @@ namespace signal_synth
         std::vector<ppg_oxygenation_episode_config> oxygenation_episodes;
     };
 
-    unsigned int ppg_optical_profile_count();
-    const char* ppg_optical_profile_id(unsigned int index);
-    bool configure_ppg_optical_profile(const char* profile_id, ppg_optical_config& output);
-
     struct ppg_perfusion_episode_config
     {
         ppg_perfusion_episode_config();
@@ -131,6 +127,10 @@ namespace signal_synth
         ppg_optical_config optical;
         std::vector<ppg_perfusion_episode_config> perfusion_episodes;
     };
+
+    unsigned int ppg_site_profile_count();
+    const char* ppg_site_profile_id(unsigned int index);
+    bool configure_ppg_site_profile(const char* profile_id, ppg_config& output);
 
     struct ppg_optical_pulse_state
     {

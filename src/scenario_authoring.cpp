@@ -12,7 +12,7 @@
 
 namespace
 {
-    const char* metadata_version = "synsigra_authoring_v11";
+    const char* metadata_version = "synsigra_authoring_v12";
     const char* template_version = "synsigra_templates_v4";
 
     struct field_definition
@@ -651,6 +651,7 @@ namespace signal_synth
             {"$.output.include_waveform_csv","Include waveform CSV","output","boolean","toggle","true",0,0,0,"",0,0,true},
             {"$.output.include_edf_bdf","Include EDF/BDF","output","boolean","toggle","true",0,0,0,"",0,0,true},
             {"$.wearable.ecg.enabled","Wearable ECG stream","wearable","boolean","toggle","true",0,0,0,"",0,0,true},
+            {"$.wearable.ecg_profile_id","Wearable ECG device profile","wearable","string","select","\"clinical_12lead_reference_v1\"",0,0,0,"","[\"clinical_12lead_reference_v1\",\"holter_lead_ii_v1\",\"patch_left_chest_vector_v1\",\"watch_lead_i_v1\"]",0,true},
             {"$.wearable.ecg.sample_rate_hz","Wearable ECG sample rate","wearable","integer","number","250","1","1000000","1","Hz",0,"{\"path\":\"$.wearable.ecg.enabled\",\"equals\":true}",true},
             {"$.wearable.ecg.clock_offset_ms","Wearable ECG clock offset","wearable","number","number","0","-86400000","86400000","0.1","ms",0,"{\"path\":\"$.wearable.ecg.enabled\",\"equals\":true}",true},
             {"$.wearable.ecg.clock_drift_ppm","Wearable ECG clock drift","wearable","number","number","0","-100000","100000","1","ppm",0,"{\"path\":\"$.wearable.ecg.enabled\",\"equals\":true}",true},
@@ -833,9 +834,7 @@ namespace signal_synth
             item.duration_seconds = document.duration_seconds;
             item.sampling_rate_hz = document.ecg.sampling_rate_hz();
             item.sample_count = document.sample_count();
-            item.wearable_timebase = !wearable_stream_config_is_default(document.wearable.ecg)
-                || !wearable_stream_config_is_default(document.wearable.ppg)
-                || !wearable_stream_config_is_default(document.wearable.accelerometer);
+            item.wearable_timebase = !wearable_timebase_config_is_default(document.wearable);
             bool has_accelerometer = document.physiology.activity_intensity > 0.0;
             for (std::size_t artifact = 0; artifact < document.signal_quality.artifacts.size(); ++artifact)
                 if (signal_quality_artifact_is_motion(document.signal_quality.artifacts[artifact].type))
