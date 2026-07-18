@@ -801,7 +801,6 @@ struct zax_clinical_enum_config
     int av_conduction_type = signal_synth::clinical_av_normal;
     int intraventricular_conduction_type = signal_synth::clinical_iv_normal;
     int preexcitation_type = signal_synth::clinical_preexcitation_none;
-    int episode_kind_type = signal_synth::clinical_episode_none;
     int qt_correction_type = signal_synth::clinical_qt_fridericia;
     int premature_origin_type = signal_synth::clinical_origin_pvc;
 
@@ -811,7 +810,6 @@ struct zax_clinical_enum_config
         av_conduction_type = config.rhythm.av_conduction;
         intraventricular_conduction_type = config.rhythm.intraventricular_conduction;
         preexcitation_type = config.rhythm.preexcitation;
-        episode_kind_type = config.scenario.episode_kind;
         qt_correction_type = config.timing.qt_correction;
         premature_origin_type = config.scenario.premature_origin;
     }
@@ -822,7 +820,6 @@ struct zax_clinical_enum_config
         config.rhythm.av_conduction = static_cast<signal_synth::clinical_av_conduction>(av_conduction_type);
         config.rhythm.intraventricular_conduction = static_cast<signal_synth::clinical_intraventricular_conduction>(intraventricular_conduction_type);
         config.rhythm.preexcitation = static_cast<signal_synth::clinical_preexcitation>(preexcitation_type);
-        config.scenario.episode_kind = static_cast<signal_synth::clinical_episode_kind>(episode_kind_type);
         config.timing.qt_correction = static_cast<signal_synth::clinical_qt_correction>(qt_correction_type);
         config.scenario.premature_origin = static_cast<signal_synth::clinical_ventricular_origin>(premature_origin_type);
     }
@@ -833,7 +830,6 @@ struct zax_clinical_enum_config
         JSON_PROPERTY(av_conduction_type),
         JSON_PROPERTY(intraventricular_conduction_type),
         JSON_PROPERTY(preexcitation_type),
-        JSON_PROPERTY(episode_kind_type),
         JSON_PROPERTY(qt_correction_type),
         JSON_PROPERTY(premature_origin_type))
 };
@@ -939,10 +935,7 @@ struct zax_clinical_scenario_config: public signal_synth::clinical_scenario_conf
         JSON_PROPERTY_NAME(premature_coupling_ratio, "premature_coupling_ratio"),
         JSON_PROPERTY_NAME(compensatory_pause_ratio, "compensatory_pause_ratio"),
         JSON_PROPERTY_NAME(sinus_pause_every_n_beats, "sinus_pause_every_n_beats"),
-        JSON_PROPERTY_NAME(sinus_pause_ratio, "sinus_pause_ratio"),
-        JSON_PROPERTY_NAME(episode_start_seconds, "episode_start_seconds"),
-        JSON_PROPERTY_NAME(episode_duration_seconds, "episode_duration_seconds"),
-        JSON_PROPERTY_NAME(episode_rate_bpm, "episode_rate_bpm"))
+        JSON_PROPERTY_NAME(sinus_pause_ratio, "sinus_pause_ratio"))
 };
 
 struct zax_clinical_lead_config: public signal_synth::clinical_lead_config
@@ -1167,6 +1160,14 @@ const char* clinical_episode_label(signal_synth::clinical_episode_kind kind)
         return "GT SVARR episode";
     case signal_synth::clinical_episode_repolarization:
         return "GT dynamic repolarization";
+    case signal_synth::clinical_episode_afib:
+        return "GT AF episode";
+    case signal_synth::clinical_episode_vt:
+        return "GT VT episode";
+    case signal_synth::clinical_episode_vf:
+        return "GT VF episode";
+    case signal_synth::clinical_episode_asystole:
+        return "GT asystole episode";
     case signal_synth::clinical_episode_none:
     default:
         return "GT episode";
@@ -1535,6 +1536,18 @@ const char* ppg_annotation_label(const signal_synth::ppg_annotation& annotation)
     return "GT PPG fiducial";
 }
 
+struct zax_ecg_rhythm_episode
+{
+    int type = signal_synth::ecg_episode_psvt;
+    double start_seconds = 0.0;
+    double duration_seconds = 0.0;
+    double transition_seconds = 0.0;
+    double rate_bpm = 170.0;
+    unsigned long long seed = 0;
+
+    ZAX_JSON_SERIALIZABLE(zax_ecg_rhythm_episode, JSON_PROPERTY(type), JSON_PROPERTY(start_seconds), JSON_PROPERTY(duration_seconds), JSON_PROPERTY(transition_seconds), JSON_PROPERTY(rate_bpm), JSON_PROPERTY(seed))
+};
+
 struct zax_ecg_qa_scenario
 {
     vector<string> conditions;
@@ -1545,13 +1558,10 @@ struct zax_ecg_qa_scenario
     unsigned int ectopic_every_n_beats = 0;
     int second_degree_pattern = signal_synth::ecg_second_degree_unspecified;
     int q_wave_territory = signal_synth::ecg_q_wave_unspecified;
-    int episode_type = signal_synth::ecg_episode_none;
-    double episode_start_seconds = 2.0;
-    double episode_duration_seconds = 4.0;
-    double episode_rate_bpm = 170.0;
+    vector<zax_ecg_rhythm_episode> rhythm_episodes;
     int fidelity_policy = signal_synth::ecg_fidelity_allow_parameterized;
 
-    ZAX_JSON_SERIALIZABLE(zax_ecg_qa_scenario, JSON_PROPERTY(conditions), JSON_PROPERTY(severities), JSON_PROPERTY(heart_rate_bpm), JSON_PROPERTY(rr_variability_seconds), JSON_PROPERTY(seed), JSON_PROPERTY(ectopic_every_n_beats), JSON_PROPERTY(second_degree_pattern), JSON_PROPERTY(q_wave_territory), JSON_PROPERTY(episode_type), JSON_PROPERTY(episode_start_seconds), JSON_PROPERTY(episode_duration_seconds), JSON_PROPERTY(episode_rate_bpm), JSON_PROPERTY(fidelity_policy))
+    ZAX_JSON_SERIALIZABLE(zax_ecg_qa_scenario, JSON_PROPERTY(conditions), JSON_PROPERTY(severities), JSON_PROPERTY(heart_rate_bpm), JSON_PROPERTY(rr_variability_seconds), JSON_PROPERTY(seed), JSON_PROPERTY(ectopic_every_n_beats), JSON_PROPERTY(second_degree_pattern), JSON_PROPERTY(q_wave_territory), JSON_PROPERTY(rhythm_episodes), JSON_PROPERTY(fidelity_policy))
 };
 
 CVariable* create_clinical_source_variable(const char* output_name, const signal_synth::clinical_ecg_record& record)
@@ -1621,9 +1631,15 @@ char* GenerateECGQAScenario(char* ecg_output_name, char* source_output_name, cha
     if (parameters.conditions.empty() || (!parameters.severities.empty() && parameters.severities.size() != parameters.conditions.size()))
         return MakeString(NewChar, "ERROR: GenerateECGQAScenario: conditions are required and severities must be empty or match their count.");
     signal_synth::ecg_qa_scenario scenario;
-    if (!scenario.set_sampling_rate_hz(static_cast<unsigned int>(parsed_sampling_rate)) || !scenario.set_heart_rate_bpm(parameters.heart_rate_bpm) || !scenario.set_rr_variability_seconds(parameters.rr_variability_seconds) || !scenario.set_ectopic_every_n_beats(parameters.ectopic_every_n_beats) || !scenario.set_second_degree_av_pattern(static_cast<signal_synth::ecg_second_degree_av_pattern>(parameters.second_degree_pattern)) || !scenario.set_q_wave_territory(static_cast<signal_synth::ecg_q_wave_territory>(parameters.q_wave_territory)) || !scenario.set_episode_type(static_cast<signal_synth::ecg_episode_type>(parameters.episode_type)) || !scenario.set_episode_start_seconds(parameters.episode_start_seconds) || !scenario.set_episode_duration_seconds(parameters.episode_duration_seconds) || !scenario.set_episode_rate_bpm(parameters.episode_rate_bpm) || !scenario.set_fidelity_policy(static_cast<signal_synth::ecg_scenario_fidelity_policy>(parameters.fidelity_policy)))
+    if (!scenario.set_sampling_rate_hz(static_cast<unsigned int>(parsed_sampling_rate)) || !scenario.set_heart_rate_bpm(parameters.heart_rate_bpm) || !scenario.set_rr_variability_seconds(parameters.rr_variability_seconds) || !scenario.set_ectopic_every_n_beats(parameters.ectopic_every_n_beats) || !scenario.set_second_degree_av_pattern(static_cast<signal_synth::ecg_second_degree_av_pattern>(parameters.second_degree_pattern)) || !scenario.set_q_wave_territory(static_cast<signal_synth::ecg_q_wave_territory>(parameters.q_wave_territory)) || !scenario.set_fidelity_policy(static_cast<signal_synth::ecg_scenario_fidelity_policy>(parameters.fidelity_policy)))
         return MakeString(NewChar, "ERROR: GenerateECGQAScenario: invalid scenario parameters.");
     scenario.set_seed(parameters.seed);
+    for (unsigned int index = 0; index < parameters.rhythm_episodes.size(); ++index)
+    {
+        const zax_ecg_rhythm_episode& episode = parameters.rhythm_episodes[index];
+        if (!scenario.add_rhythm_episode(static_cast<signal_synth::ecg_rhythm_episode_type>(episode.type), episode.start_seconds, episode.duration_seconds, episode.transition_seconds, episode.rate_bpm, episode.seed))
+            return MakeString(NewChar, "ERROR: GenerateECGQAScenario: invalid or overlapping rhythm episode.");
+    }
     for (unsigned int index = 0; index < parameters.conditions.size(); ++index)
     {
         const signal_synth::ecg_condition_info* condition = signal_synth::find_ecg_condition(parameters.conditions[index].c_str());

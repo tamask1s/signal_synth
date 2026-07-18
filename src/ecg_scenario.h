@@ -180,11 +180,24 @@ namespace signal_synth
         ecg_q_wave_lateral = 3
     };
 
-    enum ecg_episode_type
+    enum ecg_rhythm_episode_type
     {
-        ecg_episode_none = 0,
+        ecg_episode_afib = 0,
         ecg_episode_psvt = 1,
-        ecg_episode_svarr = 2
+        ecg_episode_svarr = 2,
+        ecg_episode_vt = 3,
+        ecg_episode_vf = 4,
+        ecg_episode_asystole = 5
+    };
+
+    struct ecg_rhythm_episode
+    {
+        ecg_rhythm_episode_type type;
+        double start_seconds;
+        double duration_seconds;
+        double transition_seconds;
+        double rate_bpm;
+        unsigned long long seed;
     };
 
     enum ecg_flutter_conduction_pattern
@@ -332,14 +345,10 @@ namespace signal_synth
         ecg_second_degree_av_pattern second_degree_av_pattern() const;
         bool set_q_wave_territory(ecg_q_wave_territory value);
         ecg_q_wave_territory q_wave_territory() const;
-        bool set_episode_type(ecg_episode_type value);
-        ecg_episode_type episode_type() const;
-        bool set_episode_start_seconds(double value);
-        double episode_start_seconds() const;
-        bool set_episode_duration_seconds(double value);
-        double episode_duration_seconds() const;
-        bool set_episode_rate_bpm(double value);
-        double episode_rate_bpm() const;
+        bool add_rhythm_episode(ecg_rhythm_episode_type type, double start_seconds, double duration_seconds, double transition_seconds, double rate_bpm, unsigned long long seed = 0);
+        void clear_rhythm_episodes();
+        unsigned int rhythm_episode_count() const;
+        bool rhythm_episode(unsigned int index, ecg_rhythm_episode& output) const;
         bool set_flutter_conduction_pattern(ecg_flutter_conduction_pattern value);
         ecg_flutter_conduction_pattern flutter_conduction_pattern() const;
         bool set_pacing_mode(ecg_pacing_mode value);

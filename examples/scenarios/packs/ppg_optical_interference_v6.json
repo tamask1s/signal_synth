@@ -8,7 +8,7 @@
   "duration_seconds": 45,
   "sample_rate_hz": 250,
   "seed": 8103001,
-  "ecg": {"heart_rate_bpm": 75, "rr_variability_seconds": 0.03, "ectopic_every_n_beats": 0, "second_degree_av_pattern": "unspecified", "q_wave_territory": "unspecified", "episode_type": "none", "episode_start_seconds": 2, "episode_duration_seconds": 4, "episode_rate_bpm": 170, "flutter_conduction_pattern": "fixed", "pacing_mode": "ventricular", "pacing_non_capture_every_n_beats": 0, "fidelity_policy": "allow_parameterized", "conditions": [{"code": "NORM", "severity": 1}]},
+  "ecg": {"heart_rate_bpm": 75, "rr_variability_seconds": 0.03, "ectopic_every_n_beats": 0, "second_degree_av_pattern": "unspecified", "q_wave_territory": "unspecified", "rhythm_episodes": [], "flutter_conduction_pattern": "fixed", "pacing_mode": "ventricular", "pacing_non_capture_every_n_beats": 0, "fidelity_policy": "allow_parameterized", "conditions": [{"code": "NORM", "severity": 1}]},
   "ppg": {
     "enabled": true, "pulse_delay_ms": 180, "rise_time_ms": 120, "decay_time_ms": 300, "amplitude_au": 1, "baseline_au": 0, "dicrotic_delay_ms": 180, "dicrotic_width_ms": 80, "dicrotic_amplitude_ratio": 0.15,
     "pulse_delay_variation_ms": 15, "pulse_delay_variation_hz": 0.08, "missing_pulse_every_n_beats": 0, "seed": 8103002, "pulse_delay_jitter_ms": 8, "low_frequency_amplitude_modulation_ratio": 0.1, "low_frequency_amplitude_modulation_hz": 0.06, "rise_time_variation_ratio": 0.08, "decay_time_variation_ratio": 0.1, "pac_pulse_amplitude_scale": 1, "pvc_pulse_amplitude_scale": 1, "paced_pulse_amplitude_scale": 1, "perfusion_episodes": [],

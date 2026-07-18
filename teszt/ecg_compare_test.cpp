@@ -73,7 +73,7 @@ int main()
     signal_synth::ecg_scenario_document document;
     document.scenario_id = "compare_clean";
     document.duration_seconds = 8.0;
-    document.ecg.set_seed(1);
+    document.ecg.set_seed(18);
     signal_synth::ecg_render_bundle render;
     ok &= check(render_document(document, render), "render_clean_document");
 

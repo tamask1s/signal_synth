@@ -104,10 +104,7 @@ int main()
     episode_document.ecg.clear_conditions();
     episode_document.ecg.add_condition(signal_synth::ecg_condition_psvt);
     episode_document.ecg.set_heart_rate_bpm(70.0);
-    episode_document.ecg.set_episode_type(signal_synth::ecg_episode_psvt);
-    episode_document.ecg.set_episode_start_seconds(3.0);
-    episode_document.ecg.set_episode_duration_seconds(4.0);
-    episode_document.ecg.set_episode_rate_bpm(180.0);
+    episode_document.ecg.add_rhythm_episode(signal_synth::ecg_episode_psvt, 3.0, 4.0, 0.2, 180.0, 7201);
     signal_synth::ecg_render_bundle episode_render;
     signal_synth::ecg_document_render_result render_result;
     ok &= check(signal_synth::render_ecg_document(episode_document, episode_render, render_result), "episode_render");

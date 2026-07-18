@@ -1,12 +1,350 @@
 {
   "catalog_id": "synsigra_verification_packs",
-  "catalog_version": "2.1",
+  "catalog_version": "2.2",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "metadata_type": "synsigra_curated_pack_catalog",
   "metadata_version": "synsigra_curated_pack_metadata_export_v1",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
-  "pack_count": 13,
+  "pack_count": 14,
   "packs": [
+    {
+      "case_count": 3,
+      "case_ids": [
+        "recurrent_af_psvt",
+        "recurrent_vt",
+        "vf_asystole"
+      ],
+      "cases": [
+        {
+          "case_id": "recurrent_af_psvt",
+          "channel_count": 12,
+          "duration_seconds": 60,
+          "estimated_binary_signal_bytes": 2520000,
+          "estimated_package_bytes": 11060400,
+          "estimated_peak_memory_bytes": 15448576,
+          "estimated_waveform_csv_bytes": 7020256,
+          "reference_only_targets": [],
+          "sample_count": 30000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "rhythm_recurrent_af_psvt_v2",
+          "scoreable_targets": [
+            "rhythm_episode",
+            "rhythm_burden"
+          ],
+          "targets": [
+            "rhythm_episode",
+            "rhythm_burden"
+          ]
+        },
+        {
+          "case_id": "recurrent_vt",
+          "channel_count": 12,
+          "duration_seconds": 40,
+          "estimated_binary_signal_bytes": 1680000,
+          "estimated_package_bytes": 7472400,
+          "estimated_peak_memory_bytes": 10648576,
+          "estimated_waveform_csv_bytes": 4680256,
+          "reference_only_targets": [],
+          "sample_count": 20000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "rhythm_vt_burden_v2",
+          "scoreable_targets": [
+            "rhythm_episode",
+            "rhythm_burden"
+          ],
+          "targets": [
+            "rhythm_episode",
+            "rhythm_burden"
+          ]
+        },
+        {
+          "case_id": "vf_asystole",
+          "channel_count": 12,
+          "duration_seconds": 42,
+          "estimated_binary_signal_bytes": 1764000,
+          "estimated_package_bytes": 7841400,
+          "estimated_peak_memory_bytes": 11128576,
+          "estimated_waveform_csv_bytes": 4914256,
+          "reference_only_targets": [],
+          "sample_count": 21000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "rhythm_vf_asystole_v2",
+          "scoreable_targets": [
+            "rhythm_episode",
+            "rhythm_burden"
+          ],
+          "targets": [
+            "rhythm_episode",
+            "rhythm_burden"
+          ]
+        }
+      ],
+      "catalog_scoring_mode": "local",
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta pack with multi-episode interval truth, class burden scoring, deterministic VF and beat-free asystole."
+          ],
+          "date": "2026-07-17",
+          "version": "1.0"
+        }
+      ],
+      "channels": {
+        "families": [
+          {
+            "channel_count": 12,
+            "channels": [
+              "I",
+              "II",
+              "III",
+              "aVR",
+              "aVL",
+              "aVF",
+              "V1",
+              "V2",
+              "V3",
+              "V4",
+              "V5",
+              "V6"
+            ],
+            "name": "standard_12_lead_ecg"
+          }
+        ],
+        "maximum_channel_count": 12,
+        "minimum_channel_count": 12
+      },
+      "declared_targets": [
+        "rhythm_episode",
+        "rhythm_burden"
+      ],
+      "deprecation_message": "",
+      "description": "Multi-episode AF, PSVT, VT, VF and asystole engineering verification pack with interval and burden ground truth.",
+      "difficulty": [
+        "regression",
+        "stress"
+      ],
+      "duration": {
+        "maximum_case_seconds": 60,
+        "minimum_case_seconds": 40,
+        "total_seconds": 142
+      },
+      "estimated_package": {
+        "bytes": 26374200,
+        "peak_memory_bytes": 15448576,
+        "size_class": "medium"
+      },
+      "feature_tags": [
+        "afib",
+        "psvt",
+        "vt",
+        "vf",
+        "asystole",
+        "burden",
+        "critical_state"
+      ],
+      "generator_compatibility": {
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.6.0",
+        "minimum_generator_version": "0.6.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [
+          2
+        ],
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
+      },
+      "limitations": {
+        "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
+        "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
+      },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "core rhythm-episode interval scoring smoke test",
+          "target": "rhythm_episode",
+          "test_id": "TEST-INTERVAL-SCORING-001"
+        },
+        {
+          "scope": "local rhythm-episode interval scoring parity test",
+          "target": "rhythm_episode",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
+          "scope": "core multi-episode burden measurement and critical-state scoring test",
+          "target": "rhythm_burden",
+          "test_id": "TEST-ECG-EPISODE-001"
+        },
+        {
+          "scope": "generator-free measurement scoring engine parity test",
+          "target": "rhythm_burden",
+          "test_id": "TEST-MEASUREMENT-PYTHON-001"
+        }
+      ],
+      "messages": [],
+      "metadata_type": "synsigra_curated_pack_metadata",
+      "metadata_version": "synsigra_curated_pack_metadata_export_v1",
+      "modality": [
+        "ECG"
+      ],
+      "name": "Advanced rhythm burden and critical-state stress",
+      "not_recommended_for": [
+        "Clinical arrhythmia validation or certification",
+        "Patient risk stratification",
+        "Therapy or alarm-system safety claims"
+      ],
+      "output_artifacts": [
+        {
+          "required": true,
+          "role": "manifest_json"
+        },
+        {
+          "required": true,
+          "role": "scoring_manifest_json"
+        },
+        {
+          "required": true,
+          "role": "provenance_json"
+        },
+        {
+          "required": true,
+          "role": "engineering_claim_boundary_txt"
+        },
+        {
+          "required": true,
+          "role": "case_summary_json"
+        },
+        {
+          "required": true,
+          "role": "annotations_json"
+        },
+        {
+          "required": true,
+          "role": "waveform_csv"
+        },
+        {
+          "required": true,
+          "role": "wfdb"
+        },
+        {
+          "required": true,
+          "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
+        },
+        {
+          "required": true,
+          "role": "measurement_truth_json"
+        }
+      ],
+      "pack_id": "advanced_rhythm_burden_v1",
+      "recommended_for": [
+        "Rhythm episode onset, offset and class detector QA",
+        "AF, PSVT and VT burden measurement QA",
+        "VF and asystole critical-state detector engineering stress"
+      ],
+      "recommended_profile": "stress",
+      "reference_only_targets": [],
+      "release_date": "2026-07-17",
+      "release_status": "beta",
+      "sampling_rates_hz": [
+        500
+      ],
+      "schema_version": 1,
+      "scoreable_targets": [
+        {
+          "accepted_formats": [
+            "interval_events_json_v1",
+            "interval_events_csv_v1"
+          ],
+          "case_count": 3,
+          "case_ids": [
+            "recurrent_af_psvt",
+            "recurrent_vt",
+            "vf_asystole"
+          ],
+          "default_minimum_iou": 0.1,
+          "description": "Rhythm episode labels and boundaries scored against exact synthetic episode ground truth.",
+          "primary_metric": "time_f1_score",
+          "score_type": "interval_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "rhythm_episode"
+        },
+        {
+          "accepted_formats": [
+            "measurement_values_json_v1",
+            "measurement_values_csv_v1"
+          ],
+          "case_count": 3,
+          "case_ids": [
+            "recurrent_af_psvt",
+            "recurrent_vt",
+            "vf_asystole"
+          ],
+          "default_pairing_window_seconds": 0.2,
+          "description": "Overall and class-specific episode duration, fraction and count measurements against exact interval truth.",
+          "primary_metric": "tolerance_pass_fraction",
+          "score_type": "measurement",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "rhythm_burden"
+        }
+      ],
+      "scoring_mode": "local",
+      "source": {
+        "catalog_path": "examples/catalog/verification_packs_v1.json",
+        "pack_fingerprint": "sha256:f6b2aee24839cee3aeb8d951604c6bc0d53392cbdd828896ef7ddf61c26651de",
+        "pack_path": "../packs/advanced_rhythm_burden_v1.json",
+        "source_content_sha256": "sha256:c9be1b625bcc50e78851f70136d875a1772bf5d788a01d8d6b482ace80e06ef1"
+      },
+      "submission_output_schemas": [
+        "interval_events_json_v1",
+        "interval_events_csv_v1",
+        "measurement_values_json_v1",
+        "measurement_values_csv_v1"
+      ],
+      "supported_threshold_profiles": [
+        "smoke",
+        "regression",
+        "stress",
+        "benchmark"
+      ],
+      "targets": [
+        "rhythm_episode",
+        "rhythm_burden"
+      ],
+      "threshold_profile_contract": {
+        "policy_failure_exit_code": 1,
+        "recommended_profile": "stress",
+        "supported_profiles": [
+          "smoke",
+          "regression",
+          "stress",
+          "benchmark"
+        ]
+      },
+      "ui": {
+        "primary_badges": [
+          "regression",
+          "stress",
+          "afib",
+          "psvt",
+          "vt"
+        ],
+        "reference_only_before_job": false,
+        "scoreable_before_job": true
+      },
+      "version": "1.0"
+    },
     {
       "case_count": 4,
       "case_ids": [
@@ -5451,5 +5789,5 @@
   "release_set_id": "synsigra_curated_release_2026_07_17",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:b3881ff509fd0d2773be060080b2be3003636c4ddf5c90b8da2b09b3f3d9b4bb"
+  "source_catalog_sha256": "sha256:fc85976f64c5bcf5c97db0724f05efb21aa35a95f0ada0144f02a6fd3709ecf0"
 }

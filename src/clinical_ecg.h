@@ -88,7 +88,11 @@ namespace signal_synth
         clinical_episode_none = 0,
         clinical_episode_psvt = 1,
         clinical_episode_svarr = 2,
-        clinical_episode_repolarization = 3
+        clinical_episode_repolarization = 3,
+        clinical_episode_afib = 4,
+        clinical_episode_vt = 5,
+        clinical_episode_vf = 6,
+        clinical_episode_asystole = 7
     };
 
     enum clinical_dynamic_annotation_kind
@@ -231,6 +235,19 @@ namespace signal_synth
     };
 
     const unsigned int clinical_repolarization_episode_max = 4;
+    const unsigned int clinical_rhythm_episode_max = 64;
+
+    struct clinical_rhythm_episode_config
+    {
+        clinical_rhythm_episode_config();
+
+        clinical_episode_kind kind;
+        double start_seconds;
+        double duration_seconds;
+        double transition_seconds;
+        double rate_bpm;
+        unsigned long long seed;
+    };
 
     struct clinical_repolarization_episode_config
     {
@@ -264,10 +281,8 @@ namespace signal_synth
         unsigned int sinus_pause_every_n_beats;
         double sinus_pause_ratio;
         unsigned int pacing_non_capture_every_n_beats;
-        clinical_episode_kind episode_kind;
-        double episode_start_seconds;
-        double episode_duration_seconds;
-        double episode_rate_bpm;
+        unsigned int rhythm_episode_count;
+        clinical_rhythm_episode_config rhythm_episodes[clinical_rhythm_episode_max];
         unsigned int repolarization_episode_count;
         clinical_repolarization_episode_config repolarization_episodes[clinical_repolarization_episode_max];
     };

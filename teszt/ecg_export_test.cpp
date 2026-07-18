@@ -69,7 +69,7 @@ int main()
     document.description = "Deterministic export";
     document.duration_seconds = 8.0;
     document.tags.push_back("export");
-    document.ecg.set_seed(1);
+    document.ecg.set_seed(18);
 
     signal_synth::ecg_render_bundle render;
     signal_synth::ecg_document_render_result render_result;
@@ -174,9 +174,7 @@ int main()
     artifact_episode.ecg.clear_conditions();
     artifact_episode.ecg.add_condition(signal_synth::ecg_condition_psvt);
     artifact_episode.ecg.set_heart_rate_bpm(70.0);
-    artifact_episode.ecg.set_episode_start_seconds(2.0);
-    artifact_episode.ecg.set_episode_duration_seconds(4.0);
-    artifact_episode.ecg.set_episode_rate_bpm(180.0);
+    artifact_episode.ecg.add_rhythm_episode(signal_synth::ecg_episode_psvt, 2.0, 4.0, 0.2, 180.0, 7202);
     signal_synth::ecg_render_bundle clean_episode_render;
     ok &= check(signal_synth::render_ecg_document(artifact_episode, clean_episode_render, render_result), "clean_episode_truth_render");
     signal_synth::signal_quality_artifact_config artifact;

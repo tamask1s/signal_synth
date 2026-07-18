@@ -423,6 +423,59 @@ namespace
         }
     }
 
+    const char* rhythm_episode_name(signal_synth::clinical_episode_kind kind)
+    {
+        switch (kind)
+        {
+        case signal_synth::clinical_episode_afib: return "afib";
+        case signal_synth::clinical_episode_psvt: return "psvt";
+        case signal_synth::clinical_episode_svarr: return "svarr";
+        case signal_synth::clinical_episode_vt: return "vt";
+        case signal_synth::clinical_episode_vf: return "vf";
+        case signal_synth::clinical_episode_asystole: return "asystole";
+        case signal_synth::clinical_episode_none:
+        case signal_synth::clinical_episode_repolarization: return "";
+        }
+        return "";
+    }
+
+    void add_burden_metric(std::vector<signal_synth::measurement_truth>& output, const char* name, const char* unit, double value, double absolute_tolerance, double relative_tolerance_percent, const char* channel)
+    {
+        signal_synth::measurement_truth truth = make_truth(name, unit, signal_synth::measurement_valid, signal_synth::measurement_record, value, absolute_tolerance, relative_tolerance_percent, "");
+        truth.measurement.channel = channel;
+        output.push_back(truth);
+    }
+
+    void add_rhythm_burden_truth(const signal_synth::ecg_render_bundle& render, std::vector<signal_synth::measurement_truth>& output)
+    {
+        struct burden_group { const char* name; double duration; unsigned int count; };
+        burden_group groups[] = {{"afib",0.0,0},{"psvt",0.0,0},{"svarr",0.0,0},{"vt",0.0,0},{"vf",0.0,0},{"asystole",0.0,0}};
+        double total_duration = 0.0;
+        unsigned int total_count = 0;
+        for (unsigned int index = 0; index < render.record.episode_count(); ++index)
+        {
+            const signal_synth::clinical_episode_annotation& episode = render.record.episodes()[index];
+            const char* name = episode.present ? rhythm_episode_name(episode.kind) : "";
+            if (!name[0]) continue;
+            const double duration = episode.end_time_seconds - episode.start_time_seconds;
+            total_duration += duration;
+            ++total_count;
+            for (unsigned int group = 0; group < sizeof(groups) / sizeof(groups[0]); ++group)
+                if (std::string(groups[group].name) == name) { groups[group].duration += duration; ++groups[group].count; break; }
+        }
+        const double record_duration = render.document.duration_seconds;
+        add_burden_metric(output, "burden_duration", "s", total_duration, 0.050, 1.0, "all_rhythm_episodes");
+        add_burden_metric(output, "burden_fraction", "ratio", record_duration > 0.0 ? total_duration / record_duration : 0.0, 0.005, 0.0, "all_rhythm_episodes");
+        add_burden_metric(output, "episode_count", "count", total_count, 0.0, 0.0, "all_rhythm_episodes");
+        for (unsigned int group = 0; group < sizeof(groups) / sizeof(groups[0]); ++group)
+        {
+            if (!groups[group].count) continue;
+            add_burden_metric(output, "burden_duration", "s", groups[group].duration, 0.050, 1.0, groups[group].name);
+            add_burden_metric(output, "burden_fraction", "ratio", record_duration > 0.0 ? groups[group].duration / record_duration : 0.0, 0.005, 0.0, groups[group].name);
+            add_burden_metric(output, "episode_count", "count", groups[group].count, 0.0, 0.0, groups[group].name);
+        }
+    }
+
     bool same_descriptor(const signal_synth::measurement_value& truth, const signal_synth::measurement_value& prediction)
     {
         return truth.name == prediction.name && truth.unit == prediction.unit && truth.scope == prediction.scope && truth.channel == prediction.channel && truth.formula == prediction.formula;
@@ -670,7 +723,7 @@ namespace signal_synth
 
     bool measurement_target_supported(const std::string& target)
     {
-        return target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical" || target == "prv" || target == "respiratory_rate";
+        return target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical" || target == "prv" || target == "respiratory_rate" || target == "rhythm_burden";
     }
 
     bool measurement_ground_truth_from_render(const ecg_render_bundle& render, const std::string& target, std::vector<measurement_truth>& output, std::vector<std::string>& messages)
@@ -711,6 +764,11 @@ namespace signal_synth
         {
             if (!render.cardiorespiratory.respiration_available) { messages.push_back("respiratory-rate truth requires at least one respiratory coupling"); return false; }
             add_respiratory_rate_truth(render, output);
+        }
+        else if (target == "rhythm_burden")
+        {
+            if (!render.record.episode_count()) { messages.push_back("rhythm-burden truth requires at least one rhythm episode"); return false; }
+            add_rhythm_burden_truth(render, output);
         }
         else
         {

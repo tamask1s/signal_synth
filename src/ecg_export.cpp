@@ -140,6 +140,10 @@ namespace
         case signal_synth::clinical_episode_psvt: return "psvt";
         case signal_synth::clinical_episode_svarr: return "svarr";
         case signal_synth::clinical_episode_repolarization: return "dynamic_repolarization";
+        case signal_synth::clinical_episode_afib: return "afib";
+        case signal_synth::clinical_episode_vt: return "vt";
+        case signal_synth::clinical_episode_vf: return "vf";
+        case signal_synth::clinical_episode_asystole: return "asystole";
         }
         return "unknown";
     }

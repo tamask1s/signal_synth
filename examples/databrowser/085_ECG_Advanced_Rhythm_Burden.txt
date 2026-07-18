@@ -1,0 +1,23 @@
+// Multi-episode rhythm burden and critical-state detector stress with exact interval truth.
+#define OUTPUT_BASE ecg_advanced_rhythm_burden
+
+DataDelete();
+
+GenerateECGScenarioJSON(rhythm_markers, {
+  "schema_version": 2, "scenario_id": "advanced_rhythm_burden_v2", "name": "Advanced rhythm burden", "description": "Engineering stress sequence for AF, PSVT, VT, VF, asystole and SVARR detectors.", "author": "Synsigra", "tags": ["critical_state", "rhythm", "stress"], "duration_seconds": 40, "sample_rate_hz": 500, "seed": 83001,
+  "ecg": {"heart_rate_bpm": 70, "rr_variability_seconds": 0, "ectopic_every_n_beats": 0, "second_degree_av_pattern": "unspecified", "q_wave_territory": "unspecified", "rhythm_episodes": [{"type": "afib", "start_seconds": 3, "duration_seconds": 4, "transition_seconds": 0.25, "rate_bpm": 105, "seed": 83011}, {"type": "psvt", "start_seconds": 9, "duration_seconds": 4, "transition_seconds": 0.2, "rate_bpm": 180, "seed": 83012}, {"type": "vt", "start_seconds": 15, "duration_seconds": 4, "transition_seconds": 0.2, "rate_bpm": 150, "seed": 83013}, {"type": "vf", "start_seconds": 21, "duration_seconds": 4, "transition_seconds": 0.3, "rate_bpm": 0, "seed": 83014}, {"type": "asystole", "start_seconds": 27, "duration_seconds": 4, "transition_seconds": 0.2, "rate_bpm": 0, "seed": 83015}, {"type": "svarr", "start_seconds": 33, "duration_seconds": 4, "transition_seconds": 0.2, "rate_bpm": 165, "seed": 83016}], "flutter_conduction_pattern": "fixed", "pacing_mode": "ventricular", "pacing_non_capture_every_n_beats": 0, "fidelity_policy": "allow_parameterized", "conditions": [{"code": "SR", "severity": 1}]},
+  "ppg": {"enabled": false, "pulse_delay_ms": 180, "rise_time_ms": 120, "decay_time_ms": 300, "amplitude_au": 1, "baseline_au": 0, "dicrotic_delay_ms": 180, "dicrotic_width_ms": 80, "dicrotic_amplitude_ratio": 0.15}
+}, 1);
+
+GenerateECGScenarioJSON(rhythm_truth_channels, {
+  "schema_version": 2, "scenario_id": "advanced_rhythm_burden_v2", "name": "Advanced rhythm burden", "description": "Engineering stress sequence for AF, PSVT, VT, VF, asystole and SVARR detectors.", "author": "Synsigra", "tags": ["critical_state", "rhythm", "stress"], "duration_seconds": 40, "sample_rate_hz": 500, "seed": 83001,
+  "ecg": {"heart_rate_bpm": 70, "rr_variability_seconds": 0, "ectopic_every_n_beats": 0, "second_degree_av_pattern": "unspecified", "q_wave_territory": "unspecified", "rhythm_episodes": [{"type": "afib", "start_seconds": 3, "duration_seconds": 4, "transition_seconds": 0.25, "rate_bpm": 105, "seed": 83011}, {"type": "psvt", "start_seconds": 9, "duration_seconds": 4, "transition_seconds": 0.2, "rate_bpm": 180, "seed": 83012}, {"type": "vt", "start_seconds": 15, "duration_seconds": 4, "transition_seconds": 0.2, "rate_bpm": 150, "seed": 83013}, {"type": "vf", "start_seconds": 21, "duration_seconds": 4, "transition_seconds": 0.3, "rate_bpm": 0, "seed": 83014}, {"type": "asystole", "start_seconds": 27, "duration_seconds": 4, "transition_seconds": 0.2, "rate_bpm": 0, "seed": 83015}, {"type": "svarr", "start_seconds": 33, "duration_seconds": 4, "transition_seconds": 0.2, "rate_bpm": 165, "seed": 83016}], "flutter_conduction_pattern": "fixed", "pacing_mode": "ventricular", "pacing_non_capture_every_n_beats": 0, "fidelity_policy": "allow_parameterized", "conditions": [{"code": "SR", "severity": 1}]},
+  "ppg": {"enabled": false, "pulse_delay_ms": 180, "rise_time_ms": 120, "decay_time_ms": 300, "amplitude_au": 1, "baseline_au": 0, "dicrotic_delay_ms": 180, "dicrotic_width_ms": 80, "dicrotic_amplitude_ratio": 0.15}
+}, 2);
+
+SaveVarToFile(rhythm_markers, CatStrings(OUTPUT_BASE, _markers.bin), 100, 8);
+SaveVarToFile(rhythm_truth_channels, CatStrings(OUTPUT_BASE, _truth_channels.bin), 100, 8);
+DisplayData(rhythm_markers, fit_width,, A2, 001);
+DisplayData(rhythm_truth_channels, fit_width,, A2, 001);
+SavePic(rhythm_markers, CatStrings(OUTPUT_BASE, _markers.gif));
+SavePic(rhythm_truth_channels, CatStrings(OUTPUT_BASE, _truth_channels.gif));

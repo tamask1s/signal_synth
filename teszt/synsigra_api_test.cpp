@@ -33,10 +33,7 @@ namespace
                 "\"ectopic_every_n_beats\":0,"
                 "\"second_degree_av_pattern\":\"unspecified\","
                 "\"q_wave_territory\":\"unspecified\","
-                "\"episode_type\":\"none\","
-                "\"episode_start_seconds\":2,"
-                "\"episode_duration_seconds\":4,"
-                "\"episode_rate_bpm\":170,"
+                "\"rhythm_episodes\":[],"
                 "\"fidelity_policy\":\"allow_parameterized\","
                 "\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]"
             "},"
@@ -119,7 +116,7 @@ int main()
         && integration_contract.find("\"challenge_package\":\"synsigra_challenge_package_v2\"") != std::string::npos
         && integration_contract.find("\"submission\":\"synsigra_submission_v1\"") != std::string::npos
         && integration_contract.find("\"comparison_targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ppg_pulse_onset\",\"ecg_beat_classification\"]") != std::string::npos
-        && integration_contract.find("\"measurement_targets\":[\"morphology_assertions\",\"ecg_ppg_alignment\",\"ppg_optical\",\"prv\",\"respiratory_rate\"]") != std::string::npos, "integration_contract");
+        && integration_contract.find("\"measurement_targets\":[\"morphology_assertions\",\"ecg_ppg_alignment\",\"ppg_optical\",\"prv\",\"respiratory_rate\",\"rhythm_burden\"]") != std::string::npos, "integration_contract");
 
     signal_synth::synsigra_validation_result invalid;
     ok &= check(!signal_synth::synsigra_validate_scenario_json("{\"schema_version\":2}", invalid) && !invalid.success && !invalid.messages.empty(), "invalid_has_messages");

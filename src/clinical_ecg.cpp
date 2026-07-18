@@ -273,15 +273,14 @@ namespace signal_synth
             const int preexcitation = enum_value(config.rhythm.preexcitation);
             const int pacing_mode = enum_value(config.rhythm.pacing_mode);
             const int flutter_conduction_pattern = enum_value(config.rhythm.flutter_conduction_pattern);
-            const int episode_kind = enum_value(config.scenario.episode_kind);
             const int premature_origin = enum_value(config.scenario.premature_origin);
             const int qt_correction = enum_value(config.timing.qt_correction);
-            if (rhythm < clinical_rhythm_sinus || rhythm > clinical_rhythm_paced || av_conduction < clinical_av_normal || av_conduction > clinical_av_complete_block || intraventricular_conduction < clinical_iv_normal || intraventricular_conduction > clinical_iv_nonspecific_delay || preexcitation < clinical_preexcitation_none || preexcitation > clinical_preexcitation_wpw || pacing_mode < clinical_pacing_ventricular || pacing_mode > clinical_pacing_dual_chamber || flutter_conduction_pattern < clinical_flutter_fixed || flutter_conduction_pattern > clinical_flutter_cycle_2_3_4 || episode_kind < clinical_episode_none || episode_kind > clinical_episode_svarr || premature_origin < clinical_origin_pac || premature_origin > clinical_origin_paced || qt_correction < clinical_qt_fixed || qt_correction > clinical_qt_hodges)
+            if (rhythm < clinical_rhythm_sinus || rhythm > clinical_rhythm_paced || av_conduction < clinical_av_normal || av_conduction > clinical_av_complete_block || intraventricular_conduction < clinical_iv_normal || intraventricular_conduction > clinical_iv_nonspecific_delay || preexcitation < clinical_preexcitation_none || preexcitation > clinical_preexcitation_wpw || pacing_mode < clinical_pacing_ventricular || pacing_mode > clinical_pacing_dual_chamber || flutter_conduction_pattern < clinical_flutter_fixed || flutter_conduction_pattern > clinical_flutter_cycle_2_3_4 || premature_origin < clinical_origin_pac || premature_origin > clinical_origin_paced || qt_correction < clinical_qt_fixed || qt_correction > clinical_qt_hodges)
                 return false;
             const double timing_values[] = {config.timing.p_duration_ms, config.timing.pr_interval_ms, config.timing.qrs_duration_ms, config.timing.qrs_q_fraction, config.timing.qrs_r_fraction, config.timing.qrs_s_fraction, config.timing.t_duration_ms, config.timing.t_peak_fraction, config.timing.qt_interval_ms, config.timing.qtc_ms};
             const double morphology_values[] = {config.morphology.p_amplitude_mv, config.morphology.q_amplitude_mv, config.morphology.r_amplitude_mv, config.morphology.s_amplitude_mv, config.morphology.t_amplitude_mv, config.morphology.st_j_amplitude_mv, config.morphology.st_slope_mv_per_second, config.morphology.p_axis_degrees, config.morphology.qrs_axis_degrees, config.morphology.t_axis_degrees, config.morphology.p_elevation_degrees, config.morphology.qrs_elevation_degrees, config.morphology.t_elevation_degrees, config.morphology.presence_threshold_mv};
             const double rhythm_values[] = {config.rhythm.heart_rate_bpm, config.rhythm.atrial_rate_bpm, config.rhythm.ventricular_escape_rate_bpm, config.rhythm.rr_variability_seconds, config.rhythm.minimum_rr_seconds, config.rhythm.maximum_rr_seconds, config.rhythm.hrv_lf_hf_ratio, config.rhythm.hrv_lf_center_hz, config.rhythm.hrv_lf_bandwidth_hz, config.rhythm.hrv_hf_center_hz, config.rhythm.hrv_hf_bandwidth_hz, config.rhythm.hrv_respiratory_frequency_hz, config.rhythm.hrv_respiratory_amplitude_seconds, config.rhythm.hrv_respiratory_phase_radians, config.rhythm.activity_start_seconds, config.rhythm.activity_duration_seconds, config.rhythm.activity_intensity, config.rhythm.first_degree_pr_ms, config.rhythm.wenckebach_pr_increment_ms};
-            const double scenario_values[] = {config.scenario.premature_coupling_ratio, config.scenario.compensatory_pause_ratio, config.scenario.sinus_pause_ratio, config.scenario.episode_start_seconds, config.scenario.episode_duration_seconds, config.scenario.episode_rate_bpm};
+            const double scenario_values[] = {config.scenario.premature_coupling_ratio, config.scenario.compensatory_pause_ratio, config.scenario.sinus_pause_ratio};
             for (double value : timing_values)
                 if (!finite(value))
                     return false;
@@ -320,8 +319,20 @@ namespace signal_synth
                 return false;
             if (config.scenario.pacing_non_capture_every_n_beats == 1)
                 return false;
-            if (config.scenario.episode_kind != clinical_episode_none && (config.scenario.episode_start_seconds < 0.0 || config.scenario.episode_duration_seconds <= 0.0 || config.scenario.episode_rate_bpm <= 100.0 || config.scenario.episode_rate_bpm > 400.0 || config.scenario.episode_rate_bpm <= config.rhythm.heart_rate_bpm))
+            if (config.scenario.rhythm_episode_count > clinical_rhythm_episode_max)
                 return false;
+            for (unsigned int index = 0; index < config.scenario.rhythm_episode_count; ++index)
+            {
+                const clinical_rhythm_episode_config& episode = config.scenario.rhythm_episodes[index];
+                const int kind = enum_value(episode.kind);
+                const bool no_rate = episode.kind == clinical_episode_vf || episode.kind == clinical_episode_asystole;
+                const bool tachycardia = episode.kind == clinical_episode_psvt || episode.kind == clinical_episode_svarr || episode.kind == clinical_episode_vt;
+                const bool requires_waveform_transition = episode.kind == clinical_episode_afib || episode.kind == clinical_episode_vf;
+                if (kind < clinical_episode_psvt || kind > clinical_episode_asystole || episode.kind == clinical_episode_repolarization || !finite(episode.start_seconds) || !finite(episode.duration_seconds) || !finite(episode.transition_seconds) || !finite(episode.rate_bpm) || episode.start_seconds < 0.0 || episode.duration_seconds <= 0.0 || episode.transition_seconds < 0.0 || episode.transition_seconds > 0.5 * episode.duration_seconds || (requires_waveform_transition && episode.transition_seconds < 0.02) || (no_rate ? episode.rate_bpm != 0.0 : episode.rate_bpm < 10.0 || episode.rate_bpm > 400.0) || (tachycardia && episode.rate_bpm <= config.rhythm.heart_rate_bpm))
+                    return false;
+                if (index && config.scenario.rhythm_episodes[index - 1].start_seconds + config.scenario.rhythm_episodes[index - 1].duration_seconds > episode.start_seconds)
+                    return false;
+            }
             if (config.scenario.repolarization_episode_count > clinical_repolarization_episode_max)
                 return false;
             for (unsigned int index = 0; index < config.scenario.repolarization_episode_count; ++index)
@@ -339,7 +350,7 @@ namespace signal_synth
                 return false;
             if (rhythm != clinical_rhythm_sinus && (config.scenario.premature_every_n_beats > 0 || config.scenario.sinus_pause_every_n_beats > 0))
                 return false;
-            if (config.scenario.episode_kind != clinical_episode_none && (rhythm != clinical_rhythm_sinus || av_conduction != clinical_av_normal || config.scenario.premature_every_n_beats > 0 || config.scenario.sinus_pause_every_n_beats > 0))
+            if (config.scenario.rhythm_episode_count && (rhythm != clinical_rhythm_sinus || av_conduction != clinical_av_normal || config.scenario.premature_every_n_beats > 0 || config.scenario.sinus_pause_every_n_beats > 0))
                 return false;
             return true;
         }
@@ -596,51 +607,76 @@ namespace signal_synth
             }
         }
 
+        void add_rhythm_episode_beat(const clinical_ecg_config& config, const clinical_rhythm_episode_config& episode, double r_time, double previous_r, double rr, generated_clinical_data& output)
+        {
+            if (episode.kind == clinical_episode_psvt || episode.kind == clinical_episode_svarr)
+            {
+                add_svt_beat(config, r_time, previous_r, rr, output);
+                return;
+            }
+            const clinical_ventricular_origin origin = episode.kind == clinical_episode_vt ? clinical_origin_vt : clinical_origin_conducted;
+            clinical_beat_annotation beat = make_beat(config, output.beats.size(), r_time, previous_r < 0.0 ? rr : r_time - previous_r, -1, 0.0, origin);
+            beat.rhythm = episode.kind == clinical_episode_vt ? clinical_rhythm_ventricular_tachycardia : clinical_rhythm_atrial_fibrillation;
+            beat.p_present = false;
+            output.beats.push_back(beat);
+        }
+
         void generate_episode_timeline(const clinical_ecg_config& config, double duration_seconds, generated_clinical_data& output)
         {
             const double baseline_rr = 60.0 / config.rhythm.heart_rate_bpm;
-            const double episode_rr = 60.0 / config.scenario.episode_rate_bpm;
-            const double episode_start = config.scenario.episode_start_seconds;
-            const double episode_end = episode_start + config.scenario.episode_duration_seconds;
-            const double transition_seconds = std::min(0.5, 0.5 * std::min(baseline_rr, episode_rr));
             double previous_r = -1.0;
-            for (double r_time = 0.5; r_time < duration_seconds && r_time < episode_start; r_time += baseline_rr)
+            double next_baseline_r = 0.5;
+            for (unsigned int episode_index = 0; episode_index < config.scenario.rhythm_episode_count; ++episode_index)
             {
-                add_sinus_beat(config, r_time, previous_r, baseline_rr, output);
-                previous_r = r_time;
+                const clinical_rhythm_episode_config& config_episode = config.scenario.rhythm_episodes[episode_index];
+                const double episode_start = config_episode.start_seconds;
+                const double episode_end = std::min(duration_seconds, episode_start + config_episode.duration_seconds);
+                while (next_baseline_r < duration_seconds && next_baseline_r < episode_start)
+                {
+                    add_sinus_beat(config, next_baseline_r, previous_r, baseline_rr, output);
+                    previous_r = next_baseline_r;
+                    next_baseline_r += baseline_rr;
+                }
+
+                clinical_episode_annotation annotation = {};
+                annotation.kind = config_episode.kind;
+                annotation.start_time_seconds = episode_start;
+                annotation.end_time_seconds = episode_end;
+                annotation.first_beat_index = NO_BEAT;
+                annotation.last_beat_index = NO_BEAT;
+                annotation.onset_transition_start_seconds = std::max(0.0, episode_start - config_episode.transition_seconds);
+                annotation.onset_transition_end_seconds = std::min(duration_seconds, episode_start + config_episode.transition_seconds);
+                annotation.offset_transition_start_seconds = std::max(0.0, episode_end - config_episode.transition_seconds);
+                annotation.offset_transition_end_seconds = std::min(duration_seconds, episode_end + config_episode.transition_seconds);
+                annotation.present = episode_start < duration_seconds && episode_end > episode_start;
+
+                if (config_episode.kind != clinical_episode_vf && config_episode.kind != clinical_episode_asystole && annotation.present)
+                {
+                    double r_time = episode_start;
+                    unsigned long long cycle = 0;
+                    while (r_time < episode_end)
+                    {
+                        double rr = 60.0 / config_episode.rate_bpm;
+                        const double variability = config_episode.kind == clinical_episode_afib ? 0.18 : config_episode.kind == clinical_episode_svarr ? 0.04 : 0.0;
+                        rr = std::max(config.rhythm.minimum_rr_seconds, std::min(config.rhythm.maximum_rr_seconds, rr * (1.0 + variability * deterministic_normal(config_episode.seed, cycle))));
+                        if (annotation.first_beat_index == NO_BEAT)
+                            annotation.first_beat_index = output.beats.size();
+                        add_rhythm_episode_beat(config, config_episode, r_time, previous_r, rr, output);
+                        previous_r = r_time;
+                        annotation.last_beat_index = output.beats.back().beat_index;
+                        r_time += rr;
+                        ++cycle;
+                    }
+                }
+                output.episodes.push_back(annotation);
+                next_baseline_r = std::max(episode_end, previous_r < 0.0 ? episode_end : previous_r + baseline_rr);
             }
 
-            clinical_episode_annotation episode = {};
-            episode.kind = config.scenario.episode_kind;
-            episode.start_time_seconds = episode_start;
-            episode.end_time_seconds = episode_end;
-            episode.first_beat_index = NO_BEAT;
-            episode.last_beat_index = NO_BEAT;
-            episode.onset_transition_start_seconds = std::max(0.0, episode_start - transition_seconds);
-            episode.onset_transition_end_seconds = std::min(duration_seconds, episode_start + transition_seconds);
-            episode.offset_transition_start_seconds = std::max(0.0, episode_end - transition_seconds);
-            episode.offset_transition_end_seconds = std::min(duration_seconds, episode_end + transition_seconds);
-            episode.onset_transition_start_sample_index = 0;
-            episode.onset_transition_end_sample_index = 0;
-            episode.offset_transition_start_sample_index = 0;
-            episode.offset_transition_end_sample_index = 0;
-            episode.present = false;
-            for (double r_time = episode_start; r_time < duration_seconds && r_time < episode_end; r_time += episode_rr)
+            while (next_baseline_r < duration_seconds)
             {
-                if (episode.first_beat_index == NO_BEAT)
-                    episode.first_beat_index = output.beats.size();
-                add_svt_beat(config, r_time, previous_r, episode_rr, output);
-                previous_r = r_time;
-                episode.last_beat_index = output.beats.back().beat_index;
-                episode.present = true;
-            }
-            output.episodes.push_back(episode);
-
-            const double post_start = previous_r < 0.0 ? 0.5 : previous_r + baseline_rr;
-            for (double r_time = std::max(post_start, episode_end + 0.001); r_time < duration_seconds; r_time += baseline_rr)
-            {
-                add_sinus_beat(config, r_time, previous_r, baseline_rr, output);
-                previous_r = r_time;
+                add_sinus_beat(config, next_baseline_r, previous_r, baseline_rr, output);
+                previous_r = next_baseline_r;
+                next_baseline_r += baseline_rr;
             }
         }
 
@@ -870,6 +906,28 @@ namespace signal_synth
         {
             for (int source = 0; source < clinical_source_count; ++source)
                 sources[source].assign(output.sample_count, vec3{0.0, 0.0, 0.0});
+            for (unsigned int episode_index = 0; episode_index < config.scenario.rhythm_episode_count; ++episode_index)
+            {
+                const clinical_rhythm_episode_config& episode = config.scenario.rhythm_episodes[episode_index];
+                if (episode.kind != clinical_episode_afib && episode.kind != clinical_episode_vf)
+                    continue;
+                const clinical_ecg_source source = episode.kind == clinical_episode_afib ? clinical_source_atrial : clinical_source_ventricular;
+                const vec3 axis = source_vector(config, source, episode.kind == clinical_episode_afib ? 0.012 : 0.22, episode.kind == clinical_episode_afib ? config.morphology.p_axis_degrees : config.morphology.qrs_axis_degrees + 35.0, episode.kind == clinical_episode_afib ? config.morphology.p_elevation_degrees : config.morphology.qrs_elevation_degrees);
+                const unsigned int first = static_cast<unsigned int>(std::max(0.0, std::floor(episode.start_seconds * output.sampling_rate_hz)));
+                const unsigned int last = std::min(output.sample_count, static_cast<unsigned int>(std::ceil((episode.start_seconds + episode.duration_seconds) * output.sampling_rate_hz)));
+                const double phase1 = TWO_PI * deterministic_unit(episode.seed, 101);
+                const double phase2 = TWO_PI * deterministic_unit(episode.seed, 102);
+                const double phase3 = TWO_PI * deterministic_unit(episode.seed, 103);
+                for (unsigned int sample = first; sample < last; ++sample)
+                {
+                    const double time = static_cast<double>(sample) / output.sampling_rate_hz;
+                    const double envelope = smooth_episode_envelope(time, episode.start_seconds, episode.duration_seconds, episode.transition_seconds);
+                    const double value = episode.kind == clinical_episode_afib
+                        ? std::sin(TWO_PI * 6.1 * time + phase1) + 0.6 * std::sin(TWO_PI * 7.3 * time + phase2)
+                        : std::sin(TWO_PI * 4.7 * time + phase1) + 0.72 * std::sin(TWO_PI * 6.9 * time + phase2) + 0.38 * std::sin(TWO_PI * 9.4 * time + phase3);
+                    sources[source][sample] = add(sources[source][sample], scale(axis, envelope * value));
+                }
+            }
             if (config.rhythm.rhythm == clinical_rhythm_atrial_fibrillation)
             {
                 const vec3 fibrillation_axis = source_vector(config, clinical_source_atrial, 0.015, config.morphology.p_axis_degrees, config.morphology.p_elevation_degrees);
@@ -1161,7 +1219,7 @@ namespace signal_synth
                 episode.onset_transition_end_sample_index = sample_index(episode.onset_transition_end_seconds, output.sampling_rate_hz, output.sample_count);
                 episode.offset_transition_start_sample_index = sample_index(episode.offset_transition_start_seconds, output.sampling_rate_hz, output.sample_count);
                 episode.offset_transition_end_sample_index = sample_index(episode.offset_transition_end_seconds, output.sampling_rate_hz, output.sample_count);
-                episode.present = episode.present && episode.first_beat_index != NO_BEAT && episode.last_beat_index != NO_BEAT && episode.start_time_seconds < static_cast<double>(output.sample_count) / output.sampling_rate_hz;
+                episode.present = episode.present && episode.end_time_seconds > episode.start_time_seconds && episode.start_time_seconds < static_cast<double>(output.sample_count) / output.sampling_rate_hz;
             }
         }
 
@@ -1292,8 +1350,13 @@ namespace signal_synth
     {
     }
 
+    clinical_rhythm_episode_config::clinical_rhythm_episode_config()
+        : kind(clinical_episode_psvt), start_seconds(0.0), duration_seconds(0.0), transition_seconds(0.0), rate_bpm(170.0), seed(0)
+    {
+    }
+
     clinical_scenario_config::clinical_scenario_config()
-        : premature_every_n_beats(0), premature_origin(clinical_origin_pvc), premature_coupling_ratio(0.65), compensatory_pause_ratio(1.35), sinus_pause_every_n_beats(0), sinus_pause_ratio(2.0), pacing_non_capture_every_n_beats(0), episode_kind(clinical_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), repolarization_episode_count(0)
+        : premature_every_n_beats(0), premature_origin(clinical_origin_pvc), premature_coupling_ratio(0.65), compensatory_pause_ratio(1.35), sinus_pause_every_n_beats(0), sinus_pause_ratio(2.0), pacing_non_capture_every_n_beats(0), rhythm_episode_count(0), repolarization_episode_count(0)
     {
     }
 
@@ -1535,7 +1598,7 @@ namespace signal_synth
             generated.sampling_rate_hz = implementation_->config.sampling_rate_hz;
             generated.sample_count = sample_count;
             const double duration = static_cast<double>(sample_count) / generated.sampling_rate_hz;
-            if (implementation_->config.scenario.episode_kind != clinical_episode_none)
+            if (implementation_->config.scenario.rhythm_episode_count)
                 generate_episode_timeline(implementation_->config, duration, generated);
             else if (implementation_->config.rhythm.rhythm == clinical_rhythm_atrial_fibrillation)
                 generate_af_timeline(implementation_->config, duration, generated);

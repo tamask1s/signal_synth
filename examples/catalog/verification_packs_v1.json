@@ -1,11 +1,45 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "2.1",
+  "version": "2.2",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
   "packs": [
+    {
+      "pack_id": "advanced_rhythm_burden_v1",
+      "path": "../packs/advanced_rhythm_burden_v1.json",
+      "modality": ["ECG"],
+      "targets": ["rhythm_episode", "rhythm_burden"],
+      "difficulty": ["regression", "stress"],
+      "recommended_profile": "stress",
+      "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
+      "scoring_mode": "local",
+      "feature_tags": ["afib", "psvt", "vt", "vf", "asystole", "burden", "critical_state"],
+      "release_status": "beta",
+      "release_date": "2026-07-17",
+      "deprecation_message": "",
+      "recommended_for": [
+        "Rhythm episode onset, offset and class detector QA",
+        "AF, PSVT and VT burden measurement QA",
+        "VF and asystole critical-state detector engineering stress"
+      ],
+      "not_recommended_for": [
+        "Clinical arrhythmia validation or certification",
+        "Patient risk stratification",
+        "Therapy or alarm-system safety claims"
+      ],
+      "changelog": [{"version": "1.0", "date": "2026-07-17", "changes": ["Initial beta pack with multi-episode interval truth, class burden scoring, deterministic VF and beat-free asystole."]}],
+      "generator_compatibility": {
+        "minimum_generator_version": "0.6.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [2],
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1",
+        "local_verifier_min_version": "0.6.0"
+      }
+    },
     {
       "pack_id": "r_peak_stress_v1",
       "path": "../packs/r_peak_stress_v1.json",

@@ -16,7 +16,7 @@ namespace signal_synth
     namespace
     {
         const unsigned int SCENARIO_SCHEMA_VERSION = 2;
-        const unsigned int SCENARIO_ENGINE_VERSION = 14;
+        const unsigned int SCENARIO_ENGINE_VERSION = 15;
         const unsigned long long DEFAULT_SEED = 0x5343454e4152494fULL;
         const ecg_condition_code NO_CONDITION = ecg_condition_count;
 
@@ -87,10 +87,24 @@ namespace signal_synth
             return raw >= ecg_q_wave_unspecified && raw <= ecg_q_wave_lateral;
         }
 
-        bool valid_episode_type(ecg_episode_type value)
+        bool valid_episode_type(ecg_rhythm_episode_type value)
         {
             const int raw = enum_value(value);
-            return raw >= ecg_episode_none && raw <= ecg_episode_svarr;
+            return raw >= ecg_episode_afib && raw <= ecg_episode_asystole;
+        }
+
+        clinical_episode_kind clinical_episode_type(ecg_rhythm_episode_type value)
+        {
+            switch (value)
+            {
+            case ecg_episode_afib: return clinical_episode_afib;
+            case ecg_episode_psvt: return clinical_episode_psvt;
+            case ecg_episode_svarr: return clinical_episode_svarr;
+            case ecg_episode_vt: return clinical_episode_vt;
+            case ecg_episode_vf: return clinical_episode_vf;
+            case ecg_episode_asystole: return clinical_episode_asystole;
+            }
+            return clinical_episode_none;
         }
 
         bool valid_flutter_pattern(ecg_flutter_conduction_pattern value)
@@ -458,17 +472,14 @@ namespace signal_synth
         unsigned int ectopic_every_n_beats;
         ecg_second_degree_av_pattern second_degree_pattern;
         ecg_q_wave_territory q_wave_territory;
-        ecg_episode_type episode_type;
-        double episode_start_seconds;
-        double episode_duration_seconds;
-        double episode_rate_bpm;
+        std::vector<ecg_rhythm_episode> rhythm_episodes;
         ecg_flutter_conduction_pattern flutter_conduction_pattern;
         ecg_pacing_mode pacing_mode;
         unsigned int pacing_non_capture_every_n_beats;
         ecg_scenario_fidelity_policy fidelity_policy;
 
         implementation()
-            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), hrv_respiratory_phase_radians(-1.0), qt_adaptation_enabled(false), qt_adaptation_model(ecg_qt_adaptation_fridericia), qt_adaptation_qtc_ms(400.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), retain_source_channels(true), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), flutter_conduction_pattern(ecg_flutter_fixed), pacing_mode(ecg_pacing_ventricular), pacing_non_capture_every_n_beats(0), fidelity_policy(ecg_fidelity_allow_parameterized)
+            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), hrv_respiratory_phase_radians(-1.0), qt_adaptation_enabled(false), qt_adaptation_model(ecg_qt_adaptation_fridericia), qt_adaptation_qtc_ms(400.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), retain_source_channels(true), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), flutter_conduction_pattern(ecg_flutter_fixed), pacing_mode(ecg_pacing_ventricular), pacing_non_capture_every_n_beats(0), fidelity_policy(ecg_fidelity_allow_parameterized)
         {
             for (unsigned int index = 0; index < ecg_morphology_control_count; ++index)
             {
@@ -624,7 +635,8 @@ namespace signal_synth
             const ecg_condition_code sinus_modifiers[] = {ecg_condition_stach, ecg_condition_sarrh, ecg_condition_sbrad};
             const ecg_condition_code non_sinus_rhythms[] = {ecg_condition_afib, ecg_condition_aflt, ecg_condition_svtac, ecg_condition_pace};
             const ecg_condition_code episode_rhythms[] = {ecg_condition_svarr, ecg_condition_psvt};
-            const bool episode_condition = has_condition(scenario.conditions, ecg_condition_svarr) || has_condition(scenario.conditions, ecg_condition_psvt);
+            const bool episode_statement = has_condition(scenario.conditions, ecg_condition_svarr) || has_condition(scenario.conditions, ecg_condition_psvt);
+            const bool episode_condition = episode_statement || !scenario.rhythm_episodes.empty();
             const bool flutter_condition = has_condition(scenario.conditions, ecg_condition_aflt);
             const bool paced_condition = has_condition(scenario.conditions, ecg_condition_pace);
             for (unsigned int modifier = 0; modifier < sizeof(sinus_modifiers) / sizeof(sinus_modifiers[0]); ++modifier)
@@ -701,28 +713,49 @@ namespace signal_synth
                 add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, ecg_condition_qwave, "q_wave_territory requires the QWAVE condition.");
             if (!ectopic_origin && scenario.ectopic_every_n_beats != 0)
                 add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, NO_CONDITION, ecg_condition_prc, "ectopic_every_n_beats requires PAC or PVC.");
-            if (!episode_condition && (scenario.episode_type != ecg_episode_none || scenario.episode_start_seconds != 2.0 || scenario.episode_duration_seconds != 4.0 || scenario.episode_rate_bpm != 170.0))
-                add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, NO_CONDITION, ecg_condition_svarr, "Episode parameters require PSVT or SVARR.");
             if (!flutter_condition && scenario.flutter_conduction_pattern != ecg_flutter_fixed)
                 add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, NO_CONDITION, ecg_condition_aflt, "flutter_conduction_pattern requires AFLT.");
             if (!paced_condition && (scenario.pacing_mode != ecg_pacing_ventricular || scenario.pacing_non_capture_every_n_beats != 0))
                 add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, NO_CONDITION, ecg_condition_pace, "Pacing parameters require PACE.");
             if (episode_condition)
             {
-                if (scenario.episode_type == ecg_episode_svarr && has_condition(scenario.conditions, ecg_condition_psvt))
-                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, ecg_condition_psvt, ecg_condition_svarr, "PSVT requires psvt episode_type or the default episode type.");
-                if (!std::isfinite(scenario.episode_start_seconds) || scenario.episode_start_seconds < 0.0)
-                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "episode_start_seconds must be non-negative.");
-                if (!std::isfinite(scenario.episode_duration_seconds) || scenario.episode_duration_seconds <= 0.0)
-                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "episode_duration_seconds must be positive.");
-                if (!std::isfinite(scenario.episode_rate_bpm) || scenario.episode_rate_bpm <= 100.0 || scenario.episode_rate_bpm > 400.0)
-                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "episode_rate_bpm must be above 100 and at most 400.");
-                if (scenario.heart_rate_bpm > 0.0 && scenario.episode_rate_bpm <= scenario.heart_rate_bpm)
-                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "episode_rate_bpm must exceed the sinus baseline heart_rate_bpm.");
-                if (scenario.episode_duration_seconds < 2.0 * 60.0 / std::max(1.0, scenario.episode_rate_bpm))
-                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "episode_duration_seconds must contain at least two tachycardia beats.");
+                if (scenario.rhythm_episodes.empty())
+                    add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, NO_CONDITION, NO_CONDITION, "PSVT and SVARR statements require a matching rhythm episode.");
+                if (scenario.rhythm_episodes.size() > clinical_rhythm_episode_max)
+                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "Too many rhythm episodes.");
+                bool has_psvt_episode = false;
+                bool has_svarr_episode = false;
+                for (std::size_t left = 0; left < scenario.rhythm_episodes.size(); ++left)
+                {
+                    const ecg_rhythm_episode& episode = scenario.rhythm_episodes[left];
+                    const bool no_rate = episode.type == ecg_episode_vf || episode.type == ecg_episode_asystole;
+                    const bool tachycardia = episode.type == ecg_episode_psvt || episode.type == ecg_episode_svarr || episode.type == ecg_episode_vt;
+                    const bool requires_waveform_transition = episode.type == ecg_episode_afib || episode.type == ecg_episode_vf;
+                    has_psvt_episode = has_psvt_episode || episode.type == ecg_episode_psvt;
+                    has_svarr_episode = has_svarr_episode || episode.type == ecg_episode_svarr;
+                    if (!valid_episode_type(episode.type) || !std::isfinite(episode.start_seconds) || !std::isfinite(episode.duration_seconds) || !std::isfinite(episode.transition_seconds) || !std::isfinite(episode.rate_bpm) || episode.start_seconds < 0.0 || episode.duration_seconds <= 0.0 || episode.transition_seconds < 0.0 || episode.transition_seconds > 0.5 * episode.duration_seconds || (requires_waveform_transition && episode.transition_seconds < 0.02) || (no_rate ? episode.rate_bpm != 0.0 : episode.rate_bpm < 10.0 || episode.rate_bpm > 400.0) || (tachycardia && episode.rate_bpm <= 100.0))
+                        add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "Invalid rhythm episode configuration.");
+                    if (tachycardia && scenario.heart_rate_bpm > 0.0 && episode.rate_bpm <= scenario.heart_rate_bpm)
+                        add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "Tachycardia episode rate must exceed the sinus baseline heart rate.");
+                    if (!no_rate && episode.duration_seconds < 2.0 * 60.0 / std::max(1.0, episode.rate_bpm))
+                        add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "A rhythm episode with beats must contain at least two beats.");
+                    for (std::size_t right = left + 1; right < scenario.rhythm_episodes.size(); ++right)
+                    {
+                        const double left_end = episode.start_seconds + episode.duration_seconds;
+                        const double right_end = scenario.rhythm_episodes[right].start_seconds + scenario.rhythm_episodes[right].duration_seconds;
+                        if (episode.start_seconds < right_end && scenario.rhythm_episodes[right].start_seconds < left_end)
+                            add_issue(report, ecg_issue_error, ecg_issue_condition_conflict, NO_CONDITION, NO_CONDITION, "Rhythm episodes must not overlap.");
+                    }
+                }
+                if (has_condition(scenario.conditions, ecg_condition_psvt) && !has_psvt_episode)
+                    add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, ecg_condition_psvt, NO_CONDITION, "PSVT requires a PSVT rhythm episode.");
+                if (has_condition(scenario.conditions, ecg_condition_svarr) && !has_svarr_episode)
+                    add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, ecg_condition_svarr, NO_CONDITION, "SVARR requires a SVARR rhythm episode.");
+                for (const scenario_condition& condition : scenario.conditions)
+                    if (condition.code != ecg_condition_sr && condition.code != ecg_condition_psvt && condition.code != ecg_condition_svarr)
+                        add_issue(report, ecg_issue_error, ecg_issue_condition_conflict, NO_CONDITION, condition.code, "Rhythm episodes currently compose only with an SR baseline and matching PSVT or SVARR statements.");
                 if (scenario.rr_variability_seconds > 0.0)
-                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "The first episode timeline pack does not apply rr_variability_seconds.");
+                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "The rhythm episode timeline does not apply rr_variability_seconds.");
             }
             if (scenario.qt_adaptation_enabled)
             {
@@ -809,7 +842,7 @@ namespace signal_synth
             if (scenario.heart_rate_bpm > 0.0)
             {
                 if (episode_condition && scenario.heart_rate_bpm > 100.0)
-                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "Episode scenarios use heart_rate_bpm for the sinus baseline; use episode_rate_bpm for tachycardia.");
+                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "Rhythm episodes use heart_rate_bpm for the sinus baseline; set each episode rate separately.");
                 if (has_condition(scenario.conditions, ecg_condition_stach) && scenario.heart_rate_bpm <= 100.0)
                     add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, ecg_condition_stach, NO_CONDITION, "STACH requires heart_rate_bpm above 100.");
                 if (has_condition(scenario.conditions, ecg_condition_sbrad) && scenario.heart_rate_bpm >= 60.0)
@@ -1165,14 +1198,17 @@ namespace signal_synth
                 if (scenario.qt_adaptation_model == ecg_qt_adaptation_fixed)
                     config.timing.qt_interval_ms = scenario.qt_adaptation_qtc_ms;
             }
-            const bool episode_condition = has_condition(scenario.conditions, ecg_condition_psvt) || has_condition(scenario.conditions, ecg_condition_svarr);
-            if (episode_condition)
+            config.scenario.rhythm_episode_count = static_cast<unsigned int>(scenario.rhythm_episodes.size());
+            for (unsigned int index = 0; index < config.scenario.rhythm_episode_count; ++index)
             {
-                const ecg_episode_type type = scenario.episode_type != ecg_episode_none ? scenario.episode_type : has_condition(scenario.conditions, ecg_condition_psvt) ? ecg_episode_psvt : ecg_episode_svarr;
-                config.scenario.episode_kind = type == ecg_episode_svarr ? clinical_episode_svarr : clinical_episode_psvt;
-                config.scenario.episode_start_seconds = scenario.episode_start_seconds;
-                config.scenario.episode_duration_seconds = scenario.episode_duration_seconds;
-                config.scenario.episode_rate_bpm = scenario.episode_rate_bpm;
+                const ecg_rhythm_episode& input = scenario.rhythm_episodes[index];
+                clinical_rhythm_episode_config& output = config.scenario.rhythm_episodes[index];
+                output.kind = clinical_episode_type(input.type);
+                output.start_seconds = input.start_seconds;
+                output.duration_seconds = input.duration_seconds;
+                output.transition_seconds = input.transition_seconds;
+                output.rate_bpm = input.rate_bpm;
+                output.seed = input.seed ? input.seed : scenario.seed ^ (0x455049534f444500ULL + index);
             }
 
             if (has_condition(scenario.conditions, ecg_condition_afib))
@@ -2900,56 +2936,41 @@ namespace signal_synth
         return implementation_->q_wave_territory;
     }
 
-    bool ecg_qa_scenario::set_episode_type(ecg_episode_type value)
+    bool ecg_qa_scenario::add_rhythm_episode(ecg_rhythm_episode_type type, double start_seconds, double duration_seconds, double transition_seconds, double rate_bpm, unsigned long long seed)
     {
-        if (!valid_episode_type(value))
+        const bool no_rate = type == ecg_episode_vf || type == ecg_episode_asystole;
+        const bool requires_waveform_transition = type == ecg_episode_afib || type == ecg_episode_vf;
+        if (!valid_episode_type(type) || !std::isfinite(start_seconds) || !std::isfinite(duration_seconds) || !std::isfinite(transition_seconds) || !std::isfinite(rate_bpm) || start_seconds < 0.0 || start_seconds > 86400.0 || duration_seconds <= 0.0 || duration_seconds > 86400.0 || transition_seconds < 0.0 || transition_seconds > 0.5 * duration_seconds || (requires_waveform_transition && transition_seconds < 0.02) || (no_rate ? rate_bpm != 0.0 : rate_bpm < 10.0 || rate_bpm > 400.0) || implementation_->rhythm_episodes.size() >= clinical_rhythm_episode_max)
             return false;
-        implementation_->episode_type = value;
+        const double end_seconds = start_seconds + duration_seconds;
+        for (std::size_t index = 0; index < implementation_->rhythm_episodes.size(); ++index)
+        {
+            const ecg_rhythm_episode& existing = implementation_->rhythm_episodes[index];
+            if (start_seconds < existing.start_seconds + existing.duration_seconds && existing.start_seconds < end_seconds)
+                return false;
+        }
+        ecg_rhythm_episode episode = {type, start_seconds, duration_seconds, transition_seconds, rate_bpm, seed};
+        implementation_->rhythm_episodes.push_back(episode);
+        std::sort(implementation_->rhythm_episodes.begin(), implementation_->rhythm_episodes.end(), [](const ecg_rhythm_episode& left, const ecg_rhythm_episode& right) { return left.start_seconds < right.start_seconds; });
         return true;
     }
 
-    ecg_episode_type ecg_qa_scenario::episode_type() const
+    void ecg_qa_scenario::clear_rhythm_episodes()
     {
-        return implementation_->episode_type;
+        implementation_->rhythm_episodes.clear();
     }
 
-    bool ecg_qa_scenario::set_episode_start_seconds(double value)
+    unsigned int ecg_qa_scenario::rhythm_episode_count() const
     {
-        if (!std::isfinite(value) || value < 0.0 || value > 86400.0)
+        return static_cast<unsigned int>(implementation_->rhythm_episodes.size());
+    }
+
+    bool ecg_qa_scenario::rhythm_episode(unsigned int index, ecg_rhythm_episode& output) const
+    {
+        if (index >= implementation_->rhythm_episodes.size())
             return false;
-        implementation_->episode_start_seconds = value;
+        output = implementation_->rhythm_episodes[index];
         return true;
-    }
-
-    double ecg_qa_scenario::episode_start_seconds() const
-    {
-        return implementation_->episode_start_seconds;
-    }
-
-    bool ecg_qa_scenario::set_episode_duration_seconds(double value)
-    {
-        if (!std::isfinite(value) || value <= 0.0 || value > 86400.0)
-            return false;
-        implementation_->episode_duration_seconds = value;
-        return true;
-    }
-
-    double ecg_qa_scenario::episode_duration_seconds() const
-    {
-        return implementation_->episode_duration_seconds;
-    }
-
-    bool ecg_qa_scenario::set_episode_rate_bpm(double value)
-    {
-        if (!std::isfinite(value) || value <= 100.0 || value > 400.0)
-            return false;
-        implementation_->episode_rate_bpm = value;
-        return true;
-    }
-
-    double ecg_qa_scenario::episode_rate_bpm() const
-    {
-        return implementation_->episode_rate_bpm;
     }
 
     bool ecg_qa_scenario::set_flutter_conduction_pattern(ecg_flutter_conduction_pattern value)
@@ -3072,10 +3093,16 @@ namespace signal_synth
         hash_u64(hash, implementation_->ectopic_every_n_beats);
         hash_u64(hash, enum_value(implementation_->second_degree_pattern));
         hash_u64(hash, enum_value(implementation_->q_wave_territory));
-        hash_u64(hash, enum_value(implementation_->episode_type));
-        hash_u64(hash, quantize(implementation_->episode_start_seconds, 1000000.0));
-        hash_u64(hash, quantize(implementation_->episode_duration_seconds, 1000000.0));
-        hash_u64(hash, quantize(implementation_->episode_rate_bpm, 1000.0));
+        hash_u64(hash, implementation_->rhythm_episodes.size());
+        for (const ecg_rhythm_episode& episode : implementation_->rhythm_episodes)
+        {
+            hash_u64(hash, enum_value(episode.type));
+            hash_u64(hash, quantize(episode.start_seconds, 1000000.0));
+            hash_u64(hash, quantize(episode.duration_seconds, 1000000.0));
+            hash_u64(hash, quantize(episode.transition_seconds, 1000000.0));
+            hash_u64(hash, quantize(episode.rate_bpm, 1000.0));
+            hash_u64(hash, episode.seed);
+        }
         hash_u64(hash, enum_value(implementation_->flutter_conduction_pattern));
         hash_u64(hash, enum_value(implementation_->pacing_mode));
         hash_u64(hash, implementation_->pacing_non_capture_every_n_beats);
@@ -3279,6 +3306,17 @@ namespace signal_synth
         clinical_ecg_config config;
         if (!compile(scenario, config, report))
             return false;
+        const double duration_seconds = static_cast<double>(sample_count) / config.sampling_rate_hz;
+        for (std::size_t index = 0; index < scenario.implementation_->rhythm_episodes.size(); ++index)
+        {
+            const ecg_rhythm_episode& episode = scenario.implementation_->rhythm_episodes[index];
+            if (episode.start_seconds + episode.duration_seconds > duration_seconds + 1e-12)
+            {
+                add_issue(*report.implementation_, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "Rhythm episode extends beyond the generated record duration.");
+                report.implementation_->success = false;
+                return false;
+            }
+        }
         clinical_ecg_generator generator(config);
         clinical_ecg_record generated;
         if (!generator.generate(sample_count, generated))

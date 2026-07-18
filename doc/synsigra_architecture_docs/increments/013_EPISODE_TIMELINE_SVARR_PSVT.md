@@ -1,5 +1,7 @@
 # Episode Timeline PSVT/SVARR Pack
 
+> Superseded by increment 062. The scalar episode fields documented below were removed and replaced by `ecg.rhythm_episodes`.
+
 **Document ID:** SYN-ARCH-INC-013
 
 **Version:** 0.2

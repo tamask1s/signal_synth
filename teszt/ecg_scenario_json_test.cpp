@@ -32,7 +32,7 @@ int main()
         "{"
         "\"ecg\":{\"conditions\":[{\"severity\":1,\"code\":\"NORM\"}],\"fidelity_policy\":\"allow_parameterized\","
         "\"q_wave_territory\":\"unspecified\",\"second_degree_av_pattern\":\"unspecified\","
-        "\"ectopic_every_n_beats\":0,\"rr_variability_seconds\":0,\"heart_rate_bpm\":70},"
+        "\"rhythm_episodes\":[],\"ectopic_every_n_beats\":0,\"rr_variability_seconds\":0,\"heart_rate_bpm\":70},"
         "\"seed\":12345,\"sample_rate_hz\":500,\"duration_seconds\":10,\"tags\":[\"z\",\"a\"],"
         "\"author\":\"\",\"description\":\"test\",\"name\":\"Clean ECG\","
         "\"scenario_id\":\"ecg_clean_001\",\"schema_version\":1"
@@ -43,8 +43,7 @@ int main()
         "\"sample_rate_hz\":500,\"seed\":12345,\"ecg\":{\"heart_rate_bpm\":70,"
         "\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":0,"
         "\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\","
-        "\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,"
-        "\"episode_rate_bpm\":170,"
+        "\"rhythm_episodes\":[],"
         "\"flutter_conduction_pattern\":\"fixed\","
         "\"pacing_mode\":\"ventricular\",\"pacing_non_capture_every_n_beats\":0,"
         "\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]}}";
@@ -53,7 +52,7 @@ int main()
     signal_synth::ecg_scenario_json_result parsed;
     ok &= check(signal_synth::parse_ecg_scenario_json(input, document, parsed), "parse_valid_document");
     ok &= check(parsed.success && parsed.canonical_json == canonical && document.sample_count() == 5000, "canonicalization_and_sample_count");
-    ok &= check(parsed.document_fingerprint == "sha256:bbf5e3e375d37782a11e4e1f96eea364ada9b762c33f0d7fe2638a2e10676467", "sha256_known_answer");
+    ok &= check(parsed.document_fingerprint == "sha256:b9490a996f0681a91680c874f60eef940007cd4ebbfb4bc1909fdedef12ece74", "sha256_known_answer");
     ok &= check(parsed.generation_fingerprint == document.ecg.fingerprint(), "generation_fingerprint_is_explicit");
 
     signal_synth::ecg_scenario_document roundtrip;
@@ -165,8 +164,7 @@ int main()
         "\"tags\":[\"hrv\"],\"duration_seconds\":300,\"sample_rate_hz\":100,\"seed\":1,"
         "\"ecg\":{\"heart_rate_bpm\":60,\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":0,"
         "\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\","
-        "\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,"
-        "\"episode_rate_bpm\":170,\"flutter_conduction_pattern\":\"fixed\","
+        "\"rhythm_episodes\":[],\"flutter_conduction_pattern\":\"fixed\","
         "\"pacing_mode\":\"ventricular\",\"pacing_non_capture_every_n_beats\":0,"
         "\"fidelity_policy\":\"allow_parameterized\","
         "\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]},"

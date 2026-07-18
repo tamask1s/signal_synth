@@ -205,6 +205,10 @@ int main()
             entry.scenario.set_second_degree_av_pattern(signal_synth::ecg_second_degree_mobitz_i);
         if (info.code == signal_synth::ecg_condition_qwave)
             entry.scenario.set_q_wave_territory(signal_synth::ecg_q_wave_inferior);
+        if (info.code == signal_synth::ecg_condition_psvt)
+            entry.scenario.add_rhythm_episode(signal_synth::ecg_episode_psvt, 2.0, 6.0, 0.2, 180.0, 8101);
+        if (info.code == signal_synth::ecg_condition_svarr)
+            entry.scenario.add_rhythm_episode(signal_synth::ecg_episode_svarr, 2.0, 6.0, 0.2, 170.0, 8102);
         cases.push_back(entry);
     }
 
@@ -255,6 +259,6 @@ int main()
     ok &= check(rbbb_ok, "complete_rbbb_has_canonical_terminal_forces_and_secondary_t_discordance");
     ok &= check(lbbb_ok, "complete_lbbb_has_canonical_lateral_forces_and_secondary_t_discordance");
     ok &= check(flutter_ok, "typical_flutter_has_continuous_inferior_negative_f_waves");
-    ok &= check(signal_synth::ecg_scenario_engine_version() == 14, "morphology_correction_increments_engine_identity");
+    ok &= check(signal_synth::ecg_scenario_engine_version() == 15, "morphology_correction_increments_engine_identity");
     return ok ? 0 : 1;
 }

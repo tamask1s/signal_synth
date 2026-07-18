@@ -109,7 +109,7 @@ endif()
 
 set(ppg_render_dir "${SIGNAL_SYNTH_CLI_WORK_DIR}/ppg_render")
 execute_process(COMMAND "${SIGNAL_SYNTH_CLI}" render "${SIGNAL_SYNTH_PPG_EXAMPLE}" --out "${ppg_render_dir}" RESULT_VARIABLE ppg_render_result OUTPUT_VARIABLE ppg_render_output ERROR_VARIABLE ppg_render_error)
-if(NOT ppg_render_result EQUAL 0 OR NOT ppg_render_error STREQUAL "" OR NOT ppg_render_output MATCHES "document_fingerprint=sha256:ab3057597074b98e77c1d0623568ea852043b46690e728869b2b404394fe2415" OR NOT EXISTS "${ppg_render_dir}/waveform.csv")
+if(NOT ppg_render_result EQUAL 0 OR NOT ppg_render_error STREQUAL "" OR NOT ppg_render_output MATCHES "document_fingerprint=sha256:174947d8c6d859be3f76a89fa4846d3bab6ad3269cbc6883031d4930c8662057" OR NOT EXISTS "${ppg_render_dir}/waveform.csv")
     message(FATAL_ERROR "CLI ECG/PPG render failed: ${ppg_render_error}")
 endif()
 file(STRINGS "${ppg_render_dir}/waveform.csv" ppg_csv_header LIMIT_COUNT 1)

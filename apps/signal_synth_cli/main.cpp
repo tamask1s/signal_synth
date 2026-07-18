@@ -83,7 +83,7 @@ namespace
                   << "       signal-synth compare <r_peak|ppg_systolic_peak|ppg_pulse_onset|ecg_beat_classification> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth interval score <rhythm_episode|signal_quality> <scenario.json|-> <intervals.csv|intervals.json> --out <new-directory> [--minimum-iou <ratio>]\n"
                   << "       signal-synth delineation score <scenario.json|-> <point-events.csv|point-events.json> --out <new-directory> [--tolerance-ms <ms>]\n"
-                  << "       signal-synth measurement score <morphology_assertions|ecg_ppg_alignment|ppg_optical|prv|respiratory_rate> <scenario.json|-> <measurements.csv|measurements.json> --out <new-directory> [--pairing-window-ms <ms>]\n"
+                  << "       signal-synth measurement score <morphology_assertions|ecg_ppg_alignment|ppg_optical|prv|respiratory_rate|rhythm_burden> <scenario.json|-> <measurements.csv|measurements.json> --out <new-directory> [--pairing-window-ms <ms>]\n"
                   << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack analyze <pack.json>\n"
@@ -579,7 +579,8 @@ namespace
             "\"ecg_ppg_alignment\":{\"format_family\":\"measurement_values\",\"scopes\":[\"paired_signal\"]},"
             "\"ppg_optical\":{\"format_family\":\"measurement_values\",\"scopes\":[\"paired_signal\"]},"
             "\"prv\":{\"format_family\":\"measurement_values\",\"scopes\":[\"record\",\"paired_signal\"]},"
-            "\"respiratory_rate\":{\"format_family\":\"measurement_values\",\"scopes\":[\"record\",\"paired_signal\"]}}}\n";
+            "\"respiratory_rate\":{\"format_family\":\"measurement_values\",\"scopes\":[\"record\",\"paired_signal\"]},"
+            "\"rhythm_burden\":{\"format_family\":\"measurement_values\",\"scopes\":[\"record\"]}}}\n";
     }
 
     void add_submission_template_files(signal_synth::challenge_package_build_options& options, const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_json_result& identity, const std::vector<pack_render_row>& rows)

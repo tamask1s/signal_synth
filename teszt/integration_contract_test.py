@@ -32,7 +32,7 @@ assert contract["cli"]["interval_output_schemas"] == ["interval_json_v1", "inter
 assert contract["cli"]["delineation_targets"] == ["ecg_delineation"]
 assert contract["cli"]["delineation_output_schemas"] == ["point_events_json_v1", "point_events_csv_v1"]
 assert contract["cli"]["hrv_targets"] == ["hrv"]
-assert contract["cli"]["measurement_targets"] == ["morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate"]
+assert contract["cli"]["measurement_targets"] == ["morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"]
 assert contract["cli"]["customer_verification_command"].startswith("synsigra-verify")
 assert contract["cli"]["customer_output_schemas"] == ["point_events_json_v1", "point_events_csv_v1", "interval_events_json_v1", "interval_events_csv_v1", "hrv_metrics_json_v1", "measurement_values_json_v1", "measurement_values_csv_v1"]
 

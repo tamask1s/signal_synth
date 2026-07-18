@@ -117,6 +117,8 @@ namespace
         }
         if (document.scenario_id == "cardiorespiratory_databrowser_v4")
             return render.cardiorespiratory.prv_available && render.cardiorespiratory.respiration_available && !render.signal_quality.accelerometer.empty() && render.cardiorespiratory.prv.metrics.excluded_interval_count > 0U;
+        if (document.scenario_id == "advanced_rhythm_burden_v2")
+            return render.record.episode_count() == 6u && render.record.episodes()[3].kind == signal_synth::clinical_episode_vf && render.record.episodes()[4].kind == signal_synth::clinical_episode_asystole;
         return false;
     }
 
@@ -201,6 +203,7 @@ int main()
     ok &= check(verify_specialized_script("examples/databrowser/082_PPG_Optical_Physiology_V2.txt", "GeneratePPGOpticalScenarioJSON"), "ppg_optical_script");
     ok &= check(verify_specialized_script("examples/databrowser/083_Wearable_Device_Site_Profiles.txt", "GenerateWearableScenarioJSON"), "wearable_profiles_script");
     ok &= check(verify_specialized_script("examples/databrowser/084_Cardiorespiratory_PRV_Respiration.txt", "GenerateCardiorespiratoryScenarioJSON"), "cardiorespiratory_script");
+    ok &= check(verify_script("examples/databrowser/085_ECG_Advanced_Rhythm_Burden.txt", 2), "advanced_rhythm_script");
 
     const std::string adapter = read_text("integrations/databrowser/SignalProc_RSPT.cpp");
     ok &= check(adapter.find("#include \"ecg_render.h\"") != std::string::npos && adapter.find("#include \"wearable_timebase.h\"") != std::string::npos && adapter.find("#include \"ecg_export.h\"") == std::string::npos, "adapter_uses_render_layer");
@@ -209,6 +212,7 @@ int main()
     ok &= check(adapter.find("GenerateWearableScenarioJSON") != std::string::npos && adapter.find("timestamp error") != std::string::npos && adapter.find("packet availability") != std::string::npos, "adapter_wearable_api");
     ok &= check(adapter.find("GeneratePPGOpticalScenarioJSON") != std::string::npos && adapter.find("GT SpO2 target") != std::string::npos && adapter.find("GenerateSyntheticECGPPG") == std::string::npos, "adapter_optical_api");
     ok &= check(adapter.find("GenerateCardiorespiratoryScenarioJSON") != std::string::npos && adapter.find("GT respiration reference") != std::string::npos && adapter.find("GT PPG pulse interval") != std::string::npos, "adapter_cardiorespiratory_api");
+    ok &= check(adapter.find("GT VF episode") != std::string::npos && adapter.find("GT asystole episode") != std::string::npos && adapter.find("rhythm_episodes") != std::string::npos, "adapter_advanced_rhythm_truth");
 
     const std::string project = read_text("integrations/databrowser/SignalProc_RSPT.cbp");
     ok &= check(project.find("ecg_render.cpp") != std::string::npos && project.find("hrv_metrics.cpp") != std::string::npos && project.find("cardiorespiratory.cpp") != std::string::npos && project.find("scenario_stress.cpp") != std::string::npos && project.find("wearable_timebase.cpp") != std::string::npos && project.find("wearable_profiles.cpp") != std::string::npos, "codeblocks_generation_dependencies");

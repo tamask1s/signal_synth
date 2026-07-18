@@ -89,7 +89,7 @@ def verify_package(challenge, submission_dir, out_dir, cases=None, targets=None,
                 if not entry.get("supported", False):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
-                if target not in ("r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality", "ecg_delineation", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate"):
+                if target not in ("r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality", "ecg_delineation", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
                 result = _verify_case_target(package, case, case_summary, annotations, entry, submission, out_dir)
@@ -124,7 +124,7 @@ def _verify_case_target(package, case, case_summary, annotations, entry, submiss
         return _error_result(package, case, case_summary, entry, target_dir, "missing_output", "submission output file is missing for %s/%s: %s" % (case.id, target, submitted.relative_path))
     algorithm = dict(submission.algorithm)
     try:
-        if target in ("morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate"):
+        if target in ("morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"):
             predictions = load_measurements(detection_path, format_name=submitted.format)
             truth_path = entry.get("ground_truth_path", "")
             if not truth_path:
@@ -997,7 +997,7 @@ def _case_result_from_report(case, case_summary, target, relative_out, submissio
         result["by_kind"] = list(report_json.get("by_kind", []))
         result["by_lead"] = list(report_json.get("by_lead", []))
         result["_delineation_errors"] = [float(item["error_seconds"]) for item in report_json.get("matches", [])]
-    elif target in ("morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate"):
+    elif target in ("morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"):
         result["score_type"] = "measurement"
         result["exclusion_policy"] = "Measurement identity includes name, unit, scope, channel, formula, and beat/time anchor; explicit non-valid states are status-scored without numeric error."
         result["summary"] = dict(report_json.get("overall", {}))

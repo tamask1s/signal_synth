@@ -100,6 +100,10 @@ namespace
         case signal_synth::clinical_episode_psvt: return "psvt";
         case signal_synth::clinical_episode_svarr: return "svarr";
         case signal_synth::clinical_episode_repolarization: return "dynamic_repolarization";
+        case signal_synth::clinical_episode_afib: return "afib";
+        case signal_synth::clinical_episode_vt: return "vt";
+        case signal_synth::clinical_episode_vf: return "vf";
+        case signal_synth::clinical_episode_asystole: return "asystole";
         case signal_synth::clinical_episode_none: return "none";
         }
         return "unknown";
@@ -424,7 +428,7 @@ namespace signal_synth
             const clinical_episode_annotation* episodes = render.record.episodes();
             for (unsigned int i = 0; i < render.record.episode_count(); ++i)
             {
-                if (!episodes[i].present || (episodes[i].kind != clinical_episode_psvt && episodes[i].kind != clinical_episode_svarr))
+                if (!episodes[i].present || episodes[i].kind == clinical_episode_none || episodes[i].kind == clinical_episode_repolarization)
                     continue;
                 interval_output_event interval;
                 interval.start_seconds = episodes[i].start_time_seconds;

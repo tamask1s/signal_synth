@@ -182,7 +182,7 @@ int main()
         "{"
         "\"schema_version\":2,\"scenario_id\":\"artifact_bad\",\"name\":\"bad\",\"description\":\"\",\"author\":\"\",\"tags\":[],"
         "\"duration_seconds\":10,\"sample_rate_hz\":500,\"seed\":12345,"
-        "\"ecg\":{\"heart_rate_bpm\":70,\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":0,\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\",\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,\"episode_rate_bpm\":170,\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]},"
+        "\"ecg\":{\"heart_rate_bpm\":70,\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":0,\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\",\"rhythm_episodes\":[],\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]},"
         "\"ppg\":{\"enabled\":false,\"pulse_delay_ms\":180,\"rise_time_ms\":120,\"decay_time_ms\":300,\"amplitude_au\":1,\"baseline_au\":0,\"dicrotic_delay_ms\":180,\"dicrotic_width_ms\":80,\"dicrotic_amplitude_ratio\":0.15},"
         "\"artifacts\":[{\"type\":\"ecg_powerline\",\"start_seconds\":1,\"duration_seconds\":1,\"severity\":0.5,\"seed\":1,\"channels\":[\"II\",\"II\"]}]"
         "}";
@@ -193,7 +193,7 @@ int main()
         "{"
         "\"schema_version\":2,\"scenario_id\":\"artifact_bad_overlap\",\"name\":\"bad\",\"description\":\"\",\"author\":\"\",\"tags\":[],"
         "\"duration_seconds\":10,\"sample_rate_hz\":500,\"seed\":12345,"
-        "\"ecg\":{\"heart_rate_bpm\":70,\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":0,\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\",\"episode_type\":\"none\",\"episode_start_seconds\":2,\"episode_duration_seconds\":4,\"episode_rate_bpm\":170,\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]},"
+        "\"ecg\":{\"heart_rate_bpm\":70,\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":0,\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\",\"rhythm_episodes\":[],\"fidelity_policy\":\"allow_parameterized\",\"conditions\":[{\"code\":\"NORM\",\"severity\":1}]},"
         "\"ppg\":{\"enabled\":false,\"pulse_delay_ms\":180,\"rise_time_ms\":120,\"decay_time_ms\":300,\"amplitude_au\":1,\"baseline_au\":0,\"dicrotic_delay_ms\":180,\"dicrotic_width_ms\":80,\"dicrotic_amplitude_ratio\":0.15},"
         "\"artifacts\":[{\"type\":\"ecg_powerline\",\"start_seconds\":1,\"duration_seconds\":1,\"severity\":0.5,\"seed\":1,\"channels\":[\"all_ecg\",\"II\"]}]"
         "}";
