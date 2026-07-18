@@ -4,7 +4,7 @@
 
 **Version:** 3.0
 
-**Status:** Core v6 migration baseline defined; exact verified commit pending
+**Status:** Ready for clean SaaS migration
 
 **Date:** 2026-07-18
 
@@ -12,7 +12,9 @@
 
 **Core closure issue:** [signal_synth#91](https://github.com/tamask1s/signal_synth/issues/91)
 
-**Exact runtime baseline:** `TO_BE_RECORDED_AFTER_CORE_VERIFICATION`
+**Exact runtime baseline:** [`65bf07615f9916b8f7135d15ab5554d043dcf8e1`](https://github.com/tamask1s/signal_synth/commit/65bf07615f9916b8f7135d15ab5554d043dcf8e1)
+
+**Core verification:** [Verification run 29643925576](https://github.com/tamask1s/signal_synth/actions/runs/29643925576), [Python package run 29643925588](https://github.com/tamask1s/signal_synth/actions/runs/29643925588)
 
 ## 1. Product Boundary
 

@@ -4,13 +4,17 @@
 
 **Issue:** [signal_synth#91](https://github.com/tamask1s/signal_synth/issues/91)
 
-**Version:** 0.9
+**Version:** 1.0
 
-**Status:** Locally verified; immutable commit and CI record pending
+**Status:** Verified
 
 **Owner role:** Engineering / Quality
 
 **Date:** 2026-07-18
+
+**Implementation:** [`65bf07615f9916b8f7135d15ab5554d043dcf8e1`](https://github.com/tamask1s/signal_synth/commit/65bf07615f9916b8f7135d15ab5554d043dcf8e1)
+
+**CI evidence:** [Verification run 29643925576](https://github.com/tamask1s/signal_synth/actions/runs/29643925576), [Python package run 29643925588](https://github.com/tamask1s/signal_synth/actions/runs/29643925588)
 
 ## 1. Decision
 
@@ -208,6 +212,8 @@ customer scoring boundary.
 
 ## 10. Change Log
 
+- 2026-07-18: version 1.0, implementation commit and successful GitHub
+  Verification/Python package runs recorded; SaaS handoff released.
 - 2026-07-18: version 0.9, implementation and local verification complete;
   immutable commit and GitHub CI evidence pending.
 - 2026-07-18: version 0.1, audit findings and implementation design accepted
