@@ -178,7 +178,7 @@ External beta users install the generator-free wheel supplied with the
 release:
 
 ```bash
-python -m pip install synsigra-0.6.0-py3-none-any.whl
+python -m pip install synsigra-0.7.0-py3-none-any.whl
 ```
 
 Run local verification:

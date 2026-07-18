@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "2.4",
+  "version": "2.5",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -119,39 +119,48 @@
       }
     },
     {
-      "pack_id": "hrv_v1",
-      "path": "../packs/hrv_v1.json",
+      "pack_id": "hrv_robustness_v2",
+      "path": "../packs/hrv_robustness_v2.json",
       "modality": ["ECG"],
-      "targets": ["hrv"],
-      "difficulty": ["benchmark"],
+      "targets": ["r_peak", "hrv", "signal_quality"],
+      "difficulty": ["regression", "stress", "benchmark"],
       "recommended_profile": "benchmark",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
       "scoring_mode": "local",
-      "feature_tags": ["sdnn", "rmssd", "pnn50", "sd1_sd2", "lf_hf", "respiration", "ectopy_exclusion", "artifact_exclusion"],
+      "feature_tags": ["r_peak", "rr_intervals", "sdnn", "rmssd", "pnn50", "sd1_sd2", "vlf", "lf_hf", "normalized_power", "respiration", "ectopy_exclusion", "baseline_wander", "powerline", "emg", "dropout", "signal_quality"],
       "release_status": "beta",
-      "release_date": "2026-07-06",
+      "release_date": "2026-07-18",
       "deprecation_message": "",
       "recommended_for": [
-        "HRV metric implementation checks against exact synthetic RR ground truth",
-        "LF/HF, SDNN, RMSSD, pNN50, SD1 and SD2 regression gates",
-        "Ectopy and artifact exclusion policy tests",
-        "Five-minute benchmark windows with deterministic replay"
+        "End-to-end R-peak, RR reconstruction and HRV metric implementation checks",
+        "VLF, LF/HF, normalized power, SDNN, RMSSD, pNN50, SD1 and SD2 regression gates",
+        "Ectopy, baseline-wander, powerline, EMG, drift and dropout stress",
+        "Five- and ten-minute benchmark windows with deterministic replay"
       ],
       "not_recommended_for": [
-        "R-peak detector timing validation without a separate detector output",
         "Patient-derived HRV norm claims",
         "Clinical autonomic function validation",
-        "PPG-only pulse interval validation"
+        "PPG-only pulse interval validation",
+        "Equivalence claims across different spectral estimators or preprocessing policies"
       ],
       "changelog": [
         {
-          "version": "1.0",
-          "date": "2026-07-06",
+          "version": "2.0",
+          "date": "2026-07-18",
           "changes": [
-            "Initial beta curated HRV pack with time-domain, Poincare, spectral and exclusion-policy cases."
+            "Replaced hrv_v1 with VLF-capable metric definition v2 and explicit R-peak, RR/HRV and signal-quality pipeline stress cases."
           ]
         }
-      ]
+      ],
+      "generator_compatibility": {
+        "minimum_generator_version": "0.7.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [2, 9],
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1",
+        "local_verifier_min_version": "0.7.0"
+      }
     },
     {
       "pack_id": "ecg_beat_classification_v1",

@@ -74,7 +74,7 @@ int main()
 
     const char* packs[] = {
         "../examples/packs/r_peak_stress_v1.json",
-        "../examples/packs/hrv_v1.json",
+        "../examples/packs/hrv_robustness_v2.json",
         "../examples/packs/ppg_alignment_v1.json",
         "../examples/packs/signal_quality_v1.json",
         "../examples/packs/combined_worst_case_v1.json",
@@ -82,7 +82,7 @@ int main()
         "../examples/packs/ecg_morphology_population_v1.json",
         "../examples/packs/ecg_dynamic_repolarization_v1.json"
     };
-    const unsigned int expected_scenario_counts[] = {4, 9, 4, 5, 4, 9, 3, 2};
+    const unsigned int expected_scenario_counts[] = {4, 10, 4, 5, 4, 9, 3, 2};
     unsigned int total_pack_scenarios = 0;
     unsigned int rendered_scenarios = 0;
     unsigned int artifact_scenarios = 0;

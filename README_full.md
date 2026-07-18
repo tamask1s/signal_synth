@@ -132,13 +132,13 @@ The repository includes curated pack manifests under `examples/packs/`. These ar
 | Pack | Main target(s) | Purpose |
 |---|---|---|
 | `r_peak_stress_v1` | `r_peak`, `signal_quality` | R-peak smoke, rate, and artifact stress testing. |
-| `hrv_v1` | `hrv`, `signal_quality` | Five-minute HRV QA for time-domain, Poincare, spectral, exclusion-policy, and scoring workflows. |
+| `hrv_robustness_v2` | `r_peak`, `hrv`, `signal_quality` | End-to-end VLF/LF/HF, time-domain, Poincare, exclusion-policy, detector, and quality QA. |
 | `ecg_rhythm_v1` | rhythm / ECG analysis | Rhythm and conduction scenario coverage. |
 | `ecg_beat_classification_v1` | beat classification | Beat-label and class-scoring fixtures. |
 | `ecg_morphology_stress_v1` | morphology / ECG analysis | Morphology and stress scenarios. |
 | `signal_quality_v1` | `signal_quality` | Quality masks, artifact intervals, and reference-only versus scoreable cases. |
 | `ppg_alignment_v1` | `ppg_systolic_peak`, `ecg_ppg_alignment`, `signal_quality` | Linked ECG/PPG pulse timing and peak-detector QA. |
-| `wearable_stress_v1` | `r_peak`, `ppg_systolic_peak`, `ecg_ppg_alignment`, `hrv` | Wearable ECG/PPG cardiorespiratory, synchronization, and long-duration stress. |
+| `wearable_timebase_v2` | `r_peak`, `ppg_systolic_peak`, `ecg_ppg_alignment`, `hrv` | Multi-rate wearable ECG/PPG timing, synchronization, and packet-loss stress. |
 | `combined_worst_case_v1` | multi-target | Combined stress cases for broader regression coverage. |
 
 Always run `signal-synth pack analyze` before exposing a pack in the SaaS UI. The analysis output is the canonical way to distinguish scoreable targets from reference-only ground-truth artifacts.

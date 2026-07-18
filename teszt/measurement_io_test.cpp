@@ -19,11 +19,12 @@ int main()
         "{\"name\":\"qtc_interval\",\"value\":0.42,\"unit\":\"s\",\"status\":\"valid\",\"scope\":\"beat\",\"time_seconds\":1.2,\"beat_index\":\"18446744073709551615\",\"formula\":\"fridericia\",\"confidence\":0.9},"
         "{\"name\":\"t_amplitude\",\"unit\":\"mV\",\"status\":\"absent\",\"scope\":\"beat_lead\",\"time_seconds\":1.2,\"channel\":\"II\"},"
         "{\"name\":\"qrs_axis\",\"value\":45,\"unit\":\"deg\",\"status\":\"valid\",\"scope\":\"record\"},"
+        "{\"name\":\"lf_normalized_units\",\"value\":42,\"unit\":\"nu\",\"status\":\"valid\",\"scope\":\"record\"},"
         "{\"name\":\"pulse_transit_time\",\"value\":0.18,\"unit\":\"s\",\"status\":\"valid\",\"scope\":\"paired_signal\",\"time_seconds\":1.2,\"channel\":\"ecg_r_to_ppg_green_onset\"}]}";
     signal_synth::measurement_output_document document;
     signal_synth::measurement_io_result result;
     ok &= check(signal_synth::parse_measurement_values_json_v1(json, document, result) && result.success, "json_parse");
-    ok &= check(document.measurements.size() == 4u && document.measurements[0].has_beat_index && document.measurements[0].beat_index == 18446744073709551615ULL, "uint64_string");
+    ok &= check(document.measurements.size() == 5u && document.measurements[0].has_beat_index && document.measurements[0].beat_index == 18446744073709551615ULL, "uint64_string");
     ok &= check(!document.measurements[1].has_value && document.measurements[1].status == signal_synth::measurement_absent, "explicit_absent");
     ok &= check(result.canonical_csv.find("name,value,unit,status,scope,time_seconds,beat_index,channel,formula,confidence\n") == 0u, "csv_header");
 

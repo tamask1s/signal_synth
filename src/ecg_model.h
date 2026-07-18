@@ -32,6 +32,9 @@ namespace signal_synth
 
         bool enabled;
         double rr_standard_deviation_seconds;
+        double vlf_power_fraction;
+        double vlf_center_frequency_hz;
+        double vlf_bandwidth_hz;
         double lf_hf_ratio;
         double lf_center_frequency_hz;
         double hf_center_frequency_hz;

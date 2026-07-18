@@ -14,7 +14,7 @@ METADATA_TYPE = "synsigra_curated_pack_catalog"
 DEFAULT_GENERATOR_COMPATIBILITY = {
     "minimum_generator_version": "0.6.0-dev",
     "pack_schema_version": 1,
-    "scenario_schema_versions": [2, 3, 4, 5, 6, 7, 8],
+    "scenario_schema_versions": [2, 3, 4, 5, 6, 7, 8, 9],
     "challenge_package_contract": "synsigra_challenge_package_v2",
     "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
     "submission_contract": "synsigra_submission_v1",
@@ -366,8 +366,10 @@ def output_artifacts(scoreable_targets, reference_targets, analysis):
             artifacts.append(dict(item))
             roles.add(item["role"])
     if any(item["target"] == "hrv" for item in scoreable_targets):
-        artifacts.append({"role": "hrv_metrics_json", "required": True})
-        artifacts.append({"role": "rr_tachogram_csv", "required": True})
+        for role in ("hrv_metrics_json", "rr_tachogram_csv"):
+            if role not in roles:
+                artifacts.append({"role": role, "required": True})
+                roles.add(role)
     if any(item["score_type"] == "measurement" for item in scoreable_targets):
         artifacts.append({"role": "measurement_truth_json", "required": True})
     if reference_targets:
@@ -527,7 +529,7 @@ def export_metadata(catalog_path, cli, pack_ids, source_root):
         "schema_version": 1,
         "metadata_type": METADATA_TYPE,
         "metadata_version": EXPORTER_VERSION,
-        "release_set_id": "synsigra_curated_release_2026_07_17",
+        "release_set_id": "synsigra_curated_release_2026_07_18",
         "release_set_status": "beta",
         "catalog_id": catalog.get("catalog_id", ""),
         "catalog_version": catalog.get("version", ""),

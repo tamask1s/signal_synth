@@ -253,6 +253,9 @@ namespace signal_synth
         double minimum_rr_seconds;
         double maximum_rr_seconds;
         bool hrv_modulation_enabled;
+        double hrv_vlf_power_fraction;
+        double hrv_vlf_center_hz;
+        double hrv_vlf_bandwidth_hz;
         double hrv_lf_hf_ratio;
         double hrv_lf_center_hz;
         double hrv_lf_bandwidth_hz;

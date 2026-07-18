@@ -61,8 +61,9 @@ int main()
     ok &= check(generate_record(variable_config, 300.0, variable_record) && signal_synth::analyze_hrv_from_ecg(variable_record, 0, variable_hrv), "variable_record_analysis");
     ok &= check(variable_hrv.metrics.interval_count == variable_record.beat_count() && variable_hrv.metrics.accepted_interval_count == variable_hrv.metrics.interval_count && variable_hrv.metrics.excluded_interval_count == 0, "clean_accepts_all_intervals");
     ok &= check(variable_hrv.metrics.sdnn_seconds > 0.0 && variable_hrv.metrics.rmssd_seconds > 0.0 && variable_hrv.metrics.sd2_seconds > 0.0, "time_domain_metrics_nonzero");
-    ok &= check(variable_hrv.metrics.total_power_seconds2 > 0.0 && variable_hrv.metrics.lf_power_seconds2 >= 0.0 && variable_hrv.metrics.hf_power_seconds2 >= 0.0, "frequency_domain_metrics_present");
-    ok &= check(variable_hrv.spectral_method.find("4 Hz") != std::string::npos && variable_hrv.metric_definition_version == "synsigra_hrv_metrics_v1", "method_metadata");
+    ok &= check(variable_hrv.metrics.total_power_seconds2 > 0.0 && variable_hrv.metrics.vlf_power_seconds2 >= 0.0 && variable_hrv.metrics.lf_power_seconds2 >= 0.0 && variable_hrv.metrics.hf_power_seconds2 >= 0.0, "frequency_domain_metrics_present");
+    ok &= check(std::fabs(variable_hrv.metrics.lf_normalized_units + variable_hrv.metrics.hf_normalized_units - 100.0) < 1e-9, "normalized_frequency_power");
+    ok &= check(variable_hrv.spectral_method.find("VLF 0.0033-0.04 Hz") != std::string::npos && variable_hrv.metric_definition_version == "synsigra_hrv_metrics_v2", "method_metadata");
 
     signal_synth::clinical_ecg_config constant_config = base_config();
     signal_synth::clinical_ecg_record constant_record;
@@ -92,6 +93,16 @@ int main()
     signal_synth::hrv_analysis_result artifact_hrv;
     ok &= check(signal_synth::analyze_hrv_from_ecg(constant_record, &artifacts, artifact_hrv), "artifact_analysis");
     ok &= check(artifact_hrv.metrics.artifact_overlap_interval_count > 0 && artifact_hrv.metrics.excluded_interval_count >= artifact_hrv.metrics.artifact_overlap_interval_count, "artifact_overlap_intervals_excluded");
+
+    std::vector<signal_synth::hrv_rr_interval> separated(4);
+    separated[0].rr_seconds = 1.0;
+    separated[1].rr_seconds = 1.1;
+    separated[1].excluded = true;
+    separated[2].rr_seconds = 1.2;
+    separated[3].rr_seconds = 1.3;
+    signal_synth::hrv_analysis_result separated_hrv;
+    ok &= check(signal_synth::analyze_variability_intervals(separated, "test_hrv_v2", "exclude marked intervals", separated_hrv), "separated_intervals_analysis");
+    ok &= check(std::fabs(separated_hrv.metrics.rmssd_seconds - 0.1) < 1e-12 && std::fabs(separated_hrv.metrics.pnn50_percent - 100.0) < 1e-12, "excluded_gap_not_bridged");
 
     signal_synth::clinical_ecg_record empty_record;
     signal_synth::hrv_analysis_result empty_hrv;

@@ -20,11 +20,20 @@ namespace
         output.precision(17);
         output << "{\"schema_version\":1,\"algorithm\":{\"name\":\"unit_hrv\",\"version\":\"1.2\"},\"metrics\":{"
                << "\"mean_rr_seconds\":" << metrics.mean_rr_seconds
+               << ",\"mean_heart_rate_bpm\":" << metrics.mean_heart_rate_bpm
                << ",\"sdnn_seconds\":" << metrics.sdnn_seconds + sdnn_offset
                << ",\"rmssd_seconds\":" << metrics.rmssd_seconds
+               << ",\"pnn50_percent\":" << metrics.pnn50_percent
                << ",\"sd1_seconds\":" << metrics.sd1_seconds
                << ",\"sd2_seconds\":" << metrics.sd2_seconds
-               << ",\"lf_hf_ratio\":" << metrics.lf_hf_ratio << "},\"rr_intervals\":[";
+               << ",\"sd1_sd2_ratio\":" << metrics.sd1_sd2_ratio
+               << ",\"vlf_power_seconds2\":" << metrics.vlf_power_seconds2
+               << ",\"lf_power_seconds2\":" << metrics.lf_power_seconds2
+               << ",\"hf_power_seconds2\":" << metrics.hf_power_seconds2
+               << ",\"lf_hf_ratio\":" << metrics.lf_hf_ratio
+               << ",\"lf_normalized_units\":" << metrics.lf_normalized_units
+               << ",\"hf_normalized_units\":" << metrics.hf_normalized_units
+               << ",\"total_power_seconds2\":" << metrics.total_power_seconds2 << "},\"rr_intervals\":[";
         bool first = true;
         for (std::size_t i = 0; i < render.hrv.intervals.size(); ++i)
         {
@@ -56,7 +65,7 @@ int main()
     signal_synth::hrv_user_output user;
     std::vector<std::string> messages;
     ok &= check(signal_synth::parse_hrv_user_output_json(user_json(render, 0.0), user, messages), "parse_valid_user_output");
-    ok &= check(user.algorithm_name == "unit_hrv" && user.metrics.size() == 6 && user.rr_intervals.size() == render.hrv.metrics.accepted_interval_count, "user_output_contract");
+    ok &= check(user.algorithm_name == "unit_hrv" && user.metrics.size() == signal_synth::hrv_metric_count && user.rr_intervals.size() == render.hrv.metrics.accepted_interval_count, "user_output_contract");
 
     signal_synth::hrv_score_result score;
     ok &= check(signal_synth::score_hrv_user_output(render, user, score) && score.success, "score_valid_output");
@@ -71,7 +80,7 @@ int main()
     const std::string json = signal_synth::hrv_score_result_json(score);
     const std::string csv = signal_synth::hrv_score_result_csv(score);
     const std::string html = signal_synth::hrv_score_report_html(score);
-    ok &= check(json.find("\"score_type\":\"hrv_algorithm_qa\"") != std::string::npos && json.find("\"metric_definition_version\":\"synsigra_hrv_metrics_v1\"") != std::string::npos && json.find("\"matched_count\":") != std::string::npos, "json_report_contract");
+    ok &= check(json.find("\"score_type\":\"hrv_algorithm_qa\"") != std::string::npos && json.find("\"metric_definition_version\":\"synsigra_hrv_metrics_v2\"") != std::string::npos && json.find("\"name\":\"vlf_power_seconds2\"") != std::string::npos && json.find("\"matched_count\":") != std::string::npos, "json_report_contract");
     ok &= check(csv.find("row_type,name,unit") == 0 && csv.find("metric,mean_rr_seconds,s") != std::string::npos, "csv_report_contract");
     ok &= check(html.find("HRV Algorithm QA Score") != std::string::npos && html.find("not diagnosis or clinical validation certification") != std::string::npos, "html_report_contract");
 

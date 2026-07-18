@@ -16,14 +16,15 @@ from .profiles import load_threshold_profile
 from .submission import SubmissionError, load_submission
 
 
-SCORING_VERSION = "synsigra-python-local-v4"
+SCORING_VERSION = "synsigra-python-local-v5"
 LIMITATION_TEXT = "Synthetic engineering QA evidence; not diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment."
 BEAT_CLASSES = ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion", "unscored"]
 SCORED_BEAT_CLASSES = set(["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion"])
 HRV_METRICS = [
     "mean_rr_seconds", "mean_heart_rate_bpm", "sdnn_seconds", "rmssd_seconds",
     "pnn50_percent", "sd1_seconds", "sd2_seconds", "sd1_sd2_ratio",
-    "lf_power_seconds2", "hf_power_seconds2", "lf_hf_ratio", "total_power_seconds2",
+    "vlf_power_seconds2", "lf_power_seconds2", "hf_power_seconds2", "lf_hf_ratio",
+    "lf_normalized_units", "hf_normalized_units", "total_power_seconds2",
 ]
 
 
@@ -414,7 +415,7 @@ def _score_hrv(package, case, case_summary, user_output):
     return {
         "schema_version": 1,
         "score_type": "hrv_algorithm_qa",
-        "scoring_version": "synsigra-python-local-hrv-v1",
+        "scoring_version": "synsigra-python-local-hrv-v2",
         "package": _package_identity(package),
         "scenario": _scenario_identity(case, case_summary, {}),
         "algorithm": dict(user_output.get("algorithm", {})),
@@ -443,7 +444,9 @@ def _hrv_metric_tolerances(name):
         return 0.10, relative
     if name == "lf_hf_ratio":
         return 0.20, 15.0
-    if name in ("lf_power_seconds2", "hf_power_seconds2"):
+    if name in ("lf_normalized_units", "hf_normalized_units"):
+        return 2.0, 10.0
+    if name in ("vlf_power_seconds2", "lf_power_seconds2", "hf_power_seconds2"):
         return 0.0005, 15.0
     if name == "total_power_seconds2":
         return 0.001, 15.0
@@ -455,9 +458,11 @@ def _hrv_metric_unit(name):
         return "bpm"
     if name == "pnn50_percent":
         return "percent"
+    if name in ("lf_normalized_units", "hf_normalized_units"):
+        return "nu"
     if name in ("sd1_sd2_ratio", "lf_hf_ratio"):
         return "ratio"
-    if name in ("lf_power_seconds2", "hf_power_seconds2", "total_power_seconds2"):
+    if name in ("vlf_power_seconds2", "lf_power_seconds2", "hf_power_seconds2", "total_power_seconds2"):
         return "s2"
     return "s"
 
@@ -1070,6 +1075,7 @@ def _error_result(package, case, case_summary, entry, target_dir, status, messag
 
 def _build_verification_summary(package, scoring_manifest, submission, integrity, results, messages, threshold_profile):
     targets = _aggregate_targets(results)
+    hrv_pipeline = _build_hrv_pipeline_diagnostics(targets)
     scoring_success = bool(results) and all(item.get("success", False) for item in results)
     policy = _evaluate_policy(targets, threshold_profile)
     success = scoring_success and policy["passed"]
@@ -1099,10 +1105,54 @@ def _build_verification_summary(package, scoring_manifest, submission, integrity
         "passed_case_target_count": sum(1 for item in results if item.get("success", False)),
         "failed_case_target_count": sum(1 for item in results if not item.get("success", False)),
         "targets": targets,
+        "hrv_pipeline": hrv_pipeline,
         "cases": public_results,
         "messages": messages,
         "limitation": LIMITATION_TEXT,
     }
+
+
+def _build_hrv_pipeline_diagnostics(targets):
+    by_name = dict((item.get("target", ""), item) for item in targets)
+    hrv = by_name.get("hrv")
+    if hrv is None:
+        return {"available": False, "complete": False, "stages": []}
+
+    r_peak = by_name.get("r_peak")
+    quality = by_name.get("signal_quality")
+    rr = hrv.get("rr", {})
+    stages = [
+        {
+            "stage": "r_peak_detection",
+            "target": "r_peak",
+            "available": r_peak is not None,
+            "score_name": "f1_score",
+            "score": r_peak.get("total", {}).get("f1_score") if r_peak is not None else None,
+        },
+        {
+            "stage": "rr_interval_reconstruction",
+            "target": "hrv",
+            "available": int(rr.get("evaluated_case_count", 0)) > 0,
+            "score_name": "rr_pass_fraction",
+            "score": rr.get("pass_fraction") if int(rr.get("evaluated_case_count", 0)) > 0 else None,
+        },
+        {
+            "stage": "hrv_metric_computation",
+            "target": "hrv",
+            "available": int(hrv.get("evaluated_metric_count", 0)) > 0,
+            "score_name": "metric_pass_fraction",
+            "score": hrv.get("metric_pass_fraction") if int(hrv.get("evaluated_metric_count", 0)) > 0 else None,
+        },
+        {
+            "stage": "signal_quality_interval_detection",
+            "target": "signal_quality",
+            "available": quality is not None,
+            "score_name": "time_f1_score",
+            "score": quality.get("overall", {}).get("time_f1_score") if quality is not None else None,
+        },
+    ]
+    required = stages[:3]
+    return {"available": True, "complete": all(item["available"] for item in required), "stages": stages}
 
 
 def _aggregate_targets(results):
@@ -1689,7 +1739,12 @@ def _summary_html(summary):
         rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (_h(item.get("case_id", "")), _h(item.get("target", "")), _h(item.get("status", "")), _h(str(metric)), _h(item.get("report_path", ""))))
     failed_checks = [item for item in summary["policy"]["checks"] if item["applicable"] and not item["passed"]]
     check_rows = ["<tr><td>%s</td><td>%s</td><td>%s</td><td>%.6g</td><td>%s %.6g</td></tr>" % (_h(item["target"]), _h(item["section"]), _h(item["metric"]), item["actual"], _h(item["operator"]), item["threshold"]) for item in failed_checks]
-    return _html_page("Synsigra Local Verification Report", "<h1>Synsigra Local Verification Report</h1><p class=\"notice\">%s</p><table><tr><th>Package</th><td>%s</td></tr><tr><th>Status</th><td>%s</td></tr><tr><th>Threshold profile</th><td>%s</td></tr><tr><th>Successfully scored case-targets</th><td>%s / %s</td></tr><tr><th>Failed policy checks</th><td>%s</td></tr></table><h2>Cases</h2><table><tr><th>Case</th><th>Target</th><th>Status</th><th>Primary score</th><th>Report</th></tr>%s</table><h2>Failed policy checks</h2><table><tr><th>Target</th><th>Section</th><th>Metric</th><th>Actual</th><th>Required</th></tr>%s</table>" % (_h(summary["limitation"]), _h(summary["package"].get("package_id", "")), _h(summary["status"]), _h(summary["policy"]["profile_id"]), summary["scored_case_target_count"], summary["case_target_count"], summary["policy"]["failed_check_count"], "".join(rows), "".join(check_rows)))
+    pipeline_rows = []
+    for stage in summary.get("hrv_pipeline", {}).get("stages", []):
+        score = "" if stage.get("score") is None else "%.6g" % stage["score"]
+        pipeline_rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (_h(stage["stage"]), _h(stage["target"]), "yes" if stage["available"] else "no", _h(score)))
+    pipeline_html = "<h2>HRV pipeline</h2><table><tr><th>Stage</th><th>Target</th><th>Available</th><th>Score</th></tr>%s</table>" % "".join(pipeline_rows) if pipeline_rows else ""
+    return _html_page("Synsigra Local Verification Report", "<h1>Synsigra Local Verification Report</h1><p class=\"notice\">%s</p><table><tr><th>Package</th><td>%s</td></tr><tr><th>Status</th><td>%s</td></tr><tr><th>Threshold profile</th><td>%s</td></tr><tr><th>Successfully scored case-targets</th><td>%s / %s</td></tr><tr><th>Failed policy checks</th><td>%s</td></tr></table>%s<h2>Cases</h2><table><tr><th>Case</th><th>Target</th><th>Status</th><th>Primary score</th><th>Report</th></tr>%s</table><h2>Failed policy checks</h2><table><tr><th>Target</th><th>Section</th><th>Metric</th><th>Actual</th><th>Required</th></tr>%s</table>" % (_h(summary["limitation"]), _h(summary["package"].get("package_id", "")), _h(summary["status"]), _h(summary["policy"]["profile_id"]), summary["scored_case_target_count"], summary["case_target_count"], summary["policy"]["failed_check_count"], pipeline_html, "".join(rows), "".join(check_rows)))
 
 
 def _error_html(report):

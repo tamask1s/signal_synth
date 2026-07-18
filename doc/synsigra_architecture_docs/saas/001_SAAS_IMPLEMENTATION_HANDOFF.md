@@ -52,8 +52,8 @@ Pack metadata export:
 - regenerate it with `scripts/export_curated_pack_metadata.py`;
 - it distinguishes declared targets, effective scoreable targets, and
   reference-only ground-truth outputs before job creation.
-- current consumer baseline is curated catalog `2.4` and generator-free
-  verifier `0.6.0`; packs declare their own minimum verifier version;
+- current consumer baseline is curated catalog `2.5` and generator-free
+  verifier `0.7.0`; packs declare their own minimum verifier version;
 - schema-v5 wearable cases expose independent device streams and must not be
   normalized to one implicit sample rate or timestamp domain by the service.
 
@@ -116,7 +116,7 @@ This detects an accidentally mismatched linked library, CLI binary, or image.
 Successful challenge stdout is one compact JSON document:
 
 ```json
-{"schema_version":1,"contract":"synsigra_core_integration_v3","status":"challenge_rendered","output_directory":"<path>","package_id":"<pack-id>","scenario_count":4,"pack_fingerprint":"sha256:<64-hex>","package_fingerprint":"sha256:<64-hex>","generator":{"name":"signal_synth","version":"<version>","git_commit":"<commit>","build_identity":"<identity>"},"contracts":{"challenge_package":"synsigra_challenge_package_v2","scoring_manifest":"synsigra_scoring_manifest_v2"}}
+{"schema_version":1,"contract":"synsigra_core_integration_v4","status":"challenge_rendered","output_directory":"<path>","package_id":"<pack-id>","scenario_count":4,"pack_fingerprint":"sha256:<64-hex>","package_fingerprint":"sha256:<64-hex>","generator":{"name":"signal_synth","version":"<version>","git_commit":"<commit>","build_identity":"<identity>"},"contracts":{"challenge_package":"synsigra_challenge_package_v2","scoring_manifest":"synsigra_scoring_manifest_v2"}}
 ```
 
 Failure behavior follows the repository CLI contract: non-zero exit code,
@@ -302,8 +302,15 @@ Available from the core:
 - schema-v5 challenge packages expose explicit `wearable_samples_csv`,
   `wearable_timestamp_truth_csv`, `wearable_timebase_truth_json`, and
   `wearable_alignment_truth_json` manifest roles;
-- `wearable_timebase_v2` replaces `wearable_stress_v1`, and the Python 0.6.0
-  package reads these artifacts without generator code.
+- `wearable_timebase_v2` replaces `wearable_stress_v1`, and the Python 0.7.0
+  package reads these artifacts without generator code;
+- schema-v9 adds controlled VLF modulation. `hrv_robustness_v2` replaces
+  `hrv_v1` and targets `r_peak`, `hrv`, and `signal_quality` together;
+- HRV ground truth and scoring use `synsigra_hrv_metrics_v2` and
+  `synsigra_hrv_score_v2`, including VLF power and LF/HF normalized units;
+- Python verification summaries contain `hrv_pipeline` diagnostics for
+  R-peak detection, RR reconstruction, HRV metric computation, and optional
+  signal-quality interval detection.
 
 Required in the SaaS service layer after this closure:
 
@@ -325,6 +332,10 @@ Required in the SaaS service layer after this closure:
   publishing artifacts;
 - preserve `external_noise_truth_json` and `external_noise_clean_ecg_csv`
   exactly as generated while excluding source asset bytes from archives.
+- require `synsigra_core_integration_v4`, scenario schema 9 support, curated
+  catalog 2.5, and the generator-free `synsigra` 0.7.0 verifier;
+- remove the obsolete `hrv_v1` catalog/database records instead of aliasing
+  them, ingest `hrv_robustness_v2`, and expose VLF plus pipeline-stage results.
 
 ## 7. SaaS Consumer Migration
 

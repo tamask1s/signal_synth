@@ -1,6 +1,6 @@
 {
   "catalog_id": "synsigra_verification_packs",
-  "catalog_version": "2.4",
+  "catalog_version": "2.5",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "metadata_type": "synsigra_curated_pack_catalog",
   "metadata_version": "synsigra_curated_pack_metadata_export_v1",
@@ -1082,17 +1082,18 @@
       "version": "1.0"
     },
     {
-      "case_count": 9,
+      "case_count": 10,
       "case_ids": [
         "clean_baseline",
-        "mild_variability",
-        "high_variability",
+        "vlf_dominant",
         "lf_dominant",
         "hf_dominant",
-        "balanced_lf_hf",
+        "high_variability",
         "respiratory_variation",
         "ectopic_contamination",
-        "artifact_contamination"
+        "baseline_wander_stress",
+        "powerline_emg_stress",
+        "drift_dropout_stress"
       ],
       "cases": [
         {
@@ -1111,53 +1112,35 @@
           "sampling_rate_hz": 100,
           "scenario_id": "hrv_clean_baseline",
           "scoreable_targets": [
+            "r_peak",
             "hrv"
           ],
           "targets": [
+            "r_peak",
             "hrv"
           ]
         },
         {
-          "case_id": "mild_variability",
+          "case_id": "vlf_dominant",
           "channel_count": 12,
-          "duration_seconds": 300,
-          "estimated_binary_signal_bytes": 2520000,
-          "estimated_package_bytes": 14970400,
-          "estimated_peak_memory_bytes": 15448576,
-          "estimated_waveform_csv_bytes": 7020256,
+          "duration_seconds": 600,
+          "estimated_binary_signal_bytes": 5040000,
+          "estimated_package_bytes": 29610400,
+          "estimated_peak_memory_bytes": 29848576,
+          "estimated_waveform_csv_bytes": 14040256,
           "external_noise": false,
           "external_noise_asset_ids": [],
           "external_noise_release_allowed": true,
           "reference_only_targets": [],
-          "sample_count": 30000,
+          "sample_count": 60000,
           "sampling_rate_hz": 100,
-          "scenario_id": "hrv_mild_variability",
+          "scenario_id": "hrv_vlf_dominant",
           "scoreable_targets": [
+            "r_peak",
             "hrv"
           ],
           "targets": [
-            "hrv"
-          ]
-        },
-        {
-          "case_id": "high_variability",
-          "channel_count": 12,
-          "duration_seconds": 300,
-          "estimated_binary_signal_bytes": 2520000,
-          "estimated_package_bytes": 14970400,
-          "estimated_peak_memory_bytes": 15448576,
-          "estimated_waveform_csv_bytes": 7020256,
-          "external_noise": false,
-          "external_noise_asset_ids": [],
-          "external_noise_release_allowed": true,
-          "reference_only_targets": [],
-          "sample_count": 30000,
-          "sampling_rate_hz": 100,
-          "scenario_id": "hrv_high_variability",
-          "scoreable_targets": [
-            "hrv"
-          ],
-          "targets": [
+            "r_peak",
             "hrv"
           ]
         },
@@ -1177,9 +1160,11 @@
           "sampling_rate_hz": 100,
           "scenario_id": "hrv_lf_dominant",
           "scoreable_targets": [
+            "r_peak",
             "hrv"
           ],
           "targets": [
+            "r_peak",
             "hrv"
           ]
         },
@@ -1199,14 +1184,16 @@
           "sampling_rate_hz": 100,
           "scenario_id": "hrv_hf_dominant",
           "scoreable_targets": [
+            "r_peak",
             "hrv"
           ],
           "targets": [
+            "r_peak",
             "hrv"
           ]
         },
         {
-          "case_id": "balanced_lf_hf",
+          "case_id": "high_variability",
           "channel_count": 12,
           "duration_seconds": 300,
           "estimated_binary_signal_bytes": 2520000,
@@ -1219,11 +1206,13 @@
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
-          "scenario_id": "hrv_balanced_lf_hf",
+          "scenario_id": "hrv_high_variability",
           "scoreable_targets": [
+            "r_peak",
             "hrv"
           ],
           "targets": [
+            "r_peak",
             "hrv"
           ]
         },
@@ -1243,9 +1232,11 @@
           "sampling_rate_hz": 100,
           "scenario_id": "hrv_respiratory_variation",
           "scoreable_targets": [
+            "r_peak",
             "hrv"
           ],
           "targets": [
+            "r_peak",
             "hrv"
           ]
         },
@@ -1265,14 +1256,16 @@
           "sampling_rate_hz": 100,
           "scenario_id": "hrv_ectopic_contamination",
           "scoreable_targets": [
+            "r_peak",
             "hrv"
           ],
           "targets": [
+            "r_peak",
             "hrv"
           ]
         },
         {
-          "case_id": "artifact_contamination",
+          "case_id": "baseline_wander_stress",
           "channel_count": 12,
           "duration_seconds": 300,
           "estimated_binary_signal_bytes": 2520000,
@@ -1285,12 +1278,66 @@
           "reference_only_targets": [],
           "sample_count": 30000,
           "sampling_rate_hz": 100,
-          "scenario_id": "hrv_artifact_contamination",
+          "scenario_id": "hrv_baseline_wander_stress",
           "scoreable_targets": [
+            "r_peak",
             "hrv",
             "signal_quality"
           ],
           "targets": [
+            "r_peak",
+            "hrv",
+            "signal_quality"
+          ]
+        },
+        {
+          "case_id": "powerline_emg_stress",
+          "channel_count": 12,
+          "duration_seconds": 300,
+          "estimated_binary_signal_bytes": 2520000,
+          "estimated_package_bytes": 14970400,
+          "estimated_peak_memory_bytes": 15448576,
+          "estimated_waveform_csv_bytes": 7020256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 30000,
+          "sampling_rate_hz": 100,
+          "scenario_id": "hrv_powerline_emg_stress",
+          "scoreable_targets": [
+            "r_peak",
+            "hrv",
+            "signal_quality"
+          ],
+          "targets": [
+            "r_peak",
+            "hrv",
+            "signal_quality"
+          ]
+        },
+        {
+          "case_id": "drift_dropout_stress",
+          "channel_count": 12,
+          "duration_seconds": 300,
+          "estimated_binary_signal_bytes": 2520000,
+          "estimated_package_bytes": 14970400,
+          "estimated_peak_memory_bytes": 15448576,
+          "estimated_waveform_csv_bytes": 7020256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 30000,
+          "sampling_rate_hz": 100,
+          "scenario_id": "hrv_drift_dropout_stress",
+          "scoreable_targets": [
+            "r_peak",
+            "hrv",
+            "signal_quality"
+          ],
+          "targets": [
+            "r_peak",
             "hrv",
             "signal_quality"
           ]
@@ -1300,10 +1347,10 @@
       "changelog": [
         {
           "changes": [
-            "Initial beta curated HRV pack with time-domain, Poincare, spectral and exclusion-policy cases."
+            "Replaced hrv_v1 with VLF-capable metric definition v2 and explicit R-peak, RR/HRV and signal-quality pipeline stress cases."
           ],
-          "date": "2026-07-06",
-          "version": "1.0"
+          "date": "2026-07-18",
+          "version": "2.0"
         }
       ],
       "channels": {
@@ -1331,46 +1378,53 @@
         "minimum_channel_count": 12
       },
       "declared_targets": [
-        "hrv"
+        "r_peak",
+        "hrv",
+        "signal_quality"
       ],
       "deprecation_message": "",
-      "description": "Deterministic five-minute ECG scenarios for time-domain, Poincare, spectral, exclusion-policy, and local scoring QA. The companion hrv_short_window_rejected.json is an expected validation failure.",
+      "description": "Deterministic ECG challenge for R-peak, NN interval, VLF/LF/HF, time-domain HRV and signal-quality pipeline QA.",
       "difficulty": [
+        "regression",
+        "stress",
         "benchmark"
       ],
       "duration": {
-        "maximum_case_seconds": 300,
+        "maximum_case_seconds": 600,
         "minimum_case_seconds": 300,
-        "total_seconds": 2700
+        "total_seconds": 3300
       },
       "estimated_package": {
-        "bytes": 134733600,
-        "peak_memory_bytes": 15448576,
+        "bytes": 164344000,
+        "peak_memory_bytes": 29848576,
         "size_class": "large"
       },
       "feature_tags": [
+        "r_peak",
+        "rr_intervals",
         "sdnn",
         "rmssd",
         "pnn50",
         "sd1_sd2",
+        "vlf",
         "lf_hf",
+        "normalized_power",
         "respiration",
         "ectopy_exclusion",
-        "artifact_exclusion"
+        "baseline_wander",
+        "powerline",
+        "emg",
+        "dropout",
+        "signal_quality"
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v2",
-        "local_verifier_min_version": "0.4.0",
-        "minimum_generator_version": "0.6.0-dev",
+        "local_verifier_min_version": "0.7.0",
+        "minimum_generator_version": "0.7.0-dev",
         "pack_schema_version": 1,
         "scenario_schema_versions": [
           2,
-          3,
-          4,
-          5,
-          6,
-          7,
-          8
+          9
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -1380,6 +1434,11 @@
         "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
       },
       "local_verifier_smoke_tests": [
+        {
+          "scope": "local event-detection scoring smoke test",
+          "target": "r_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
         {
           "scope": "core HRV metric scoring smoke test",
           "target": "hrv",
@@ -1407,12 +1466,12 @@
       "modality": [
         "ECG"
       ],
-      "name": "HRV Benchmark Pack v1",
+      "name": "HRV Robustness Pack v2",
       "not_recommended_for": [
-        "R-peak detector timing validation without a separate detector output",
         "Patient-derived HRV norm claims",
         "Clinical autonomic function validation",
-        "PPG-only pulse interval validation"
+        "PPG-only pulse interval validation",
+        "Equivalence claims across different spectral estimators or preprocessing policies"
       ],
       "output_artifacts": [
         {
@@ -1470,26 +1529,18 @@
         {
           "required": true,
           "role": "rr_tachogram_csv"
-        },
-        {
-          "required": true,
-          "role": "hrv_metrics_json"
-        },
-        {
-          "required": true,
-          "role": "rr_tachogram_csv"
         }
       ],
-      "pack_id": "hrv_v1",
+      "pack_id": "hrv_robustness_v2",
       "recommended_for": [
-        "HRV metric implementation checks against exact synthetic RR ground truth",
-        "LF/HF, SDNN, RMSSD, pNN50, SD1 and SD2 regression gates",
-        "Ectopy and artifact exclusion policy tests",
-        "Five-minute benchmark windows with deterministic replay"
+        "End-to-end R-peak, RR reconstruction and HRV metric implementation checks",
+        "VLF, LF/HF, normalized power, SDNN, RMSSD, pNN50, SD1 and SD2 regression gates",
+        "Ectopy, baseline-wander, powerline, EMG, drift and dropout stress",
+        "Five- and ten-minute benchmark windows with deterministic replay"
       ],
       "recommended_profile": "benchmark",
       "reference_only_targets": [],
-      "release_date": "2026-07-06",
+      "release_date": "2026-07-18",
       "release_status": "beta",
       "sampling_rates_hz": [
         100
@@ -1498,19 +1549,46 @@
       "scoreable_targets": [
         {
           "accepted_formats": [
-            "hrv_metrics_json_v1"
+            "point_events_json_v1",
+            "point_events_csv_v1"
           ],
-          "case_count": 9,
+          "case_count": 10,
           "case_ids": [
             "clean_baseline",
-            "mild_variability",
-            "high_variability",
+            "vlf_dominant",
             "lf_dominant",
             "hf_dominant",
-            "balanced_lf_hf",
+            "high_variability",
             "respiratory_variation",
             "ectopic_contamination",
-            "artifact_contamination"
+            "baseline_wander_stress",
+            "powerline_emg_stress",
+            "drift_dropout_stress"
+          ],
+          "default_tolerance_seconds": 0.05,
+          "description": "R-peak detector event timing against exact synthetic beat annotations.",
+          "primary_metric": "f1_score",
+          "score_type": "event_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "r_peak"
+        },
+        {
+          "accepted_formats": [
+            "hrv_metrics_json_v1"
+          ],
+          "case_count": 10,
+          "case_ids": [
+            "clean_baseline",
+            "vlf_dominant",
+            "lf_dominant",
+            "hf_dominant",
+            "high_variability",
+            "respiratory_variation",
+            "ectopic_contamination",
+            "baseline_wander_stress",
+            "powerline_emg_stress",
+            "drift_dropout_stress"
           ],
           "description": "HRV metric and RR-interval scoring against exact synthetic tachogram ground truth.",
           "primary_metric": "metric_pass_fraction",
@@ -1524,9 +1602,11 @@
             "interval_events_json_v1",
             "interval_events_csv_v1"
           ],
-          "case_count": 1,
+          "case_count": 3,
           "case_ids": [
-            "artifact_contamination"
+            "baseline_wander_stress",
+            "powerline_emg_stress",
+            "drift_dropout_stress"
           ],
           "default_minimum_iou": 0.1,
           "description": "Signal-quality interval labels and channels scored against exact synthetic artifact ground truth.",
@@ -1540,11 +1620,13 @@
       "scoring_mode": "local",
       "source": {
         "catalog_path": "examples/catalog/verification_packs_v1.json",
-        "pack_fingerprint": "sha256:84500c0091bf48ec951ff41e1fcc58d5e28a7c8326a5c604cdfcb67af61f1695",
-        "pack_path": "../packs/hrv_v1.json",
-        "source_content_sha256": "sha256:a13a1826584b0c5c3e56d1a17277c839e70fb2c67ccdd699fe6b718e4bae4743"
+        "pack_fingerprint": "sha256:2e9bb1116e5f7a17b2c4b94cd1293e23ad09aa40eca62f9b7595fd9cdf8796e3",
+        "pack_path": "../packs/hrv_robustness_v2.json",
+        "source_content_sha256": "sha256:793782d27f074232d1723c360c22497bb7f32a20b4aae0c4e4c85bd19b7699d4"
       },
       "submission_output_schemas": [
+        "point_events_json_v1",
+        "point_events_csv_v1",
         "hrv_metrics_json_v1",
         "interval_events_json_v1",
         "interval_events_csv_v1"
@@ -1556,6 +1638,7 @@
         "benchmark"
       ],
       "targets": [
+        "r_peak",
         "hrv",
         "signal_quality"
       ],
@@ -1571,15 +1654,17 @@
       },
       "ui": {
         "primary_badges": [
+          "regression",
+          "stress",
           "benchmark",
-          "sdnn",
-          "rmssd",
-          "pnn50"
+          "r_peak",
+          "rr_intervals",
+          "sdnn"
         ],
         "reference_only_before_job": false,
         "scoreable_before_job": true
       },
-      "version": "1.0"
+      "version": "2.0"
     },
     {
       "case_count": 5,
@@ -1773,7 +1858,8 @@
           5,
           6,
           7,
-          8
+          8,
+          9
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2224,7 +2310,8 @@
           5,
           6,
           7,
-          8
+          8,
+          9
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2650,7 +2737,8 @@
           5,
           6,
           7,
-          8
+          8,
+          9
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -3039,7 +3127,8 @@
           5,
           6,
           7,
-          8
+          8,
+          9
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -3425,7 +3514,8 @@
           5,
           6,
           7,
-          8
+          8,
+          9
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -3827,7 +3917,8 @@
           5,
           6,
           7,
-          8
+          8,
+          9
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -3930,14 +4021,6 @@
         {
           "required": true,
           "role": "realism_report_html"
-        },
-        {
-          "required": true,
-          "role": "hrv_metrics_json"
-        },
-        {
-          "required": true,
-          "role": "rr_tachogram_csv"
         },
         {
           "required": true,
@@ -4328,7 +4411,8 @@
           5,
           6,
           7,
-          8
+          8,
+          9
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -4905,7 +4989,8 @@
           5,
           6,
           7,
-          8
+          8,
+          9
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -6697,8 +6782,8 @@
     }
   ],
   "product": "Synsigra Testbench",
-  "release_set_id": "synsigra_curated_release_2026_07_17",
+  "release_set_id": "synsigra_curated_release_2026_07_18",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:4e66727e5abf492fa530affc679dca23972ef9f91c57eddf4ce23ba2fa7af58d"
+  "source_catalog_sha256": "sha256:d6a989c500dde86fa2bb0b5f168a08b0553790f79992ee3fea8c79c616ed53df"
 }

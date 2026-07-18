@@ -77,22 +77,26 @@ namespace
             const double difference = rr[i] - metrics.mean_rr_seconds;
             variance += difference * difference;
         }
-        metrics.sdnn_seconds = normalized_zero(std::sqrt(variance / rr.size()));
+        metrics.sdnn_seconds = rr.size() > 1u ? normalized_zero(std::sqrt(variance / (rr.size() - 1u))) : 0.0;
 
         if (rr.size() < 2u)
             return;
 
         std::vector<double> successive;
-        successive.reserve(rr.size() - 1u);
+        successive.reserve(analysis.intervals.size() - 1u);
         double successive_squared_sum = 0.0;
         unsigned int nn50 = 0;
-        for (std::size_t i = 1; i < rr.size(); ++i)
+        for (std::size_t i = 1; i < analysis.intervals.size(); ++i)
         {
-            const double difference = rr[i] - rr[i - 1u];
+            if (analysis.intervals[i - 1u].excluded || analysis.intervals[i].excluded)
+                continue;
+            const double difference = analysis.intervals[i].rr_seconds - analysis.intervals[i - 1u].rr_seconds;
             successive.push_back(difference);
             successive_squared_sum += difference * difference;
             nn50 += std::fabs(difference) > 0.05 ? 1u : 0u;
         }
+        if (successive.empty())
+            return;
         metrics.rmssd_seconds = normalized_zero(std::sqrt(successive_squared_sum / successive.size()));
         metrics.pnn50_percent = 100.0 * nn50 / successive.size();
 
@@ -106,7 +110,7 @@ namespace
             const double centered = successive[i] - successive_mean;
             successive_variance += centered * centered;
         }
-        successive_variance /= successive.size();
+        successive_variance = successive.size() > 1u ? successive_variance / (successive.size() - 1u) : 0.0;
         metrics.sd1_seconds = normalized_zero(std::sqrt(0.5 * successive_variance));
         const double sd2_squared = std::max(0.0, 2.0 * metrics.sdnn_seconds * metrics.sdnn_seconds - metrics.sd1_seconds * metrics.sd1_seconds);
         metrics.sd2_seconds = normalized_zero(std::sqrt(sd2_squared));
@@ -170,7 +174,7 @@ namespace
             return;
 
         const double bin_width = interpolation_rate / sample_count;
-        const unsigned int first_bin = std::max(1u, static_cast<unsigned int>(std::ceil(analysis.lf_low_hz / bin_width)));
+        const unsigned int first_bin = std::max(1u, static_cast<unsigned int>(std::ceil(analysis.vlf_low_hz / bin_width)));
         const unsigned int last_bin = std::min(sample_count / 2u, static_cast<unsigned int>(std::floor(analysis.hf_high_hz / bin_width)));
         if (last_bin < first_bin)
             return;
@@ -188,17 +192,26 @@ namespace
             }
             const double power = 2.0 * (real * real + imag * imag) / (interpolation_rate * window_power);
             const double band_power = power * bin_width;
+            if (frequency >= analysis.vlf_low_hz && frequency < analysis.vlf_high_hz)
+                analysis.metrics.vlf_power_seconds2 += band_power;
             if (frequency >= analysis.lf_low_hz && frequency < analysis.lf_high_hz)
                 analysis.metrics.lf_power_seconds2 += band_power;
             if (frequency >= analysis.hf_low_hz && frequency <= analysis.hf_high_hz)
                 analysis.metrics.hf_power_seconds2 += band_power;
-            if (frequency >= analysis.lf_low_hz && frequency <= analysis.hf_high_hz)
+            if (frequency >= analysis.vlf_low_hz && frequency <= analysis.hf_high_hz)
                 analysis.metrics.total_power_seconds2 += band_power;
         }
+        analysis.metrics.vlf_power_seconds2 = normalized_zero(analysis.metrics.vlf_power_seconds2);
         analysis.metrics.lf_power_seconds2 = normalized_zero(analysis.metrics.lf_power_seconds2);
         analysis.metrics.hf_power_seconds2 = normalized_zero(analysis.metrics.hf_power_seconds2);
         analysis.metrics.total_power_seconds2 = normalized_zero(analysis.metrics.total_power_seconds2);
         analysis.metrics.lf_hf_ratio = analysis.metrics.hf_power_seconds2 > 0.0 ? analysis.metrics.lf_power_seconds2 / analysis.metrics.hf_power_seconds2 : 0.0;
+        const double normalized_power = analysis.metrics.lf_power_seconds2 + analysis.metrics.hf_power_seconds2;
+        if (normalized_power > 0.0)
+        {
+            analysis.metrics.lf_normalized_units = 100.0 * analysis.metrics.lf_power_seconds2 / normalized_power;
+            analysis.metrics.hf_normalized_units = 100.0 * analysis.metrics.hf_power_seconds2 / normalized_power;
+        }
     }
 }
 
@@ -210,12 +223,12 @@ namespace signal_synth
     }
 
     hrv_metric_summary::hrv_metric_summary()
-        : interval_count(0), accepted_interval_count(0), excluded_interval_count(0), clipped_interval_count(0), ectopic_interval_count(0), artifact_overlap_interval_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), sd1_seconds(0.0), sd2_seconds(0.0), sd1_sd2_ratio(0.0), lf_power_seconds2(0.0), hf_power_seconds2(0.0), lf_hf_ratio(0.0), total_power_seconds2(0.0)
+        : interval_count(0), accepted_interval_count(0), excluded_interval_count(0), clipped_interval_count(0), ectopic_interval_count(0), artifact_overlap_interval_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), sd1_seconds(0.0), sd2_seconds(0.0), sd1_sd2_ratio(0.0), vlf_power_seconds2(0.0), lf_power_seconds2(0.0), hf_power_seconds2(0.0), lf_hf_ratio(0.0), lf_normalized_units(0.0), hf_normalized_units(0.0), total_power_seconds2(0.0)
     {
     }
 
     hrv_analysis_result::hrv_analysis_result()
-        : metric_definition_version("synsigra_hrv_metrics_v1"), exclusion_policy("exclude clipped, ectopic or ectopic-adjacent, missing-QRS, nonpositive, and ECG-artifact-overlapped RR intervals"), spectral_method("linear interpolation to 4 Hz, mean removal, Hann window, direct deterministic periodogram, LF 0.04-0.15 Hz, HF 0.15-0.40 Hz"), interpolation_rate_hz(4.0), lf_low_hz(0.04), lf_high_hz(0.15), hf_low_hz(0.15), hf_high_hz(0.40)
+        : metric_definition_version("synsigra_hrv_metrics_v2"), exclusion_policy("exclude clipped, ectopic or ectopic-adjacent, missing-QRS, nonpositive, and ECG-artifact-overlapped RR intervals"), spectral_method("linear interpolation to 4 Hz, mean removal, Hann window, direct deterministic periodogram, VLF 0.0033-0.04 Hz, LF 0.04-0.15 Hz, HF 0.15-0.40 Hz"), interpolation_rate_hz(4.0), vlf_low_hz(0.0033), vlf_high_hz(0.04), lf_low_hz(0.04), lf_high_hz(0.15), hf_low_hz(0.15), hf_high_hz(0.40)
     {
     }
 

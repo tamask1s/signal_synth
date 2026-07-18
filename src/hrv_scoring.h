@@ -17,11 +17,14 @@ namespace signal_synth
         hrv_metric_sd1_seconds = 5,
         hrv_metric_sd2_seconds = 6,
         hrv_metric_sd1_sd2_ratio = 7,
-        hrv_metric_lf_power_seconds2 = 8,
-        hrv_metric_hf_power_seconds2 = 9,
-        hrv_metric_lf_hf_ratio = 10,
-        hrv_metric_total_power_seconds2 = 11,
-        hrv_metric_count = 12
+        hrv_metric_vlf_power_seconds2 = 8,
+        hrv_metric_lf_power_seconds2 = 9,
+        hrv_metric_hf_power_seconds2 = 10,
+        hrv_metric_lf_hf_ratio = 11,
+        hrv_metric_lf_normalized_units = 12,
+        hrv_metric_hf_normalized_units = 13,
+        hrv_metric_total_power_seconds2 = 14,
+        hrv_metric_count = 15
     };
 
     struct hrv_user_metric

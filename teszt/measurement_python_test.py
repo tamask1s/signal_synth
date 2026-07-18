@@ -78,7 +78,7 @@ def main():
 
     verify_dir = os.path.join(work, "verify")
     report = ss.verify_package(challenge, submission_dir, verify_dir, profile="regression")
-    assert report.summary["success"] and report.summary["scoring_version"] == "synsigra-python-local-v4"
+    assert report.summary["success"] and report.summary["scoring_version"] == "synsigra-python-local-v5"
     assert set(item["target"] for item in report.summary["targets"]) == set(["morphology_assertions", "ecg_ppg_alignment"])
     for item in report.summary["targets"]:
         assert item["overall"]["tolerance_pass_fraction"] == 1.0

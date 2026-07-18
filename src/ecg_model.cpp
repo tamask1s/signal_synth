@@ -46,6 +46,9 @@ namespace signal_synth
         bool valid_hrv_config(const ecg_hrv_config& config)
         {
             return finite(config.rr_standard_deviation_seconds) &&
+                finite(config.vlf_power_fraction) &&
+                finite(config.vlf_center_frequency_hz) &&
+                finite(config.vlf_bandwidth_hz) &&
                 finite(config.lf_hf_ratio) &&
                 finite(config.lf_center_frequency_hz) &&
                 finite(config.hf_center_frequency_hz) &&
@@ -54,6 +57,11 @@ namespace signal_synth
                 finite(config.minimum_rr_seconds) &&
                 finite(config.maximum_rr_seconds) &&
                 config.rr_standard_deviation_seconds >= 0.0 &&
+                config.vlf_power_fraction >= 0.0 &&
+                config.vlf_power_fraction <= 1.0 &&
+                config.vlf_center_frequency_hz - 2.5 * config.vlf_bandwidth_hz >= 0.0033 &&
+                config.vlf_center_frequency_hz + 2.5 * config.vlf_bandwidth_hz < 0.04 &&
+                config.vlf_bandwidth_hz > 0.0 &&
                 config.lf_hf_ratio >= 0.0 &&
                 config.lf_center_frequency_hz > 0.0 &&
                 config.hf_center_frequency_hz > 0.0 &&
@@ -288,6 +296,9 @@ namespace signal_synth
     ecg_hrv_config::ecg_hrv_config()
         : enabled(false),
           rr_standard_deviation_seconds(0.05),
+          vlf_power_fraction(0.0),
+          vlf_center_frequency_hz(0.02),
+          vlf_bandwidth_hz(0.004),
           lf_hf_ratio(0.5),
           lf_center_frequency_hz(0.10),
           hf_center_frequency_hz(0.25),
@@ -417,7 +428,9 @@ namespace signal_synth
         const double hrv_nyquist =
             mean_heart_rate_bpm / 120.0;
         if (hrv.enabled &&
-            (hrv.lf_center_frequency_hz +
+            (hrv.vlf_center_frequency_hz +
+                    2.5 * hrv.vlf_bandwidth_hz >= hrv_nyquist ||
+                hrv.lf_center_frequency_hz +
                     2.5 * hrv.lf_bandwidth_hz >= hrv_nyquist ||
                 hrv.hf_center_frequency_hz +
                     2.5 * hrv.hf_bandwidth_hz >= hrv_nyquist))
@@ -435,9 +448,18 @@ namespace signal_synth
             const double total_variance =
                 hrv.rr_standard_deviation_seconds *
                 hrv.rr_standard_deviation_seconds;
+            const double vlf_variance = total_variance * hrv.vlf_power_fraction;
+            const double lf_hf_variance = total_variance - vlf_variance;
             const double hf_variance =
-                total_variance / (1.0 + hrv.lf_hf_ratio);
-            const double lf_variance = total_variance - hf_variance;
+                lf_hf_variance / (1.0 + hrv.lf_hf_ratio);
+            const double lf_variance = lf_hf_variance - hf_variance;
+            append_oscillator_band(
+                implementation_->oscillators,
+                hrv.vlf_center_frequency_hz,
+                hrv.vlf_bandwidth_hz,
+                vlf_variance,
+                hrv.seed,
+                0x20000ULL);
             append_oscillator_band(
                 implementation_->oscillators,
                 hrv.lf_center_frequency_hz,

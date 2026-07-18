@@ -32,7 +32,7 @@ RELEASE_PACK_IDS = [
     "ecg_extended_morphology_v1",
     "advanced_rhythm_burden_v1",
     "r_peak_stress_v1",
-    "hrv_v1",
+    "hrv_robustness_v2",
     "ecg_beat_classification_v1",
     "ecg_rhythm_v1",
     "signal_quality_v1",
@@ -53,7 +53,7 @@ def assert_release_pack_metadata(item):
     assert item["metadata_type"] == "synsigra_curated_pack_metadata"
     assert isinstance(item["version"], str) and item["version"]
     assert item["release_status"] == "beta"
-    expected_date = "2026-07-17" if item["pack_id"] in ("ecg_delineation_v2", "wearable_timebase_v2", "ppg_optical_v2", "cardiorespiratory_v1", "advanced_rhythm_burden_v1", "ecg_extended_morphology_v1", "ecg_hybrid_noise_v1") else "2026-07-06"
+    expected_date = "2026-07-18" if item["pack_id"] == "hrv_robustness_v2" else "2026-07-17" if item["pack_id"] in ("ecg_delineation_v2", "wearable_timebase_v2", "ppg_optical_v2", "cardiorespiratory_v1", "advanced_rhythm_burden_v1", "ecg_extended_morphology_v1", "ecg_hybrid_noise_v1") else "2026-07-06"
     assert item["release_date"] == expected_date
     assert item["recommended_for"] and item["not_recommended_for"] and item["changelog"]
     assert item["source"]["pack_fingerprint"].startswith("sha256:")
@@ -70,6 +70,7 @@ def assert_release_pack_metadata(item):
     assert item["estimated_package"]["size_class"] in ("small", "medium", "large", "very_large")
     assert item["output_artifacts"]
     artifact_roles = [artifact["role"] for artifact in item["output_artifacts"]]
+    assert len(artifact_roles) == len(set(artifact_roles))
     assert "provenance_json" in artifact_roles
     assert "engineering_claim_boundary_txt" in artifact_roles
     assert item["declared_targets"]
@@ -230,6 +231,20 @@ def assert_hybrid_noise_metadata(item):
     assert {"external_noise_truth_json", "external_noise_clean_ecg_csv"}.issubset(roles)
 
 
+def assert_hrv_robustness_metadata(item):
+    assert item["pack_id"] == "hrv_robustness_v2"
+    assert item["version"] == "2.0"
+    assert item["case_count"] == 10
+    assert item["generator_compatibility"]["scenario_schema_versions"] == [2, 9]
+    assert item["generator_compatibility"]["minimum_generator_version"] == "0.7.0-dev"
+    assert item["generator_compatibility"]["local_verifier_min_version"] == "0.7.0"
+    targets = dict((target["target"], target) for target in item["scoreable_targets"])
+    assert sorted(targets) == ["hrv", "r_peak", "signal_quality"]
+    assert targets["hrv"]["case_count"] == 10
+    assert targets["signal_quality"]["case_ids"] == ["baseline_wander_stress", "powerline_emg_stress", "drift_dropout_stress"]
+    assert {"hrv_metrics_json", "rr_tachogram_csv"}.issubset(set(artifact["role"] for artifact in item["output_artifacts"]))
+
+
 def main():
     source_dir = os.environ["SIGNAL_SYNTH_SOURCE_DIR"]
     cli = os.environ["SIGNAL_SYNTH_CLI"]
@@ -246,10 +261,10 @@ def main():
         assert generated["schema_version"] == 1
         assert generated["metadata_type"] == "synsigra_curated_pack_catalog"
         assert generated["metadata_version"] == "synsigra_curated_pack_metadata_export_v1"
-        assert generated["release_set_id"] == "synsigra_curated_release_2026_07_17"
+        assert generated["release_set_id"] == "synsigra_curated_release_2026_07_18"
         assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
-        assert generated["catalog_version"] == "2.4"
+        assert generated["catalog_version"] == "2.5"
         assert generated["pack_count"] == 16
         assert [item["pack_id"] for item in generated["packs"]] == RELEASE_PACK_IDS
         for pack_id in RELEASE_PACK_IDS:
@@ -261,6 +276,7 @@ def main():
         assert_cardiorespiratory_metadata(pack(generated, "cardiorespiratory_v1"))
         assert_advanced_rhythm_metadata(pack(generated, "advanced_rhythm_burden_v1"))
         assert_hybrid_noise_metadata(pack(generated, "ecg_hybrid_noise_v1"))
+        assert_hrv_robustness_metadata(pack(generated, "hrv_robustness_v2"))
         assert_measurement_metadata(pack(generated, "ecg_extended_morphology_v1"), "morphology_assertions", "0.6.0")
         assert_measurement_metadata(pack(generated, "ecg_morphology_stress_v1"), "morphology_assertions")
         assert_measurement_metadata(pack(generated, "ppg_alignment_v1"), "ecg_ppg_alignment")

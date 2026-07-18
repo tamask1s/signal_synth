@@ -35,17 +35,18 @@ int main()
     bool ok = true;
     const std::string metadata = signal_synth::scenario_authoring_metadata_json();
     const std::string templates = signal_synth::scenario_template_catalog_json();
-    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v15"
+    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v16"
         && metadata.find("\"condition_count\"") == std::string::npos
         && metadata.find("\"code\":\"NORM\"") != std::string::npos
         && metadata.find("\"path\":\"$.hrv.target_sdnn_seconds\"") != std::string::npos
+        && metadata.find("\"path\":\"$.hrv.vlf_power_fraction\"") != std::string::npos
         && metadata.find("\"path\":\"$.randomization.envelopes\"") != std::string::npos
         && metadata.find("\"path\":\"$.ppg.perfusion_episodes\"") != std::string::npos
         && metadata.find("\"path\":\"$.ppg.pvc_pulse_amplitude_scale\"") != std::string::npos
         && metadata.find("\"path\":\"$.output.compact\"") != std::string::npos
         && metadata.find("\"path\":\"$.wearable.ppg.clock_drift_ppm\"") != std::string::npos
         && metadata.find("\"path\":\"$.ppg.clock_drift_ppm\"") == std::string::npos
-        && metadata.find("\"scenario_schema_version\":8") != std::string::npos
+        && metadata.find("\"scenario_schema_version\":9") != std::string::npos
         && metadata.find("\"path\":\"$.external_noise.assets\"") != std::string::npos
         && metadata.find("\"path\":\"$.ecg.extended_morphology.components\"") != std::string::npos
         && metadata.find("\"ecg_morphology_component_item_fields\"") != std::string::npos
@@ -62,7 +63,7 @@ int main()
         && metadata.find("\"name\":\"ppg_optical\",\"support\":\"local_scoring\"") != std::string::npos
         && metadata.find("\"name\":\"prv\",\"support\":\"local_scoring\"") != std::string::npos
         && metadata.find("\"name\":\"respiratory_rate\",\"support\":\"local_scoring\"") != std::string::npos, "metadata_contract");
-    ok &= check(std::string(signal_synth::scenario_template_catalog_version()) == "synsigra_templates_v4"
+    ok &= check(std::string(signal_synth::scenario_template_catalog_version()) == "synsigra_templates_v5"
         && templates.find("\"template_id\":\"ecg_rpeak_clean\"") != std::string::npos
         && templates.find("\"template_id\":\"ecg_hrv_benchmark\"") != std::string::npos
         && templates.find("\"template_id\":\"wearable_ecg_ppg_stress\"") != std::string::npos

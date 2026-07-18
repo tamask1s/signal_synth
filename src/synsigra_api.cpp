@@ -201,12 +201,12 @@ namespace signal_synth
 
     const char* synsigra_api_version()
     {
-        return "1.1.0";
+        return "1.2.0";
     }
 
     const char* synsigra_integration_contract_version()
     {
-        return "synsigra_core_integration_v3";
+        return "synsigra_core_integration_v4";
     }
 
     std::string synsigra_integration_contract_json()
@@ -225,6 +225,8 @@ namespace signal_synth
                << ",\"scenario_templates\":" << json_text(scenario_template_catalog_version())
                << ",\"external_noise_truth\":\"synsigra_external_noise_truth_v1\"}"
                << ",\"external_noise\":{\"scenario_schema_version\":8,\"asset_transport\":\"in_memory_csv_registry\",\"asset_bytes_in_challenge\":false,\"release_gate\":\"external_noise_truth.release_allowed\",\"redistribution_modes\":[\"local_only\",\"rendered_output\",\"source_and_output\"]}"
+               << ",\"scenario\":{\"latest_schema_version\":9,\"supported_schema_versions\":[2,3,4,5,6,7,8,9]}"
+               << ",\"hrv\":{\"scenario_schema_version\":9,\"metric_definition\":\"synsigra_hrv_metrics_v2\",\"scoring_version\":\"synsigra_hrv_score_v2\",\"metrics\":[\"mean_rr_seconds\",\"mean_heart_rate_bpm\",\"sdnn_seconds\",\"rmssd_seconds\",\"pnn50_percent\",\"sd1_seconds\",\"sd2_seconds\",\"sd1_sd2_ratio\",\"vlf_power_seconds2\",\"lf_power_seconds2\",\"hf_power_seconds2\",\"lf_hf_ratio\",\"lf_normalized_units\",\"hf_normalized_units\",\"total_power_seconds2\"]}"
                << ",\"cli\":{\"challenge_command\":\"signal-synth pack challenge <pack.json> --out <new-directory>\""
                << ",\"challenge_success_media_type\":\"application/json\""
                << ",\"comparison_targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ppg_pulse_onset\",\"ecg_beat_classification\"]"

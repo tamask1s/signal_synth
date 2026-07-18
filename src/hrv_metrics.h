@@ -39,9 +39,12 @@ namespace signal_synth
         double sd1_seconds;
         double sd2_seconds;
         double sd1_sd2_ratio;
+        double vlf_power_seconds2;
         double lf_power_seconds2;
         double hf_power_seconds2;
         double lf_hf_ratio;
+        double lf_normalized_units;
+        double hf_normalized_units;
         double total_power_seconds2;
     };
 
@@ -55,6 +58,8 @@ namespace signal_synth
         std::string exclusion_policy;
         std::string spectral_method;
         double interpolation_rate_hz;
+        double vlf_low_hz;
+        double vlf_high_hz;
         double lf_low_hz;
         double lf_high_hz;
         double hf_low_hz;

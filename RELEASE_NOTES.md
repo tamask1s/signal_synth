@@ -3,6 +3,18 @@
 This file records public engineering-verification release notes for the
 `signal_synth` core generator and local verifier contracts.
 
+## 0.7.0-dev
+
+Status: active development baseline.
+
+- Added scenario schema 9 with controlled VLF RR modulation.
+- Added VLF power, LF/HF normalized units and explicit HRV metric definition
+  v2 scoring.
+- Replaced `hrv_v1` with the end-to-end `hrv_robustness_v2` R-peak, RR/HRV
+  and signal-quality challenge pack.
+- Added local-verifier HRV pipeline diagnostics and corrected successive NN
+  calculations so excluded intervals are not bridged.
+
 ## 0.6.0-dev
 
 Status: active development baseline.

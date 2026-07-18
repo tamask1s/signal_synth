@@ -96,15 +96,16 @@ def beat_classifications(annotations):
 def hrv_output(case, perturb=False, customer=False):
     truth = case.hrv_metrics()
     accepted = [item for item in truth["tachogram"] if not item["excluded"]]
-    mean_rr = truth["time_domain"]["mean_rr_seconds"]
+    metrics = dict(truth["time_domain"])
+    metrics.update(truth["frequency_domain"])
     intervals = [{"beat_time_seconds": item["beat_time_seconds"], "rr_seconds": item["rr_seconds"]} for item in accepted]
     if perturb:
-        mean_rr += 0.040
+        metrics["mean_rr_seconds"] += 0.040
         intervals = intervals[1:]
         intervals[0]["rr_seconds"] += 0.030
     output = {
         "schema_version": 1,
-        "metrics": {"mean_rr_seconds": mean_rr, "rmssd_seconds": truth["time_domain"]["rmssd_seconds"]},
+        "metrics": metrics,
         "rr_intervals": intervals,
     }
     if not customer:
@@ -188,7 +189,7 @@ def main():
     assert challenge.case_ids() == ["clean_ecg", "ppg_clean", "ppg_stress", "ppg_motion", "hrv_mild", "rhythm_episode", "signal_quality"]
     provenance = read_json(os.path.join(challenge_dir, "provenance.json"))
     assert provenance["metadata_type"] == "synsigra_package_provenance"
-    assert provenance["generator"]["version"] == "0.6.0-dev"
+    assert provenance["generator"]["version"] == "0.7.0-dev"
     assert provenance["verifier"]["package_contract_version"] == "synsigra_challenge_package_v2"
     assert "clinical validation" in provenance["claim_boundary"]["not_for"]
     assert os.path.exists(os.path.join(challenge_dir, "ENGINEERING_CLAIM_BOUNDARY.txt"))
@@ -392,8 +393,12 @@ def main():
         for key in ("target", "options", "overall", "classes", "confusion_matrix", "matches", "false_positive_indices", "false_negative_indices"):
             assert local_interval[key] == direct_report[key]
     assert next(item for item in local_report.summary["targets"] if item["target"] == "ecg_beat_classification")["confusion_matrix"]["labels"] == ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion", "unscored"]
+    assert local_report.summary["hrv_pipeline"]["available"] and local_report.summary["hrv_pipeline"]["complete"]
+    assert [item["stage"] for item in local_report.summary["hrv_pipeline"]["stages"]] == ["r_peak_detection", "rr_interval_reconstruction", "hrv_metric_computation", "signal_quality_interval_detection"]
+    assert all(item["score"] == 1 for item in local_report.summary["hrv_pipeline"]["stages"])
     with open(os.path.join(local_verify_dir, "verification_report.html"), "r") as handle:
-        assert "Synsigra Local Verification Report" in handle.read()
+        html = handle.read()
+        assert "Synsigra Local Verification Report" in html and "HRV pipeline" in html
 
     cli_verify_dir = os.path.join(work_dir, "cli_verify")
     cli_output = run([sys.executable, "-m", "synsigra.cli", "verify", archive_path, submission_dir, cli_verify_dir])

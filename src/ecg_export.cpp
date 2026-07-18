@@ -520,6 +520,7 @@ namespace
                    << ",\"end_seconds\":" << hrv.intervals.back().beat_time_seconds
                    << ",\"duration_seconds\":" << hrv.intervals.back().beat_time_seconds - hrv.intervals.front().beat_time_seconds;
         output << ",\"interpolation_rate_hz\":" << hrv.interpolation_rate_hz
+               << ",\"vlf_band_hz\":[" << hrv.vlf_low_hz << ',' << hrv.vlf_high_hz << ']'
                << ",\"lf_band_hz\":[" << hrv.lf_low_hz << ',' << hrv.lf_high_hz << ']'
                << ",\"hf_band_hz\":[" << hrv.hf_low_hz << ',' << hrv.hf_high_hz << "]}"
                << ",\"counts\":{\"intervals\":" << metrics.interval_count
@@ -536,9 +537,12 @@ namespace
                << ",\"sd1_seconds\":" << metrics.sd1_seconds
                << ",\"sd2_seconds\":" << metrics.sd2_seconds
                << ",\"sd1_sd2_ratio\":" << metrics.sd1_sd2_ratio << '}'
-               << ",\"frequency_domain\":{\"lf_power_seconds2\":" << metrics.lf_power_seconds2
+               << ",\"frequency_domain\":{\"vlf_power_seconds2\":" << metrics.vlf_power_seconds2
+               << ",\"lf_power_seconds2\":" << metrics.lf_power_seconds2
                << ",\"hf_power_seconds2\":" << metrics.hf_power_seconds2
                << ",\"lf_hf_ratio\":" << metrics.lf_hf_ratio
+               << ",\"lf_normalized_units\":" << metrics.lf_normalized_units
+               << ",\"hf_normalized_units\":" << metrics.hf_normalized_units
                << ",\"total_power_seconds2\":" << metrics.total_power_seconds2 << '}'
                << ",\"tachogram\":";
         write_rr_tachogram_json(output, hrv);
@@ -551,7 +555,7 @@ namespace
         output << "{\"interval_count\":" << metrics.interval_count << ",\"accepted_interval_count\":" << metrics.accepted_interval_count << ",\"excluded_interval_count\":" << metrics.excluded_interval_count
                << ",\"mean_interval_seconds\":" << metrics.mean_rr_seconds << ",\"mean_rate_bpm\":" << metrics.mean_heart_rate_bpm << ",\"sdnn_seconds\":" << metrics.sdnn_seconds << ",\"rmssd_seconds\":" << metrics.rmssd_seconds
                << ",\"pnn50_percent\":" << metrics.pnn50_percent << ",\"sd1_seconds\":" << metrics.sd1_seconds << ",\"sd2_seconds\":" << metrics.sd2_seconds << ",\"sd1_sd2_ratio\":" << metrics.sd1_sd2_ratio
-               << ",\"lf_power_seconds2\":" << metrics.lf_power_seconds2 << ",\"hf_power_seconds2\":" << metrics.hf_power_seconds2 << ",\"lf_hf_ratio\":" << metrics.lf_hf_ratio << ",\"total_power_seconds2\":" << metrics.total_power_seconds2 << '}';
+               << ",\"vlf_power_seconds2\":" << metrics.vlf_power_seconds2 << ",\"lf_power_seconds2\":" << metrics.lf_power_seconds2 << ",\"hf_power_seconds2\":" << metrics.hf_power_seconds2 << ",\"lf_hf_ratio\":" << metrics.lf_hf_ratio << ",\"lf_normalized_units\":" << metrics.lf_normalized_units << ",\"hf_normalized_units\":" << metrics.hf_normalized_units << ",\"total_power_seconds2\":" << metrics.total_power_seconds2 << '}';
     }
 
     std::string cardiorespiratory_truth_json(const signal_synth::ecg_render_bundle& render)
@@ -568,7 +572,7 @@ namespace
             output << "},\"hrv_prv_agreement\":{\"signed_difference_definition\":\"prv_minus_hrv\",\"mean_interval_seconds\":" << prv.mean_rr_seconds - hrv.mean_rr_seconds << ",\"mean_rate_bpm\":" << prv.mean_heart_rate_bpm - hrv.mean_heart_rate_bpm
                    << ",\"sdnn_seconds\":" << prv.sdnn_seconds - hrv.sdnn_seconds << ",\"rmssd_seconds\":" << prv.rmssd_seconds - hrv.rmssd_seconds << ",\"pnn50_percent\":" << prv.pnn50_percent - hrv.pnn50_percent
                    << ",\"sd1_seconds\":" << prv.sd1_seconds - hrv.sd1_seconds << ",\"sd2_seconds\":" << prv.sd2_seconds - hrv.sd2_seconds << ",\"sd1_sd2_ratio\":" << prv.sd1_sd2_ratio - hrv.sd1_sd2_ratio
-                   << ",\"lf_power_seconds2\":" << prv.lf_power_seconds2 - hrv.lf_power_seconds2 << ",\"hf_power_seconds2\":" << prv.hf_power_seconds2 - hrv.hf_power_seconds2 << ",\"lf_hf_ratio\":" << prv.lf_hf_ratio - hrv.lf_hf_ratio << '}';
+                   << ",\"vlf_power_seconds2\":" << prv.vlf_power_seconds2 - hrv.vlf_power_seconds2 << ",\"lf_power_seconds2\":" << prv.lf_power_seconds2 - hrv.lf_power_seconds2 << ",\"hf_power_seconds2\":" << prv.hf_power_seconds2 - hrv.hf_power_seconds2 << ",\"lf_hf_ratio\":" << prv.lf_hf_ratio - hrv.lf_hf_ratio << ",\"lf_normalized_units\":" << prv.lf_normalized_units - hrv.lf_normalized_units << ",\"hf_normalized_units\":" << prv.hf_normalized_units - hrv.hf_normalized_units << '}';
         }
         if (analysis.respiration_available)
             output << ",\"respiration\":{\"reference_sample_rate_hz\":" << analysis.respiration_sample_rate_hz << ",\"frequency_hz\":" << render.resolved_document.physiology.respiration_frequency_hz << ",\"rate_bpm\":" << analysis.respiratory_rate_bpm << ",\"phase_radians\":" << analysis.respiration_phase_radians
@@ -846,9 +850,12 @@ namespace
                << ",\"sd1_seconds\":" << metrics.sd1_seconds
                << ",\"sd2_seconds\":" << metrics.sd2_seconds
                << ",\"sd1_sd2_ratio\":" << metrics.sd1_sd2_ratio
+               << ",\"vlf_power_seconds2\":" << metrics.vlf_power_seconds2
                << ",\"lf_power_seconds2\":" << metrics.lf_power_seconds2
                << ",\"hf_power_seconds2\":" << metrics.hf_power_seconds2
                << ",\"lf_hf_ratio\":" << metrics.lf_hf_ratio
+               << ",\"lf_normalized_units\":" << metrics.lf_normalized_units
+               << ",\"hf_normalized_units\":" << metrics.hf_normalized_units
                << ",\"total_power_seconds2\":" << metrics.total_power_seconds2
                << "},\"artifacts\":{\"count\":" << metrics.artifact_count
                << ",\"total_artifact_seconds\":" << metrics.total_artifact_seconds
@@ -1121,7 +1128,8 @@ namespace
                << " s</td></tr><tr><th>RMSSD</th><td>" << render.metrics.rmssd_seconds
                << " s</td></tr><tr><th>pNN50</th><td>" << render.metrics.pnn50_percent
                << " %</td></tr><tr><th>SD1 / SD2</th><td>" << render.metrics.sd1_seconds << " s / " << render.metrics.sd2_seconds
-               << " s</td></tr><tr><th>LF/HF</th><td>" << render.metrics.lf_hf_ratio
+               << " s</td></tr><tr><th>VLF power</th><td>" << render.metrics.vlf_power_seconds2
+               << " s2</td></tr><tr><th>LF/HF</th><td>" << render.metrics.lf_hf_ratio
                << "</td></tr><tr><th>HRV accepted / excluded intervals</th><td>" << render.metrics.hrv_accepted_interval_count << " / " << render.metrics.hrv_excluded_interval_count
                << "</td></tr><tr><th>Artifact intervals</th><td>" << render.metrics.artifact_count
                << "</td></tr><tr><th>Total artifact seconds</th><td>" << render.metrics.total_artifact_seconds
@@ -1186,7 +1194,7 @@ namespace signal_synth
 
     const char* signal_synth_generator_version()
     {
-        return "0.6.0-dev";
+        return "0.7.0-dev";
     }
 
     const char* signal_synth_generator_git_commit()

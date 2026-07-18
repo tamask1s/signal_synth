@@ -73,7 +73,7 @@ int main()
     ok &= check(rejects_without_mutation("[]", signal_synth::ecg_json_type), "reject_root_type");
     ok &= check(rejects_without_mutation("{", signal_synth::ecg_json_syntax), "reject_truncated_json");
     ok &= check(rejects_without_mutation(input + "x", signal_synth::ecg_json_syntax), "reject_trailing_data");
-    ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":9"), signal_synth::ecg_json_schema_version), "reject_schema_version");
+    ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":10"), signal_synth::ecg_json_schema_version), "reject_schema_version");
     ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":1,\"schema_version\":1"), signal_synth::ecg_json_duplicate_key), "reject_duplicate_key");
     ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"schema_version\":1"), 18, "\"schema_version\":1,\"unknown\":0"), signal_synth::ecg_json_unknown_field), "reject_unknown_field");
     ok &= check(rejects_without_mutation(std::string(input).replace(input.find("\"name\":\"Clean ECG\","), 19, ""), signal_synth::ecg_json_missing_field), "reject_missing_field");
@@ -148,6 +148,28 @@ int main()
     multimodal.ppg.enabled = true;
     signal_synth::ecg_scenario_json_result multimodal_result;
     ok &= check(signal_synth::write_ecg_scenario_json(multimodal, multimodal_result) && multimodal_result.canonical_json.find("\"ppg\":{\"enabled\":true") != std::string::npos, "schema_v2_ppg_serialization");
+
+    signal_synth::ecg_scenario_document vlf_document;
+    vlf_document.schema_version = 9;
+    vlf_document.scenario_id = "hrv_vlf_roundtrip";
+    vlf_document.duration_seconds = 600.0;
+    vlf_document.hrv.enabled = true;
+    vlf_document.ecg.set_heart_rate_bpm(vlf_document.hrv.target_mean_hr_bpm);
+    vlf_document.ecg.set_rr_variability_seconds(vlf_document.hrv.target_sdnn_seconds);
+    vlf_document.ecg.set_seed(vlf_document.hrv.seed);
+    vlf_document.hrv.vlf_power_fraction = 0.75;
+    signal_synth::ecg_scenario_json_result vlf_result;
+    signal_synth::ecg_scenario_document vlf_roundtrip;
+    signal_synth::ecg_scenario_json_result vlf_repeated;
+    const bool vlf_written = signal_synth::write_ecg_scenario_json(vlf_document, vlf_result);
+    const bool vlf_parsed = vlf_written && signal_synth::parse_ecg_scenario_json(vlf_result.canonical_json, vlf_roundtrip, vlf_repeated);
+    if (!vlf_written || !vlf_parsed)
+    {
+        const signal_synth::ecg_scenario_json_result& failed = vlf_written ? vlf_repeated : vlf_result;
+        for (std::size_t i = 0; i < failed.messages.size(); ++i)
+            std::cerr << failed.messages[i].path << ": " << failed.messages[i].message << '\n';
+    }
+    ok &= check(vlf_written && vlf_result.canonical_json.find("\"vlf_power_fraction\":0.75") != std::string::npos && vlf_parsed && vlf_roundtrip.hrv.vlf_power_fraction == 0.75 && vlf_repeated.document_fingerprint == vlf_result.document_fingerprint, "schema_v9_vlf_roundtrip");
     signal_synth::ecg_scenario_document multimodal_roundtrip;
     signal_synth::ecg_scenario_json_result multimodal_repeated;
     ok &= check(signal_synth::parse_ecg_scenario_json(multimodal_result.canonical_json, multimodal_roundtrip, multimodal_repeated) && multimodal_roundtrip.ppg.enabled && multimodal_repeated.document_fingerprint == multimodal_result.document_fingerprint, "schema_v2_ppg_roundtrip");
@@ -161,8 +183,8 @@ int main()
     const std::string hrv_input =
         "{"
         "\"schema_version\":2,\"scenario_id\":\"hrv_schema\",\"name\":\"HRV schema\",\"description\":\"\",\"author\":\"\","
-        "\"tags\":[\"hrv\"],\"duration_seconds\":300,\"sample_rate_hz\":100,\"seed\":1,"
-        "\"ecg\":{\"heart_rate_bpm\":60,\"rr_variability_seconds\":0,\"ectopic_every_n_beats\":0,"
+        "\"tags\":[\"hrv\"],\"duration_seconds\":300,\"sample_rate_hz\":100,\"seed\":4242,"
+        "\"ecg\":{\"heart_rate_bpm\":72,\"rr_variability_seconds\":0.045,\"ectopic_every_n_beats\":0,"
         "\"second_degree_av_pattern\":\"unspecified\",\"q_wave_territory\":\"unspecified\","
         "\"rhythm_episodes\":[],\"flutter_conduction_pattern\":\"fixed\","
         "\"pacing_mode\":\"ventricular\",\"pacing_non_capture_every_n_beats\":0,"

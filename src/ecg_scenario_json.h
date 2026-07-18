@@ -18,6 +18,9 @@ namespace signal_synth
         bool enabled;
         double target_mean_hr_bpm;
         double target_sdnn_seconds;
+        double vlf_power_fraction;
+        double vlf_center_hz;
+        double vlf_bandwidth_hz;
         double lf_hf_ratio;
         double lf_center_hz;
         double lf_bandwidth_hz;

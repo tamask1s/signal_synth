@@ -38,9 +38,12 @@ namespace signal_synth
         double sd1_seconds;
         double sd2_seconds;
         double sd1_sd2_ratio;
+        double vlf_power_seconds2;
         double lf_power_seconds2;
         double hf_power_seconds2;
         double lf_hf_ratio;
+        double lf_normalized_units;
+        double hf_normalized_units;
         double total_power_seconds2;
         unsigned int ppg_pulse_count;
         unsigned int ppg_expected_pulse_count;

@@ -159,7 +159,7 @@ namespace signal_synth
                 fresh.ecg.set_rr_variability_seconds(fresh.hrv.target_sdnn_seconds);
                 fresh.ecg.set_minimum_rr_seconds(fresh.hrv.minimum_rr_seconds);
                 fresh.ecg.set_maximum_rr_seconds(fresh.hrv.maximum_rr_seconds);
-                fresh.ecg.set_hrv_modulation(fresh.hrv.lf_hf_ratio, fresh.hrv.lf_center_hz, fresh.hrv.lf_bandwidth_hz, fresh.hrv.hf_center_hz, fresh.hrv.hf_bandwidth_hz, fresh.hrv.respiratory_frequency_hz, fresh.hrv.respiratory_amplitude_seconds, physiology_respiration_phase_radians(fresh.physiology));
+                fresh.ecg.set_hrv_modulation(fresh.hrv.lf_hf_ratio, fresh.hrv.lf_center_hz, fresh.hrv.lf_bandwidth_hz, fresh.hrv.hf_center_hz, fresh.hrv.hf_bandwidth_hz, fresh.hrv.respiratory_frequency_hz, fresh.hrv.respiratory_amplitude_seconds, physiology_respiration_phase_radians(fresh.physiology), fresh.hrv.vlf_power_fraction, fresh.hrv.vlf_center_hz, fresh.hrv.vlf_bandwidth_hz);
             }
             else
             {
@@ -171,7 +171,7 @@ namespace signal_synth
         {
             fresh.ecg.set_heart_rate_bpm(fresh.hrv.target_mean_hr_bpm);
             fresh.ecg.set_rr_variability_seconds(fresh.hrv.target_sdnn_seconds);
-            fresh.ecg.set_hrv_modulation(fresh.hrv.lf_hf_ratio, fresh.hrv.lf_center_hz, fresh.hrv.lf_bandwidth_hz, fresh.hrv.hf_center_hz, fresh.hrv.hf_bandwidth_hz, fresh.hrv.respiratory_frequency_hz, fresh.hrv.respiratory_amplitude_seconds);
+            fresh.ecg.set_hrv_modulation(fresh.hrv.lf_hf_ratio, fresh.hrv.lf_center_hz, fresh.hrv.lf_bandwidth_hz, fresh.hrv.hf_center_hz, fresh.hrv.hf_bandwidth_hz, fresh.hrv.respiratory_frequency_hz, fresh.hrv.respiratory_amplitude_seconds, -1.0, fresh.hrv.vlf_power_fraction, fresh.hrv.vlf_center_hz, fresh.hrv.vlf_bandwidth_hz);
         }
         if (!fresh.ecg.set_activity_modulation(fresh.physiology.activity_start_seconds, fresh.physiology.activity_duration_seconds, fresh.physiology.activity_intensity))
         {

@@ -19,9 +19,12 @@ assert contract_process.stderr == ""
 contract = json.loads(contract_process.stdout)
 assert contract_process.stdout.strip() == json.dumps(contract, separators=(",", ":"))
 assert contract["schema_version"] == 1
-assert contract["contract"] == "synsigra_core_integration_v3"
+assert contract["contract"] == "synsigra_core_integration_v4"
 assert contract["external_noise"]["scenario_schema_version"] == 8
-assert contract["contracts"]["cpp_facade"] == "1.1.0"
+assert contract["contracts"]["cpp_facade"] == "1.2.0"
+assert contract["scenario"] == {"latest_schema_version": 9, "supported_schema_versions": [2, 3, 4, 5, 6, 7, 8, 9]}
+assert contract["hrv"]["metric_definition"] == "synsigra_hrv_metrics_v2"
+assert contract["hrv"]["metrics"] == ["mean_rr_seconds", "mean_heart_rate_bpm", "sdnn_seconds", "rmssd_seconds", "pnn50_percent", "sd1_seconds", "sd2_seconds", "sd1_sd2_ratio", "vlf_power_seconds2", "lf_power_seconds2", "hf_power_seconds2", "lf_hf_ratio", "lf_normalized_units", "hf_normalized_units", "total_power_seconds2"]
 assert contract["contracts"]["challenge_package"] == "synsigra_challenge_package_v2"
 assert contract["contracts"]["scoring_manifest"] == "synsigra_scoring_manifest_v2"
 assert contract["contracts"]["submission"] == "synsigra_submission_v1"

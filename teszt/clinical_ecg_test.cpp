@@ -260,6 +260,12 @@ int main()
     signal_synth::clinical_ecg_config invalid_source = config;
     invalid_source.sources.gain[signal_synth::clinical_source_atrial] = std::numeric_limits<double>::quiet_NaN();
     ok &= check(!signal_synth::clinical_ecg_generator(invalid_source).valid(), "invalid_source_configuration_is_rejected");
+
+    signal_synth::clinical_ecg_config invalid_vlf = config;
+    invalid_vlf.rhythm.hrv_modulation_enabled = true;
+    invalid_vlf.rhythm.hrv_vlf_center_hz = 0.039;
+    invalid_vlf.rhythm.hrv_vlf_bandwidth_hz = 0.008;
+    ok &= check(!signal_synth::clinical_ecg_generator(invalid_vlf).valid(), "out_of_band_vlf_configuration_is_rejected");
     signal_synth::clinical_ecg_record preserved = record;
     ok &= check(!generator.generate(0, preserved) && same_record(record, preserved), "failed_generation_preserves_output");
     signal_synth::clinical_ecg_config overflowing = config;

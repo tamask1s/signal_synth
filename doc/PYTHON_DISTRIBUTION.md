@@ -30,7 +30,7 @@ python -m pip install .
 External beta users receive and install the generator-free wheel:
 
 ```bash
-python -m pip install synsigra-0.6.0-py3-none-any.whl
+python -m pip install synsigra-0.7.0-py3-none-any.whl
 ```
 
 Build local distribution artifacts:

@@ -447,9 +447,12 @@ namespace
         add_prv_metric(output, "prv_sd1_seconds", "s", metrics.sd1_seconds, successive, 0.010);
         add_prv_metric(output, "prv_sd2_seconds", "s", metrics.sd2_seconds, successive, 0.010);
         add_prv_metric(output, "prv_sd1_sd2_ratio", "ratio", metrics.sd1_sd2_ratio, successive, 0.10);
+        add_prv_metric(output, "prv_vlf_power_seconds2", "s2", metrics.vlf_power_seconds2, spectral, 0.0005);
         add_prv_metric(output, "prv_lf_power_seconds2", "s2", metrics.lf_power_seconds2, spectral, 0.0005);
         add_prv_metric(output, "prv_hf_power_seconds2", "s2", metrics.hf_power_seconds2, spectral, 0.0005);
         add_prv_metric(output, "prv_lf_hf_ratio", "ratio", metrics.lf_hf_ratio, spectral && metrics.hf_power_seconds2 > 0.0, 0.20);
+        add_prv_metric(output, "prv_lf_normalized_units", "nu", metrics.lf_normalized_units, spectral, 2.0);
+        add_prv_metric(output, "prv_hf_normalized_units", "nu", metrics.hf_normalized_units, spectral, 2.0);
         add_prv_metric(output, "prv_total_power_seconds2", "s2", metrics.total_power_seconds2, spectral, 0.001);
         for (std::size_t i = 0; i < prv.intervals.size(); ++i)
         {

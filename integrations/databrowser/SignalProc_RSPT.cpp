@@ -612,6 +612,13 @@ struct zax_ecg_model_config: public signal_synth::ecg_model_config
         JSON_PROPERTY_NAME(
             hrv.rr_standard_deviation_seconds,
             "rr_standard_deviation_seconds"),
+        JSON_PROPERTY_NAME(hrv.vlf_power_fraction, "vlf_power_fraction"),
+        JSON_PROPERTY_NAME(
+            hrv.vlf_center_frequency_hz,
+            "vlf_center_frequency_hz"),
+        JSON_PROPERTY_NAME(
+            hrv.vlf_bandwidth_hz,
+            "vlf_bandwidth_hz"),
         JSON_PROPERTY_NAME(hrv.lf_hf_ratio, "lf_hf_ratio"),
         JSON_PROPERTY_NAME(
             hrv.lf_center_frequency_hz,
@@ -1733,6 +1740,64 @@ char* GenerateECGScenarioJSON(char* output_name, char* scenario_json, char* anno
     return 0;
 }
 
+CVariable* create_hrv_truth_variable(const signal_synth::ecg_render_bundle& render)
+{
+    const signal_synth::clinical_ecg_record& record = render.record;
+    const signal_synth::hrv_metric_summary& metrics = render.hrv.metrics;
+    const char* labels[] = {"GT RR interval", "GT accepted NN", "GT NN accepted", "Mean RR", "Mean heart rate", "SDNN", "RMSSD", "pNN50", "SD1", "SD2", "SD1/SD2", "VLF power", "LF power", "HF power", "LF/HF", "LF normalized", "HF normalized", "Total power"};
+    const char* units[] = {"s", "s", "flag", "s", "bpm", "s", "s", "%", "s", "s", "ratio", "s2", "s2", "s2", "ratio", "nu", "nu", "s2"};
+    const double values[] = {metrics.mean_rr_seconds, metrics.mean_heart_rate_bpm, metrics.sdnn_seconds, metrics.rmssd_seconds, metrics.pnn50_percent, metrics.sd1_seconds, metrics.sd2_seconds, metrics.sd1_sd2_ratio, metrics.vlf_power_seconds2, metrics.lf_power_seconds2, metrics.hf_power_seconds2, metrics.lf_hf_ratio, metrics.lf_normalized_units, metrics.hf_normalized_units, metrics.total_power_seconds2};
+    const unsigned int channel_count = sizeof(labels) / sizeof(labels[0]);
+    vector<unsigned int> channel_sizes(channel_count, record.sample_count());
+    CVariable* output = NewCVariable();
+    output->Rebuild(channel_count, channel_sizes.data());
+    for (unsigned int channel = 0; channel < channel_count; ++channel)
+    {
+        output->m_sample_rates.m_data[channel] = record.sampling_rate_hz();
+        copy_fixed_string(output->m_labels.m_data[channel].s, labels[channel]);
+        copy_fixed_string(output->m_vertical_units.m_data[channel].s, units[channel]);
+        std::fill(output->m_data[channel], output->m_data[channel] + record.sample_count(), channel < 3U ? 0.0 : values[channel - 3U]);
+    }
+    for (unsigned int i = 0; i < render.hrv.intervals.size(); ++i)
+    {
+        const signal_synth::hrv_rr_interval& interval = render.hrv.intervals[i];
+        const double start_seconds = std::max(0.0, interval.beat_time_seconds - interval.rr_seconds);
+        const unsigned int first = std::min(record.sample_count(), static_cast<unsigned int>(std::floor(start_seconds * record.sampling_rate_hz())));
+        const unsigned int last = std::min(record.sample_count(), static_cast<unsigned int>(std::ceil(interval.beat_time_seconds * record.sampling_rate_hz())));
+        for (unsigned int sample = first; sample < last; ++sample)
+        {
+            output->m_data[0][sample] = interval.rr_seconds;
+            output->m_data[1][sample] = interval.excluded ? 0.0 : interval.rr_seconds;
+            output->m_data[2][sample] = interval.excluded ? 0.0 : 1.0;
+        }
+    }
+    return output;
+}
+
+char* GenerateHRVScenarioJSON(char* signal_output_name, char* truth_output_name, char* scenario_json, char* annotation_output_text)
+{
+    if (!signal_output_name || !signal_output_name[0] || !truth_output_name || !truth_output_name[0] || !scenario_json)
+        return MakeString(NewChar, "ERROR: GenerateHRVScenarioJSON: not enough arguments.");
+    if (strcmp(signal_output_name, truth_output_name) == 0)
+        return MakeString(NewChar, "ERROR: GenerateHRVScenarioJSON: output names must differ.");
+    clinical_annotation_output annotation_output;
+    if (!parse_clinical_annotation_output(annotation_output_text, annotation_output))
+        return MakeString(NewChar, "ERROR: GenerateHRVScenarioJSON: annotation output must be 1 (markers), 2 (channels), or 3 (none).");
+    signal_synth::ecg_render_bundle render;
+    string error;
+    if (!render_scenario_json(scenario_json, render, error))
+        return MakeString(NewChar, "ERROR: GenerateHRVScenarioJSON: ", error.c_str());
+    if (render.hrv.metrics.interval_count == 0U)
+        return MakeString(NewChar, "ERROR: GenerateHRVScenarioJSON: scenario produced no HRV intervals.");
+    CVariable* truth = create_hrv_truth_variable(render);
+    CVariable* signals = create_rendered_ecg_variable(signal_output_name, render, annotation_output);
+    if (!truth || !signals)
+        return MakeString(NewChar, "ERROR: GenerateHRVScenarioJSON: output variable creation failed.");
+    copy_fixed_string(truth->m_varname, truth_output_name);
+    m_variable_list_ref->Insert(truth_output_name, truth);
+    return 0;
+}
+
 bool load_external_noise_assets(const signal_synth::ecg_scenario_document& document, const char* directory, vector<signal_synth::external_noise_asset_input>& assets, string& error)
 {
     if (document.external_noise.assets.empty()) return true;
@@ -2102,6 +2167,8 @@ extern "C"
             return GenerateCardiorespiratoryScenarioJSON(a_param1, a_param2, a_param3, a_param4);
         case 15:
             return GenerateECGExternalNoiseJSON(a_param1, a_param2, a_param3, a_param4, a_param5);
+        case 16:
+            return GenerateHRVScenarioJSON(a_param1, a_param2, a_param3, a_param4);
         }
         return 0;
     }
@@ -2138,6 +2205,7 @@ extern "C"
         FunctionList.AddElement("GeneratePPGOpticalScenarioJSON(signal_outdataname, truth_outdataname, scenario_json, annotation_output)");
         FunctionList.AddElement("GenerateCardiorespiratoryScenarioJSON(signal_outdataname, truth_outdataname, scenario_json, annotation_output)");
         FunctionList.AddElement("GenerateECGExternalNoiseJSON(signal_outdataname, truth_outdataname, scenario_json, asset_directory, annotation_output)");
+        FunctionList.AddElement("GenerateHRVScenarioJSON(signal_outdataname, truth_outdataname, scenario_json, annotation_output)");
         a_functionlibrary_reference->ParseFunctionList(&FunctionList);
         return FunctionList.m_size;
     }

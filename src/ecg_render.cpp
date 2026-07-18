@@ -31,9 +31,12 @@ namespace
         metrics.sd1_seconds = hrv.metrics.sd1_seconds;
         metrics.sd2_seconds = hrv.metrics.sd2_seconds;
         metrics.sd1_sd2_ratio = hrv.metrics.sd1_sd2_ratio;
+        metrics.vlf_power_seconds2 = hrv.metrics.vlf_power_seconds2;
         metrics.lf_power_seconds2 = hrv.metrics.lf_power_seconds2;
         metrics.hf_power_seconds2 = hrv.metrics.hf_power_seconds2;
         metrics.lf_hf_ratio = hrv.metrics.lf_hf_ratio;
+        metrics.lf_normalized_units = hrv.metrics.lf_normalized_units;
+        metrics.hf_normalized_units = hrv.metrics.hf_normalized_units;
         metrics.total_power_seconds2 = hrv.metrics.total_power_seconds2;
     }
 
@@ -161,7 +164,7 @@ namespace
 namespace signal_synth
 {
     ecg_ground_truth_metrics::ecg_ground_truth_metrics()
-        : beat_count(0), atrial_event_count(0), fiducial_count(0), episode_count(0), artifact_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), hrv_accepted_interval_count(0), hrv_excluded_interval_count(0), hrv_ectopic_interval_count(0), hrv_artifact_overlap_interval_count(0), sd1_seconds(0.0), sd2_seconds(0.0), sd1_sd2_ratio(0.0), lf_power_seconds2(0.0), hf_power_seconds2(0.0), lf_hf_ratio(0.0), total_power_seconds2(0.0), ppg_pulse_count(0), ppg_expected_pulse_count(0), ppg_missing_pulse_count(0), ppg_weak_pulse_count(0), ppg_low_perfusion_pulse_count(0), ppg_arrhythmia_linked_pulse_count(0), ppg_arrhythmia_linked_missing_pulse_count(0), ppg_out_of_record_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0), total_artifact_seconds(0.0), ppg_artifact_seconds(0.0)
+        : beat_count(0), atrial_event_count(0), fiducial_count(0), episode_count(0), artifact_count(0), rr_clipping_count(0), mean_rr_seconds(0.0), mean_heart_rate_bpm(0.0), sdnn_seconds(0.0), rmssd_seconds(0.0), pnn50_percent(0.0), hrv_accepted_interval_count(0), hrv_excluded_interval_count(0), hrv_ectopic_interval_count(0), hrv_artifact_overlap_interval_count(0), sd1_seconds(0.0), sd2_seconds(0.0), sd1_sd2_ratio(0.0), vlf_power_seconds2(0.0), lf_power_seconds2(0.0), hf_power_seconds2(0.0), lf_hf_ratio(0.0), lf_normalized_units(0.0), hf_normalized_units(0.0), total_power_seconds2(0.0), ppg_pulse_count(0), ppg_expected_pulse_count(0), ppg_missing_pulse_count(0), ppg_weak_pulse_count(0), ppg_low_perfusion_pulse_count(0), ppg_arrhythmia_linked_pulse_count(0), ppg_arrhythmia_linked_missing_pulse_count(0), ppg_out_of_record_pulse_count(0), mean_ppg_onset_delay_seconds(0.0), mean_ppg_peak_delay_seconds(0.0), total_artifact_seconds(0.0), ppg_artifact_seconds(0.0)
     {
         for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
             ecg_artifact_seconds[lead] = 0.0;

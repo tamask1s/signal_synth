@@ -12,7 +12,7 @@
 
 namespace
 {
-    const char* scoring_version = "synsigra_hrv_score_v1";
+    const char* scoring_version = "synsigra_hrv_score_v2";
 
     struct json_value
     {
@@ -309,9 +309,12 @@ namespace
         case signal_synth::hrv_metric_sd1_seconds: return metrics.sd1_seconds;
         case signal_synth::hrv_metric_sd2_seconds: return metrics.sd2_seconds;
         case signal_synth::hrv_metric_sd1_sd2_ratio: return metrics.sd1_sd2_ratio;
+        case signal_synth::hrv_metric_vlf_power_seconds2: return metrics.vlf_power_seconds2;
         case signal_synth::hrv_metric_lf_power_seconds2: return metrics.lf_power_seconds2;
         case signal_synth::hrv_metric_hf_power_seconds2: return metrics.hf_power_seconds2;
         case signal_synth::hrv_metric_lf_hf_ratio: return metrics.lf_hf_ratio;
+        case signal_synth::hrv_metric_lf_normalized_units: return metrics.lf_normalized_units;
+        case signal_synth::hrv_metric_hf_normalized_units: return metrics.hf_normalized_units;
         case signal_synth::hrv_metric_total_power_seconds2: return metrics.total_power_seconds2;
         case signal_synth::hrv_metric_count: break;
         }
@@ -328,6 +331,9 @@ namespace
         case signal_synth::hrv_metric_pnn50_percent: absolute = 2.0; break;
         case signal_synth::hrv_metric_sd1_sd2_ratio: absolute = 0.10; break;
         case signal_synth::hrv_metric_lf_hf_ratio: absolute = 0.20; relative_percent = 15.0; break;
+        case signal_synth::hrv_metric_lf_normalized_units:
+        case signal_synth::hrv_metric_hf_normalized_units: absolute = 2.0; relative_percent = 10.0; break;
+        case signal_synth::hrv_metric_vlf_power_seconds2:
         case signal_synth::hrv_metric_lf_power_seconds2:
         case signal_synth::hrv_metric_hf_power_seconds2: absolute = 0.0005; relative_percent = 15.0; break;
         case signal_synth::hrv_metric_total_power_seconds2: absolute = 0.001; relative_percent = 15.0; break;
@@ -448,7 +454,7 @@ namespace signal_synth
 
     const char* hrv_metric_name(hrv_metric_kind kind)
     {
-        static const char* names[hrv_metric_count] = {"mean_rr_seconds","mean_heart_rate_bpm","sdnn_seconds","rmssd_seconds","pnn50_percent","sd1_seconds","sd2_seconds","sd1_sd2_ratio","lf_power_seconds2","hf_power_seconds2","lf_hf_ratio","total_power_seconds2"};
+        static const char* names[hrv_metric_count] = {"mean_rr_seconds","mean_heart_rate_bpm","sdnn_seconds","rmssd_seconds","pnn50_percent","sd1_seconds","sd2_seconds","sd1_sd2_ratio","vlf_power_seconds2","lf_power_seconds2","hf_power_seconds2","lf_hf_ratio","lf_normalized_units","hf_normalized_units","total_power_seconds2"};
         return kind >= 0 && kind < hrv_metric_count ? names[kind] : "unknown";
     }
 
@@ -458,8 +464,11 @@ namespace signal_synth
         {
         case hrv_metric_mean_heart_rate_bpm: return "bpm";
         case hrv_metric_pnn50_percent: return "percent";
+        case hrv_metric_lf_normalized_units:
+        case hrv_metric_hf_normalized_units: return "nu";
         case hrv_metric_sd1_sd2_ratio:
         case hrv_metric_lf_hf_ratio: return "ratio";
+        case hrv_metric_vlf_power_seconds2:
         case hrv_metric_lf_power_seconds2:
         case hrv_metric_hf_power_seconds2:
         case hrv_metric_total_power_seconds2: return "s2";
