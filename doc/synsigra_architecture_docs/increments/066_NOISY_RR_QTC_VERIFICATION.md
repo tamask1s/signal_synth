@@ -6,11 +6,15 @@
 
 **Version:** 1.0
 
-**Status:** Implementing
+**Status:** Verified
 
 **Owner role:** Engineering / Quality
 
 **Date:** 2026-07-18
+
+**Implementation:** [`d09babb6801171f20d67169a83a9d0914d229a4b`](https://github.com/tamask1s/signal_synth/commit/d09babb6801171f20d67169a83a9d0914d229a4b)
+
+**CI verification:** [GitHub Actions run 29642031806](https://github.com/tamask1s/signal_synth/actions/runs/29642031806) and [Python package run 29642031808](https://github.com/tamask1s/signal_synth/actions/runs/29642031808)
 
 ## 1. Decision
 
@@ -201,3 +205,5 @@ meaningful.
 ## 10. Change Log
 
 - 2026-07-18: version 1.0, implementation and verification design recorded.
+- 2026-07-18: implementation commit and successful required CI recorded;
+  status advanced to Verified.
