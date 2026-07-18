@@ -15,6 +15,7 @@ namespace
     const int accelerometer_gain_adc_per_g = 10000;
     const int wfdb_ann_normal = 1;
     const int wfdb_ann_pvc = 5;
+    const int wfdb_ann_fusion = 6;
     const int wfdb_ann_pac = 8;
     const int wfdb_ann_ventricular_escape = 10;
     const int wfdb_ann_junctional_escape = 11;
@@ -136,6 +137,7 @@ namespace
         case signal_synth::clinical_origin_conducted: return wfdb_ann_normal;
         case signal_synth::clinical_origin_pac: return wfdb_ann_pac;
         case signal_synth::clinical_origin_pvc: return wfdb_ann_pvc;
+        case signal_synth::clinical_origin_fusion: return wfdb_ann_fusion;
         case signal_synth::clinical_origin_junctional_escape: return wfdb_ann_junctional_escape;
         case signal_synth::clinical_origin_ventricular_escape: return wfdb_ann_ventricular_escape;
         case signal_synth::clinical_origin_paced:

@@ -96,7 +96,7 @@ int main()
     for (std::size_t i = 0; i < clean_truth.size(); ++i)
         if (clean_truth[i].status == signal_synth::delineation_truth_present) perfect.events.push_back(event(clean_truth[i].lead.c_str(), clean_truth[i].kind, clean_truth[i].time_seconds, static_cast<unsigned int>(perfect.events.size())));
     ok &= check(signal_synth::score_delineation_output_to_render(render, perfect, clean_scope, options, result) && result.total.f1_score == 1.0, "perfect_render_score");
-    ok &= check(result.leads.size() == 2u && result.kinds.size() == signal_synth::delineation_kind_count && result.kind_leads.size() == 18u, "complete_groups");
+    ok &= check(result.leads.size() == 2u && result.kinds.size() == signal_synth::delineation_kind_count && result.kind_leads.size() == 36u, "complete_groups");
     const std::string report = signal_synth::delineation_score_result_json(render, clean_scope, result);
     ok &= check(report.find("\"schema_version\":2") != std::string::npos && report.find("\"anchor_type\":\"atrial_event\"") != std::string::npos && report.find("\"status\":\"present\"") != std::string::npos, "json_truth_contract");
 

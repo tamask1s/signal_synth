@@ -36,7 +36,7 @@ int main()
     ok &= check(!signal_synth::parse_delineation_point_events_json_v1(duplicate, document, result), "duplicate_event_rejected");
     const std::string legacy_identity = "{\"schema_version\":1,\"events\":[{\"time_seconds\":1,\"channel\":\"II\",\"label\":\"p_peak\",\"beat_index\":\"1\"}]}";
     ok &= check(!signal_synth::parse_delineation_point_events_json_v1(legacy_identity, document, result), "generator_identity_rejected");
-    const std::string unknown_label = "{\"schema_version\":1,\"events\":[{\"time_seconds\":1,\"channel\":\"II\",\"label\":\"u_peak\"}]}";
+    const std::string unknown_label = "{\"schema_version\":1,\"events\":[{\"time_seconds\":1,\"channel\":\"II\",\"label\":\"unknown_wave\"}]}";
     ok &= check(!signal_synth::parse_delineation_point_events_json_v1(unknown_label, document, result), "unknown_label_rejected");
     const std::string unknown_lead = "{\"schema_version\":1,\"events\":[{\"time_seconds\":1,\"channel\":\"ECG\",\"label\":\"p_peak\"}]}";
     ok &= check(!signal_synth::parse_delineation_point_events_json_v1(unknown_lead, document, result), "unknown_lead_rejected");

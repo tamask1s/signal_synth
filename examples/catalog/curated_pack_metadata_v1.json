@@ -1,12 +1,374 @@
 {
   "catalog_id": "synsigra_verification_packs",
-  "catalog_version": "2.2",
+  "catalog_version": "2.3",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "metadata_type": "synsigra_curated_pack_catalog",
   "metadata_version": "synsigra_curated_pack_metadata_export_v1",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
-  "pack_count": 14,
+  "pack_count": 15,
   "packs": [
+    {
+      "case_count": 3,
+      "case_ids": [
+        "wave_components",
+        "qrs_components",
+        "fusion_beats"
+      ],
+      "cases": [
+        {
+          "case_id": "wave_components",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 3918400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "ecg_extended_wave_components_v7",
+          "scoreable_targets": [
+            "ecg_delineation",
+            "morphology_assertions"
+          ],
+          "targets": [
+            "ecg_delineation",
+            "morphology_assertions"
+          ]
+        },
+        {
+          "case_id": "qrs_components",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 3918400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "ecg_extended_qrs_components_v7",
+          "scoreable_targets": [
+            "ecg_delineation",
+            "morphology_assertions"
+          ],
+          "targets": [
+            "ecg_delineation",
+            "morphology_assertions"
+          ]
+        },
+        {
+          "case_id": "fusion_beats",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 3918400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "ecg_fusion_beats_v7",
+          "scoreable_targets": [
+            "morphology_assertions",
+            "ecg_beat_classification"
+          ],
+          "targets": [
+            "ecg_beat_classification",
+            "morphology_assertions"
+          ]
+        }
+      ],
+      "catalog_scoring_mode": "local",
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta pack with seven extended morphology components and periodic fusion beats."
+          ],
+          "date": "2026-07-17",
+          "version": "1.0"
+        }
+      ],
+      "channels": {
+        "families": [
+          {
+            "channel_count": 12,
+            "channels": [
+              "I",
+              "II",
+              "III",
+              "aVR",
+              "aVL",
+              "aVF",
+              "V1",
+              "V2",
+              "V3",
+              "V4",
+              "V5",
+              "V6"
+            ],
+            "name": "standard_12_lead_ecg"
+          }
+        ],
+        "maximum_channel_count": 12,
+        "minimum_channel_count": 12
+      },
+      "declared_targets": [
+        "ecg_delineation",
+        "morphology_assertions",
+        "ecg_beat_classification"
+      ],
+      "deprecation_message": "",
+      "description": "Lead-selective P/T notching and biphasic waves, U waves, R-prime, fragmented QRS and periodic fusion beats with exact point and measurement truth.",
+      "difficulty": [
+        "regression",
+        "stress"
+      ],
+      "duration": {
+        "maximum_case_seconds": 20,
+        "minimum_case_seconds": 20,
+        "total_seconds": 60
+      },
+      "estimated_package": {
+        "bytes": 11755200,
+        "peak_memory_bytes": 5848576,
+        "size_class": "medium"
+      },
+      "feature_tags": [
+        "p_biphasic",
+        "p_notch",
+        "r_prime",
+        "fragmented_qrs",
+        "t_biphasic",
+        "t_notch",
+        "u_wave",
+        "fusion"
+      ],
+      "generator_compatibility": {
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.6.0",
+        "minimum_generator_version": "0.6.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [
+          7
+        ],
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
+      },
+      "limitations": {
+        "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
+        "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
+      },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "core lead-specific delineation scoring smoke test",
+          "target": "ecg_delineation",
+          "test_id": "TEST-DELINEATION-SCORING-001"
+        },
+        {
+          "scope": "generator-free delineation scoring and C++/Python parity test",
+          "target": "ecg_delineation",
+          "test_id": "TEST-DELINEATION-PYTHON-001"
+        },
+        {
+          "scope": "core morphology measurement scoring smoke test",
+          "target": "morphology_assertions",
+          "test_id": "TEST-MEASUREMENT-SCORING-001"
+        },
+        {
+          "scope": "generator-free morphology measurement scoring parity test",
+          "target": "morphology_assertions",
+          "test_id": "TEST-MEASUREMENT-PYTHON-001"
+        },
+        {
+          "scope": "local beat-classification scoring smoke test",
+          "target": "ecg_beat_classification",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
+      "messages": [],
+      "metadata_type": "synsigra_curated_pack_metadata",
+      "metadata_version": "synsigra_curated_pack_metadata_export_v1",
+      "modality": [
+        "ECG"
+      ],
+      "name": "Extended ECG wave and beat morphology",
+      "not_recommended_for": [
+        "Clinical morphology prevalence or diagnostic claims",
+        "Patient-derived waveform validation",
+        "Therapy or alarm-system safety certification"
+      ],
+      "output_artifacts": [
+        {
+          "required": true,
+          "role": "manifest_json"
+        },
+        {
+          "required": true,
+          "role": "scoring_manifest_json"
+        },
+        {
+          "required": true,
+          "role": "provenance_json"
+        },
+        {
+          "required": true,
+          "role": "engineering_claim_boundary_txt"
+        },
+        {
+          "required": true,
+          "role": "case_summary_json"
+        },
+        {
+          "required": true,
+          "role": "annotations_json"
+        },
+        {
+          "required": true,
+          "role": "waveform_csv"
+        },
+        {
+          "required": true,
+          "role": "wfdb"
+        },
+        {
+          "required": true,
+          "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
+        },
+        {
+          "required": true,
+          "role": "measurement_truth_json"
+        }
+      ],
+      "pack_id": "ecg_extended_morphology_v1",
+      "recommended_for": [
+        "ECG delineator QA for secondary peaks, notches and U-wave boundaries",
+        "Lead-selective morphology measurement regression",
+        "Fusion-beat detector and classifier engineering QA"
+      ],
+      "recommended_profile": "regression",
+      "reference_only_targets": [],
+      "release_date": "2026-07-17",
+      "release_status": "beta",
+      "sampling_rates_hz": [
+        500
+      ],
+      "schema_version": 1,
+      "scoreable_targets": [
+        {
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
+          ],
+          "case_count": 2,
+          "case_ids": [
+            "wave_components",
+            "qrs_components"
+          ],
+          "default_tolerance_seconds": 0.04,
+          "description": "Lead-specific P, QRS, J-point, and T fiducial timing against exact synthetic construction ground truth.",
+          "primary_metric": "f1_score",
+          "score_type": "ecg_delineation",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "ecg_delineation"
+        },
+        {
+          "accepted_formats": [
+            "measurement_values_json_v1",
+            "measurement_values_csv_v1"
+          ],
+          "case_count": 3,
+          "case_ids": [
+            "wave_components",
+            "qrs_components",
+            "fusion_beats"
+          ],
+          "default_pairing_window_seconds": 0.2,
+          "description": "Beat-, lead-, record-, axis-, and phenotype-level ECG measurements scored against exact synthetic ground truth.",
+          "primary_metric": "tolerance_pass_fraction",
+          "score_type": "measurement",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "morphology_assertions"
+        },
+        {
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
+          ],
+          "case_count": 1,
+          "case_ids": [
+            "fusion_beats"
+          ],
+          "default_tolerance_seconds": 0.075,
+          "description": "Beat-level ECG class labels with exact synthetic beat timing.",
+          "primary_metric": "micro_f1_score",
+          "score_type": "classification",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "ecg_beat_classification"
+        }
+      ],
+      "scoring_mode": "local",
+      "source": {
+        "catalog_path": "examples/catalog/verification_packs_v1.json",
+        "pack_fingerprint": "sha256:5eb502a022fc538032a7e529a248f4dff3bbcffedbf7da66d378ec8852c0e3b7",
+        "pack_path": "../packs/ecg_extended_morphology_v1.json",
+        "source_content_sha256": "sha256:7440407ab638bd2ebd479121ec94eb7f4d4cef146d751db5066387f12a08595a"
+      },
+      "submission_output_schemas": [
+        "point_events_json_v1",
+        "point_events_csv_v1",
+        "measurement_values_json_v1",
+        "measurement_values_csv_v1"
+      ],
+      "supported_threshold_profiles": [
+        "smoke",
+        "regression",
+        "stress",
+        "benchmark"
+      ],
+      "targets": [
+        "ecg_delineation",
+        "morphology_assertions",
+        "ecg_beat_classification"
+      ],
+      "threshold_profile_contract": {
+        "policy_failure_exit_code": 1,
+        "recommended_profile": "regression",
+        "supported_profiles": [
+          "smoke",
+          "regression",
+          "stress",
+          "benchmark"
+        ]
+      },
+      "ui": {
+        "primary_badges": [
+          "regression",
+          "stress",
+          "p_biphasic",
+          "p_notch",
+          "r_prime"
+        ],
+        "reference_only_before_job": false,
+        "scoreable_before_job": true
+      },
+      "version": "1.0"
+    },
     {
       "case_count": 3,
       "case_ids": [
@@ -949,7 +1311,8 @@
           3,
           4,
           5,
-          6
+          6,
+          7
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -1335,7 +1698,8 @@
           3,
           4,
           5,
-          6
+          6,
+          7
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -1760,7 +2124,8 @@
           3,
           4,
           5,
-          6
+          6,
+          7
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2169,7 +2534,8 @@
           3,
           4,
           5,
-          6
+          6,
+          7
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2541,7 +2907,8 @@
           3,
           4,
           5,
-          6
+          6,
+          7
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -2913,7 +3280,8 @@
           3,
           4,
           5,
-          6
+          6,
+          7
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -3301,7 +3669,8 @@
           3,
           4,
           5,
-          6
+          6,
+          7
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -3785,7 +4154,8 @@
           3,
           4,
           5,
-          6
+          6,
+          7
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -4333,7 +4703,8 @@
           3,
           4,
           5,
-          6
+          6,
+          7
         ],
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1"
@@ -5789,5 +6160,5 @@
   "release_set_id": "synsigra_curated_release_2026_07_17",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:fc85976f64c5bcf5c97db0724f05efb21aa35a95f0ada0144f02a6fd3709ecf0"
+  "source_catalog_sha256": "sha256:7a32201315c496f1303ebd061098128b72decb1fdc49cba1e4a0e979bd95b5e7"
 }

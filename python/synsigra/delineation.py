@@ -3,7 +3,7 @@ import math
 from .detections import load_detections
 
 
-DELINEATION_KINDS = ["p_onset", "p_peak", "p_offset", "qrs_onset", "j_point", "qrs_offset", "t_onset", "t_peak", "t_offset"]
+DELINEATION_KINDS = ["p_onset", "p_peak", "p_offset", "qrs_onset", "j_point", "qrs_offset", "t_onset", "t_peak", "t_offset", "p_secondary_peak", "p_notch", "r_prime", "qrs_fragment", "t_secondary_peak", "t_notch", "u_onset", "u_peak", "u_offset"]
 ECG_LEADS = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
 
 

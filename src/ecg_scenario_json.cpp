@@ -1155,6 +1155,11 @@ namespace
         return optical_config_equal(document.ppg.optical, signal_synth::ppg_config().optical);
     }
 
+    bool default_v7_config(const signal_synth::ecg_scenario_document& document)
+    {
+        return document.ecg.morphology_component_count() == 0 && document.ecg.fusion_every_n_beats() == 0;
+    }
+
     bool default_v5_config(const signal_synth::ecg_scenario_document& document)
     {
         return signal_synth::wearable_timebase_config_is_default(document.wearable);
@@ -1276,8 +1281,8 @@ namespace
 
     bool validate_document(const signal_synth::ecg_scenario_document& document, signal_synth::ecg_scenario_json_result& result, std::vector<std::string>& sorted_tags)
     {
-        if (document.schema_version < 1 || document.schema_version > 6)
-            add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema versions 1 through 6 are supported");
+        if (document.schema_version < 1 || document.schema_version > 7)
+            add_message(result, signal_synth::ecg_json_schema_version, "$.schema_version", "only schema versions 1 through 7 are supported");
         if (document.schema_version == 1 && !default_ppg_config(document.ppg))
             add_message(result, signal_synth::ecg_json_semantic, "$.ppg", "schema version 1 cannot represent PPG configuration");
         if (document.schema_version == 1 && !default_hrv_config(document.hrv))
@@ -1304,6 +1309,8 @@ namespace
             add_message(result, signal_synth::ecg_json_semantic, "$.ppg.optical", "PPG optical physiology v2 requires schema version 6");
         if (document.schema_version >= 6 && !valid_v6_config(document))
             add_message(result, signal_synth::ecg_json_range, "$.ppg.optical", "invalid PPG optical physiology configuration");
+        if (document.schema_version < 7 && !default_v7_config(document))
+            add_message(result, signal_synth::ecg_json_semantic, "$.ecg.extended_morphology", "extended ECG morphology requires schema version 7");
         if (!signal_synth::validate_signal_quality_config(document.signal_quality, document.duration_seconds, document.ecg.sampling_rate_hz(), document.ppg.enabled))
             add_message(result, signal_synth::ecg_json_range, "$.artifacts", "invalid artifact configuration");
         if (!safe_identifier(document.scenario_id))
@@ -1422,6 +1429,29 @@ namespace
                 first_morphology = false;
             }
             output << '}';
+        }
+        if (document.schema_version >= 7 && !default_v7_config(document))
+        {
+            output << ",\"extended_morphology\":{\"components\":[";
+            for (unsigned int index = 0; index < document.ecg.morphology_component_count(); ++index)
+            {
+                signal_synth::ecg_morphology_component component;
+                document.ecg.morphology_component(index, component);
+                output << (index ? "," : "") << "{\"type\":" << escape_json(signal_synth::ecg_morphology_component_name(component.type))
+                       << ",\"leads\":[";
+                bool first_lead = true;
+                for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead)
+                    if (component.lead_mask & (1u << lead))
+                    {
+                        output << (first_lead ? "" : ",") << escape_json(clinical_lead_json_name(lead));
+                        first_lead = false;
+                    }
+                output << "],\"amplitude_mv\":" << format_double(component.amplitude_mv)
+                       << ",\"offset_ms\":" << format_double(component.offset_ms)
+                       << ",\"duration_ms\":" << format_double(component.duration_ms) << '}';
+            }
+            output << "],\"fusion_every_n_beats\":" << document.ecg.fusion_every_n_beats()
+                   << ",\"fusion_ventricular_fraction\":" << format_double(document.ecg.fusion_ventricular_fraction()) << '}';
         }
         output << ",\"conditions\":[";
         for (unsigned int i = 0; i < document.ecg.condition_count(); ++i)
@@ -1688,8 +1718,8 @@ namespace signal_synth
         }
 
         unsigned long long integer = 0;
-        if (!integral_number(*schema, 6, integer) || integer < 1 || integer > 6)
-            add_message(fresh_result, ecg_json_schema_version, "$.schema_version", "only schema versions 1 through 6 are supported");
+        if (!integral_number(*schema, 7, integer) || integer < 1 || integer > 7)
+            add_message(fresh_result, ecg_json_schema_version, "$.schema_version", "only schema versions 1 through 7 are supported");
         ecg_scenario_document document;
         document.schema_version = static_cast<unsigned int>(integer);
         document.ecg.clear_conditions();
@@ -1719,7 +1749,7 @@ namespace signal_synth
         if (!integral_number(*seed, std::numeric_limits<unsigned long long>::max(), integer) || !document.ecg.set_seed(integer))
             add_message(fresh_result, ecg_json_range, "$.seed", "seed must be an unsigned 64-bit decimal integer");
 
-        const char* ecg_fields[] = {"heart_rate_bpm","rr_variability_seconds","ectopic_every_n_beats","second_degree_av_pattern","q_wave_territory","rhythm_episodes","flutter_conduction_pattern","pacing_mode","pacing_non_capture_every_n_beats","fidelity_policy","qt_adaptation","repolarization_episodes","morphology","conditions"};
+        const char* ecg_fields[] = {"heart_rate_bpm","rr_variability_seconds","ectopic_every_n_beats","second_degree_av_pattern","q_wave_territory","rhythm_episodes","flutter_conduction_pattern","pacing_mode","pacing_non_capture_every_n_beats","fidelity_policy","qt_adaptation","repolarization_episodes","morphology","extended_morphology","conditions"};
         allowed_fields(*ecg, ecg_fields, sizeof(ecg_fields) / sizeof(ecg_fields[0]), "$.ecg", fresh_result);
         const json_value* heart_rate = required(*ecg, "heart_rate_bpm", json_value::number_kind, "$.ecg", fresh_result);
         const json_value* rr_variability = required(*ecg, "rr_variability_seconds", json_value::number_kind, "$.ecg", fresh_result);
@@ -1734,6 +1764,7 @@ namespace signal_synth
         const json_value* qt_adaptation = member(*ecg, "qt_adaptation");
         const json_value* repolarization_episodes = member(*ecg, "repolarization_episodes");
         const json_value* morphology = member(*ecg, "morphology");
+        const json_value* extended_morphology = member(*ecg, "extended_morphology");
         const json_value* conditions = required(*ecg, "conditions", json_value::array_kind, "$.ecg", fresh_result);
 
         if (heart_rate && !document.ecg.set_heart_rate_bpm(heart_rate->number))
@@ -1926,6 +1957,82 @@ namespace signal_synth
                         add_message(fresh_result, ecg_json_type, path, "field has the wrong JSON type");
                     else if (!document.ecg.set_morphology_control(control, value->number))
                         add_message(fresh_result, ecg_json_range, path, "invalid morphology control value");
+                }
+            }
+        }
+        if (extended_morphology)
+        {
+            if (document.schema_version < 7)
+                add_message(fresh_result, ecg_json_unknown_field, "$.ecg.extended_morphology", "extended ECG morphology requires schema version 7");
+            else if (extended_morphology->type != json_value::object_kind)
+                add_message(fresh_result, ecg_json_type, "$.ecg.extended_morphology", "field has the wrong JSON type");
+            else
+            {
+                const char* fields[] = {"components","fusion_every_n_beats","fusion_ventricular_fraction"};
+                allowed_fields(*extended_morphology, fields, 3, "$.ecg.extended_morphology", fresh_result);
+                const json_value* components = required(*extended_morphology, fields[0], json_value::array_kind, "$.ecg.extended_morphology", fresh_result);
+                const json_value* fusion_every = required(*extended_morphology, fields[1], json_value::number_kind, "$.ecg.extended_morphology", fresh_result);
+                const json_value* fusion_fraction = required(*extended_morphology, fields[2], json_value::number_kind, "$.ecg.extended_morphology", fresh_result);
+                if (components)
+                {
+                    if (components->array.size() > signal_synth::clinical_morphology_component_max)
+                        add_message(fresh_result, ecg_json_range, "$.ecg.extended_morphology.components", "at most 16 morphology components are allowed");
+                    for (std::size_t index = 0; index < components->array.size(); ++index)
+                    {
+                        const std::string path = "$.ecg.extended_morphology.components[" + json_index(index) + "]";
+                        const json_value& item = components->array[index];
+                        if (item.type != json_value::object_kind)
+                        {
+                            add_message(fresh_result, ecg_json_type, path, "morphology component must be an object");
+                            continue;
+                        }
+                        const char* component_fields[] = {"type","leads","amplitude_mv","offset_ms","duration_ms"};
+                        allowed_fields(item, component_fields, 5, path, fresh_result);
+                        const json_value* type = required(item, component_fields[0], json_value::string_kind, path, fresh_result);
+                        const json_value* leads = required(item, component_fields[1], json_value::array_kind, path, fresh_result);
+                        const json_value* amplitude = required(item, component_fields[2], json_value::number_kind, path, fresh_result);
+                        const json_value* offset = required(item, component_fields[3], json_value::number_kind, path, fresh_result);
+                        const json_value* duration_value = required(item, component_fields[4], json_value::number_kind, path, fresh_result);
+                        if (!type || !leads || !amplitude || !offset || !duration_value)
+                            continue;
+                        signal_synth::ecg_morphology_component_type parsed_type = signal_synth::ecg_component_u_wave;
+                        if (!signal_synth::ecg_morphology_component_from_name(type->string.c_str(), parsed_type))
+                        {
+                            add_message(fresh_result, ecg_json_range, path + ".type", "unknown morphology component type");
+                            continue;
+                        }
+                        unsigned int lead_mask = 0;
+                        for (std::size_t lead_index = 0; lead_index < leads->array.size(); ++lead_index)
+                        {
+                            const std::string lead_path = path + ".leads[" + json_index(lead_index) + "]";
+                            if (leads->array[lead_index].type != json_value::string_kind)
+                            {
+                                add_message(fresh_result, ecg_json_type, lead_path, "lead must be a string");
+                                continue;
+                            }
+                            const int lead = clinical_lead_from_json_name(leads->array[lead_index].string);
+                            if (lead < 0)
+                                add_message(fresh_result, ecg_json_range, lead_path, "unknown ECG lead");
+                            else if (lead_mask & (1u << lead))
+                                add_message(fresh_result, ecg_json_duplicate_tag, lead_path, "duplicate ECG lead");
+                            else
+                                lead_mask |= 1u << lead;
+                        }
+                        if (!document.ecg.add_morphology_component(parsed_type, lead_mask, amplitude->number, offset->number, duration_value->number))
+                            add_message(fresh_result, ecg_json_range, path, "invalid or overlapping morphology component");
+                    }
+                }
+                if (fusion_every && fusion_fraction)
+                {
+                    if (!integral_number(*fusion_every, std::numeric_limits<unsigned int>::max(), integer))
+                        add_message(fresh_result, ecg_json_range, "$.ecg.extended_morphology.fusion_every_n_beats", "fusion cadence must be an unsigned integer");
+                    else if (integer == 0)
+                    {
+                        if (fusion_fraction->number != 0.0)
+                            add_message(fresh_result, ecg_json_range, "$.ecg.extended_morphology.fusion_ventricular_fraction", "fusion fraction must be zero when fusion cadence is disabled");
+                    }
+                    else if (!document.ecg.set_fusion_beats(static_cast<unsigned int>(integer), fusion_fraction->number))
+                        add_message(fresh_result, ecg_json_range, "$.ecg.extended_morphology", "invalid fusion beat configuration");
                 }
             }
         }

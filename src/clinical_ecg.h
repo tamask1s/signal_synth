@@ -121,7 +121,8 @@ namespace signal_synth
         clinical_origin_ventricular_escape = 4,
         clinical_origin_paced = 5,
         clinical_origin_vt = 6,
-        clinical_origin_atrial_paced = 7
+        clinical_origin_atrial_paced = 7,
+        clinical_origin_fusion = 8
     };
 
     enum clinical_pacing_event_kind
@@ -153,13 +154,47 @@ namespace signal_synth
         clinical_t_onset = 9,
         clinical_t_peak = 10,
         clinical_t_offset = 11,
-        clinical_pacing_spike = 12
+        clinical_pacing_spike = 12,
+        clinical_p_secondary_peak = 13,
+        clinical_p_notch = 14,
+        clinical_r_prime = 15,
+        clinical_qrs_fragment = 16,
+        clinical_t_secondary_peak = 17,
+        clinical_t_notch = 18,
+        clinical_u_onset = 19,
+        clinical_u_peak = 20,
+        clinical_u_offset = 21
     };
 
     enum clinical_fiducial_source
     {
         clinical_fiducial_construction = 0,
         clinical_fiducial_lead_measurement = 1
+    };
+
+    enum clinical_morphology_component_kind
+    {
+        clinical_component_p_biphasic = 0,
+        clinical_component_p_notch = 1,
+        clinical_component_r_prime = 2,
+        clinical_component_qrs_fragment = 3,
+        clinical_component_t_biphasic = 4,
+        clinical_component_t_notch = 5,
+        clinical_component_u_wave = 6,
+        clinical_morphology_component_kind_count = 7
+    };
+
+    const unsigned int clinical_morphology_component_max = 16;
+
+    struct clinical_morphology_component_config
+    {
+        clinical_morphology_component_config();
+
+        clinical_morphology_component_kind kind;
+        unsigned int lead_mask;
+        double amplitude_mv;
+        double offset_ms;
+        double duration_ms;
     };
 
     struct clinical_timing_config
@@ -197,6 +232,9 @@ namespace signal_synth
         double qrs_elevation_degrees;
         double t_elevation_degrees;
         double presence_threshold_mv;
+        unsigned int component_count;
+        clinical_morphology_component_config components[clinical_morphology_component_max];
+        double fusion_ventricular_fraction;
     };
 
     struct clinical_rhythm_config
@@ -281,6 +319,7 @@ namespace signal_synth
         unsigned int sinus_pause_every_n_beats;
         double sinus_pause_ratio;
         unsigned int pacing_non_capture_every_n_beats;
+        unsigned int fusion_every_n_beats;
         unsigned int rhythm_episode_count;
         clinical_rhythm_episode_config rhythm_episodes[clinical_rhythm_episode_max];
         unsigned int repolarization_episode_count;
@@ -353,6 +392,7 @@ namespace signal_synth
         double t_onset_time_seconds;
         double t_peak_time_seconds;
         double t_offset_time_seconds;
+        double fusion_ventricular_fraction;
         bool p_present;
         bool qrs_present;
         bool t_present;

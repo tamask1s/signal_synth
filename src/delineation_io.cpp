@@ -392,7 +392,7 @@ namespace signal_synth
 
     const char* delineation_kind_name(delineation_kind kind)
     {
-        const char* names[] = {"p_onset","p_peak","p_offset","qrs_onset","j_point","qrs_offset","t_onset","t_peak","t_offset"};
+        const char* names[] = {"p_onset","p_peak","p_offset","qrs_onset","j_point","qrs_offset","t_onset","t_peak","t_offset","p_secondary_peak","p_notch","r_prime","qrs_fragment","t_secondary_peak","t_notch","u_onset","u_peak","u_offset"};
         return kind >= delineation_p_onset && kind < delineation_kind_count ? names[static_cast<int>(kind)] : "";
     }
 

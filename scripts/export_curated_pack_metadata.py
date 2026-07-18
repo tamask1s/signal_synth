@@ -14,7 +14,7 @@ METADATA_TYPE = "synsigra_curated_pack_catalog"
 DEFAULT_GENERATOR_COMPATIBILITY = {
     "minimum_generator_version": "0.6.0-dev",
     "pack_schema_version": 1,
-    "scenario_schema_versions": [2, 3, 4, 5, 6],
+    "scenario_schema_versions": [2, 3, 4, 5, 6, 7],
     "challenge_package_contract": "synsigra_challenge_package_v2",
     "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
     "submission_contract": "synsigra_submission_v1",

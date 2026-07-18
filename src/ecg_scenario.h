@@ -141,6 +141,30 @@ namespace signal_synth
     bool ecg_morphology_control_from_name(const char* name, ecg_morphology_control& control);
     bool ecg_morphology_control_bounds(ecg_morphology_control control, double& minimum, double& maximum);
 
+    enum ecg_morphology_component_type
+    {
+        ecg_component_p_biphasic = 0,
+        ecg_component_p_notch = 1,
+        ecg_component_r_prime = 2,
+        ecg_component_qrs_fragment = 3,
+        ecg_component_t_biphasic = 4,
+        ecg_component_t_notch = 5,
+        ecg_component_u_wave = 6
+    };
+
+    struct ecg_morphology_component
+    {
+        ecg_morphology_component_type type;
+        unsigned int lead_mask;
+        double amplitude_mv;
+        double offset_ms;
+        double duration_ms;
+    };
+
+    const char* ecg_morphology_component_name(ecg_morphology_component_type type);
+    bool ecg_morphology_component_from_name(const char* name, ecg_morphology_component_type& type);
+    unsigned int ecg_morphology_lead_mask(unsigned int lead);
+
     enum ecg_qt_adaptation_model
     {
         ecg_qt_adaptation_fixed = 0,
@@ -278,7 +302,9 @@ namespace signal_synth
         ecg_assert_delta_wave = 40,
         ecg_assert_complete_bbb_exclusion = 41,
         ecg_assert_episode_coverage = 42,
-        ecg_assertion_code_count = 43
+        ecg_assert_extended_morphology = 43,
+        ecg_assert_fusion_cadence = 44,
+        ecg_assertion_code_count = 45
     };
 
     enum ecg_phenotype_assertion_status
@@ -319,6 +345,14 @@ namespace signal_synth
         bool morphology_control_enabled(ecg_morphology_control control) const;
         double morphology_control_value(ecg_morphology_control control) const;
         bool has_morphology_controls() const;
+        bool add_morphology_component(ecg_morphology_component_type type, unsigned int lead_mask, double amplitude_mv, double offset_ms, double duration_ms);
+        void clear_morphology_components();
+        unsigned int morphology_component_count() const;
+        bool morphology_component(unsigned int index, ecg_morphology_component& output) const;
+        bool set_fusion_beats(unsigned int every_n_beats, double ventricular_fraction);
+        void clear_fusion_beats();
+        unsigned int fusion_every_n_beats() const;
+        double fusion_ventricular_fraction() const;
         bool set_qt_adaptation(ecg_qt_adaptation_model model, double qtc_ms);
         void clear_qt_adaptation();
         bool qt_adaptation_enabled() const;

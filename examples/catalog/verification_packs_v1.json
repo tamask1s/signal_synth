@@ -1,11 +1,45 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "2.2",
+  "version": "2.3",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
   "packs": [
+    {
+      "pack_id": "ecg_extended_morphology_v1",
+      "path": "../packs/ecg_extended_morphology_v1.json",
+      "modality": ["ECG"],
+      "targets": ["ecg_delineation", "morphology_assertions", "ecg_beat_classification"],
+      "difficulty": ["regression", "stress"],
+      "recommended_profile": "regression",
+      "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
+      "scoring_mode": "local",
+      "feature_tags": ["p_biphasic", "p_notch", "r_prime", "fragmented_qrs", "t_biphasic", "t_notch", "u_wave", "fusion"],
+      "release_status": "beta",
+      "release_date": "2026-07-17",
+      "deprecation_message": "",
+      "recommended_for": [
+        "ECG delineator QA for secondary peaks, notches and U-wave boundaries",
+        "Lead-selective morphology measurement regression",
+        "Fusion-beat detector and classifier engineering QA"
+      ],
+      "not_recommended_for": [
+        "Clinical morphology prevalence or diagnostic claims",
+        "Patient-derived waveform validation",
+        "Therapy or alarm-system safety certification"
+      ],
+      "changelog": [{"version": "1.0", "date": "2026-07-17", "changes": ["Initial beta pack with seven extended morphology components and periodic fusion beats."]}],
+      "generator_compatibility": {
+        "minimum_generator_version": "0.6.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [7],
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1",
+        "local_verifier_min_version": "0.6.0"
+      }
+    },
     {
       "pack_id": "advanced_rhythm_burden_v1",
       "path": "../packs/advanced_rhythm_burden_v1.json",

@@ -206,6 +206,46 @@ namespace
         add_truth(output, scope, signal_synth::delineation_anchor_ventricular_beat, beat.beat_index, lead, signal_synth::delineation_t_offset, t_status, t_reason, beat.t_offset_time_seconds, beat.t_onset_time_seconds, beat.t_offset_time_seconds, duration);
     }
 
+    bool extended_delineation_kind(signal_synth::clinical_fiducial_kind input, signal_synth::delineation_kind& output)
+    {
+        switch (input)
+        {
+        case signal_synth::clinical_p_secondary_peak: output = signal_synth::delineation_p_secondary_peak; return true;
+        case signal_synth::clinical_p_notch: output = signal_synth::delineation_p_notch; return true;
+        case signal_synth::clinical_r_prime: output = signal_synth::delineation_r_prime; return true;
+        case signal_synth::clinical_qrs_fragment: output = signal_synth::delineation_qrs_fragment; return true;
+        case signal_synth::clinical_t_secondary_peak: output = signal_synth::delineation_t_secondary_peak; return true;
+        case signal_synth::clinical_t_notch: output = signal_synth::delineation_t_notch; return true;
+        case signal_synth::clinical_u_onset: output = signal_synth::delineation_u_onset; return true;
+        case signal_synth::clinical_u_peak: output = signal_synth::delineation_u_peak; return true;
+        case signal_synth::clinical_u_offset: output = signal_synth::delineation_u_offset; return true;
+        default: return false;
+        }
+    }
+
+    void add_extended_truth(const signal_synth::ecg_render_bundle& render, const signal_synth::delineation_evaluation_scope& scope, std::vector<signal_synth::delineation_truth_point>& output)
+    {
+        const signal_synth::clinical_fiducial_annotation* fiducials = render.record.fiducials();
+        for (unsigned int i = 0; fiducials && i < render.record.fiducial_count(); ++i)
+        {
+            const signal_synth::clinical_fiducial_annotation& construction = fiducials[i];
+            signal_synth::delineation_kind kind = signal_synth::delineation_u_peak;
+            if (construction.source != signal_synth::clinical_fiducial_construction || construction.lead_index < 0 || construction.lead_index >= static_cast<int>(render.record.lead_count()) || !extended_delineation_kind(construction.kind, kind))
+                continue;
+            const std::string lead = render.record.lead_name(static_cast<unsigned int>(construction.lead_index));
+            if (std::find(scope.leads.begin(), scope.leads.end(), lead) == scope.leads.end())
+                continue;
+            const signal_synth::clinical_fiducial_kind measured_kind = construction.kind == signal_synth::clinical_u_onset || construction.kind == signal_synth::clinical_u_offset ? signal_synth::clinical_u_peak : construction.kind;
+            const signal_synth::clinical_fiducial_annotation* measured = beat_measurement(render.record, construction.beat_index, construction.lead_index, measured_kind);
+            const signal_synth::delineation_truth_status status = !reference_inside(construction.time_seconds, render.document.duration_seconds) ? signal_synth::delineation_truth_not_evaluable : measured && measured->present ? signal_synth::delineation_truth_present : signal_synth::delineation_truth_not_evaluable;
+            const char* reason = status == signal_synth::delineation_truth_present ? "" : !reference_inside(construction.time_seconds, render.document.duration_seconds) ? "record_boundary" : "below_lead_threshold";
+            const bool atrial = construction.kind == signal_synth::clinical_p_secondary_peak || construction.kind == signal_synth::clinical_p_notch;
+            const signal_synth::delineation_anchor_type anchor = atrial ? signal_synth::delineation_anchor_atrial_event : signal_synth::delineation_anchor_ventricular_beat;
+            const unsigned long long anchor_index = atrial && construction.atrial_index >= 0 ? static_cast<unsigned long long>(construction.atrial_index) : construction.beat_index;
+            add_truth(output, scope, anchor, anchor_index, lead, kind, status, reason, construction.time_seconds, construction.time_seconds - 0.08, construction.time_seconds + 0.08, render.document.duration_seconds);
+        }
+    }
+
     bool truth_less(const signal_synth::delineation_truth_point& left, const signal_synth::delineation_truth_point& right)
     {
         if (left.time_seconds != right.time_seconds) return left.time_seconds < right.time_seconds;
@@ -408,6 +448,7 @@ namespace signal_synth
                 add_ventricular_truth(render, scope, beats[i], scope.leads[lead], lead_index, output);
             }
         }
+        add_extended_truth(render, scope, output);
         std::stable_sort(output.begin(), output.end(), truth_less);
         for (std::size_t i = 0; i < output.size(); ++i) output[i].original_index = static_cast<unsigned int>(i);
         return true;

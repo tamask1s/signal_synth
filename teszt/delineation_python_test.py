@@ -54,7 +54,7 @@ assert cpp_score["schema_version"] == 2
 assert cpp_score["overall"] == python_score["overall"]
 assert cpp_score["by_kind"] == python_score["by_kind"]
 assert cpp_score["by_lead"] == python_score["by_lead"]
-assert len(cpp_score["by_kind_lead"]) == 18
+assert len(cpp_score["by_kind_lead"]) == 36
 assert any(item["anchor_type"] == "atrial_event" for item in cpp_score["truth"])
 
 edge_prediction = list(document.events) + [DelineationEvent(record_edge.lead, record_edge.kind, 0.5 * (record_edge.evaluation_start_seconds + record_edge.evaluation_end_seconds), original_index=len(document.events))]

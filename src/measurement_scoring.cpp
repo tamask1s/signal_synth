@@ -100,7 +100,7 @@ namespace
             "q_wave_amplitude", "q_wave_duration", "q_wave_lead_count", "low_qrs_voltage", "high_qrs_voltage", "left_ventricular_voltage", "right_precordial_rs_ratio", "septal_qrs_voltage",
             "p_wave_duration", "p_wave_amplitude", "posterior_reciprocal_r_amplitude", "posterior_reciprocal_lead_count", "injury_st_deviation", "injury_st_lead_count",
             "st_deviation", "st_lead_count", "st_slope", "t_amplitude", "t_lead_count", "t_polarity_dispersion", "t_duration", "frontal_axis",
-            "lateral_qrs_polarity", "inferior_qrs_polarity", "delta_wave", "complete_bbb_exclusion", "episode_coverage"
+            "lateral_qrs_polarity", "inferior_qrs_polarity", "delta_wave", "complete_bbb_exclusion", "episode_coverage", "extended_morphology", "fusion_cadence"
         };
         const unsigned int index = static_cast<unsigned int>(code);
         return index < sizeof(names) / sizeof(names[0]) ? names[index] : "unknown";
@@ -188,6 +188,58 @@ namespace
             signal_synth::measurement_truth t = make_truth("t_amplitude", "mV", t_status, signal_synth::measurement_beat_lead, entry.t_amplitude_mv, 0.050, 10.0, !beat->t_present ? "t_wave_absent" : entry.t_present ? "" : "t_wave_not_measurable_in_lead");
             set_beat_anchor(t, *beat); t.measurement.channel = lead; output.push_back(t);
         }
+    }
+
+    const char* extended_component_name(signal_synth::clinical_fiducial_kind kind)
+    {
+        switch (kind)
+        {
+        case signal_synth::clinical_p_secondary_peak: return "p_biphasic";
+        case signal_synth::clinical_p_notch: return "p_notch";
+        case signal_synth::clinical_r_prime: return "r_prime";
+        case signal_synth::clinical_qrs_fragment: return "qrs_fragment";
+        case signal_synth::clinical_t_secondary_peak: return "t_biphasic";
+        case signal_synth::clinical_t_notch: return "t_notch";
+        case signal_synth::clinical_u_peak: return "u_wave";
+        default: return 0;
+        }
+    }
+
+    void add_extended_morphology_truth(const signal_synth::ecg_render_bundle& render, std::vector<signal_synth::measurement_truth>& output)
+    {
+        const signal_synth::clinical_fiducial_annotation* fiducials = render.record.fiducials();
+        const signal_synth::clinical_beat_annotation* beats = render.record.beats();
+        for (unsigned int i = 0; fiducials && i < render.record.fiducial_count(); ++i)
+        {
+            const signal_synth::clinical_fiducial_annotation& measured = fiducials[i];
+            const char* component = extended_component_name(measured.kind);
+            if (!component || measured.source != signal_synth::clinical_fiducial_lead_measurement || measured.lead_index < 0 || measured.lead_index >= static_cast<int>(render.record.lead_count()))
+                continue;
+            const signal_synth::clinical_beat_annotation* beat = 0;
+            for (unsigned int b = 0; beats && b < render.record.beat_count(); ++b)
+                if (beats[b].beat_index == measured.beat_index) { beat = &beats[b]; break; }
+            if (!beat)
+                continue;
+            const signal_synth::measurement_status status = measured.present ? signal_synth::measurement_valid : signal_synth::measurement_not_evaluable;
+            signal_synth::measurement_truth amplitude = make_truth("component_amplitude", "mV", status, signal_synth::measurement_beat_lead, measured.amplitude_mv, 0.050, 10.0, measured.present ? "" : "component_not_measurable_in_lead");
+            set_beat_anchor(amplitude, *beat);
+            amplitude.measurement.channel = render.record.lead_name(static_cast<unsigned int>(measured.lead_index));
+            amplitude.measurement.formula = component;
+            output.push_back(amplitude);
+            signal_synth::measurement_truth offset = make_truth("component_r_offset", "s", status, signal_synth::measurement_beat_lead, measured.time_seconds - beat->r_peak_time_seconds, 0.020, 5.0, measured.present ? "" : "component_not_measurable_in_lead");
+            offset.measurement = amplitude.measurement;
+            offset.measurement.name = "component_r_offset";
+            offset.measurement.unit = "s";
+            offset.measurement.value = status == signal_synth::measurement_valid ? measured.time_seconds - beat->r_peak_time_seconds : 0.0;
+            output.push_back(offset);
+        }
+        for (unsigned int i = 0; beats && i < render.record.beat_count(); ++i)
+            if (beats[i].origin == signal_synth::clinical_origin_fusion)
+            {
+                signal_synth::measurement_truth fusion = make_truth("fusion_ventricular_fraction", "ratio", signal_synth::measurement_valid, signal_synth::measurement_beat, beats[i].fusion_ventricular_fraction, 0.02, 5.0, "");
+                set_beat_anchor(fusion, beats[i]);
+                output.push_back(fusion);
+            }
     }
 
     bool mean_fiducial_amplitude(const signal_synth::clinical_ecg_record& record, unsigned int lead, signal_synth::clinical_fiducial_kind kind, double& output)
@@ -734,6 +786,7 @@ namespace signal_synth
         {
             add_timing_truth(render, output);
             add_lead_morphology_truth(render, output);
+            add_extended_morphology_truth(render, output);
             add_axis_truth(render, output);
             add_assertion_truth(render, output);
         }

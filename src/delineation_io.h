@@ -16,7 +16,16 @@ namespace signal_synth
         delineation_t_onset = 6,
         delineation_t_peak = 7,
         delineation_t_offset = 8,
-        delineation_kind_count = 9
+        delineation_p_secondary_peak = 9,
+        delineation_p_notch = 10,
+        delineation_r_prime = 11,
+        delineation_qrs_fragment = 12,
+        delineation_t_secondary_peak = 13,
+        delineation_t_notch = 14,
+        delineation_u_onset = 15,
+        delineation_u_peak = 16,
+        delineation_u_offset = 17,
+        delineation_kind_count = 18
     };
 
     enum delineation_io_message_code

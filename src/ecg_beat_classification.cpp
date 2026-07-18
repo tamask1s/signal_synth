@@ -123,6 +123,7 @@ namespace signal_synth
         case ecg_beat_ventricular_ectopic: return "ventricular_ectopic";
         case ecg_beat_paced: return "paced";
         case ecg_beat_escape: return "escape";
+        case ecg_beat_fusion: return "fusion";
         case ecg_beat_unscored: return "unscored";
         default: return "unscored";
         }
@@ -153,6 +154,7 @@ namespace signal_synth
         case clinical_origin_atrial_paced: return ecg_beat_paced;
         case clinical_origin_junctional_escape:
         case clinical_origin_ventricular_escape: return ecg_beat_escape;
+        case clinical_origin_fusion: return ecg_beat_fusion;
         case clinical_origin_vt:
         default: return ecg_beat_unscored;
         }

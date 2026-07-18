@@ -12,7 +12,7 @@
 
 namespace
 {
-    const char* metadata_version = "synsigra_authoring_v13";
+    const char* metadata_version = "synsigra_authoring_v14";
     const char* template_version = "synsigra_templates_v4";
 
     struct field_definition
@@ -598,6 +598,9 @@ namespace signal_synth
             {"$.ecg.pacing_mode","Pacing mode","ecg","string","segmented","\"ventricular\"",0,0,0,"","[\"ventricular\",\"atrial\",\"dual_chamber\"]","{\"condition_code\":\"PACE\"}",true},
             {"$.ecg.pacing_non_capture_every_n_beats","Non-capture cadence","ecg","integer","number","0","0","1000000","1","beats",0,"{\"condition_code\":\"PACE\"}",true},
             {"$.ecg.fidelity_policy","Fidelity policy","ecg","string","segmented","\"allow_parameterized\"",0,0,0,"","[\"native_only\",\"allow_parameterized\"]",0,true},
+            {"$.ecg.extended_morphology.components","Extended wave components","ecg_extended","ecg_morphology_component_array","component_editor","[]","0","16",0,"items",0,0,true},
+            {"$.ecg.extended_morphology.fusion_every_n_beats","Fusion cadence","ecg_extended","integer","number","0","0","1000000","1","beats",0,0,true},
+            {"$.ecg.extended_morphology.fusion_ventricular_fraction","Fusion ventricular fraction","ecg_extended","number","slider","0","0.1","0.9","0.01","ratio",0,"{\"path\":\"$.ecg.extended_morphology.fusion_every_n_beats\",\"greater_than\":0}",true},
             {"$.hrv.enabled","HRV modulation","hrv","boolean","toggle","false",0,0,0,"",0,0,true},
             {"$.hrv.target_mean_hr_bpm","Target mean heart rate","hrv","number","number","60","30","220","1","bpm",0,"{\"path\":\"$.hrv.enabled\",\"equals\":true}",true},
             {"$.hrv.target_sdnn_seconds","Target SDNN","hrv","number","number","0.04","0","2","0.001","s",0,"{\"path\":\"$.hrv.enabled\",\"equals\":true}",true},
@@ -718,8 +721,9 @@ namespace signal_synth
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << "{\"schema_version\":1,\"metadata_version\":" << json_string(metadata_version)
-               << ",\"scenario_schema_version\":6,\"supported_scenario_schema_versions\":[2,3,4,5,6],\"groups\":["
+               << ",\"scenario_schema_version\":7,\"supported_scenario_schema_versions\":[2,3,4,5,6,7],\"groups\":["
                << "{\"id\":\"identity\",\"label\":\"Identity\"},{\"id\":\"render\",\"label\":\"Render\"},{\"id\":\"ecg\",\"label\":\"ECG\"},"
+               << "{\"id\":\"ecg_extended\",\"label\":\"Extended ECG Morphology\"},"
                << "{\"id\":\"episode\",\"label\":\"Episode\"},{\"id\":\"hrv\",\"label\":\"HRV\"},{\"id\":\"ppg\",\"label\":\"PPG\"},"
                << "{\"id\":\"ppg_stress\",\"label\":\"PPG Timing Stress\"},{\"id\":\"ppg_physiology\",\"label\":\"PPG Physiology\"},{\"id\":\"ppg_optical\",\"label\":\"PPG Optical Physiology\"},{\"id\":\"ppg_optical_red\",\"label\":\"PPG Red Sensor\"},{\"id\":\"ppg_optical_infrared\",\"label\":\"PPG Infrared Sensor\"},{\"id\":\"randomization\",\"label\":\"Randomization\"},"
                << "{\"id\":\"physiology\",\"label\":\"Physiology\"},{\"id\":\"output\",\"label\":\"Output\"},{\"id\":\"wearable\",\"label\":\"Wearable Timebase\"},{\"id\":\"artifacts\",\"label\":\"Artifacts\"}],\"fields\":[";
@@ -735,6 +739,12 @@ namespace signal_synth
                << "{\"name\":\"parameter\",\"value_type\":\"string\",\"control\":\"select\",\"options\":[\"ecg.heart_rate_bpm\",\"ecg.rr_variability_seconds\",\"ecg.morphology.p_amplitude_mv\",\"ecg.morphology.q_amplitude_mv\",\"ecg.morphology.r_amplitude_mv\",\"ecg.morphology.s_amplitude_mv\",\"ecg.morphology.t_amplitude_mv\",\"ecg.morphology.qrs_axis_degrees\",\"ecg.morphology.t_axis_degrees\",\"ecg.morphology.qrs_duration_ms\",\"ecg.morphology.qt_interval_ms\",\"ppg.pulse_delay_ms\",\"ppg.amplitude_au\",\"ppg.optical.baseline_spo2_percent\",\"ppg.optical.infrared_perfusion_index_percent\",\"hrv.target_sdnn_seconds\",\"hrv.lf_hf_ratio\",\"physiology.activity_intensity\"]},"
                << "{\"name\":\"minimum\",\"value_type\":\"number\",\"control\":\"number\"},"
                << "{\"name\":\"maximum\",\"value_type\":\"number\",\"control\":\"number\"}],"
+               << "\"ecg_morphology_component_item_fields\":["
+               << "{\"name\":\"type\",\"value_type\":\"string\",\"control\":\"select\",\"options\":[\"p_biphasic\",\"p_notch\",\"r_prime\",\"qrs_fragment\",\"t_biphasic\",\"t_notch\",\"u_wave\"]},"
+               << "{\"name\":\"leads\",\"value_type\":\"string_array\",\"control\":\"channel_picker\",\"options\":[\"I\",\"II\",\"III\",\"aVR\",\"aVL\",\"aVF\",\"V1\",\"V2\",\"V3\",\"V4\",\"V5\",\"V6\"]},"
+               << "{\"name\":\"amplitude_mv\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":-2,\"maximum\":2,\"nonzero_absolute_minimum\":0.02,\"unit\":\"mV\"},"
+               << "{\"name\":\"offset_ms\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":0,\"maximum\":500,\"unit\":\"ms\"},"
+               << "{\"name\":\"duration_ms\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":8,\"maximum\":250,\"unit\":\"ms\"}],"
                << "\"ppg_perfusion_episode_item_fields\":["
                << "{\"name\":\"start_seconds\",\"value_type\":\"number\",\"control\":\"number\",\"minimum\":0,\"unit\":\"s\"},"
                << "{\"name\":\"duration_seconds\",\"value_type\":\"number\",\"control\":\"number\",\"exclusive_minimum\":0,\"unit\":\"s\"},"
@@ -814,6 +824,8 @@ namespace signal_synth
                << "{\"id\":\"wearable_sources\",\"expression\":\"all wearable streams disabled || (wearable.ecg.enabled && (!wearable.ppg.enabled || ppg.enabled) && (!wearable.accelerometer.enabled || physiology.activity_intensity > 0 || artifacts contain PPG motion))\",\"message\":\"Enabled wearable streams require ECG plus every selected latent source.\"},"
                << "{\"id\":\"wearable_rates\",\"expression\":\"all enabled wearable sample rates <= sample_rate_hz and timestamp_jitter_ms <= 450/sample_rate_hz\",\"message\":\"Wearable rates and jitter must preserve supported resampling and monotonic timestamps.\"},"
                << "{\"id\":\"compact_output\",\"expression\":\"!output.compact || (!output.retain_source_channels && !output.include_waveform_csv && !output.include_edf_bdf)\",\"message\":\"Compact output omits source channels, waveform CSV, EDF and BDF.\"}"
+               << ",{\"id\":\"extended_morphology_parent_bounds\",\"expression\":\"every extended component fits its parent P, QRS, T, or post-T window and component type/lead pairs are unique\",\"message\":\"Extended morphology components must fit their parent wave and cannot overlap another component of the same type on the same lead.\"}"
+               << ",{\"id\":\"fusion_configuration\",\"expression\":\"fusion_every_n_beats == 0 ? fusion_ventricular_fraction == 0 : fusion_every_n_beats >= 2 and 0.1 <= fusion_ventricular_fraction <= 0.9\",\"message\":\"Fusion cadence and ventricular fraction must be configured together.\"}"
                << "]}";
         return output.str();
     }
@@ -923,7 +935,7 @@ namespace signal_synth
                << ",\"pack_version\":" << json_string(analysis.pack_version)
                << ",\"scoring_mode\":" << json_string(analysis_scoring_mode(analysis))
                << ",\"recommended_verifier_profile\":" << json_string(recommended_profile_for_analysis(analysis))
-               << ",\"generator_compatibility\":{\"pack_schema_version\":1,\"scenario_schema_versions\":[2,3,4,5,6],\"challenge_package_contract\":\"synsigra_challenge_package_v2\",\"scoring_manifest_contract\":\"synsigra_scoring_manifest_v2\"}"
+               << ",\"generator_compatibility\":{\"pack_schema_version\":1,\"scenario_schema_versions\":[2,3,4,5,6,7],\"challenge_package_contract\":\"synsigra_challenge_package_v2\",\"scoring_manifest_contract\":\"synsigra_scoring_manifest_v2\"}"
                << ",\"summary\":{\"case_count\":" << analysis.case_count
                << ",\"total_duration_seconds\":" << analysis.total_duration_seconds
                << ",\"total_sample_count\":" << analysis.total_sample_count

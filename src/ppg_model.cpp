@@ -224,6 +224,8 @@ namespace
         case signal_synth::clinical_origin_paced:
         case signal_synth::clinical_origin_atrial_paced:
             return config.paced_pulse_amplitude_scale;
+        case signal_synth::clinical_origin_fusion:
+            return 1.0 + beat.fusion_ventricular_fraction * (config.pvc_pulse_amplitude_scale - 1.0);
         case signal_synth::clinical_origin_conducted:
         case signal_synth::clinical_origin_junctional_escape:
             break;

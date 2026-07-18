@@ -95,6 +95,24 @@ int main()
         }
     ok &= check(has_normal && has_pvc, "wfdb_standard_beat_classes");
 
+    signal_synth::ecg_scenario_document fusion_document;
+    fusion_document.schema_version = 7;
+    fusion_document.scenario_id = "wfdb_fusion_test";
+    fusion_document.duration_seconds = 8.0;
+    fusion_document.ecg.clear_conditions();
+    fusion_document.ecg.add_condition(signal_synth::ecg_condition_sr);
+    fusion_document.ecg.set_fusion_beats(3, 0.45);
+    signal_synth::ecg_render_bundle fusion_render;
+    signal_synth::wfdb_export_bundle fusion_bundle;
+    ok &= check(signal_synth::render_ecg_document(fusion_document, fusion_render, render_result)
+        && signal_synth::build_wfdb_export_bundle(fusion_render, "fusion", fusion_bundle, result), "render_wfdb_fusion");
+    const signal_synth::wfdb_export_artifact* fusion_annotations = find_artifact(fusion_bundle, "fusion.atr");
+    bool has_fusion = false;
+    if (fusion_annotations)
+        for (std::size_t offset = 0; offset + 1u < fusion_annotations->content.size(); offset += 2u)
+            has_fusion = has_fusion || (static_cast<unsigned char>(fusion_annotations->content[offset + 1u]) >> 2) == 6u;
+    ok &= check(has_fusion, "wfdb_native_fusion_class");
+
     signal_synth::ecg_render_bundle incomplete;
     signal_synth::wfdb_export_bundle preserved = bundle;
     ok &= check(!signal_synth::build_wfdb_export_bundle(incomplete, "bad", preserved, result) && preserved.artifacts.size() == 4, "transactional_failure");

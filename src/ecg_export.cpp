@@ -97,6 +97,7 @@ namespace
         case signal_synth::clinical_origin_paced: return "paced";
         case signal_synth::clinical_origin_vt: return "ventricular_tachycardia";
         case signal_synth::clinical_origin_atrial_paced: return "atrial_paced";
+        case signal_synth::clinical_origin_fusion: return "fusion";
         }
         return "unknown";
     }
@@ -128,6 +129,15 @@ namespace
         case signal_synth::clinical_t_peak: return "t_peak";
         case signal_synth::clinical_t_offset: return "t_offset";
         case signal_synth::clinical_pacing_spike: return "pacing_spike";
+        case signal_synth::clinical_p_secondary_peak: return "p_secondary_peak";
+        case signal_synth::clinical_p_notch: return "p_notch";
+        case signal_synth::clinical_r_prime: return "r_prime";
+        case signal_synth::clinical_qrs_fragment: return "qrs_fragment";
+        case signal_synth::clinical_t_secondary_peak: return "t_secondary_peak";
+        case signal_synth::clinical_t_notch: return "t_notch";
+        case signal_synth::clinical_u_onset: return "u_onset";
+        case signal_synth::clinical_u_peak: return "u_peak";
+        case signal_synth::clinical_u_offset: return "u_offset";
         }
         return "unknown";
     }
@@ -596,6 +606,7 @@ namespace
                    << ",\"qtc_seconds\":" << beat.qtc_interval_seconds
                    << ",\"qrs_onset_seconds\":" << beat.qrs_onset_time_seconds
                    << ",\"r_peak_seconds\":" << beat.r_peak_time_seconds
+                   << ",\"fusion_ventricular_fraction\":" << beat.fusion_ventricular_fraction
                    << ",\"p_present\":" << boolean(beat.p_present)
                    << ",\"qrs_present\":" << boolean(beat.qrs_present)
                    << ",\"t_present\":" << boolean(beat.t_present)

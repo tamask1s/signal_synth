@@ -16,7 +16,7 @@ namespace signal_synth
     namespace
     {
         const unsigned int SCENARIO_SCHEMA_VERSION = 2;
-        const unsigned int SCENARIO_ENGINE_VERSION = 15;
+        const unsigned int SCENARIO_ENGINE_VERSION = 16;
         const unsigned long long DEFAULT_SEED = 0x5343454e4152494fULL;
         const ecg_condition_code NO_CONDITION = ecg_condition_count;
 
@@ -91,6 +91,17 @@ namespace signal_synth
         {
             const int raw = enum_value(value);
             return raw >= ecg_episode_afib && raw <= ecg_episode_asystole;
+        }
+
+        bool valid_morphology_component_type(ecg_morphology_component_type value)
+        {
+            const int raw = enum_value(value);
+            return raw >= ecg_component_p_biphasic && raw <= ecg_component_u_wave;
+        }
+
+        clinical_morphology_component_kind clinical_component_type(ecg_morphology_component_type value)
+        {
+            return static_cast<clinical_morphology_component_kind>(enum_value(value));
         }
 
         clinical_episode_kind clinical_episode_type(ecg_rhythm_episode_type value)
@@ -473,13 +484,16 @@ namespace signal_synth
         ecg_second_degree_av_pattern second_degree_pattern;
         ecg_q_wave_territory q_wave_territory;
         std::vector<ecg_rhythm_episode> rhythm_episodes;
+        std::vector<ecg_morphology_component> morphology_components;
+        unsigned int fusion_every_n_beats;
+        double fusion_ventricular_fraction;
         ecg_flutter_conduction_pattern flutter_conduction_pattern;
         ecg_pacing_mode pacing_mode;
         unsigned int pacing_non_capture_every_n_beats;
         ecg_scenario_fidelity_policy fidelity_policy;
 
         implementation()
-            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), hrv_respiratory_phase_radians(-1.0), qt_adaptation_enabled(false), qt_adaptation_model(ecg_qt_adaptation_fridericia), qt_adaptation_qtc_ms(400.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), retain_source_channels(true), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), flutter_conduction_pattern(ecg_flutter_fixed), pacing_mode(ecg_pacing_ventricular), pacing_non_capture_every_n_beats(0), fidelity_policy(ecg_fidelity_allow_parameterized)
+            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), hrv_respiratory_phase_radians(-1.0), qt_adaptation_enabled(false), qt_adaptation_model(ecg_qt_adaptation_fridericia), qt_adaptation_qtc_ms(400.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), retain_source_channels(true), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), fusion_every_n_beats(0), fusion_ventricular_fraction(0.0), flutter_conduction_pattern(ecg_flutter_fixed), pacing_mode(ecg_pacing_ventricular), pacing_non_capture_every_n_beats(0), fidelity_policy(ecg_fidelity_allow_parameterized)
         {
             for (unsigned int index = 0; index < ecg_morphology_control_count; ++index)
             {
@@ -756,6 +770,33 @@ namespace signal_synth
                         add_issue(report, ecg_issue_error, ecg_issue_condition_conflict, NO_CONDITION, condition.code, "Rhythm episodes currently compose only with an SR baseline and matching PSVT or SVARR statements.");
                 if (scenario.rr_variability_seconds > 0.0)
                     add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, NO_CONDITION, NO_CONDITION, "The rhythm episode timeline does not apply rr_variability_seconds.");
+            }
+            const bool extended_morphology = !scenario.morphology_components.empty() || scenario.fusion_every_n_beats > 0;
+            if (extended_morphology)
+            {
+                for (const scenario_condition& condition : scenario.conditions)
+                    if (condition.code != ecg_condition_sr)
+                        add_issue(report, ecg_issue_error, ecg_issue_condition_conflict, ecg_condition_sr, condition.code, "Extended morphology stress currently requires SR as its only condition.");
+                if (!has_condition(scenario.conditions, ecg_condition_sr))
+                    add_issue(report, ecg_issue_error, ecg_issue_missing_requirement, ecg_condition_sr, NO_CONDITION, "Extended morphology stress requires the SR condition.");
+                if (scenario.ectopic_every_n_beats || !scenario.rhythm_episodes.empty() || scenario.pacing_non_capture_every_n_beats || !scenario.repolarization_episodes.empty())
+                    add_issue(report, ecg_issue_error, ecg_issue_condition_conflict, ecg_condition_sr, NO_CONDITION, "Extended morphology stress does not compose with ectopy, rhythm episodes, pacing non-capture, or dynamic repolarization episodes.");
+                if (scenario.morphology_components.size() > clinical_morphology_component_max)
+                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, ecg_condition_sr, NO_CONDITION, "Too many extended morphology components.");
+                const double p_duration = scenario.morphology_enabled[ecg_morphology_p_duration_ms] ? scenario.morphology_values[ecg_morphology_p_duration_ms] : 100.0;
+                const double qrs_duration = scenario.morphology_enabled[ecg_morphology_qrs_duration_ms] ? scenario.morphology_values[ecg_morphology_qrs_duration_ms] : 90.0;
+                const double t_duration = scenario.morphology_enabled[ecg_morphology_t_duration_ms] ? scenario.morphology_values[ecg_morphology_t_duration_ms] : 180.0;
+                for (std::size_t index = 0; index < scenario.morphology_components.size(); ++index)
+                {
+                    const ecg_morphology_component& component = scenario.morphology_components[index];
+                    const bool p_component = component.type == ecg_component_p_biphasic || component.type == ecg_component_p_notch;
+                    const bool qrs_component = component.type == ecg_component_r_prime || component.type == ecg_component_qrs_fragment;
+                    const bool t_component = component.type == ecg_component_t_biphasic || component.type == ecg_component_t_notch;
+                    if (!valid_morphology_component_type(component.type) || !component.lead_mask || !std::isfinite(component.amplitude_mv) || !std::isfinite(component.offset_ms) || !std::isfinite(component.duration_ms) || (p_component && component.offset_ms + component.duration_ms > p_duration) || (qrs_component && component.offset_ms + component.duration_ms > qrs_duration) || (t_component && component.offset_ms + component.duration_ms > t_duration))
+                        add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, ecg_condition_sr, NO_CONDITION, "Extended morphology component does not fit its parent wave.");
+                }
+                if (scenario.fusion_every_n_beats == 1 || (scenario.fusion_every_n_beats == 0 ? scenario.fusion_ventricular_fraction != 0.0 : !std::isfinite(scenario.fusion_ventricular_fraction) || scenario.fusion_ventricular_fraction < 0.1 || scenario.fusion_ventricular_fraction > 0.9))
+                    add_issue(report, ecg_issue_error, ecg_issue_invalid_parameter, ecg_condition_sr, NO_CONDITION, "Invalid fusion-beat cadence or ventricular fraction.");
             }
             if (scenario.qt_adaptation_enabled)
             {
@@ -1191,6 +1232,19 @@ namespace signal_synth
             if (scenario.heart_rate_bpm > 0.0)
                 config.rhythm.heart_rate_bpm = scenario.heart_rate_bpm;
             apply_morphology_controls(scenario, config);
+            config.morphology.component_count = static_cast<unsigned int>(scenario.morphology_components.size());
+            for (unsigned int index = 0; index < config.morphology.component_count; ++index)
+            {
+                const ecg_morphology_component& input = scenario.morphology_components[index];
+                clinical_morphology_component_config& output = config.morphology.components[index];
+                output.kind = clinical_component_type(input.type);
+                output.lead_mask = input.lead_mask;
+                output.amplitude_mv = input.amplitude_mv;
+                output.offset_ms = input.offset_ms;
+                output.duration_ms = input.duration_ms;
+            }
+            config.scenario.fusion_every_n_beats = scenario.fusion_every_n_beats;
+            config.morphology.fusion_ventricular_fraction = scenario.fusion_ventricular_fraction;
             if (scenario.qt_adaptation_enabled)
             {
                 config.timing.qtc_ms = scenario.qt_adaptation_qtc_ms;
@@ -1667,6 +1721,27 @@ namespace signal_synth
                 matching += (index + 1) % cadence == 0 ? 1U : 0U;
             }
             return ectopic_count ? static_cast<double>(matching) / ectopic_count : -1.0;
+        }
+
+        bool extended_component_peak(clinical_fiducial_kind kind)
+        {
+            return kind == clinical_p_secondary_peak || kind == clinical_p_notch || kind == clinical_r_prime || kind == clinical_qrs_fragment || kind == clinical_t_secondary_peak || kind == clinical_t_notch || kind == clinical_u_peak;
+        }
+
+        double extended_component_measurement_fraction(const clinical_ecg_record& record)
+        {
+            const clinical_fiducial_annotation* fiducials = record.fiducials();
+            unsigned int construction = 0;
+            unsigned int measured = 0;
+            for (unsigned int index = 0; fiducials && index < record.fiducial_count(); ++index)
+            {
+                const clinical_fiducial_annotation& item = fiducials[index];
+                if (!extended_component_peak(item.kind) || !item.present)
+                    continue;
+                construction += item.source == clinical_fiducial_construction ? 1U : 0U;
+                measured += item.source == clinical_fiducial_lead_measurement ? 1U : 0U;
+            }
+            return construction ? std::min(1.0, static_cast<double>(measured) / construction) : -1.0;
         }
 
         double premature_coupling_ratio(const clinical_ecg_record& record, clinical_ventricular_origin origin)
@@ -2494,6 +2569,10 @@ namespace signal_synth
                     break;
                 }
             }
+            if (!scenario.morphology_components.empty())
+                add_assertion(report, ecg_condition_sr, ecg_assert_extended_morphology, extended_component_measurement_fraction(record), 1.0, 1.0, "extended morphology components measurable", "ratio");
+            if (scenario.fusion_every_n_beats)
+                add_assertion(report, ecg_condition_sr, ecg_assert_fusion_cadence, ectopic_cadence_fraction(record, clinical_origin_fusion, scenario.fusion_every_n_beats), 1.0, 1.0, "fusion beat cadence", "ratio");
             report.phenotype_passed = !report.assertions.empty();
             for (const phenotype_assertion& assertion : report.assertions)
                 report.phenotype_passed = report.phenotype_passed && assertion.status == ecg_assertion_passed;
@@ -2596,6 +2675,42 @@ namespace signal_synth
         case ecg_morphology_control_count: break;
         }
         return false;
+    }
+
+    const char* ecg_morphology_component_name(ecg_morphology_component_type type)
+    {
+        switch (type)
+        {
+        case ecg_component_p_biphasic: return "p_biphasic";
+        case ecg_component_p_notch: return "p_notch";
+        case ecg_component_r_prime: return "r_prime";
+        case ecg_component_qrs_fragment: return "qrs_fragment";
+        case ecg_component_t_biphasic: return "t_biphasic";
+        case ecg_component_t_notch: return "t_notch";
+        case ecg_component_u_wave: return "u_wave";
+        }
+        return "";
+    }
+
+    bool ecg_morphology_component_from_name(const char* name, ecg_morphology_component_type& type)
+    {
+        if (!name)
+            return false;
+        for (int value = ecg_component_p_biphasic; value <= ecg_component_u_wave; ++value)
+        {
+            const ecg_morphology_component_type candidate = static_cast<ecg_morphology_component_type>(value);
+            if (std::strcmp(name, ecg_morphology_component_name(candidate)) == 0)
+            {
+                type = candidate;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    unsigned int ecg_morphology_lead_mask(unsigned int lead)
+    {
+        return lead < clinical_lead_count ? 1u << lead : 0u;
     }
 
     ecg_qa_scenario::ecg_qa_scenario()
@@ -2766,6 +2881,62 @@ namespace signal_synth
             if (implementation_->morphology_enabled[index])
                 return true;
         return false;
+    }
+
+    bool ecg_qa_scenario::add_morphology_component(ecg_morphology_component_type type, unsigned int lead_mask, double amplitude_mv, double offset_ms, double duration_ms)
+    {
+        const unsigned int all_leads = (1u << clinical_lead_count) - 1u;
+        if (!valid_morphology_component_type(type) || !lead_mask || (lead_mask & ~all_leads) || !std::isfinite(amplitude_mv) || !std::isfinite(offset_ms) || !std::isfinite(duration_ms) || std::fabs(amplitude_mv) < 0.02 || std::fabs(amplitude_mv) > 2.0 || offset_ms < 0.0 || offset_ms > 500.0 || duration_ms < 8.0 || duration_ms > 250.0 || (type == ecg_component_u_wave && (offset_ms < 10.0 || duration_ms < 30.0)) || implementation_->morphology_components.size() >= clinical_morphology_component_max)
+            return false;
+        for (std::size_t index = 0; index < implementation_->morphology_components.size(); ++index)
+            if (implementation_->morphology_components[index].type == type && (implementation_->morphology_components[index].lead_mask & lead_mask))
+                return false;
+        implementation_->morphology_components.push_back(ecg_morphology_component{type, lead_mask, amplitude_mv, offset_ms, duration_ms});
+        std::sort(implementation_->morphology_components.begin(), implementation_->morphology_components.end(), [](const ecg_morphology_component& left, const ecg_morphology_component& right) { if (left.type != right.type) return left.type < right.type; if (left.lead_mask != right.lead_mask) return left.lead_mask < right.lead_mask; return left.offset_ms < right.offset_ms; });
+        return true;
+    }
+
+    void ecg_qa_scenario::clear_morphology_components()
+    {
+        implementation_->morphology_components.clear();
+    }
+
+    unsigned int ecg_qa_scenario::morphology_component_count() const
+    {
+        return static_cast<unsigned int>(implementation_->morphology_components.size());
+    }
+
+    bool ecg_qa_scenario::morphology_component(unsigned int index, ecg_morphology_component& output) const
+    {
+        if (index >= implementation_->morphology_components.size())
+            return false;
+        output = implementation_->morphology_components[index];
+        return true;
+    }
+
+    bool ecg_qa_scenario::set_fusion_beats(unsigned int every_n_beats, double ventricular_fraction)
+    {
+        if (every_n_beats < 2 || every_n_beats > 1000000 || !std::isfinite(ventricular_fraction) || ventricular_fraction < 0.1 || ventricular_fraction > 0.9)
+            return false;
+        implementation_->fusion_every_n_beats = every_n_beats;
+        implementation_->fusion_ventricular_fraction = ventricular_fraction;
+        return true;
+    }
+
+    void ecg_qa_scenario::clear_fusion_beats()
+    {
+        implementation_->fusion_every_n_beats = 0;
+        implementation_->fusion_ventricular_fraction = 0.0;
+    }
+
+    unsigned int ecg_qa_scenario::fusion_every_n_beats() const
+    {
+        return implementation_->fusion_every_n_beats;
+    }
+
+    double ecg_qa_scenario::fusion_ventricular_fraction() const
+    {
+        return implementation_->fusion_ventricular_fraction;
     }
 
     bool ecg_qa_scenario::set_qt_adaptation(ecg_qt_adaptation_model model, double qtc_ms)
@@ -3049,6 +3220,21 @@ namespace signal_synth
                     hash_u64(hash, quantize(implementation_->morphology_values[index], 1000000.0));
                 }
             }
+        }
+        if (!implementation_->morphology_components.empty() || implementation_->fusion_every_n_beats)
+        {
+            hash_u64(hash, 0x4558544d4f525031ULL);
+            hash_u64(hash, implementation_->morphology_components.size());
+            for (const ecg_morphology_component& component : implementation_->morphology_components)
+            {
+                hash_u64(hash, enum_value(component.type));
+                hash_u64(hash, component.lead_mask);
+                hash_u64(hash, quantize(component.amplitude_mv, 1000000.0));
+                hash_u64(hash, quantize(component.offset_ms, 1000.0));
+                hash_u64(hash, quantize(component.duration_ms, 1000.0));
+            }
+            hash_u64(hash, implementation_->fusion_every_n_beats);
+            hash_u64(hash, quantize(implementation_->fusion_ventricular_fraction, 1000000.0));
         }
         if (implementation_->qt_adaptation_enabled)
         {

@@ -1144,9 +1144,28 @@ const char* clinical_qrs_label(signal_synth::clinical_ventricular_origin origin)
         return "GT paced QRS";
     case signal_synth::clinical_origin_vt:
         return "GT VT QRS";
+    case signal_synth::clinical_origin_fusion:
+        return "GT fusion QRS";
     case signal_synth::clinical_origin_conducted:
     default:
         return "GT QRS complex";
+    }
+}
+
+const char* clinical_extended_fiducial_label(signal_synth::clinical_fiducial_kind kind)
+{
+    switch (kind)
+    {
+    case signal_synth::clinical_p_secondary_peak: return "GT P secondary peak";
+    case signal_synth::clinical_p_notch: return "GT P notch";
+    case signal_synth::clinical_r_prime: return "GT R prime";
+    case signal_synth::clinical_qrs_fragment: return "GT QRS fragment";
+    case signal_synth::clinical_t_secondary_peak: return "GT T secondary peak";
+    case signal_synth::clinical_t_notch: return "GT T notch";
+    case signal_synth::clinical_u_onset: return "GT U onset";
+    case signal_synth::clinical_u_peak: return "GT U peak";
+    case signal_synth::clinical_u_offset: return "GT U offset";
+    default: return 0;
     }
 }
 
@@ -1233,6 +1252,13 @@ void add_clinical_markers(CVariable* output, const signal_synth::clinical_ecg_re
         if (annotation.present && annotation.time_seconds >= 0.0 && annotation.time_seconds < duration_seconds)
             put_marker_interval(output, annotation.time_seconds, 1.0 / record.sampling_rate_hz(), clinical_dynamic_annotation_label(annotation.kind), marker_lead);
     }
+    for (unsigned int i = 0; i < record.fiducial_count(); ++i)
+    {
+        const signal_synth::clinical_fiducial_annotation& fiducial = record.fiducials()[i];
+        const char* label = clinical_extended_fiducial_label(fiducial.kind);
+        if (label && fiducial.source == signal_synth::clinical_fiducial_construction && fiducial.present && fiducial.lead_index >= 0 && fiducial.time_seconds >= 0.0 && fiducial.time_seconds < duration_seconds)
+            put_marker_interval(output, fiducial.time_seconds, 1.0 / record.sampling_rate_hz(), label, fiducial.lead_index);
+    }
 }
 
 unsigned int clinical_annotation_sample(double time_seconds, const signal_synth::clinical_ecg_record& record)
@@ -1262,9 +1288,11 @@ void add_clinical_annotation_channels_at(CVariable* output, const signal_synth::
     const unsigned int pacing_channel = p_channel + 5;
     const unsigned int dynamic_first_channel = p_channel + 6;
     const unsigned int dynamic_channel_count = 6;
-    const unsigned int annotation_channel_count = 6 + dynamic_channel_count;
-    const char* labels[] = {"GT P waves (+conducted, -blocked)", "GT QRS origin code", "GT J points", "GT T waves", "GT rhythm episodes", "GT pacing event code", "GT repolarization severity", "GT QT interval ms", "GT QTc ms", "GT ST-J amplitude mV", "GT ST slope mV/s", "GT T amplitude mV"};
-    const char* units[] = {"code", "code", "event", "event", "code", "code", "ratio", "ms", "ms", "mV", "mV/s", "mV"};
+    const unsigned int extended_construction_channel = dynamic_first_channel + dynamic_channel_count;
+    const unsigned int extended_measurement_channel = extended_construction_channel + 1;
+    const unsigned int annotation_channel_count = 8 + dynamic_channel_count;
+    const char* labels[] = {"GT P waves (+conducted, -blocked)", "GT QRS origin code", "GT J points", "GT T waves", "GT rhythm episodes", "GT pacing event code", "GT repolarization severity", "GT QT interval ms", "GT QTc ms", "GT ST-J amplitude mV", "GT ST slope mV/s", "GT T amplitude mV", "GT extended morphology fiducials", "Measured extended morphology peaks"};
+    const char* units[] = {"code", "code", "event", "event", "code", "code", "ratio", "ms", "ms", "mV", "mV/s", "mV", "code", "code"};
     for (unsigned int channel = p_channel; channel < p_channel + annotation_channel_count; ++channel)
     {
         output->m_sample_rates.m_data[channel] = record.sampling_rate_hz();
@@ -1321,6 +1349,14 @@ void add_clinical_annotation_channels_at(CVariable* output, const signal_synth::
                 std::fill(output->m_data[dynamic_first_channel + kind] + first, output->m_data[dynamic_first_channel + kind] + last, annotation.value);
         }
     }
+    for (unsigned int i = 0; i < record.fiducial_count(); ++i)
+    {
+        const signal_synth::clinical_fiducial_annotation& fiducial = record.fiducials()[i];
+        if (!clinical_extended_fiducial_label(fiducial.kind) || !fiducial.present)
+            continue;
+        const unsigned int channel = fiducial.source == signal_synth::clinical_fiducial_construction ? extended_construction_channel : extended_measurement_channel;
+        output->m_data[channel][clinical_annotation_sample(fiducial.time_seconds, record)] = static_cast<int>(fiducial.kind) - static_cast<int>(signal_synth::clinical_p_secondary_peak) + 1.0;
+    }
 }
 
 void add_clinical_annotation_channels(CVariable* output, const signal_synth::clinical_ecg_record& record)
@@ -1330,7 +1366,7 @@ void add_clinical_annotation_channels(CVariable* output, const signal_synth::cli
 
 CVariable* create_clinical_ecg_variable(const char* output_name, const signal_synth::clinical_ecg_record& record, clinical_annotation_output annotation_output)
 {
-    const unsigned int annotation_channel_count = annotation_output == clinical_annotations_channels ? 12U : 0U;
+    const unsigned int annotation_channel_count = annotation_output == clinical_annotations_channels ? 14U : 0U;
     vector<unsigned int> channel_sizes(signal_synth::clinical_lead_count + annotation_channel_count, record.sample_count());
     CVariable* output = NewCVariable();
     output->Rebuild(channel_sizes.size(), channel_sizes.data());
@@ -1448,8 +1484,8 @@ CVariable* create_rendered_ecg_variable(const char* output_name, const signal_sy
     const signal_synth::clinical_ecg_record& record = render.record;
     const unsigned int ppg_channel_count = rendered_ppg_channel_count(render);
     const bool has_accelerometer = render.signal_quality.accelerometer.size() == record.sample_count();
-    const unsigned int annotation_channel_count = annotation_output == clinical_annotations_channels ? 13U + 2U * ppg_channel_count : 0U;
-    const unsigned int first_ppg_annotation_channel = signal_synth::clinical_lead_count + 13U;
+    const unsigned int annotation_channel_count = annotation_output == clinical_annotations_channels ? 15U + 2U * ppg_channel_count : 0U;
+    const unsigned int first_ppg_annotation_channel = signal_synth::clinical_lead_count + 15U;
     const unsigned int first_ppg_channel = signal_synth::clinical_lead_count + annotation_channel_count;
     vector<unsigned int> channel_sizes(signal_synth::clinical_lead_count + annotation_channel_count + ppg_channel_count + (has_accelerometer ? 1U : 0U), record.sample_count());
     CVariable* output = NewCVariable();
@@ -1465,7 +1501,7 @@ CVariable* create_rendered_ecg_variable(const char* output_name, const signal_sy
     if (annotation_output == clinical_annotations_channels)
     {
         add_clinical_annotation_channels_at(output, record, signal_synth::clinical_lead_count);
-        add_artifact_annotation_channel(output, render, signal_synth::clinical_lead_count + 12U);
+        add_artifact_annotation_channel(output, render, signal_synth::clinical_lead_count + 14U);
         add_ppg_annotation_channels(output, render.ppg, first_ppg_annotation_channel);
     }
     for (unsigned int ppg_channel = 0; ppg_channel < ppg_channel_count; ++ppg_channel)

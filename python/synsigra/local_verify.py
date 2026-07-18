@@ -18,8 +18,8 @@ from .submission import SubmissionError, load_submission
 
 SCORING_VERSION = "synsigra-python-local-v4"
 LIMITATION_TEXT = "Synthetic engineering QA evidence; not diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment."
-BEAT_CLASSES = ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "unscored"]
-SCORED_BEAT_CLASSES = set(["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape"])
+BEAT_CLASSES = ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion", "unscored"]
+SCORED_BEAT_CLASSES = set(["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion"])
 HRV_METRICS = [
     "mean_rr_seconds", "mean_heart_rate_bpm", "sdnn_seconds", "rmssd_seconds",
     "pnn50_percent", "sd1_seconds", "sd2_seconds", "sd1_sd2_ratio",

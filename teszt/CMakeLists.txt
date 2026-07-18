@@ -18,6 +18,7 @@ set_tests_properties(TEST-SYNTH-001 PROPERTIES WORKING_DIRECTORY "${CMAKE_CURREN
 signal_synth_add_test(ecg_model_test ecg_model_test.cpp TEST-ECG-MODEL-001)
 signal_synth_add_test(clinical_ecg_test clinical_ecg_test.cpp TEST-ECG-PHANTOM-001)
 signal_synth_add_test(ecg_morphology_test ecg_morphology_test.cpp TEST-ECG-MORPH-001)
+signal_synth_add_test(ecg_extended_morphology_test ecg_extended_morphology_test.cpp TEST-ECG-EXTENDED-MORPH-001)
 signal_synth_add_test(ecg_scenario_test ecg_scenario_test.cpp TEST-ECG-SCENARIO-001)
 signal_synth_add_test(ecg_infarction_test ecg_infarction_test.cpp TEST-ECG-INFARCTION-001)
 signal_synth_add_test(ecg_repolarization_test ecg_repolarization_test.cpp TEST-ECG-REPOLARIZATION-001)

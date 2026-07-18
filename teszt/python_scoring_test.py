@@ -391,7 +391,7 @@ def main():
     for local_interval, direct_report in ((local_rhythm_interval, rhythm_interval_report.json), (local_quality_interval, quality_interval_report.json)):
         for key in ("target", "options", "overall", "classes", "confusion_matrix", "matches", "false_positive_indices", "false_negative_indices"):
             assert local_interval[key] == direct_report[key]
-    assert next(item for item in local_report.summary["targets"] if item["target"] == "ecg_beat_classification")["confusion_matrix"]["labels"] == ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "unscored"]
+    assert next(item for item in local_report.summary["targets"] if item["target"] == "ecg_beat_classification")["confusion_matrix"]["labels"] == ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion", "unscored"]
     with open(os.path.join(local_verify_dir, "verification_report.html"), "r") as handle:
         assert "Synsigra Local Verification Report" in handle.read()
 

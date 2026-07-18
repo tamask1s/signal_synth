@@ -319,6 +319,26 @@ namespace signal_synth
                 return false;
             if (config.scenario.pacing_non_capture_every_n_beats == 1)
                 return false;
+            if (config.morphology.component_count > clinical_morphology_component_max || !finite(config.morphology.fusion_ventricular_fraction))
+                return false;
+            const unsigned int all_leads = (1u << clinical_lead_count) - 1u;
+            for (unsigned int index = 0; index < config.morphology.component_count; ++index)
+            {
+                const clinical_morphology_component_config& component = config.morphology.components[index];
+                const int kind = enum_value(component.kind);
+                if (kind < 0 || kind >= clinical_morphology_component_kind_count || !component.lead_mask || (component.lead_mask & ~all_leads) || !finite(component.amplitude_mv) || !finite(component.offset_ms) || !finite(component.duration_ms) || std::fabs(component.amplitude_mv) < 0.02 || std::fabs(component.amplitude_mv) > 2.0 || component.offset_ms < 0.0 || component.offset_ms > 500.0 || component.duration_ms < 8.0 || component.duration_ms > 250.0)
+                    return false;
+                const bool p_component = component.kind == clinical_component_p_biphasic || component.kind == clinical_component_p_notch;
+                const bool qrs_component = component.kind == clinical_component_r_prime || component.kind == clinical_component_qrs_fragment;
+                const bool t_component = component.kind == clinical_component_t_biphasic || component.kind == clinical_component_t_notch;
+                if ((p_component && component.offset_ms + component.duration_ms > config.timing.p_duration_ms) || (qrs_component && component.offset_ms + component.duration_ms > config.timing.qrs_duration_ms) || (t_component && component.offset_ms + component.duration_ms > config.timing.t_duration_ms) || (component.kind == clinical_component_u_wave && (component.offset_ms < 10.0 || component.duration_ms < 30.0)))
+                    return false;
+                for (unsigned int previous = 0; previous < index; ++previous)
+                    if (config.morphology.components[previous].kind == component.kind && (config.morphology.components[previous].lead_mask & component.lead_mask))
+                        return false;
+            }
+            if (config.scenario.fusion_every_n_beats == 1 || (config.scenario.fusion_every_n_beats == 0 ? config.morphology.fusion_ventricular_fraction != 0.0 : config.morphology.fusion_ventricular_fraction < 0.1 || config.morphology.fusion_ventricular_fraction > 0.9))
+                return false;
             if (config.scenario.rhythm_episode_count > clinical_rhythm_episode_max)
                 return false;
             for (unsigned int index = 0; index < config.scenario.rhythm_episode_count; ++index)
@@ -352,6 +372,8 @@ namespace signal_synth
                 return false;
             if (config.scenario.rhythm_episode_count && (rhythm != clinical_rhythm_sinus || av_conduction != clinical_av_normal || config.scenario.premature_every_n_beats > 0 || config.scenario.sinus_pause_every_n_beats > 0))
                 return false;
+            if ((config.morphology.component_count || config.scenario.fusion_every_n_beats) && (rhythm != clinical_rhythm_sinus || av_conduction != clinical_av_normal || intraventricular_conduction != clinical_iv_normal || preexcitation != clinical_preexcitation_none || config.scenario.premature_every_n_beats || config.scenario.sinus_pause_every_n_beats || config.scenario.pacing_non_capture_every_n_beats || config.scenario.rhythm_episode_count))
+                return false;
             return true;
         }
 
@@ -376,6 +398,8 @@ namespace signal_synth
                 duration = std::max(duration, 0.150);
             if (origin == clinical_origin_paced)
                 duration = std::max(duration, 0.140);
+            if (origin == clinical_origin_fusion)
+                duration += config.morphology.fusion_ventricular_fraction * (std::max(duration, 0.150) - duration);
             return duration;
         }
 
@@ -418,6 +442,7 @@ namespace signal_synth
             beat.t_onset_time_seconds = std::max(beat.j_point_time_seconds + 0.010, t_onset);
             beat.t_peak_time_seconds = beat.t_onset_time_seconds + config.timing.t_peak_fraction * (t_offset - beat.t_onset_time_seconds);
             beat.t_offset_time_seconds = t_offset;
+            beat.fusion_ventricular_fraction = origin == clinical_origin_fusion ? config.morphology.fusion_ventricular_fraction : 0.0;
             beat.p_present = linked_atrial_index >= 0 && origin != clinical_origin_pvc && origin != clinical_origin_paced && origin != clinical_origin_vt;
             beat.qrs_present = true;
             beat.t_present = true;
@@ -490,6 +515,8 @@ namespace signal_synth
                     }
                     else if (config.scenario.sinus_pause_every_n_beats > 0 && (beat_index + 1) % config.scenario.sinus_pause_every_n_beats == 0)
                         rr = effective_nominal_rr * config.scenario.sinus_pause_ratio;
+                    else if (config.scenario.fusion_every_n_beats > 0 && (beat_index + 1) % config.scenario.fusion_every_n_beats == 0)
+                        origin = clinical_origin_fusion;
                     const double unclipped_rr = rr;
                     rr = std::max(config.rhythm.minimum_rr_seconds, std::min(config.rhythm.maximum_rr_seconds, rr));
                     rr_was_clipped = rr != unclipped_rr;
@@ -1048,6 +1075,17 @@ namespace signal_synth
                     s_amplitude *= 1.8;
                     t_amplitude *= -0.8;
                 }
+                else if (beat.origin == clinical_origin_fusion)
+                {
+                    const double fraction = beat.fusion_ventricular_fraction;
+                    septal_axis += 90.0 * fraction;
+                    ventricular_axis += 90.0 * fraction;
+                    terminal_axis += 120.0 * fraction;
+                    q_amplitude *= 1.0 - 0.5 * fraction;
+                    r_amplitude *= 1.0 - 0.15 * fraction;
+                    s_amplitude *= 1.0 + 0.8 * fraction;
+                    t_amplitude *= 1.0 - 1.8 * fraction;
+                }
                 if (render_delta)
                     render_compact_wave(sources[clinical_source_septal], output.sampling_rate_hz, beat.qrs_onset_time_seconds, beat.q_peak_time_seconds, beat.r_peak_time_seconds, source_vector(config, clinical_source_septal, 0.26, septal_axis, config.morphology.qrs_elevation_degrees));
                 render_compact_wave(sources[clinical_source_septal], output.sampling_rate_hz, beat.qrs_onset_time_seconds, beat.q_peak_time_seconds, beat.r_peak_time_seconds, source_vector(config, clinical_source_septal, q_amplitude, septal_axis, config.morphology.qrs_elevation_degrees));
@@ -1117,6 +1155,102 @@ namespace signal_synth
                 output.leads[clinical_lead_avf][sample] = config.leads.lead_gain[clinical_lead_avf] * (lead_ii - lead_i / 2.0);
                 for (int chest = 0; chest < 6; ++chest)
                     output.leads[clinical_lead_v1 + chest][sample] = config.leads.lead_gain[clinical_lead_v1 + chest] * dot(cardiac, precordial_vectors[chest]);
+            }
+        }
+
+        clinical_fiducial_kind component_peak_kind(clinical_morphology_component_kind kind)
+        {
+            switch (kind)
+            {
+            case clinical_component_p_biphasic: return clinical_p_secondary_peak;
+            case clinical_component_p_notch: return clinical_p_notch;
+            case clinical_component_r_prime: return clinical_r_prime;
+            case clinical_component_qrs_fragment: return clinical_qrs_fragment;
+            case clinical_component_t_biphasic: return clinical_t_secondary_peak;
+            case clinical_component_t_notch: return clinical_t_notch;
+            case clinical_component_u_wave: return clinical_u_peak;
+            case clinical_morphology_component_kind_count: break;
+            }
+            return clinical_u_peak;
+        }
+
+        bool component_window(const generated_clinical_data& output, unsigned int beat_position, const clinical_morphology_component_config& component, double& onset, double& peak, double& offset)
+        {
+            if (beat_position >= output.beats.size())
+                return false;
+            const clinical_beat_annotation& beat = output.beats[beat_position];
+            double anchor = 0.0;
+            bool wave_present = false;
+            if (component.kind == clinical_component_p_biphasic || component.kind == clinical_component_p_notch)
+            {
+                if (beat.linked_atrial_index < 0 || static_cast<unsigned long long>(beat.linked_atrial_index) >= output.atrial_events.size())
+                    return false;
+                anchor = output.atrial_events[static_cast<unsigned long long>(beat.linked_atrial_index)].onset_time_seconds;
+                wave_present = beat.p_present;
+            }
+            else if (component.kind == clinical_component_r_prime || component.kind == clinical_component_qrs_fragment)
+            {
+                anchor = beat.qrs_onset_time_seconds;
+                wave_present = beat.qrs_present;
+            }
+            else if (component.kind == clinical_component_t_biphasic || component.kind == clinical_component_t_notch)
+            {
+                anchor = beat.t_onset_time_seconds;
+                wave_present = beat.t_present;
+            }
+            else
+            {
+                anchor = beat.t_offset_time_seconds;
+                wave_present = beat.t_present;
+            }
+            onset = anchor + component.offset_ms * 0.001;
+            offset = onset + component.duration_ms * 0.001;
+            peak = 0.5 * (onset + offset);
+            const double record_duration = static_cast<double>(output.sample_count) / output.sampling_rate_hz;
+            if (!wave_present || onset < 0.0 || offset >= record_duration)
+                return false;
+            if (component.kind == clinical_component_u_wave && beat_position + 1 < output.beats.size())
+            {
+                const clinical_beat_annotation& next = output.beats[beat_position + 1];
+                const double next_wave_onset = next.linked_atrial_index >= 0 && static_cast<unsigned long long>(next.linked_atrial_index) < output.atrial_events.size() ? output.atrial_events[static_cast<unsigned long long>(next.linked_atrial_index)].onset_time_seconds : next.qrs_onset_time_seconds;
+                if (offset >= next_wave_onset)
+                    return false;
+            }
+            return true;
+        }
+
+        void render_lead_wave(std::vector<double>& signal, unsigned int sampling_rate, double onset, double peak, double offset, double amplitude)
+        {
+            if (!(onset < peak && peak < offset))
+                return;
+            const int first = std::max(0, static_cast<int>(std::floor(onset * sampling_rate)));
+            const int last = std::min(static_cast<int>(signal.size()) - 1, static_cast<int>(std::ceil(offset * sampling_rate)));
+            for (int sample = first; sample <= last; ++sample)
+            {
+                const double time = static_cast<double>(sample) / sampling_rate;
+                double shape = 0.0;
+                if (time >= onset && time <= peak)
+                    shape = smoothstep((time - onset) / (peak - onset));
+                else if (time > peak && time <= offset)
+                    shape = 1.0 - smoothstep((time - peak) / (offset - peak));
+                signal[sample] += amplitude * shape;
+            }
+        }
+
+        void render_extended_morphology(const clinical_ecg_config& config, generated_clinical_data& output)
+        {
+            for (unsigned int component_index = 0; component_index < config.morphology.component_count; ++component_index)
+            {
+                const clinical_morphology_component_config& component = config.morphology.components[component_index];
+                for (unsigned int beat = 0; beat < output.beats.size(); ++beat)
+                {
+                    double onset = 0.0, peak = 0.0, offset = 0.0;
+                    if (!component_window(output, beat, component, onset, peak, offset))
+                        continue;
+                    for (int lead = 0; lead < clinical_lead_count; ++lead)
+                        if (component.lead_mask & (1u << lead))
+                            render_lead_wave(output.leads[lead], output.sampling_rate_hz, onset, peak, offset, component.amplitude_mv);
+                }
             }
         }
 
@@ -1244,7 +1378,7 @@ namespace signal_synth
             output.fiducials.push_back(annotation);
         }
 
-        void build_construction_fiducials(generated_clinical_data& output)
+        void build_construction_fiducials(const clinical_ecg_config& config, generated_clinical_data& output)
         {
             for (const clinical_atrial_event& atrial : output.atrial_events)
             {
@@ -1267,6 +1401,28 @@ namespace signal_synth
             }
             for (const clinical_pacing_event& event : output.pacing_events)
                 add_fiducial(output, event.linked_ventricular_index >= 0 ? static_cast<unsigned long long>(event.linked_ventricular_index) : NO_BEAT, event.linked_atrial_index, -1, clinical_pacing_spike, clinical_fiducial_construction, event.time_seconds, event.kind == clinical_pacing_event_atrial ? 1.4 : 2.0, true);
+            for (unsigned int component_index = 0; component_index < config.morphology.component_count; ++component_index)
+            {
+                const clinical_morphology_component_config& component = config.morphology.components[component_index];
+                for (unsigned int beat_position = 0; beat_position < output.beats.size(); ++beat_position)
+                {
+                    const clinical_beat_annotation& beat = output.beats[beat_position];
+                    double onset = 0.0, peak = 0.0, offset = 0.0;
+                    if (!component_window(output, beat_position, component, onset, peak, offset))
+                        continue;
+                    for (int lead = 0; lead < clinical_lead_count; ++lead)
+                    {
+                        if (!(component.lead_mask & (1u << lead)))
+                            continue;
+                        if (component.kind == clinical_component_u_wave)
+                        {
+                            add_fiducial(output, beat.beat_index, beat.linked_atrial_index, lead, clinical_u_onset, clinical_fiducial_construction, onset, 0.0, true);
+                            add_fiducial(output, beat.beat_index, beat.linked_atrial_index, lead, clinical_u_offset, clinical_fiducial_construction, offset, 0.0, true);
+                        }
+                        add_fiducial(output, beat.beat_index, beat.linked_atrial_index, lead, component_peak_kind(component.kind), clinical_fiducial_construction, peak, component.amplitude_mv, true);
+                    }
+                }
+            }
         }
 
         void measure_peak(generated_clinical_data& output, const clinical_ecg_config& config, unsigned long long beat_index, long long atrial_index, int lead_index, clinical_fiducial_kind kind, double start_time, double end_time)
@@ -1324,6 +1480,20 @@ namespace signal_synth
                         measure_peak(output, config, beat.beat_index, beat.linked_atrial_index, lead, clinical_t_peak, beat.t_onset_time_seconds, beat.t_offset_time_seconds);
                 }
             }
+            for (unsigned int component_index = 0; component_index < config.morphology.component_count; ++component_index)
+            {
+                const clinical_morphology_component_config& component = config.morphology.components[component_index];
+                for (unsigned int beat_position = 0; beat_position < output.beats.size(); ++beat_position)
+                {
+                    const clinical_beat_annotation& beat = output.beats[beat_position];
+                    double onset = 0.0, peak = 0.0, offset = 0.0;
+                    if (!component_window(output, beat_position, component, onset, peak, offset))
+                        continue;
+                    for (int lead = 0; lead < clinical_lead_count; ++lead)
+                        if (component.lead_mask & (1u << lead))
+                            measure_peak(output, config, beat.beat_index, beat.linked_atrial_index, lead, component_peak_kind(component.kind), onset, offset);
+                }
+            }
         }
 
         const char* lead_names[clinical_lead_count] = {"I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"};
@@ -1335,8 +1505,13 @@ namespace signal_synth
     {
     }
 
+    clinical_morphology_component_config::clinical_morphology_component_config()
+        : kind(clinical_component_u_wave), lead_mask(0), amplitude_mv(0.0), offset_ms(0.0), duration_ms(0.0)
+    {
+    }
+
     clinical_morphology_config::clinical_morphology_config()
-        : p_amplitude_mv(0.12), q_amplitude_mv(-0.15), r_amplitude_mv(1.0), s_amplitude_mv(-0.28), t_amplitude_mv(0.30), st_j_amplitude_mv(0.0), st_slope_mv_per_second(0.0), p_axis_degrees(55.0), qrs_axis_degrees(45.0), t_axis_degrees(40.0), p_elevation_degrees(10.0), qrs_elevation_degrees(20.0), t_elevation_degrees(15.0), presence_threshold_mv(0.015)
+        : p_amplitude_mv(0.12), q_amplitude_mv(-0.15), r_amplitude_mv(1.0), s_amplitude_mv(-0.28), t_amplitude_mv(0.30), st_j_amplitude_mv(0.0), st_slope_mv_per_second(0.0), p_axis_degrees(55.0), qrs_axis_degrees(45.0), t_axis_degrees(40.0), p_elevation_degrees(10.0), qrs_elevation_degrees(20.0), t_elevation_degrees(15.0), presence_threshold_mv(0.015), component_count(0), fusion_ventricular_fraction(0.0)
     {
     }
 
@@ -1356,7 +1531,7 @@ namespace signal_synth
     }
 
     clinical_scenario_config::clinical_scenario_config()
-        : premature_every_n_beats(0), premature_origin(clinical_origin_pvc), premature_coupling_ratio(0.65), compensatory_pause_ratio(1.35), sinus_pause_every_n_beats(0), sinus_pause_ratio(2.0), pacing_non_capture_every_n_beats(0), rhythm_episode_count(0), repolarization_episode_count(0)
+        : premature_every_n_beats(0), premature_origin(clinical_origin_pvc), premature_coupling_ratio(0.65), compensatory_pause_ratio(1.35), sinus_pause_every_n_beats(0), sinus_pause_ratio(2.0), pacing_non_capture_every_n_beats(0), fusion_every_n_beats(0), rhythm_episode_count(0), repolarization_episode_count(0)
     {
     }
 
@@ -1620,11 +1795,12 @@ namespace signal_synth
             render_sources(implementation_->config, generated, raw_sources);
             combine_sources(implementation_->config, raw_sources, generated, total_source);
             project_leads(implementation_->config, total_source, generated);
+            render_extended_morphology(implementation_->config, generated);
             if (!finite_output(generated))
                 return false;
             finalize_episode_samples(generated);
             finalize_pacing_samples(generated);
-            build_construction_fiducials(generated);
+            build_construction_fiducials(implementation_->config, generated);
             build_lead_measurements(implementation_->config, generated);
             clinical_ecg_record::implementation completed;
             completed.sampling_rate_hz = generated.sampling_rate_hz;

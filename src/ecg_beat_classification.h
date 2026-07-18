@@ -17,8 +17,9 @@ namespace signal_synth
         ecg_beat_ventricular_ectopic = 2,
         ecg_beat_paced = 3,
         ecg_beat_escape = 4,
-        ecg_beat_unscored = 5,
-        ecg_beat_class_count = 6
+        ecg_beat_fusion = 5,
+        ecg_beat_unscored = 6,
+        ecg_beat_class_count = 7
     };
 
     const char* ecg_beat_class_name(ecg_beat_class value);

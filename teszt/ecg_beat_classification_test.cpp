@@ -68,6 +68,7 @@ int main()
         && signal_synth::ecg_beat_class_from_origin(signal_synth::clinical_origin_atrial_paced) == signal_synth::ecg_beat_paced
         && signal_synth::ecg_beat_class_from_origin(signal_synth::clinical_origin_junctional_escape) == signal_synth::ecg_beat_escape
         && signal_synth::ecg_beat_class_from_origin(signal_synth::clinical_origin_ventricular_escape) == signal_synth::ecg_beat_escape
+        && signal_synth::ecg_beat_class_from_origin(signal_synth::clinical_origin_fusion) == signal_synth::ecg_beat_fusion
         && signal_synth::ecg_beat_class_from_origin(signal_synth::clinical_origin_vt) == signal_synth::ecg_beat_unscored, "origin_class_mapping");
 
     signal_synth::ecg_render_bundle render;
