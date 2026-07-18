@@ -74,11 +74,12 @@ def main():
         truth_path = os.path.join(challenge_dir, "cases", output["case_id"], "measurement_truth.json")
         truth = truth_for_target(truth_path, output["target"])
         measurements = [dict(item["measurement"]) for item in truth]
-        write_json(os.path.join(submission_dir, *output["path"].split("/")), {"schema_version": 1, "measurements": measurements})
+        write_json(os.path.join(submission_dir, *output["path"].split("/")), {"schema_version": 2, "contract": "synsigra_measurement_values_v2", "measurements": measurements})
 
     verify_dir = os.path.join(work, "verify")
-    report = ss.verify_package(challenge, submission_dir, verify_dir, profile="regression")
-    assert report.summary["success"] and report.summary["scoring_version"] == "synsigra-python-local-v5"
+    report = ss.verify_package(challenge, submission_dir, verify_dir, mode="diagnostic", profile="regression")
+    assert report.summary["success"] and report.summary["scoring_version"] == "synsigra-python-local-v6"
+    assert report.summary["contract"] == "synsigra_local_verification_v2" and not report.summary["verification"]["evidence_eligible"]
     assert set(item["target"] for item in report.summary["targets"]) == set(["morphology_assertions", "ecg_ppg_alignment"])
     for item in report.summary["targets"]:
         assert item["overall"]["tolerance_pass_fraction"] == 1.0
@@ -95,28 +96,36 @@ def main():
     for name in ("bias", "mean_absolute", "root_mean_square", "median_absolute", "p95_absolute", "maximum_absolute"):
         assert abs(python_case_report["overall"]["error"][name] - cpp_report["overall"]["error"][name]) < 1e-15, name
 
-    write_json(morphology_output, {"schema_version": 1, "measurements": []})
-    empty_report = ss.verify_package(challenge, submission_dir, os.path.join(work, "verify_empty"), profile="regression")
+    write_json(morphology_output, {"schema_version": 2, "contract": "synsigra_measurement_values_v2", "measurements": []})
+    empty_report = ss.verify_package(challenge, submission_dir, os.path.join(work, "verify_empty"), mode="diagnostic", profile="regression")
     morphology_target = [item for item in empty_report.summary["targets"] if item["target"] == "morphology_assertions"][0]
     assert not empty_report.summary["success"] and not morphology_target["policy"]["passed"]
     assert morphology_target["overall"]["truth_match_fraction"] == 0.0
-    write_json(morphology_output, {"schema_version": 1, "measurements": [dict(item["measurement"]) for item in truth_for_target(os.path.join(challenge_dir, "cases", "morphology", "measurement_truth.json"), "morphology_assertions")]})
+    write_json(morphology_output, {"schema_version": 2, "contract": "synsigra_measurement_values_v2", "measurements": [dict(item["measurement"]) for item in truth_for_target(os.path.join(challenge_dir, "cases", "morphology", "measurement_truth.json"), "morphology_assertions")]})
 
     first_records = read_json(morphology_output)["measurements"][:8]
     csv_path = os.path.join(work, "measurements.csv")
     with open(csv_path, "w", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["name", "value", "unit", "status", "scope", "time_seconds", "beat_index", "channel", "formula", "confidence"])
+        writer = csv.DictWriter(handle, fieldnames=["name", "value", "unit", "status", "scope", "time_seconds", "beat_index", "window_start_seconds", "window_end_seconds", "channel", "formula", "method_id", "preprocessing_policy_id", "confidence"])
         writer.writeheader()
         for item in first_records:
             writer.writerow(item)
-    assert len(ss.load_measurements(csv_path, "measurement_values_csv_v1")) == len(first_records)
+    assert len(ss.load_measurements(csv_path, "measurement_values_csv_v2")) == len(first_records)
 
     duplicate_path = os.path.join(work, "duplicate.json")
     with open(duplicate_path, "w") as handle:
-        handle.write('{"schema_version":1,"schema_version":1,"measurements":[]}')
+        handle.write('{"schema_version":2,"schema_version":2,"contract":"synsigra_measurement_values_v2","measurements":[]}')
     try:
         ss.load_measurements(duplicate_path)
         raise AssertionError("duplicate JSON key was accepted")
+    except ss.MeasurementError:
+        pass
+
+    legacy_path = os.path.join(work, "legacy_v1.json")
+    write_json(legacy_path, {"schema_version": 1, "measurements": []})
+    try:
+        ss.load_measurements(legacy_path)
+        raise AssertionError("measurement v1 input was accepted")
     except ss.MeasurementError:
         pass
     challenge.close()

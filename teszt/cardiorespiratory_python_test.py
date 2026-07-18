@@ -64,8 +64,8 @@ def main():
     truth_path = os.path.join(challenge_dir, "cases", "clean", "measurement_truth.json")
     for output in submission["outputs"]:
         measurements = [dict(item["measurement"]) for item in truth_for_target(truth_path, output["target"])]
-        write_json(os.path.join(submission_dir, *output["path"].split("/")), {"schema_version": 1, "measurements": measurements})
-    report = ss.verify_package(challenge, submission_dir, os.path.join(work, "verify"), profile="regression")
+        write_json(os.path.join(submission_dir, *output["path"].split("/")), {"schema_version": 2, "contract": "synsigra_measurement_values_v2", "measurements": measurements})
+    report = ss.verify_package(challenge, submission_dir, os.path.join(work, "verify"), mode="diagnostic", profile="regression")
     assert report.summary["success"]
     assert set(item["target"] for item in report.summary["targets"]) == set(["prv", "respiratory_rate"])
     for target in report.summary["targets"]:

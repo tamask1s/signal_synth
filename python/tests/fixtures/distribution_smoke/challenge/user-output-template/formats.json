@@ -1,12 +1,13 @@
 {
-  "schema_version": 1,
-  "contract": "synsigra_submission_formats_v1",
+  "schema_version": 2,
+  "contract": "synsigra_submission_formats_v2",
   "formats": [
     {"name": "point_events_json_v1", "media_type": "application/json", "container_fields": ["schema_version", "events"], "record_fields": ["time_seconds", "sample_index", "channel", "label", "confidence"], "required_record_fields": ["time_seconds"]},
     {"name": "point_events_csv_v1", "media_type": "text/csv", "columns": ["time_seconds", "sample_index", "channel", "label", "confidence"], "required_columns": ["time_seconds"]},
     {"name": "interval_events_json_v1", "media_type": "application/json", "container_fields": ["schema_version", "intervals"], "record_fields": ["start_seconds", "end_seconds", "label", "channel", "confidence"], "required_record_fields": ["start_seconds", "end_seconds", "label"]},
     {"name": "interval_events_csv_v1", "media_type": "text/csv", "columns": ["start_seconds", "end_seconds", "label", "channel", "confidence"], "required_columns": ["start_seconds", "end_seconds", "label"]},
-    {"name": "hrv_metrics_json_v1", "media_type": "application/json", "container_fields": ["schema_version", "metrics", "rr_intervals"], "rr_record_fields": ["beat_time_seconds", "rr_seconds"]}
+    {"name": "measurement_values_json_v2", "media_type": "application/json", "container_fields": ["schema_version", "contract", "measurements"], "record_fields": ["name", "value", "unit", "status", "scope", "time_seconds", "beat_index", "window_start_seconds", "window_end_seconds", "channel", "formula", "method_id", "preprocessing_policy_id", "confidence"], "required_record_fields": ["name", "unit", "status", "scope"]},
+    {"name": "measurement_values_csv_v2", "media_type": "text/csv", "columns": ["name", "value", "unit", "status", "scope", "time_seconds", "beat_index", "window_start_seconds", "window_end_seconds", "channel", "formula", "method_id", "preprocessing_policy_id", "confidence"]}
   ],
   "target_adapters": {
     "r_peak": {"format_family": "point_events", "required_record_fields": ["time_seconds"]},
@@ -14,7 +15,7 @@
     "ppg_pulse_onset": {"format_family": "point_events", "required_record_fields": ["time_seconds"]},
     "ecg_beat_classification": {"format_family": "point_events", "label": "beat_class", "required_record_fields": ["time_seconds", "label"]},
     "ecg_delineation": {"format_family": "point_events", "channel": "standard_ecg_lead", "label": "fiducial_kind", "required_record_fields": ["time_seconds", "channel", "label"]},
-    "hrv": {"format_family": "hrv_metrics"},
+    "hrv": {"format_family": "measurement_values", "scopes": ["beat", "window"]},
     "rhythm_episode": {"format_family": "interval_events", "channel": "global"},
     "signal_quality": {"format_family": "interval_events", "channel": "global_or_physical_channel"}
   }

@@ -31,7 +31,6 @@ signal_synth_add_test(ecg_export_test ecg_export_test.cpp TEST-ECG-EXPORT-001)
 signal_synth_add_test(ecg_wfdb_export_test ecg_wfdb_export_test.cpp TEST-WFDB-EXPORT-001)
 signal_synth_add_test(ecg_edf_bdf_export_test ecg_edf_bdf_export_test.cpp TEST-EDF-BDF-EXPORT-001)
 signal_synth_add_test(hrv_metrics_test hrv_metrics_test.cpp TEST-HRV-METRICS-001)
-signal_synth_add_test(hrv_scoring_test hrv_scoring_test.cpp TEST-HRV-SCORING-001)
 signal_synth_add_test(cardiorespiratory_test cardiorespiratory_test.cpp TEST-CARDIORESPIRATORY-001)
 signal_synth_add_test(hrv_pack_test hrv_pack_test.cpp TEST-HRV-PACK-001)
 set_tests_properties(TEST-HRV-PACK-001 PROPERTIES WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/..")
@@ -54,6 +53,7 @@ signal_synth_add_test(delineation_io_test delineation_io_test.cpp TEST-DELINEATI
 signal_synth_add_test(delineation_scoring_test delineation_scoring_test.cpp TEST-DELINEATION-SCORING-001)
 signal_synth_add_test(measurement_io_test measurement_io_test.cpp TEST-MEASUREMENT-IO-001)
 signal_synth_add_test(measurement_scoring_test measurement_scoring_test.cpp TEST-MEASUREMENT-SCORING-001)
+add_test(NAME TEST-HRV-GENERIC-001 COMMAND measurement_scoring_test)
 signal_synth_add_test(synsigra_api_test synsigra_api_test.cpp TEST-FACADE-001)
 signal_synth_add_test(challenge_package_test challenge_package_test.cpp TEST-CHALLENGE-PACKAGE-001)
 signal_synth_add_test(scenario_authoring_test scenario_authoring_test.cpp TEST-AUTHORING-001)
@@ -212,6 +212,13 @@ if(TARGET signal_synth_cli AND SIGNAL_SYNTH_PYTHON_EXECUTABLE)
         TEST-RR-QTC-PACK-001
         PROPERTIES
             ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python;SIGNAL_SYNTH_CLI=$<TARGET_FILE:signal_synth_cli>;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..;SIGNAL_SYNTH_RR_QTC_WORK_DIR=${CMAKE_CURRENT_BINARY_DIR}/rr_qtc_pack_work")
+    add_test(
+        NAME TEST-PROTOCOL-V2-001
+        COMMAND ${SIGNAL_SYNTH_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/protocol_v2_test.py)
+    set_tests_properties(
+        TEST-PROTOCOL-V2-001
+        PROPERTIES
+            ENVIRONMENT "PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}/../python;SIGNAL_SYNTH_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}/..")
     add_test(
         NAME TEST-WEARABLE-PYTHON-001
         COMMAND ${SIGNAL_SYNTH_PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/wearable_python_test.py)

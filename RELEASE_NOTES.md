@@ -3,6 +3,27 @@
 This file records public engineering-verification release notes for the
 `signal_synth` core generator and local verifier contracts.
 
+## 0.10.0-dev
+
+Status: active development baseline.
+
+- Made packaged `synsigra_verification_protocol_v2` authoritative in default
+  evidence mode, including an exact case-target matrix, embedded acceptance
+  profile, stress-stratum coverage, truth policy and protocol fingerprint.
+- Added explicit non-evidence diagnostic mode for custom profiles and filtered
+  exploratory runs; evidence reports now distinguish completion, policy result,
+  matrix completeness and evidence eligibility.
+- Replaced measurement v1 with strict JSON/CSV measurement v2, including
+  half-open windows, method IDs and preprocessing-policy IDs in measurement
+  identity, matching, aggregation and reports.
+- Moved HRV customer output, scoring, templates and reports to the generic
+  measurement path and removed the dedicated legacy HRV scorer and format.
+- Advanced core integration to v7, scoring manifest to v3, submission formats
+  to v2, C++ facade to 1.5.0 and the generator-free verifier to 0.10.0.
+- Intentionally removed compatibility with protocol v1, measurement v1,
+  scoring manifest v2 and the dedicated HRV submission contract. Existing
+  challenges, submissions, caches and SaaS state must be regenerated.
+
 ## 0.9.0-dev
 
 Status: active development baseline.

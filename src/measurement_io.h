@@ -19,7 +19,9 @@ namespace signal_synth
         measurement_lead = 1,
         measurement_beat = 2,
         measurement_beat_lead = 3,
-        measurement_paired_signal = 4
+        measurement_paired_signal = 4,
+        measurement_window = 5,
+        measurement_window_lead = 6
     };
 
     struct measurement_value
@@ -36,8 +38,14 @@ namespace signal_synth
         bool has_time_seconds;
         unsigned long long beat_index;
         bool has_beat_index;
+        double window_start_seconds;
+        bool has_window_start_seconds;
+        double window_end_seconds;
+        bool has_window_end_seconds;
         std::string channel;
         std::string formula;
+        std::string method_id;
+        std::string preprocessing_policy_id;
         double confidence;
         bool has_confidence;
         unsigned int original_index;
@@ -83,6 +91,6 @@ namespace signal_synth
     const char* measurement_scope_name(measurement_scope scope);
     bool measurement_scope_from_name(const std::string& name, measurement_scope& scope);
     const char* measurement_io_message_code_name(measurement_io_message_code code);
-    bool parse_measurement_values_json_v1(const std::string& input, measurement_output_document& output, measurement_io_result& result);
-    bool parse_measurement_values_csv_v1(const std::string& input, measurement_output_document& output, measurement_io_result& result);
+    bool parse_measurement_values_json_v2(const std::string& input, measurement_output_document& output, measurement_io_result& result);
+    bool parse_measurement_values_csv_v2(const std::string& input, measurement_output_document& output, measurement_io_result& result);
 }

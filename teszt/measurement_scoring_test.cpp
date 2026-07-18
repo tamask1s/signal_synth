@@ -72,6 +72,19 @@ int main()
             circular_axis_error = std::fabs(score.matches[i].signed_error - 2.0) < 1e-12 && score.matches[i].within_tolerance;
     ok &= check(circular_axis_error, "circular_axis_error");
 
+    signal_synth::measurement_truth window = truth("sdnn_seconds", 0.05, "s", signal_synth::measurement_window, 0.0, 0);
+    window.measurement.has_window_start_seconds = true;
+    window.measurement.window_start_seconds = 0.0;
+    window.measurement.has_window_end_seconds = true;
+    window.measurement.window_end_seconds = 60.0;
+    window.measurement.method_id = "synsigra_hrv_metrics_v2";
+    window.measurement.preprocessing_policy_id = "synsigra_nn_exclusion_v2";
+    std::vector<signal_synth::measurement_truth> window_truth(1u, window);
+    std::vector<signal_synth::measurement_value> window_prediction(1u, window.measurement);
+    ok &= check(signal_synth::score_measurements("hrv", window_truth, window_prediction, options, score) && score.total.matched_count == 1u && score.contexts.size() == 1u, "window_method_match");
+    window_prediction[0].method_id = "another_method_v1";
+    ok &= check(signal_synth::score_measurements("hrv", window_truth, window_prediction, options, score) && score.total.missing_count == 1u && score.total.extra_count == 1u, "method_identity_mismatch");
+
     predictions.pop_back();
     signal_synth::measurement_value extra = manual_truth[0].measurement;
     extra.name = "unknown_measurement";
@@ -117,7 +130,20 @@ int main()
     }
     ok &= check(has_ptt && has_peak_delay, "alignment_adapter_coverage");
     const std::string truth_json = signal_synth::measurement_truth_bundle_json(render, std::vector<std::string>{"morphology_assertions", "ecg_ppg_alignment"});
-    ok &= check(truth_json.find("\"contract\":\"synsigra_measurement_truth_v1\"") != std::string::npos && truth_json.find("\"target\":\"ecg_ppg_alignment\"") != std::string::npos, "truth_bundle");
-    ok &= check(signal_synth::measurement_score_result_json(render, score).find("\"score_type\":\"measurement_qa\"") != std::string::npos && !signal_synth::measurement_score_result_csv(score).empty() && signal_synth::measurement_score_report_html(render, score).find("Measurement QA Report") != std::string::npos, "reports");
+    ok &= check(truth_json.find("\"contract\":\"synsigra_measurement_truth_v2\"") != std::string::npos && truth_json.find("\"target\":\"ecg_ppg_alignment\"") != std::string::npos, "truth_bundle");
+    std::vector<signal_synth::measurement_truth> hrv;
+    ok &= check(signal_synth::measurement_ground_truth_from_render(render, "hrv", hrv, messages) && hrv.size() > 15u, "generic_hrv_truth");
+    bool has_window_metric = false, has_nn_rr = false;
+    for (std::size_t i = 0; i < hrv.size(); ++i)
+    {
+        has_window_metric = has_window_metric || (hrv[i].measurement.name == "sdnn_seconds" && hrv[i].measurement.scope == signal_synth::measurement_window && hrv[i].measurement.method_id == "synsigra_hrv_metrics_v2");
+        has_nn_rr = has_nn_rr || (hrv[i].measurement.name == "rr_interval" && hrv[i].measurement.preprocessing_policy_id == "synsigra_nn_exclusion_v2");
+    }
+    ok &= check(has_window_metric && has_nn_rr, "generic_hrv_context");
+    signal_synth::measurement_output_document hrv_perfect;
+    for (std::size_t i = 0; i < hrv.size(); ++i) hrv_perfect.measurements.push_back(hrv[i].measurement);
+    ok &= check(signal_synth::score_measurement_output_to_render(render, "hrv", hrv_perfect, options, score) && score.total.tolerance_pass_count == score.total.numeric_pair_count, "generic_hrv_perfect");
+    const std::string score_json = signal_synth::measurement_score_result_json(render, score);
+    ok &= check(score_json.find("\"contract\":\"synsigra_measurement_score_v2\"") != std::string::npos && score_json.find("\"by_measurement_context\"") != std::string::npos && !signal_synth::measurement_score_result_csv(score).empty() && signal_synth::measurement_score_report_html(render, score).find("Preprocessing") != std::string::npos, "reports");
     return ok ? 0 : 1;
 }

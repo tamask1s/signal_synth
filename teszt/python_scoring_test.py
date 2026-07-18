@@ -93,24 +93,16 @@ def beat_classifications(annotations):
     ]
 
 
-def hrv_output(case, perturb=False, customer=False):
-    truth = case.hrv_metrics()
-    accepted = [item for item in truth["tachogram"] if not item["excluded"]]
-    metrics = dict(truth["time_domain"])
-    metrics.update(truth["frequency_domain"])
-    intervals = [{"beat_time_seconds": item["beat_time_seconds"], "rr_seconds": item["rr_seconds"]} for item in accepted]
+def hrv_output(case, perturb=False):
+    measurements = [dict(item["measurement"]) for item in case.measurement_truth("hrv")]
     if perturb:
-        metrics["mean_rr_seconds"] += 0.040
-        intervals = intervals[1:]
-        intervals[0]["rr_seconds"] += 0.030
-    output = {
-        "schema_version": 1,
-        "metrics": metrics,
-        "rr_intervals": intervals,
-    }
-    if not customer:
-        output["algorithm"] = {"name": "python_test_hrv", "version": "1"}
-    return output
+        for item in measurements:
+            if item["name"] == "mean_rr_seconds":
+                item["value"] += 0.040
+        rr_indices = [index for index, item in enumerate(measurements) if item["name"] == "rr_interval"]
+        del measurements[rr_indices[0]]
+        measurements[rr_indices[1] - 1]["value"] += 0.030
+    return {"schema_version": 2, "contract": "synsigra_measurement_values_v2", "measurements": measurements}
 
 
 def write_detections(path, target, events):
@@ -189,8 +181,8 @@ def main():
     assert challenge.case_ids() == ["clean_ecg", "ppg_clean", "ppg_stress", "ppg_motion", "hrv_mild", "rhythm_episode", "signal_quality"]
     provenance = read_json(os.path.join(challenge_dir, "provenance.json"))
     assert provenance["metadata_type"] == "synsigra_package_provenance"
-    assert provenance["generator"]["version"] == "0.9.0-dev"
-    assert provenance["verifier"]["version"] == "0.9.0"
+    assert provenance["generator"]["version"] == "0.10.0-dev"
+    assert provenance["verifier"]["version"] == "0.10.0"
     assert provenance["verifier"]["package_contract_version"] == "synsigra_challenge_package_v3"
     assert "clinical validation" in provenance["claim_boundary"]["not_for"]
     assert os.path.exists(os.path.join(challenge_dir, "ENGINEERING_CLAIM_BOUNDARY.txt"))
@@ -207,7 +199,7 @@ def main():
     assert scoring_manifest["submission_template_path"] == "user-output-template/submission.json"
     assert scoring_manifest["submission_format_contract_path"] == "user-output-template/formats.json"
     format_contract = read_json(os.path.join(challenge_dir, "user-output-template", "formats.json"))
-    assert format_contract["contract"] == "synsigra_submission_formats_v1"
+    assert format_contract["contract"] == "synsigra_submission_formats_v2"
     assert format_contract["target_adapters"]["ecg_beat_classification"]["required_record_fields"] == ["time_seconds", "label"]
     assert format_contract["target_adapters"]["ecg_delineation"]["required_record_fields"] == ["time_seconds", "channel", "label"]
     assert scoring_manifest["cases"][0]["scoring"][0]["accepted_formats"] == ["point_events_json_v1", "point_events_csv_v1"]
@@ -278,7 +270,7 @@ def main():
     write_point_events(output_paths[("ppg_clean", "ppg_pulse_onset")], ppg_onset_detections(challenge.case("ppg_clean").annotations()))
     write_point_events(output_paths[("ppg_stress", "ppg_systolic_peak")], ppg_detections(challenge.case("ppg_stress").annotations()))
     write_point_events_csv(output_paths[("ppg_motion", "ppg_systolic_peak")], ppg_detections(challenge.case("ppg_motion").annotations()))
-    write_json(output_paths[("hrv_mild", "hrv")], hrv_output(challenge.case("hrv_mild"), customer=True))
+    write_json(output_paths[("hrv_mild", "hrv")], hrv_output(challenge.case("hrv_mild")))
     write_interval_events(output_paths[("rhythm_episode", "rhythm_episode")], [{"start_seconds": item["start_seconds"], "end_seconds": item["end_seconds"], "label": item["kind"], "channel": "global"} for item in challenge.case("rhythm_episode").annotations()["episodes"] if item.get("present", True) and item["kind"] in ("psvt", "svarr")])
     write_interval_events(output_paths[("signal_quality", "signal_quality")], [{"start_seconds": item["start_seconds"], "end_seconds": item["end_seconds"], "label": item["type"], "channel": "global"} for item in challenge.case("signal_quality").annotations()["artifact_intervals"]])
 
@@ -316,21 +308,12 @@ def main():
     assert beat_class_report.json["summary"]["micro_f1_score"] == 1
     assert "ECG Beat Classification QA Report" in beat_class_report.html
 
-    hrv_annotations = challenge.case("clean_ecg").annotations()
-    accepted_rr = [item for item in hrv_annotations["rr_tachogram"] if not item["excluded"]]
-    mean_rr = sum(item["rr_seconds"] for item in accepted_rr) / len(accepted_rr)
-    hrv_report = ss.score_hrv(challenge.case("clean_ecg"), {
-        "schema_version": 1,
-        "algorithm": {"name": "python_hrv_test", "version": "1"},
-        "metrics": {"mean_rr_seconds": mean_rr},
-        "rr_intervals": [
-            {"beat_time_seconds": item["beat_time_seconds"], "rr_seconds": item["rr_seconds"]}
-            for item in accepted_rr
-        ],
-    }, cli_path=cli)
-    assert hrv_report.json["metric_pass_fraction"] == 1
-    assert hrv_report.json["rr"]["missing_count"] == 0
-    assert "HRV Algorithm QA Score" in hrv_report.html
+    hrv_truth = ss.load_measurement_truth(os.path.join(challenge_dir, "cases", "hrv_mild", "measurement_truth.json"), "hrv")
+    hrv_predictions = ss.load_measurements(hrv_path)
+    hrv_report = ss.score_measurements(hrv_truth, hrv_predictions, "hrv")
+    assert hrv_report["contract"] == "synsigra_measurement_score_v2"
+    assert hrv_report["overall"]["tolerance_pass_fraction"] == 1
+    assert not hrv_report["missing_ground_truth_indices"] and not hrv_report["extra_prediction_indices"]
 
     rhythm_interval_report = ss.score_rhythm_episodes(challenge.case("rhythm_episode"), rhythm_intervals_doc, cli_path=cli)
     assert rhythm_interval_report.json["overall"]["time_f1_score"] == 1
@@ -338,7 +321,7 @@ def main():
     assert quality_interval_report.json["overall"]["time_f1_score"] == 1
 
     local_verify_dir = os.path.join(work_dir, "local_verify")
-    local_report = ss.verify_package(archive_path, submission_dir, local_verify_dir)
+    local_report = ss.verify_package(archive_path, submission_dir, local_verify_dir, mode="diagnostic")
     assert local_report.summary["success"]
     assert local_report.summary["package"]["package_id"] == "python_scoring_challenge"
     assert local_report.summary["case_target_count"] == 10
@@ -385,7 +368,7 @@ def main():
     assert delineation_report["overall"]["f1_score"] == 1
     assert delineation_report["schema_version"] == 2
     assert any(item["anchor_type"] == "atrial_event" for item in delineation_report["truth"])
-    assert read_json(os.path.join(local_verify_dir, "verification", "hrv_mild", "comparison.json"))["metric_pass_fraction"] == 1
+    assert read_json(os.path.join(local_verify_dir, "verification", "hrv_mild", "comparison.json"))["overall"]["tolerance_pass_fraction"] == 1
     local_rhythm_interval = read_json(os.path.join(local_verify_dir, "verification", "rhythm_episode", "comparison.json"))
     local_quality_interval = read_json(os.path.join(local_verify_dir, "verification", "signal_quality", "comparison.json"))
     assert local_rhythm_interval["overall"]["time_f1_score"] == 1
@@ -402,8 +385,8 @@ def main():
         assert "Synsigra Local Verification Report" in html and "HRV pipeline" in html
 
     cli_verify_dir = os.path.join(work_dir, "cli_verify")
-    cli_output = run([sys.executable, "-m", "synsigra.cli", "verify", archive_path, submission_dir, cli_verify_dir])
-    assert "status=passed" in cli_output
+    cli_output = run([sys.executable, "-m", "synsigra.cli", "verify", archive_path, submission_dir, cli_verify_dir, "--mode", "diagnostic"])
+    assert "status=diagnostic_passed" in cli_output
     assert read_json(os.path.join(cli_verify_dir, "verification_summary.json"))["success"]
 
     degraded_dir = os.path.join(work_dir, "degraded")
@@ -428,10 +411,10 @@ def main():
 
     degraded_hrv_path = os.path.join(degraded_direct_dir, "hrv_mild.json")
     write_json(degraded_hrv_path, hrv_output(challenge.case("hrv_mild"), perturb=True))
-    write_json(degraded_outputs[("hrv_mild", "hrv")], hrv_output(challenge.case("hrv_mild"), perturb=True, customer=True))
+    write_json(degraded_outputs[("hrv_mild", "hrv")], hrv_output(challenge.case("hrv_mild"), perturb=True))
 
     degraded_verify_dir = os.path.join(work_dir, "degraded_verify")
-    degraded_report = ss.verify_package(challenge_dir, degraded_dir, degraded_verify_dir, cases=["clean_ecg", "hrv_mild"], profile="regression")
+    degraded_report = ss.verify_package(challenge_dir, degraded_dir, degraded_verify_dir, mode="diagnostic", cases=["clean_ecg", "hrv_mild"], profile="regression")
     assert not degraded_report.summary["success"]
     assert degraded_report.summary["scoring_success"]
     assert degraded_report.summary["policy"]["failed_check_count"] > 0
@@ -453,16 +436,15 @@ def main():
         assert python_class[key] == cpp_class[key]
 
     cpp_hrv_dir = os.path.join(work_dir, "cpp_degraded_hrv")
-    run([cli, "hrv", "score", challenge.case("hrv_mild").scenario_path, degraded_hrv_path, "--out", cpp_hrv_dir])
+    run([cli, "measurement", "score", "hrv", challenge.case("hrv_mild").scenario_path, degraded_hrv_path, "--out", cpp_hrv_dir])
     python_hrv = read_json(os.path.join(degraded_verify_dir, "verification", "hrv_mild", "comparison.json"))
-    cpp_hrv = read_json(os.path.join(cpp_hrv_dir, "hrv_score.json"))
-    assert python_hrv["metric_pass_fraction"] == cpp_hrv["metric_pass_fraction"]
-    assert python_hrv["metrics"] == cpp_hrv["metrics"]
-    for key in ("evaluated", "ground_truth_count", "user_count", "matched_count", "missing_count", "extra_count", "passed_count", "time_tolerance_seconds", "absolute_tolerance_seconds", "relative_tolerance_percent", "mean_absolute_error_seconds", "rms_error_seconds", "max_absolute_error_seconds"):
-        assert python_hrv["rr"][key] == cpp_hrv["rr"][key]
+    cpp_hrv = read_json(os.path.join(cpp_hrv_dir, "measurement_score.json"))
+    assert python_hrv["contract"] == cpp_hrv["contract"] == "synsigra_measurement_score_v2"
+    for key in ("ground_truth_count", "prediction_count", "matched_count", "numeric_pair_count", "tolerance_pass_count", "missing_count", "extra_count", "truth_match_fraction", "prediction_match_fraction", "tolerance_pass_fraction", "status_match_fraction"):
+        assert python_hrv["overall"][key] == cpp_hrv["overall"][key]
 
     failed_cli_dir = os.path.join(work_dir, "failed_cli")
-    failed_cli = subprocess.Popen([sys.executable, "-m", "synsigra.cli", "verify", challenge_dir, degraded_dir, failed_cli_dir, "--case", "clean_ecg", "--profile", "regression"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    failed_cli = subprocess.Popen([sys.executable, "-m", "synsigra.cli", "verify", challenge_dir, degraded_dir, failed_cli_dir, "--mode", "diagnostic", "--case", "clean_ecg", "--profile", "regression"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     failed_stdout, failed_stderr = failed_cli.communicate()
     assert failed_cli.returncode == 1
     assert not failed_stderr

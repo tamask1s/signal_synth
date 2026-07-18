@@ -94,7 +94,7 @@ Required fields:
   "generator": {
     "name": "signal_synth",
     "product": "Synsigra Testbench",
-    "version": "0.9.0-dev",
+    "version": "0.10.0-dev",
     "git_commit": "unknown",
     "build_identity": "signal_synth/unknown"
   },
@@ -110,9 +110,9 @@ Required fields:
   },
   "contracts": {
     "package_contract_version": "synsigra_challenge_package_v3",
-    "scoring_manifest_contract_version": "synsigra_scoring_manifest_v2",
-    "verification_protocol_contract_version": "synsigra_verification_protocol_v1",
-    "verifier_version": "0.9.0"
+    "scoring_manifest_contract_version": "synsigra_scoring_manifest_v3",
+    "verification_protocol_contract_version": "synsigra_verification_protocol_v2",
+    "verifier_version": "0.10.0"
   },
   "license": {
     "export_id": "exp_...",

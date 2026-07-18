@@ -62,8 +62,8 @@ def assert_release_pack_metadata(item):
     assert item["source"]["source_content_sha256"].startswith("sha256:")
     assert item["generator_compatibility"]["challenge_package_contract"] == "synsigra_challenge_package_v3"
     assert item["generator_compatibility"]["pack_schema_version"] == 2
-    assert item["generator_compatibility"]["verification_protocol_contract"] == "synsigra_verification_protocol_v1"
-    assert item["generator_compatibility"]["scoring_manifest_contract"] == "synsigra_scoring_manifest_v2"
+    assert item["generator_compatibility"]["verification_protocol_contract"] == "synsigra_verification_protocol_v2"
+    assert item["generator_compatibility"]["scoring_manifest_contract"] == "synsigra_scoring_manifest_v3"
     assert item["generator_compatibility"]["submission_contract"] == "synsigra_submission_v1"
     assert item["case_count"] == len(item["case_ids"]) == len(item["cases"])
     assert item["duration"]["total_seconds"] > 0
@@ -84,9 +84,9 @@ def assert_release_pack_metadata(item):
         protocol = item["verification_protocol"]
         assert protocol["artifact_role"] == "verification_protocol_json"
         assert protocol["source_content_sha256"].startswith("sha256:")
-        assert protocol["document"]["contract"] == "synsigra_verification_protocol_v1"
+        assert protocol["document"]["contract"] == "synsigra_verification_protocol_v2"
         assert protocol["document"]["pack_id"] == item["pack_id"]
-        assert protocol["document"]["pre_specified_profile"] == item["recommended_profile"]
+        assert protocol["document"]["acceptance_profile"]["profile_id"].endswith("_acceptance")
     assert item["declared_targets"]
     assert item["targets"]
     assert item["scoring_mode"] in ("local", "mixed", "reference_only")
@@ -101,7 +101,7 @@ def assert_release_pack_metadata(item):
             assert target["case_count"] == len(target["case_ids"])
             assert target["case_ids"]
             assert target["support"] == "local_scoring"
-            assert target["score_type"] in ("event_detection", "classification", "hrv_metrics", "interval_detection", "ecg_delineation", "measurement")
+            assert target["score_type"] in ("event_detection", "classification", "interval_detection", "ecg_delineation", "measurement")
             assert target["accepted_formats"]
     else:
         assert not item["submission_output_schemas"]
@@ -142,8 +142,8 @@ def assert_rpeak_metadata(item):
     assert item["threshold_profile_contract"]["policy_failure_exit_code"] == 1
     assert item["submission_output_schemas"] == ["point_events_json_v1", "point_events_csv_v1", "interval_events_json_v1", "interval_events_csv_v1"]
     assert item["recommended_for"] and item["not_recommended_for"] and item["changelog"]
-    assert item["generator_compatibility"]["minimum_generator_version"] == "0.9.0-dev"
-    assert item["generator_compatibility"]["scoring_manifest_contract"] == "synsigra_scoring_manifest_v2"
+    assert item["generator_compatibility"]["minimum_generator_version"] == "0.10.0-dev"
+    assert item["generator_compatibility"]["scoring_manifest_contract"] == "synsigra_scoring_manifest_v3"
     scoreable = dict((target["target"], target) for target in item["scoreable_targets"])
     reference = dict((target["target"], target) for target in item["reference_only_targets"])
     assert sorted(scoreable.keys()) == ["r_peak", "signal_quality"]
@@ -190,7 +190,7 @@ def assert_delineation_metadata(item):
     assert target["accepted_formats"] == ["point_events_json_v1", "point_events_csv_v1"]
     assert target["default_tolerance_seconds"] == 0.04
     assert target["case_ids"] == item["case_ids"]
-    assert item["generator_compatibility"]["local_verifier_min_version"] == "0.9.0"
+    assert item["generator_compatibility"]["local_verifier_min_version"] == "0.10.0"
     assert item["reference_only_targets"] == []
 
 
@@ -198,17 +198,17 @@ def assert_ppg_optical_metadata(item):
     assert item["pack_id"] == "ppg_optical_v2"
     assert item["version"] == "1.0"
     assert item["case_ids"] == ["normoxia", "desaturation", "low_perfusion", "interference"]
-    assert {"measurement_values_json_v1", "measurement_values_csv_v1", "point_events_json_v1", "point_events_csv_v1"} == set(item["submission_output_schemas"])
-    assert_measurement_metadata(item, "ppg_optical", "0.9.0")
+    assert {"measurement_values_json_v2", "measurement_values_csv_v2", "point_events_json_v1", "point_events_csv_v1"} == set(item["submission_output_schemas"])
+    assert_measurement_metadata(item, "ppg_optical")
     roles = set(artifact["role"] for artifact in item["output_artifacts"])
     assert {"ppg_optical_latent_csv", "ppg_optical_truth_json", "measurement_truth_json"}.issubset(roles)
 
 
-def assert_measurement_metadata(item, target, verifier_version="0.9.0"):
+def assert_measurement_metadata(item, target, verifier_version="0.10.0"):
     contracts = dict((entry["target"], entry) for entry in item["scoreable_targets"])
     assert target in contracts
     assert contracts[target]["score_type"] == "measurement"
-    assert contracts[target]["accepted_formats"] == ["measurement_values_json_v1", "measurement_values_csv_v1"]
+    assert contracts[target]["accepted_formats"] == ["measurement_values_json_v2", "measurement_values_csv_v2"]
     assert contracts[target]["default_pairing_window_seconds"] == 0.2
     assert item["generator_compatibility"]["local_verifier_min_version"] == verifier_version
     assert "measurement_truth_json" in [artifact["role"] for artifact in item["output_artifacts"]]
@@ -219,8 +219,8 @@ def assert_cardiorespiratory_metadata(item):
     assert item["pack_id"] == "cardiorespiratory_v1"
     assert item["version"] == "1.0"
     assert item["case_ids"] == ["clean_coupling", "ptt_variation", "pulse_loss_motion"]
-    assert_measurement_metadata(item, "prv", "0.9.0")
-    assert_measurement_metadata(item, "respiratory_rate", "0.9.0")
+    assert_measurement_metadata(item, "prv")
+    assert_measurement_metadata(item, "respiratory_rate")
     roles = set(artifact["role"] for artifact in item["output_artifacts"])
     assert {"cardiorespiratory_truth_json", "prv_tachogram_csv", "respiration_reference_csv", "measurement_truth_json"}.issubset(roles)
 
@@ -228,7 +228,7 @@ def assert_cardiorespiratory_metadata(item):
 def assert_advanced_rhythm_metadata(item):
     assert item["pack_id"] == "advanced_rhythm_burden_v1"
     assert item["case_ids"] == ["recurrent_af_psvt", "recurrent_vt", "vf_asystole"]
-    assert_measurement_metadata(item, "rhythm_burden", "0.9.0")
+    assert_measurement_metadata(item, "rhythm_burden")
     targets = dict((target["target"], target) for target in item["scoreable_targets"])
     assert targets["rhythm_episode"]["score_type"] == "interval_detection"
     assert targets["rhythm_episode"]["accepted_formats"] == ["interval_events_json_v1", "interval_events_csv_v1"]
@@ -250,14 +250,16 @@ def assert_hrv_robustness_metadata(item):
     assert item["version"] == "2.0"
     assert item["case_count"] == 10
     assert item["generator_compatibility"]["scenario_schema_versions"] == [2, 9]
-    assert item["generator_compatibility"]["minimum_generator_version"] == "0.9.0-dev"
-    assert item["generator_compatibility"]["local_verifier_min_version"] == "0.9.0"
+    assert item["generator_compatibility"]["minimum_generator_version"] == "0.10.0-dev"
+    assert item["generator_compatibility"]["local_verifier_min_version"] == "0.10.0"
     targets = dict((target["target"], target) for target in item["scoreable_targets"])
     assert sorted(targets) == ["hrv", "r_peak", "signal_quality"]
     assert targets["hrv"]["case_count"] == 10
+    assert targets["hrv"]["score_type"] == "measurement"
+    assert targets["hrv"]["accepted_formats"] == ["measurement_values_json_v2", "measurement_values_csv_v2"]
     assert targets["signal_quality"]["case_ids"] == ["baseline_wander_stress", "powerline_emg_stress", "drift_dropout_stress"]
     assert {"hrv_metrics_json", "rr_tachogram_csv"}.issubset(set(artifact["role"] for artifact in item["output_artifacts"]))
-    assert item["verification_protocol"]["document"]["required_targets"] == ["r_peak", "hrv", "signal_quality"]
+    assert sorted(set(target for case in item["verification_protocol"]["document"]["required_case_targets"] for target in case["targets"])) == ["hrv", "r_peak", "signal_quality"]
 
 
 def assert_rr_qtc_metadata(generated):
@@ -265,17 +267,17 @@ def assert_rr_qtc_metadata(generated):
     assert rr["case_count"] == 8 and rr["recommended_profile"] == "stress"
     rr_targets = dict((target["target"], target) for target in rr["scoreable_targets"])
     assert sorted(rr_targets) == ["r_peak", "rr_interval", "signal_quality"]
-    assert rr_targets["rr_interval"]["accepted_formats"] == ["measurement_values_json_v1", "measurement_values_csv_v1"]
-    assert rr["generator_compatibility"]["minimum_generator_version"] == "0.9.0-dev"
-    assert rr["generator_compatibility"]["local_verifier_min_version"] == "0.9.0"
-    assert rr["verification_protocol"]["document"]["pre_specified_profile"] == "stress"
+    assert rr_targets["rr_interval"]["accepted_formats"] == ["measurement_values_json_v2", "measurement_values_csv_v2"]
+    assert rr["generator_compatibility"]["minimum_generator_version"] == "0.10.0-dev"
+    assert rr["generator_compatibility"]["local_verifier_min_version"] == "0.10.0"
+    assert rr["verification_protocol"]["document"]["acceptance_profile"]["profile_id"] == "r_peak_rr_noise_v1_acceptance"
     qtc = pack(generated, "ecg_qtc_verification_v1")
     assert qtc["case_count"] == 12 and qtc["recommended_profile"] == "regression"
     qtc_targets = dict((target["target"], target) for target in qtc["scoreable_targets"])
     assert sorted(qtc_targets) == ["ecg_delineation", "qtc", "r_peak"]
-    assert qtc_targets["qtc"]["accepted_formats"] == ["measurement_values_json_v1", "measurement_values_csv_v1"]
+    assert qtc_targets["qtc"]["accepted_formats"] == ["measurement_values_json_v2", "measurement_values_csv_v2"]
     assert qtc["generator_compatibility"]["scenario_schema_versions"] == [3, 7]
-    assert qtc["verification_protocol"]["document"]["pre_specified_profile"] == "regression"
+    assert qtc["verification_protocol"]["document"]["acceptance_profile"]["profile_id"] == "ecg_qtc_verification_v1_acceptance"
 
 
 def main():
@@ -311,11 +313,11 @@ def main():
         assert_hybrid_noise_metadata(pack(generated, "ecg_hybrid_noise_v1"))
         assert_hrv_robustness_metadata(pack(generated, "hrv_robustness_v2"))
         assert_rr_qtc_metadata(generated)
-        assert_measurement_metadata(pack(generated, "ecg_extended_morphology_v1"), "morphology_assertions", "0.9.0")
+        assert_measurement_metadata(pack(generated, "ecg_extended_morphology_v1"), "morphology_assertions")
         assert_measurement_metadata(pack(generated, "ecg_morphology_stress_v1"), "morphology_assertions")
         assert_measurement_metadata(pack(generated, "ppg_alignment_v1"), "ecg_ppg_alignment")
         wearable = pack(generated, "wearable_timebase_v2")
-        assert_measurement_metadata(wearable, "ecg_ppg_alignment", "0.9.0")
+        assert_measurement_metadata(wearable, "ecg_ppg_alignment")
         assert {"wearable_samples_csv", "wearable_timestamp_truth_csv", "wearable_timebase_truth_json", "wearable_alignment_truth_json"}.issubset(set(artifact["role"] for artifact in wearable["output_artifacts"]))
 
         filtered_path = os.path.join(work_dir, "rpeak_only.json")

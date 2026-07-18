@@ -356,8 +356,14 @@ namespace
             add_message(result, signal_synth::measurement_io_invalid_value, path, "channel or formula is too long or contains control characters");
             valid = false;
         }
+        if ((!item.method_id.empty() && !safe_name(item.method_id)) || (!item.preprocessing_policy_id.empty() && !safe_name(item.preprocessing_policy_id)))
+        {
+            add_message(result, signal_synth::measurement_io_invalid_value, path, "method_id and preprocessing_policy_id must be lower-case ASCII identifiers and at most 128 characters");
+            valid = false;
+        }
         const bool beat_like = item.scope == signal_synth::measurement_beat || item.scope == signal_synth::measurement_beat_lead || item.scope == signal_synth::measurement_paired_signal;
-        const bool channel_scope = item.scope == signal_synth::measurement_lead || item.scope == signal_synth::measurement_beat_lead || item.scope == signal_synth::measurement_paired_signal;
+        const bool window_like = item.scope == signal_synth::measurement_window || item.scope == signal_synth::measurement_window_lead;
+        const bool channel_scope = item.scope == signal_synth::measurement_lead || item.scope == signal_synth::measurement_beat_lead || item.scope == signal_synth::measurement_paired_signal || item.scope == signal_synth::measurement_window_lead;
         if (beat_like && !item.has_time_seconds && !item.has_beat_index)
         {
             add_message(result, signal_synth::measurement_io_missing_field, path, "beat-like scope requires time_seconds or beat_index");
@@ -365,7 +371,22 @@ namespace
         }
         if (!beat_like && (item.has_time_seconds || item.has_beat_index))
         {
-            add_message(result, signal_synth::measurement_io_invalid_value, path, "record and lead scopes must not contain a temporal or beat anchor");
+            add_message(result, signal_synth::measurement_io_invalid_value, path, "non-beat scopes must not contain a temporal or beat anchor");
+            valid = false;
+        }
+        if (window_like && (!item.has_window_start_seconds || !item.has_window_end_seconds))
+        {
+            add_message(result, signal_synth::measurement_io_missing_field, path, "window scope requires window_start_seconds and window_end_seconds");
+            valid = false;
+        }
+        if (!window_like && (item.has_window_start_seconds || item.has_window_end_seconds))
+        {
+            add_message(result, signal_synth::measurement_io_invalid_value, path, "non-window scope must not contain window endpoints");
+            valid = false;
+        }
+        if (window_like && item.has_window_start_seconds && item.has_window_end_seconds && (item.window_start_seconds < 0.0 || item.window_end_seconds <= item.window_start_seconds))
+        {
+            add_message(result, signal_synth::measurement_io_invalid_value, path, "measurement window must satisfy 0 <= start < end");
             valid = false;
         }
         if (channel_scope && item.channel.empty())
@@ -388,7 +409,7 @@ namespace
 
     bool allowed_fields(const json_value& object, const std::string& path, signal_synth::measurement_io_result& result)
     {
-        static const char* allowed[] = {"name", "value", "unit", "status", "scope", "time_seconds", "beat_index", "channel", "formula", "confidence"};
+        static const char* allowed[] = {"name", "value", "unit", "status", "scope", "time_seconds", "beat_index", "window_start_seconds", "window_end_seconds", "channel", "formula", "method_id", "preprocessing_policy_id", "confidence"};
         bool valid = true;
         for (std::size_t i = 0; i < object.object.size(); ++i)
         {
@@ -488,6 +509,24 @@ namespace
             else
                 item.has_beat_index = true;
         }
+        const char* window_names[] = {"window_start_seconds", "window_end_seconds"};
+        double* window_values[] = {&item.window_start_seconds, &item.window_end_seconds};
+        bool* window_flags[] = {&item.has_window_start_seconds, &item.has_window_end_seconds};
+        for (std::size_t field = 0; field < 2u; ++field)
+        {
+            const json_value* window = member(value, window_names[field]);
+            if (!window) continue;
+            if (window->type != json_value::number_kind)
+            {
+                add_message(result, signal_synth::measurement_io_invalid_value, path + "." + window_names[field], std::string(window_names[field]) + " must be a finite number");
+                valid = false;
+            }
+            else
+            {
+                *window_values[field] = window->number;
+                *window_flags[field] = true;
+            }
+        }
         const json_value* channel = member(value, "channel");
         if (channel)
         {
@@ -507,6 +546,20 @@ namespace
                 valid = false;
             }
             else item.formula = formula->string;
+        }
+        const char* identifier_names[] = {"method_id", "preprocessing_policy_id"};
+        std::string* identifier_values[] = {&item.method_id, &item.preprocessing_policy_id};
+        for (std::size_t field = 0; field < 2u; ++field)
+        {
+            const json_value* identifier = member(value, identifier_names[field]);
+            if (!identifier) continue;
+            if (identifier->type != json_value::string_kind)
+            {
+                add_message(result, signal_synth::measurement_io_invalid_value, path + "." + identifier_names[field], std::string(identifier_names[field]) + " must be a string");
+                valid = false;
+            }
+            else
+                *identifier_values[field] = identifier->string;
         }
         const json_value* confidence = member(value, "confidence");
         if (confidence)
@@ -533,11 +586,13 @@ namespace
         output.imbue(std::locale::classic());
         output << std::setprecision(std::numeric_limits<double>::max_digits10)
                << value.name << '\n' << value.unit << '\n' << signal_synth::measurement_scope_name(value.scope) << '\n'
-               << value.channel << '\n' << value.formula << '\n';
+               << value.channel << '\n' << value.formula << '\n' << value.method_id << '\n' << value.preprocessing_policy_id << '\n';
         if (value.has_beat_index)
             output << 'b' << value.beat_index;
         else if (value.has_time_seconds)
             output << 't' << value.time_seconds;
+        else if (value.has_window_start_seconds && value.has_window_end_seconds)
+            output << 'w' << value.window_start_seconds << ':' << value.window_end_seconds;
         else
             output << 'r';
         return output.str();
@@ -593,7 +648,7 @@ namespace
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << std::setprecision(std::numeric_limits<double>::max_digits10)
-               << "{\"schema_version\":1,\"measurements\":[";
+               << "{\"schema_version\":2,\"contract\":\"synsigra_measurement_values_v2\",\"measurements\":[";
         for (std::size_t i = 0; i < document.measurements.size(); ++i)
         {
             const signal_synth::measurement_value& item = document.measurements[i];
@@ -604,8 +659,12 @@ namespace
                    << ",\"scope\":" << json_string(signal_synth::measurement_scope_name(item.scope));
             if (item.has_time_seconds) output << ",\"time_seconds\":" << item.time_seconds;
             if (item.has_beat_index) output << ",\"beat_index\":\"" << item.beat_index << '"';
+            if (item.has_window_start_seconds) output << ",\"window_start_seconds\":" << item.window_start_seconds;
+            if (item.has_window_end_seconds) output << ",\"window_end_seconds\":" << item.window_end_seconds;
             if (!item.channel.empty()) output << ",\"channel\":" << json_string(item.channel);
             if (!item.formula.empty()) output << ",\"formula\":" << json_string(item.formula);
+            if (!item.method_id.empty()) output << ",\"method_id\":" << json_string(item.method_id);
+            if (!item.preprocessing_policy_id.empty()) output << ",\"preprocessing_policy_id\":" << json_string(item.preprocessing_policy_id);
             if (item.has_confidence) output << ",\"confidence\":" << item.confidence;
             output << '}';
         }
@@ -641,7 +700,7 @@ namespace
     std::string canonical_csv(const signal_synth::measurement_output_document& document)
     {
         std::ostringstream output;
-        output << "name,value,unit,status,scope,time_seconds,beat_index,channel,formula,confidence\n";
+        output << "name,value,unit,status,scope,time_seconds,beat_index,window_start_seconds,window_end_seconds,channel,formula,method_id,preprocessing_policy_id,confidence\n";
         for (std::size_t i = 0; i < document.measurements.size(); ++i)
         {
             const signal_synth::measurement_value& item = document.measurements[i];
@@ -649,7 +708,8 @@ namespace
                    << signal_synth::measurement_status_name(item.status) << ',' << signal_synth::measurement_scope_name(item.scope) << ','
                    << (item.has_time_seconds ? number_text(item.time_seconds) : std::string()) << ',';
             if (item.has_beat_index) output << item.beat_index;
-            output << ',' << csv_cell(item.channel) << ',' << csv_cell(item.formula) << ',';
+            output << ',' << (item.has_window_start_seconds ? number_text(item.window_start_seconds) : std::string()) << ',' << (item.has_window_end_seconds ? number_text(item.window_end_seconds) : std::string()) << ','
+                   << csv_cell(item.channel) << ',' << csv_cell(item.formula) << ',' << csv_cell(item.method_id) << ',' << csv_cell(item.preprocessing_policy_id) << ',';
             if (item.has_confidence) output << number_text(item.confidence);
             output << '\n';
         }
@@ -776,11 +836,23 @@ namespace
                 valid = false;
             }
         }
-        item.channel = row[7];
-        item.formula = row[8];
-        if (!row[9].empty())
+        if (!row[7].empty())
         {
-            item.has_confidence = parse_finite(row[9], item.confidence);
+            item.has_window_start_seconds = parse_finite(row[7], item.window_start_seconds);
+            if (!item.has_window_start_seconds) { add_message(result, signal_synth::measurement_io_invalid_value, path + ".window_start_seconds", "window_start_seconds must be a finite number"); valid = false; }
+        }
+        if (!row[8].empty())
+        {
+            item.has_window_end_seconds = parse_finite(row[8], item.window_end_seconds);
+            if (!item.has_window_end_seconds) { add_message(result, signal_synth::measurement_io_invalid_value, path + ".window_end_seconds", "window_end_seconds must be a finite number"); valid = false; }
+        }
+        item.channel = row[9];
+        item.formula = row[10];
+        item.method_id = row[11];
+        item.preprocessing_policy_id = row[12];
+        if (!row[13].empty())
+        {
+            item.has_confidence = parse_finite(row[13], item.confidence);
             if (!item.has_confidence)
             {
                 add_message(result, signal_synth::measurement_io_invalid_value, path + ".confidence", "confidence must be a finite number");
@@ -806,9 +878,9 @@ namespace
 namespace signal_synth
 {
     measurement_value::measurement_value()
-        : name(), value(0.0), has_value(false), unit(), status(measurement_valid), scope(measurement_record), time_seconds(0.0), has_time_seconds(false), beat_index(0), has_beat_index(false), channel(), formula(), confidence(0.0), has_confidence(false), original_index(0) {}
+        : name(), value(0.0), has_value(false), unit(), status(measurement_valid), scope(measurement_record), time_seconds(0.0), has_time_seconds(false), beat_index(0), has_beat_index(false), window_start_seconds(0.0), has_window_start_seconds(false), window_end_seconds(0.0), has_window_end_seconds(false), channel(), formula(), method_id(), preprocessing_policy_id(), confidence(0.0), has_confidence(false), original_index(0) {}
 
-    measurement_output_document::measurement_output_document() : schema_version(1), measurements() {}
+    measurement_output_document::measurement_output_document() : schema_version(2), measurements() {}
     measurement_io_result::measurement_io_result() : success(false), messages(), canonical_json(), canonical_csv() {}
 
     const char* measurement_status_name(measurement_status status)
@@ -842,6 +914,8 @@ namespace signal_synth
         case measurement_beat: return "beat";
         case measurement_beat_lead: return "beat_lead";
         case measurement_paired_signal: return "paired_signal";
+        case measurement_window: return "window";
+        case measurement_window_lead: return "window_lead";
         }
         return "record";
     }
@@ -853,6 +927,8 @@ namespace signal_synth
         else if (name == "beat") scope = measurement_beat;
         else if (name == "beat_lead") scope = measurement_beat_lead;
         else if (name == "paired_signal") scope = measurement_paired_signal;
+        else if (name == "window") scope = measurement_window;
+        else if (name == "window_lead") scope = measurement_window_lead;
         else return false;
         return true;
     }
@@ -871,7 +947,7 @@ namespace signal_synth
         return "MEASUREMENT_ERROR";
     }
 
-    bool parse_measurement_values_json_v1(const std::string& input, measurement_output_document& output, measurement_io_result& result)
+    bool parse_measurement_values_json_v2(const std::string& input, measurement_output_document& output, measurement_io_result& result)
     {
         measurement_io_result fresh;
         measurement_output_document document;
@@ -888,14 +964,19 @@ namespace signal_synth
         else
         {
             for (std::size_t i = 0; i < root.object.size(); ++i)
-                if (root.object[i].first != "schema_version" && root.object[i].first != "measurements")
+                if (root.object[i].first != "schema_version" && root.object[i].first != "contract" && root.object[i].first != "measurements")
                     add_message(fresh, measurement_io_unknown_field, "$." + root.object[i].first, "unknown root field");
             const json_value* version = member(root, "schema_version");
+            const json_value* contract = member(root, "contract");
             const json_value* measurements = member(root, "measurements");
             if (!version)
                 add_message(fresh, measurement_io_missing_field, "$.schema_version", "missing schema_version");
-            else if (version->type != json_value::number_kind || version->number != 1.0)
-                add_message(fresh, measurement_io_schema, "$.schema_version", "measurement JSON requires schema_version 1");
+            else if (version->type != json_value::number_kind || version->number != 2.0)
+                add_message(fresh, measurement_io_schema, "$.schema_version", "measurement JSON requires schema_version 2");
+            if (!contract)
+                add_message(fresh, measurement_io_missing_field, "$.contract", "missing contract");
+            else if (contract->type != json_value::string_kind || contract->string != "synsigra_measurement_values_v2")
+                add_message(fresh, measurement_io_schema, "$.contract", "unsupported measurement contract");
             if (!measurements)
                 add_message(fresh, measurement_io_missing_field, "$.measurements", "missing measurements array");
             else if (measurements->type != json_value::array_kind)
@@ -917,7 +998,7 @@ namespace signal_synth
         return fresh.success;
     }
 
-    bool parse_measurement_values_csv_v1(const std::string& input, measurement_output_document& output, measurement_io_result& result)
+    bool parse_measurement_values_csv_v2(const std::string& input, measurement_output_document& output, measurement_io_result& result)
     {
         measurement_io_result fresh;
         measurement_output_document document;
@@ -925,7 +1006,7 @@ namespace signal_synth
         std::string error;
         if (!parse_csv_rows(input, rows, error))
             add_message(fresh, measurement_io_syntax, "$", error);
-        static const char* header[] = {"name", "value", "unit", "status", "scope", "time_seconds", "beat_index", "channel", "formula", "confidence"};
+        static const char* header[] = {"name", "value", "unit", "status", "scope", "time_seconds", "beat_index", "window_start_seconds", "window_end_seconds", "channel", "formula", "method_id", "preprocessing_policy_id", "confidence"};
         if (rows.empty())
             add_message(fresh, measurement_io_schema, "$", "measurement CSV requires a header");
         else
@@ -934,7 +1015,7 @@ namespace signal_synth
             for (std::size_t i = 0; header_valid && i < rows[0].size(); ++i)
                 header_valid = rows[0][i] == header[i];
             if (!header_valid)
-                add_message(fresh, measurement_io_schema, "$", "measurement CSV header must exactly match the v1 column order");
+                add_message(fresh, measurement_io_schema, "$", "measurement CSV header must exactly match the v2 column order");
             else
             {
                 for (std::size_t row = 1; row < rows.size(); ++row)

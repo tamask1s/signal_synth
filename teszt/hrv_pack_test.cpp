@@ -99,6 +99,6 @@ int main()
     ok &= check(!signal_synth::parse_ecg_scenario_json(read_file("examples/scenarios/hrv/hrv_short_window_rejected.json"), short_document, short_result) && !short_result.messages.empty() && short_result.messages[0].code == signal_synth::ecg_json_range && short_result.messages[0].path == "$.hrv", "hrv_short_window_rejected");
 
     const std::string expectations = read_file("examples/packs/hrv_robustness_v2_expectations.json");
-    ok &= check(expectations.find("\"pack_id\":\"hrv_robustness_v2\"") != std::string::npos && expectations.find("\"vlf_dominant\"") != std::string::npos && expectations.find("\"baseline_wander_stress\"") != std::string::npos && expectations.find("\"short_window_rejected\"") != std::string::npos, "hrv_expectations_manifest");
+    ok &= check(expectations.find("\"contract\":\"synsigra_verification_protocol_v2\"") != std::string::npos && expectations.find("\"pack_id\":\"hrv_robustness_v2\"") != std::string::npos && expectations.find("\"required_case_targets\"") != std::string::npos && expectations.find("\"acceptance_profile\"") != std::string::npos && expectations.find("hrv_short_window_rejected") != std::string::npos, "hrv_expectations_manifest");
     return ok ? 0 : 1;
 }

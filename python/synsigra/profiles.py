@@ -42,6 +42,24 @@ def _timing_measurement_thresholds(pass_fraction, status_fraction, error_limits)
     return output
 
 
+HRV_MEASUREMENTS = [
+    "rr_interval", "mean_rr_seconds", "mean_heart_rate_bpm", "sdnn_seconds", "rmssd_seconds", "pnn50_percent", "sd1_seconds", "sd2_seconds", "sd1_sd2_ratio",
+    "vlf_power_seconds2", "lf_power_seconds2", "hf_power_seconds2", "lf_hf_ratio", "lf_normalized_units", "hf_normalized_units", "total_power_seconds2",
+]
+
+
+def _hrv_measurement_thresholds(pass_fraction, status_fraction):
+    output = _measurement_thresholds(pass_fraction, status_fraction)
+    for name in HRV_MEASUREMENTS:
+        output[name] = {
+            "truth_match_fraction": {"min": pass_fraction},
+            "prediction_match_fraction": {"min": pass_fraction},
+            "tolerance_pass_fraction": {"min": pass_fraction},
+            "status_match_fraction": {"min": status_fraction},
+        }
+    return output
+
+
 BUILTIN_THRESHOLD_PROFILES = {
     "smoke": {
         "schema_version": 1,
@@ -55,7 +73,7 @@ BUILTIN_THRESHOLD_PROFILES = {
             "rr_interval": _timing_measurement_thresholds(0.70, 0.70, {"rr_interval": 0.025}),
             "qtc": _timing_measurement_thresholds(0.70, 0.70, {"rr_interval": 0.025, "qt_interval": 0.035, "qtc_interval": 0.035}),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.70}}, "per_class": {"f1_score": {"min": 0.50}}},
-            "hrv": {"summary": {"metric_pass_fraction": {"min": 0.70}}, "rr": {"pass_fraction": {"min": 0.70}}},
+            "hrv": _hrv_measurement_thresholds(0.70, 0.70),
         },
     },
     "regression": {
@@ -70,7 +88,7 @@ BUILTIN_THRESHOLD_PROFILES = {
             "rr_interval": _timing_measurement_thresholds(0.90, 0.90, {"rr_interval": 0.015}),
             "qtc": _timing_measurement_thresholds(0.90, 0.90, {"rr_interval": 0.015, "qt_interval": 0.025, "qtc_interval": 0.025}),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.90}}, "per_class": {"f1_score": {"min": 0.80}}},
-            "hrv": {"summary": {"metric_pass_fraction": {"min": 0.90}}, "rr": {"pass_fraction": {"min": 0.90}}},
+            "hrv": _hrv_measurement_thresholds(0.90, 0.90),
         },
     },
     "stress": {
@@ -85,7 +103,7 @@ BUILTIN_THRESHOLD_PROFILES = {
             "rr_interval": _timing_measurement_thresholds(0.75, 0.75, {"rr_interval": 0.025}),
             "qtc": _timing_measurement_thresholds(0.75, 0.75, {"rr_interval": 0.025, "qt_interval": 0.035, "qtc_interval": 0.035}),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.75}}, "per_class": {"f1_score": {"min": 0.60}}},
-            "hrv": {"summary": {"metric_pass_fraction": {"min": 0.75}}, "rr": {"pass_fraction": {"min": 0.75}}},
+            "hrv": _hrv_measurement_thresholds(0.75, 0.75),
         },
     },
     "benchmark": {
@@ -100,7 +118,7 @@ BUILTIN_THRESHOLD_PROFILES = {
             "rr_interval": _timing_measurement_thresholds(0.95, 0.95, {"rr_interval": 0.010}),
             "qtc": _timing_measurement_thresholds(0.95, 0.95, {"rr_interval": 0.010, "qt_interval": 0.015, "qtc_interval": 0.015}),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.95}}, "per_class": {"f1_score": {"min": 0.90}}},
-            "hrv": {"summary": {"metric_pass_fraction": {"min": 1.0}}, "rr": {"pass_fraction": {"min": 0.95}}},
+            "hrv": _hrv_measurement_thresholds(0.95, 0.95),
         },
     },
 }
@@ -114,10 +132,6 @@ PROFILE_SCHEMA = {
     "ecg_beat_classification": {
         "summary": set(["accuracy", "micro_precision", "micro_recall", "micro_f1_score"]),
         "per_class": set(["precision", "recall", "f1_score"]),
-    },
-    "hrv": {
-        "summary": set(["metric_pass_fraction"]),
-        "rr": set(["pass_fraction", "mean_absolute_error_seconds", "rms_error_seconds", "max_absolute_error_seconds"]),
     },
     "interval_detection": {
         "overall": set(["time_sensitivity", "time_precision", "time_f1_score", "temporal_iou", "event_sensitivity", "event_precision", "false_alarms_per_hour", "mean_absolute_onset_error_seconds", "mean_absolute_offset_error_seconds"]),
@@ -144,6 +158,9 @@ PROFILE_SCHEMA["rhythm_burden"] = PROFILE_SCHEMA["measurement"]
 TIMING_MEASUREMENT_METRICS = set(["truth_match_fraction", "prediction_match_fraction", "tolerance_pass_fraction", "status_match_fraction", "assertion_agreement_fraction", "mean_absolute_error", "root_mean_square_error", "p95_absolute_error", "maximum_absolute_error"])
 PROFILE_SCHEMA["rr_interval"] = {"overall": PROFILE_SCHEMA["measurement"]["overall"], "rr_interval": TIMING_MEASUREMENT_METRICS}
 PROFILE_SCHEMA["qtc"] = {"overall": PROFILE_SCHEMA["measurement"]["overall"], "rr_interval": TIMING_MEASUREMENT_METRICS, "qt_interval": TIMING_MEASUREMENT_METRICS, "qtc_interval": TIMING_MEASUREMENT_METRICS}
+PROFILE_SCHEMA["hrv"] = {"overall": PROFILE_SCHEMA["measurement"]["overall"]}
+for _hrv_measurement in HRV_MEASUREMENTS:
+    PROFILE_SCHEMA["hrv"][_hrv_measurement] = TIMING_MEASUREMENT_METRICS
 
 
 def load_threshold_profile(profile="regression"):
@@ -169,21 +186,27 @@ def threshold_profile_names():
 def _validate_profile(document):
     if not isinstance(document, dict) or document.get("schema_version") != 1:
         raise ThresholdProfileError("threshold profile must be a schema_version 1 JSON object")
+    allowed_fields = set(["schema_version", "profile_id", "description", "targets"])
+    unknown_fields = sorted(set(document) - allowed_fields)
+    if unknown_fields:
+        raise ThresholdProfileError("threshold profile contains unknown fields: %s" % ", ".join(unknown_fields))
     if not isinstance(document.get("profile_id"), str) or not document["profile_id"]:
         raise ThresholdProfileError("threshold profile_id must be a non-empty string")
+    if "description" in document and not isinstance(document["description"], str):
+        raise ThresholdProfileError("threshold profile description must be a string")
     targets = document.get("targets")
     if not isinstance(targets, dict) or not targets:
         raise ThresholdProfileError("threshold profile targets must be a non-empty object")
     for target_name, sections in targets.items():
         if target_name not in PROFILE_SCHEMA:
             raise ThresholdProfileError("unknown threshold target: %s" % target_name)
-        if not isinstance(sections, dict):
-            raise ThresholdProfileError("threshold target %s must be an object" % target_name)
+        if not isinstance(sections, dict) or not sections:
+            raise ThresholdProfileError("threshold target %s must be a non-empty object" % target_name)
         for section_name, metrics in sections.items():
             if section_name not in PROFILE_SCHEMA[target_name]:
                 raise ThresholdProfileError("unknown threshold section: %s/%s" % (target_name, section_name))
-            if not isinstance(metrics, dict):
-                raise ThresholdProfileError("threshold section %s/%s must be an object" % (target_name, section_name))
+            if not isinstance(metrics, dict) or not metrics:
+                raise ThresholdProfileError("threshold section %s/%s must be a non-empty object" % (target_name, section_name))
             for metric_name, limits in metrics.items():
                 if metric_name not in PROFILE_SCHEMA[target_name][section_name]:
                     raise ThresholdProfileError("unknown threshold metric: %s/%s/%s" % (target_name, section_name, metric_name))
@@ -192,3 +215,5 @@ def _validate_profile(document):
                 for operator, value in limits.items():
                     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(float(value)):
                         raise ThresholdProfileError("threshold %s/%s/%s/%s must be finite" % (target_name, section_name, metric_name, operator))
+                if "min" in limits and "max" in limits and float(limits["min"]) > float(limits["max"]):
+                    raise ThresholdProfileError("threshold %s/%s/%s has min greater than max" % (target_name, section_name, metric_name))

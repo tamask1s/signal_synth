@@ -7,7 +7,7 @@ and does not execute customer detector code.
 ## Install
 
 ```bash
-python -m pip install synsigra-0.9.0-py3-none-any.whl
+python -m pip install synsigra-0.10.0-py3-none-any.whl
 synsigra-verify --help
 ```
 
@@ -19,14 +19,14 @@ output file. The manifest is authoritative: no filename discovery or
 target-specific directory convention is used.
 
 ```bash
-synsigra-verify challenge.synsigra submission/ verification-results/ --profile regression
+synsigra-verify challenge.synsigra submission/ verification-results/
 ```
 
 Useful filters:
 
 ```bash
-synsigra-verify challenge.synsigra submission/ out/ --case clean_70 --target r_peak
-synsigra-verify challenge.synsigra submission/ out/ --profile path/to/profile.json
+synsigra-verify challenge.synsigra submission/ out/ --mode diagnostic --case clean_70 --target r_peak
+synsigra-verify challenge.synsigra submission/ out/ --mode diagnostic --profile path/to/profile.json
 ```
 
 Use `--force` to replace an existing result directory.
@@ -52,15 +52,18 @@ Predictions contain no generator beat identity and no negative rows.
 
 Rhythm and signal-quality outputs use `interval_events_json_v1` or
 `interval_events_csv_v1` with half-open `[start_seconds,end_seconds)` bounds,
-label and channel. HRV uses `hrv_metrics_json_v1`. The generated manifest lists
-the accepted formats for every target.
+label and channel. The generated manifest lists the accepted formats for every
+target.
 
-Morphology and ECG/PPG alignment use one measurement payload family. JSON uses
-`measurement_values_json_v1`; CSV uses the exact columns
-`name,value,unit,status,scope,time_seconds,beat_index,channel,formula,confidence`.
+RR, HRV, QT/QTc, morphology, ECG/PPG alignment, PPG optical, PRV, respiratory
+rate, and rhythm burden use one measurement payload family. JSON uses
+`measurement_values_json_v2` with contract `synsigra_measurement_values_v2`;
+CSV uses the exact columns
+`name,value,unit,status,scope,time_seconds,beat_index,window_start_seconds,window_end_seconds,channel,formula,method_id,preprocessing_policy_id,confidence`.
 Status is one of `valid`, `undefined`, `absent`, or `not_evaluable`. Beat-level
-outputs may use a decimal-string beat index or a time anchor; record, lead, and
-paired-signal outputs use the same contract.
+outputs may use a decimal-string beat index or a time anchor. Windowed values
+use explicit half-open bounds, and method/preprocessing identifiers are part of
+measurement identity and matching.
 
 ## Reports
 
@@ -76,6 +79,9 @@ reported as excluded.
 
 Exit code `0` means integrity, scoring and threshold policy passed. Exit code
 `1` means one of those checks failed; `2` is invalid command-line usage.
+Default evidence mode requires a protocol v2 package, the complete declared
+case-target matrix, and the embedded acceptance profile. Diagnostic mode may
+filter or override the profile but is never evidence-eligible.
 
 ## Python API
 
@@ -87,7 +93,7 @@ assert report.summary["success"]
 
 with synsigra.load_challenge("challenge.synsigra") as challenge:
     protocol = challenge.verification_protocol()
-    assert protocol["contract"] == "synsigra_verification_protocol_v1"
+    assert protocol["contract"] == "synsigra_verification_protocol_v2"
 ```
 
 `verification_protocol()` is available only when the pack declares

@@ -161,6 +161,61 @@ namespace
         }
     }
 
+    void set_measurement_definition(signal_synth::measurement_truth& truth, const char* method_id, const char* preprocessing_policy_id)
+    {
+        truth.measurement.method_id = method_id ? method_id : "";
+        truth.measurement.preprocessing_policy_id = preprocessing_policy_id ? preprocessing_policy_id : "";
+    }
+
+    void set_window(signal_synth::measurement_truth& truth, double start_seconds, double end_seconds)
+    {
+        truth.measurement.has_window_start_seconds = true;
+        truth.measurement.window_start_seconds = start_seconds;
+        truth.measurement.has_window_end_seconds = true;
+        truth.measurement.window_end_seconds = end_seconds;
+    }
+
+    void add_hrv_metric(std::vector<signal_synth::measurement_truth>& output, const char* name, const char* unit, double value, double absolute_tolerance, double relative_tolerance, double end_seconds)
+    {
+        signal_synth::measurement_truth truth = make_truth(name, unit, signal_synth::measurement_valid, signal_synth::measurement_window, value, absolute_tolerance, relative_tolerance, "");
+        set_window(truth, 0.0, end_seconds);
+        set_measurement_definition(truth, "synsigra_hrv_metrics_v2", "synsigra_nn_exclusion_v2");
+        output.push_back(truth);
+    }
+
+    void add_hrv_truth(const signal_synth::ecg_render_bundle& render, std::vector<signal_synth::measurement_truth>& output)
+    {
+        const signal_synth::hrv_metric_summary& metrics = render.hrv.metrics;
+        const double end_seconds = render.document.duration_seconds;
+        add_hrv_metric(output, "mean_rr_seconds", "s", metrics.mean_rr_seconds, 0.010, 2.0, end_seconds);
+        add_hrv_metric(output, "mean_heart_rate_bpm", "bpm", metrics.mean_heart_rate_bpm, 1.0, 2.0, end_seconds);
+        add_hrv_metric(output, "sdnn_seconds", "s", metrics.sdnn_seconds, 0.010, 10.0, end_seconds);
+        add_hrv_metric(output, "rmssd_seconds", "s", metrics.rmssd_seconds, 0.010, 10.0, end_seconds);
+        add_hrv_metric(output, "pnn50_percent", "%", metrics.pnn50_percent, 2.0, 10.0, end_seconds);
+        add_hrv_metric(output, "sd1_seconds", "s", metrics.sd1_seconds, 0.010, 10.0, end_seconds);
+        add_hrv_metric(output, "sd2_seconds", "s", metrics.sd2_seconds, 0.010, 10.0, end_seconds);
+        add_hrv_metric(output, "sd1_sd2_ratio", "ratio", metrics.sd1_sd2_ratio, 0.10, 10.0, end_seconds);
+        add_hrv_metric(output, "vlf_power_seconds2", "s2", metrics.vlf_power_seconds2, 0.0005, 15.0, end_seconds);
+        add_hrv_metric(output, "lf_power_seconds2", "s2", metrics.lf_power_seconds2, 0.0005, 15.0, end_seconds);
+        add_hrv_metric(output, "hf_power_seconds2", "s2", metrics.hf_power_seconds2, 0.0005, 15.0, end_seconds);
+        add_hrv_metric(output, "lf_hf_ratio", "ratio", metrics.lf_hf_ratio, 0.20, 15.0, end_seconds);
+        add_hrv_metric(output, "lf_normalized_units", "nu", metrics.lf_normalized_units, 2.0, 10.0, end_seconds);
+        add_hrv_metric(output, "hf_normalized_units", "nu", metrics.hf_normalized_units, 2.0, 10.0, end_seconds);
+        add_hrv_metric(output, "total_power_seconds2", "s2", metrics.total_power_seconds2, 0.001, 15.0, end_seconds);
+        for (std::size_t i = 0; i < render.hrv.intervals.size(); ++i)
+        {
+            const signal_synth::hrv_rr_interval& interval = render.hrv.intervals[i];
+            if (interval.excluded) continue;
+            signal_synth::measurement_truth rr = make_truth("rr_interval", "s", signal_synth::measurement_valid, signal_synth::measurement_beat, interval.rr_seconds, 0.020, 5.0, "");
+            rr.measurement.has_time_seconds = true;
+            rr.measurement.time_seconds = interval.beat_time_seconds;
+            rr.measurement.has_beat_index = true;
+            rr.measurement.beat_index = interval.beat_index;
+            set_measurement_definition(rr, "synsigra_rr_interval_v2", "synsigra_nn_exclusion_v2");
+            output.push_back(rr);
+        }
+    }
+
     void add_qtc_truth(const signal_synth::ecg_render_bundle& render, std::vector<signal_synth::measurement_truth>& output)
     {
         const signal_synth::clinical_beat_annotation* beats = render.record.beats();
@@ -580,7 +635,15 @@ namespace
 
     bool same_descriptor(const signal_synth::measurement_value& truth, const signal_synth::measurement_value& prediction)
     {
-        return truth.name == prediction.name && truth.unit == prediction.unit && truth.scope == prediction.scope && truth.channel == prediction.channel && truth.formula == prediction.formula;
+        return truth.name == prediction.name && truth.unit == prediction.unit && truth.scope == prediction.scope && truth.channel == prediction.channel && truth.formula == prediction.formula
+            && truth.method_id == prediction.method_id && truth.preprocessing_policy_id == prediction.preprocessing_policy_id
+            && truth.has_window_start_seconds == prediction.has_window_start_seconds && (!truth.has_window_start_seconds || truth.window_start_seconds == prediction.window_start_seconds)
+            && truth.has_window_end_seconds == prediction.has_window_end_seconds && (!truth.has_window_end_seconds || truth.window_end_seconds == prediction.window_end_seconds);
+    }
+
+    bool same_context(const signal_synth::measurement_value& left, const signal_synth::measurement_value& right)
+    {
+        return same_descriptor(left, right);
     }
 
     bool candidate_less(const match_candidate& left, const match_candidate& right)
@@ -631,7 +694,7 @@ namespace
         metrics.p95_absolute_error = sorted[p95];
     }
 
-    signal_synth::measurement_score_metrics metrics_for(const signal_synth::measurement_score_result& result, const std::string* name, const std::string* channel)
+    signal_synth::measurement_score_metrics metrics_for(const signal_synth::measurement_score_result& result, const std::string* name, const std::string* channel, const signal_synth::measurement_value* context)
     {
         signal_synth::measurement_score_metrics metrics;
         std::vector<bool> truth_selected(result.ground_truth.size(), false);
@@ -641,6 +704,7 @@ namespace
             const signal_synth::measurement_value& value = result.ground_truth[i].measurement;
             if (name && value.name != *name) continue;
             if (channel && value.channel != *channel) continue;
+            if (context && !same_context(value, *context)) continue;
             truth_selected[i] = true;
             ++metrics.ground_truth_count;
             if (value.status == signal_synth::measurement_valid) ++metrics.valid_truth_count;
@@ -653,6 +717,7 @@ namespace
             const signal_synth::measurement_value& value = result.predictions[i];
             if (name && value.name != *name) continue;
             if (channel && value.channel != *channel) continue;
+            if (context && !same_context(value, *context)) continue;
             prediction_selected[i] = true;
             ++metrics.prediction_count;
         }
@@ -690,31 +755,38 @@ namespace
         std::set<std::string> names;
         std::set<std::string> channels;
         std::set<std::pair<std::string, std::string> > pairs;
+        std::vector<signal_synth::measurement_value> contexts;
         for (std::size_t i = 0; i < result.ground_truth.size(); ++i)
         {
             names.insert(result.ground_truth[i].measurement.name);
             channels.insert(result.ground_truth[i].measurement.channel);
             pairs.insert(std::make_pair(result.ground_truth[i].measurement.name, result.ground_truth[i].measurement.channel));
+            bool found = false;
+            for (std::size_t context = 0; context < contexts.size(); ++context) found = found || same_context(contexts[context], result.ground_truth[i].measurement);
+            if (!found) contexts.push_back(result.ground_truth[i].measurement);
         }
         for (std::size_t i = 0; i < result.predictions.size(); ++i)
         {
             names.insert(result.predictions[i].name);
             channels.insert(result.predictions[i].channel);
             pairs.insert(std::make_pair(result.predictions[i].name, result.predictions[i].channel));
+            bool found = false;
+            for (std::size_t context = 0; context < contexts.size(); ++context) found = found || same_context(contexts[context], result.predictions[i]);
+            if (!found) contexts.push_back(result.predictions[i]);
         }
-        result.total = metrics_for(result, 0, 0);
+        result.total = metrics_for(result, 0, 0, 0);
         for (std::set<std::string>::const_iterator it = names.begin(); it != names.end(); ++it)
         {
             signal_synth::measurement_score_group group;
             group.name = *it;
-            group.metrics = metrics_for(result, &group.name, 0);
+            group.metrics = metrics_for(result, &group.name, 0, 0);
             result.measurements.push_back(group);
         }
         for (std::set<std::string>::const_iterator it = channels.begin(); it != channels.end(); ++it)
         {
             signal_synth::measurement_score_group group;
             group.channel = *it;
-            group.metrics = metrics_for(result, 0, &group.channel);
+            group.metrics = metrics_for(result, 0, &group.channel, 0);
             result.channels.push_back(group);
         }
         for (std::set<std::pair<std::string, std::string> >::const_iterator it = pairs.begin(); it != pairs.end(); ++it)
@@ -722,8 +794,24 @@ namespace
             signal_synth::measurement_score_group group;
             group.name = it->first;
             group.channel = it->second;
-            group.metrics = metrics_for(result, &group.name, &group.channel);
+            group.metrics = metrics_for(result, &group.name, &group.channel, 0);
             result.measurement_channels.push_back(group);
+        }
+        for (std::size_t i = 0; i < contexts.size(); ++i)
+        {
+            signal_synth::measurement_score_context_group group;
+            group.name = contexts[i].name;
+            group.scope = contexts[i].scope;
+            group.channel = contexts[i].channel;
+            group.formula = contexts[i].formula;
+            group.method_id = contexts[i].method_id;
+            group.preprocessing_policy_id = contexts[i].preprocessing_policy_id;
+            group.has_window_start_seconds = contexts[i].has_window_start_seconds;
+            group.window_start_seconds = contexts[i].window_start_seconds;
+            group.has_window_end_seconds = contexts[i].has_window_end_seconds;
+            group.window_end_seconds = contexts[i].window_end_seconds;
+            group.metrics = metrics_for(result, 0, 0, &contexts[i]);
+            result.contexts.push_back(group);
         }
     }
 
@@ -778,8 +866,12 @@ namespace
                << ",\"scope\":" << json_string(signal_synth::measurement_scope_name(item.scope));
         if (item.has_time_seconds) output << ",\"time_seconds\":" << item.time_seconds;
         if (item.has_beat_index) output << ",\"beat_index\":\"" << item.beat_index << '"';
+        if (item.has_window_start_seconds) output << ",\"window_start_seconds\":" << item.window_start_seconds;
+        if (item.has_window_end_seconds) output << ",\"window_end_seconds\":" << item.window_end_seconds;
         if (!item.channel.empty()) output << ",\"channel\":" << json_string(item.channel);
         if (!item.formula.empty()) output << ",\"formula\":" << json_string(item.formula);
+        if (!item.method_id.empty()) output << ",\"method_id\":" << json_string(item.method_id);
+        if (!item.preprocessing_policy_id.empty()) output << ",\"preprocessing_policy_id\":" << json_string(item.preprocessing_policy_id);
         if (item.has_confidence) output << ",\"confidence\":" << item.confidence;
         output << '}';
     }
@@ -804,6 +896,19 @@ namespace
         output << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
         return output.str();
     }
+
+    std::string csv_cell(const std::string& value)
+    {
+        if (value.find_first_of(",\"\r\n") == std::string::npos) return value;
+        std::string output("\"");
+        for (std::size_t i = 0; i < value.size(); ++i)
+        {
+            if (value[i] == '\"') output += "\"\"";
+            else output.push_back(value[i]);
+        }
+        output.push_back('\"');
+        return output;
+    }
 }
 
 namespace signal_synth
@@ -813,10 +918,12 @@ namespace signal_synth
     measurement_score_options::measurement_score_options() : pairing_window_seconds(0.20) {}
     measurement_score_metrics::measurement_score_metrics()
         : ground_truth_count(0), valid_truth_count(0), undefined_truth_count(0), absent_truth_count(0), not_evaluable_truth_count(0), prediction_count(0), matched_count(0), numeric_pair_count(0), tolerance_pass_count(0), status_match_count(0), status_mismatch_count(0), missing_count(0), extra_count(0), assertion_comparable_count(0), assertion_agreement_count(0), tolerance_pass_fraction(0.0), status_match_fraction(0.0), assertion_agreement_fraction(0.0), truth_match_fraction(0.0), prediction_match_fraction(0.0), bias(0.0), mean_absolute_error(0.0), root_mean_square_error(0.0), median_absolute_error(0.0), p95_absolute_error(0.0), maximum_absolute_error(0.0) {}
+    measurement_score_context_group::measurement_score_context_group()
+        : name(), scope(measurement_record), channel(), formula(), method_id(), preprocessing_policy_id(), window_start_seconds(0.0), has_window_start_seconds(false), window_end_seconds(0.0), has_window_end_seconds(false), metrics() {}
     measurement_score_match::measurement_score_match()
         : ground_truth_index(0), prediction_index(0), ground_truth_status(measurement_undefined), prediction_status(measurement_undefined), status_matches(false), numeric_pair(false), signed_error(0.0), absolute_error(0.0), relative_error_percent(0.0), has_relative_error(false), within_tolerance(false), has_assertion_result(false), ground_truth_assertion_passed(false), prediction_assertion_passed(false) {}
     measurement_score_result::measurement_score_result()
-        : success(false), target(), pairing_window_seconds(0.0), total(), measurements(), channels(), measurement_channels(), ground_truth(), predictions(), matches(), missing_ground_truth_indices(), extra_prediction_indices(), messages() {}
+        : success(false), target(), pairing_window_seconds(0.0), total(), measurements(), channels(), measurement_channels(), contexts(), ground_truth(), predictions(), matches(), missing_ground_truth_indices(), extra_prediction_indices(), messages() {}
 
     const char* measurement_error_model_name(measurement_error_model model)
     {
@@ -825,7 +932,7 @@ namespace signal_synth
 
     bool measurement_target_supported(const std::string& target)
     {
-        return target == "rr_interval" || target == "qtc" || target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical" || target == "prv" || target == "respiratory_rate" || target == "rhythm_burden";
+        return target == "rr_interval" || target == "qtc" || target == "hrv" || target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical" || target == "prv" || target == "respiratory_rate" || target == "rhythm_burden";
     }
 
     bool measurement_ground_truth_from_render(const ecg_render_bundle& render, const std::string& target, std::vector<measurement_truth>& output, std::vector<std::string>& messages)
@@ -836,6 +943,8 @@ namespace signal_synth
             add_rr_interval_truth(render, output);
         else if (target == "qtc")
             add_qtc_truth(render, output);
+        else if (target == "hrv")
+            add_hrv_truth(render, output);
         else if (target == "morphology_assertions")
         {
             add_timing_truth(render, output);
@@ -909,7 +1018,7 @@ namespace signal_synth
                 candidate.prediction_index = static_cast<unsigned int>(prediction_index);
                 candidate.exact_beat = truth.has_beat_index && prediction.has_beat_index && truth.beat_index == prediction.beat_index;
                 if (truth.has_beat_index && prediction.has_beat_index && !candidate.exact_beat) continue;
-                if (truth.scope == measurement_record || truth.scope == measurement_lead) candidate.distance = 0.0;
+                if (truth.scope == measurement_record || truth.scope == measurement_lead || truth.scope == measurement_window || truth.scope == measurement_window_lead) candidate.distance = 0.0;
                 else if (candidate.exact_beat) candidate.distance = truth.has_time_seconds && prediction.has_time_seconds ? std::fabs(truth.time_seconds - prediction.time_seconds) : 0.0;
                 else if (truth.has_time_seconds && prediction.has_time_seconds) candidate.distance = std::fabs(truth.time_seconds - prediction.time_seconds);
                 else continue;
@@ -981,7 +1090,7 @@ namespace signal_synth
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << std::setprecision(std::numeric_limits<double>::max_digits10)
-               << "{\"schema_version\":1,\"contract\":\"synsigra_measurement_truth_v1\",\"targets\":[";
+               << "{\"schema_version\":2,\"contract\":\"synsigra_measurement_truth_v2\",\"targets\":[";
         bool first_target = true;
         std::set<std::string> emitted;
         for (std::size_t i = 0; i < targets.size(); ++i)
@@ -1008,7 +1117,7 @@ namespace signal_synth
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << std::setprecision(std::numeric_limits<double>::max_digits10)
-               << "{\"schema_version\":1,\"score_type\":\"measurement_qa\",\"scoring_version\":\"synsigra_measurement_score_v1\",\"target\":" << json_string(result.target)
+               << "{\"schema_version\":2,\"contract\":\"synsigra_measurement_score_v2\",\"score_type\":\"measurement_qa\",\"target\":" << json_string(result.target)
                << ",\"scenario\":{\"scenario_id\":" << json_string(render.document.scenario_id) << ",\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint) << ",\"render_identity\":" << json_string(render.render_identity) << "}"
                << ",\"options\":{\"pairing_window_seconds\":" << result.pairing_window_seconds << "},\"overall\":";
         write_metrics_json(output, result.total);
@@ -1018,6 +1127,16 @@ namespace signal_synth
         for (std::size_t i = 0; i < result.channels.size(); ++i) { output << (i ? "," : "") << "{\"channel\":" << json_string(result.channels[i].channel.empty() ? "global" : result.channels[i].channel) << ",\"metrics\":"; write_metrics_json(output, result.channels[i].metrics); output << '}'; }
         output << "],\"by_measurement_channel\":[";
         for (std::size_t i = 0; i < result.measurement_channels.size(); ++i) { output << (i ? "," : "") << "{\"name\":" << json_string(result.measurement_channels[i].name) << ",\"channel\":" << json_string(result.measurement_channels[i].channel.empty() ? "global" : result.measurement_channels[i].channel) << ",\"metrics\":"; write_metrics_json(output, result.measurement_channels[i].metrics); output << '}'; }
+        output << "],\"by_measurement_context\":[";
+        for (std::size_t i = 0; i < result.contexts.size(); ++i)
+        {
+            const measurement_score_context_group& group = result.contexts[i];
+            output << (i ? "," : "") << "{\"name\":" << json_string(group.name) << ",\"scope\":" << json_string(measurement_scope_name(group.scope)) << ",\"channel\":" << json_string(group.channel.empty() ? "global" : group.channel)
+                   << ",\"formula\":" << json_string(group.formula) << ",\"method_id\":" << json_string(group.method_id) << ",\"preprocessing_policy_id\":" << json_string(group.preprocessing_policy_id);
+            if (group.has_window_start_seconds) output << ",\"window_start_seconds\":" << group.window_start_seconds;
+            if (group.has_window_end_seconds) output << ",\"window_end_seconds\":" << group.window_end_seconds;
+            output << ",\"metrics\":"; write_metrics_json(output, group.metrics); output << '}';
+        }
         output << "],\"matches\":[";
         for (std::size_t i = 0; i < result.matches.size(); ++i)
         {
@@ -1025,8 +1144,11 @@ namespace signal_synth
             const measurement_value& truth = result.ground_truth[match.ground_truth_index].measurement;
             output << (i ? "," : "") << "{\"ground_truth_index\":" << match.ground_truth_index << ",\"prediction_index\":" << match.prediction_index
                    << ",\"name\":" << json_string(truth.name) << ",\"unit\":" << json_string(truth.unit) << ",\"scope\":" << json_string(measurement_scope_name(truth.scope)) << ",\"channel\":" << json_string(truth.channel.empty() ? "global" : truth.channel)
+                   << ",\"formula\":" << json_string(truth.formula) << ",\"method_id\":" << json_string(truth.method_id) << ",\"preprocessing_policy_id\":" << json_string(truth.preprocessing_policy_id)
                    << ",\"ground_truth_status\":" << json_string(measurement_status_name(match.ground_truth_status)) << ",\"prediction_status\":" << json_string(measurement_status_name(match.prediction_status))
                    << ",\"status_matches\":" << boolean(match.status_matches) << ",\"numeric_pair\":" << boolean(match.numeric_pair);
+            if (truth.has_window_start_seconds) output << ",\"window_start_seconds\":" << truth.window_start_seconds;
+            if (truth.has_window_end_seconds) output << ",\"window_end_seconds\":" << truth.window_end_seconds;
             if (match.numeric_pair)
             {
                 output << ",\"signed_error\":" << match.signed_error << ",\"absolute_error\":" << match.absolute_error << ",\"relative_error_percent\":";
@@ -1050,14 +1172,14 @@ namespace signal_synth
     std::string measurement_score_result_csv(const measurement_score_result& result)
     {
         std::ostringstream output;
-        output << "row_type,name,channel,ground_truth_count,prediction_count,matched_count,truth_match_fraction,prediction_match_fraction,numeric_pair_count,tolerance_pass_count,tolerance_pass_fraction,status_mismatch_count,missing_count,extra_count,bias,mean_absolute_error,root_mean_square_error,p95_absolute_error\n";
+        output << "row_type,name,scope,channel,formula,method_id,preprocessing_policy_id,window_start_seconds,window_end_seconds,ground_truth_count,prediction_count,matched_count,truth_match_fraction,prediction_match_fraction,numeric_pair_count,tolerance_pass_count,tolerance_pass_fraction,status_mismatch_count,missing_count,extra_count,bias,mean_absolute_error,root_mean_square_error,p95_absolute_error\n";
         const measurement_score_metrics* total = &result.total;
-        output << "overall,,," << total->ground_truth_count << ',' << total->prediction_count << ',' << total->matched_count << ',' << csv_optional(total->ground_truth_count > 0u, total->truth_match_fraction) << ',' << csv_optional(total->prediction_count > 0u, total->prediction_match_fraction) << ',' << total->numeric_pair_count << ',' << total->tolerance_pass_count << ',' << csv_optional(total->numeric_pair_count > 0u, total->tolerance_pass_fraction) << ',' << total->status_mismatch_count << ',' << total->missing_count << ',' << total->extra_count << ',' << csv_optional(total->numeric_pair_count > 0u, total->bias) << ',' << csv_optional(total->numeric_pair_count > 0u, total->mean_absolute_error) << ',' << csv_optional(total->numeric_pair_count > 0u, total->root_mean_square_error) << ',' << csv_optional(total->numeric_pair_count > 0u, total->p95_absolute_error) << '\n';
-        for (std::size_t i = 0; i < result.measurement_channels.size(); ++i)
+        output << "overall,,,,,,,,," << total->ground_truth_count << ',' << total->prediction_count << ',' << total->matched_count << ',' << csv_optional(total->ground_truth_count > 0u, total->truth_match_fraction) << ',' << csv_optional(total->prediction_count > 0u, total->prediction_match_fraction) << ',' << total->numeric_pair_count << ',' << total->tolerance_pass_count << ',' << csv_optional(total->numeric_pair_count > 0u, total->tolerance_pass_fraction) << ',' << total->status_mismatch_count << ',' << total->missing_count << ',' << total->extra_count << ',' << csv_optional(total->numeric_pair_count > 0u, total->bias) << ',' << csv_optional(total->numeric_pair_count > 0u, total->mean_absolute_error) << ',' << csv_optional(total->numeric_pair_count > 0u, total->root_mean_square_error) << ',' << csv_optional(total->numeric_pair_count > 0u, total->p95_absolute_error) << '\n';
+        for (std::size_t i = 0; i < result.contexts.size(); ++i)
         {
-            const measurement_score_group& group = result.measurement_channels[i];
+            const measurement_score_context_group& group = result.contexts[i];
             const measurement_score_metrics& metrics = group.metrics;
-            output << "measurement_channel," << group.name << ',' << (group.channel.empty() ? "global" : group.channel) << ',' << metrics.ground_truth_count << ',' << metrics.prediction_count << ',' << metrics.matched_count << ',' << csv_optional(metrics.ground_truth_count > 0u, metrics.truth_match_fraction) << ',' << csv_optional(metrics.prediction_count > 0u, metrics.prediction_match_fraction) << ',' << metrics.numeric_pair_count << ',' << metrics.tolerance_pass_count << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.tolerance_pass_fraction) << ',' << metrics.status_mismatch_count << ',' << metrics.missing_count << ',' << metrics.extra_count << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.bias) << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.mean_absolute_error) << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.root_mean_square_error) << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.p95_absolute_error) << '\n';
+            output << "measurement_context," << csv_cell(group.name) << ',' << measurement_scope_name(group.scope) << ',' << csv_cell(group.channel.empty() ? "global" : group.channel) << ',' << csv_cell(group.formula) << ',' << csv_cell(group.method_id) << ',' << csv_cell(group.preprocessing_policy_id) << ',' << csv_optional(group.has_window_start_seconds, group.window_start_seconds) << ',' << csv_optional(group.has_window_end_seconds, group.window_end_seconds) << ',' << metrics.ground_truth_count << ',' << metrics.prediction_count << ',' << metrics.matched_count << ',' << csv_optional(metrics.ground_truth_count > 0u, metrics.truth_match_fraction) << ',' << csv_optional(metrics.prediction_count > 0u, metrics.prediction_match_fraction) << ',' << metrics.numeric_pair_count << ',' << metrics.tolerance_pass_count << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.tolerance_pass_fraction) << ',' << metrics.status_mismatch_count << ',' << metrics.missing_count << ',' << metrics.extra_count << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.bias) << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.mean_absolute_error) << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.root_mean_square_error) << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.p95_absolute_error) << '\n';
         }
         return output.str();
     }
@@ -1065,13 +1187,15 @@ namespace signal_synth
     std::string measurement_score_report_html(const ecg_render_bundle& render, const measurement_score_result& result)
     {
         std::ostringstream rows;
-        for (std::size_t i = 0; i < result.measurements.size(); ++i)
+        for (std::size_t i = 0; i < result.contexts.size(); ++i)
         {
-            const measurement_score_group& group = result.measurements[i];
-            rows << "<tr><td>" << html_text(group.name) << "</td><td>" << group.metrics.ground_truth_count << "</td><td>" << group.metrics.prediction_count << "</td><td>" << group.metrics.numeric_pair_count << "</td><td>" << csv_optional(group.metrics.numeric_pair_count > 0u, group.metrics.tolerance_pass_fraction) << "</td><td>" << group.metrics.status_mismatch_count << "</td><td>" << group.metrics.missing_count << "</td><td>" << group.metrics.extra_count << "</td><td>" << csv_optional(group.metrics.numeric_pair_count > 0u, group.metrics.mean_absolute_error) << "</td></tr>";
+            const measurement_score_context_group& group = result.contexts[i];
+            std::string window;
+            if (group.has_window_start_seconds) window = "[" + csv_optional(true, group.window_start_seconds) + ", " + csv_optional(true, group.window_end_seconds) + ")";
+            rows << "<tr><td>" << html_text(group.name) << "</td><td>" << measurement_scope_name(group.scope) << "</td><td>" << html_text(group.method_id) << "</td><td>" << html_text(group.preprocessing_policy_id) << "</td><td>" << html_text(window) << "</td><td>" << group.metrics.ground_truth_count << "</td><td>" << group.metrics.prediction_count << "</td><td>" << group.metrics.numeric_pair_count << "</td><td>" << csv_optional(group.metrics.numeric_pair_count > 0u, group.metrics.tolerance_pass_fraction) << "</td><td>" << group.metrics.missing_count << "</td><td>" << group.metrics.extra_count << "</td><td>" << csv_optional(group.metrics.numeric_pair_count > 0u, group.metrics.mean_absolute_error) << "</td></tr>";
         }
         std::ostringstream output;
-        output << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#20252b}table{border-collapse:collapse}th,td{border:1px solid #c9ced4;padding:6px 9px;text-align:right}th:first-child,td:first-child{text-align:left}.notice{color:#555}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA only; not a clinical validation certificate.</p><p>Scenario: " << html_text(render.document.scenario_id) << " | Target: " << html_text(result.target) << " | Pairing window: " << result.pairing_window_seconds << " s</p><table><tr><th>Measurement</th><th>Truth</th><th>Predictions</th><th>Numeric pairs</th><th>Pass fraction</th><th>Status mismatch</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>" << rows.str() << "</table></body></html>";
+        output << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#20252b}table{border-collapse:collapse}th,td{border:1px solid #c9ced4;padding:6px 9px;text-align:right}th:first-child,td:first-child{text-align:left}.notice{color:#555}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA only; not a clinical validation certificate.</p><p>Scenario: " << html_text(render.document.scenario_id) << " | Target: " << html_text(result.target) << " | Pairing window: " << result.pairing_window_seconds << " s</p><table><tr><th>Measurement</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Truth</th><th>Predictions</th><th>Numeric pairs</th><th>Pass fraction</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>" << rows.str() << "</table></body></html>";
         return output.str();
     }
 }

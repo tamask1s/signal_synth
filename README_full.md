@@ -193,7 +193,10 @@ Common optional columns include:
 - `label`
 - `confidence`
 
-Target-specific contracts may differ for PPG peaks, HRV metrics, beat classification, or signal-quality masks. Use the package scoring manifest and generated case summaries as the source of truth.
+Point events, intervals, and generic measurements have separate contracts. HRV,
+RR, QT/QTc, morphology, alignment, and other scalar/windowed outputs all use
+measurement v2. Use the package scoring manifest and generated submission
+template as the source of truth.
 
 ## Direct CLI scoring and comparison
 
@@ -208,7 +211,8 @@ Example R-peak comparison:
   --out verification-clean-70
 ```
 
-Other target-specific comparison commands depend on the selected scenario and pack, for example PPG peak, beat-classification, and HRV scoring flows.
+Other comparison commands cover PPG peaks, beat classification, intervals,
+delineation, and generic measurements including HRV.
 
 ## C++ API surface
 
@@ -219,7 +223,9 @@ Important public headers include:
 - `clinical_ecg.h` — structured clinical timeline and 12-lead ECG model.
 - `ecg_scenario.h` / `ecg_scenario_json.h` — product-facing scenario contract and JSON identity.
 - `ecg_export.h`, `ecg_wfdb_export.h`, `ecg_edf_bdf_export.h` — export layers.
-- `hrv_metrics.h`, `hrv_scoring.h` — HRV metrics and scoring support.
+- `hrv_metrics.h` — native HRV metric computation.
+- `measurement_io.h`, `measurement_scoring.h` — uniform RR, HRV, QT/QTc,
+  morphology, alignment, and other measurement output/scoring support.
 - `ecg_beat_classification.h` — beat-classification labels and scoring helpers.
 - `ppg_model.h` — ECG-linked PPG model.
 - `signal_quality.h` — artifact and quality-label support.

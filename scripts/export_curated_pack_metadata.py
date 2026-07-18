@@ -12,14 +12,14 @@ import sys
 EXPORTER_VERSION = "synsigra_curated_pack_metadata_export_v1"
 METADATA_TYPE = "synsigra_curated_pack_catalog"
 DEFAULT_GENERATOR_COMPATIBILITY = {
-    "minimum_generator_version": "0.9.0-dev",
+    "minimum_generator_version": "0.10.0-dev",
     "pack_schema_version": 2,
     "scenario_schema_versions": [2, 3, 4, 5, 6, 7, 8, 9],
     "challenge_package_contract": "synsigra_challenge_package_v3",
-    "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+    "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
     "submission_contract": "synsigra_submission_v1",
-    "verification_protocol_contract": "synsigra_verification_protocol_v1",
-    "local_verifier_min_version": "0.9.0",
+    "verification_protocol_contract": "synsigra_verification_protocol_v2",
+    "local_verifier_min_version": "0.10.0",
 }
 
 
@@ -58,8 +58,8 @@ TARGET_CONTRACTS = {
     },
     "hrv": {
         "scoreable": True,
-        "score_type": "hrv_metrics",
-        "accepted_formats": ["hrv_metrics_json_v1"],
+        "score_type": "measurement",
+        "accepted_formats": ["measurement_values_json_v2", "measurement_values_csv_v2"],
         "primary_metric": "metric_pass_fraction",
         "description": "HRV metric and RR-interval scoring against exact synthetic tachogram ground truth.",
     },
@@ -90,7 +90,7 @@ TARGET_CONTRACTS = {
     "rr_interval": {
         "scoreable": True,
         "score_type": "measurement",
-        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "accepted_formats": ["measurement_values_json_v2", "measurement_values_csv_v2"],
         "default_pairing_window_seconds": 0.2,
         "primary_metric": "tolerance_pass_fraction",
         "description": "Every observable beat-to-beat R-R interval scored independently of artifact-exclusion policy.",
@@ -98,7 +98,7 @@ TARGET_CONTRACTS = {
     "qtc": {
         "scoreable": True,
         "score_type": "measurement",
-        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "accepted_formats": ["measurement_values_json_v2", "measurement_values_csv_v2"],
         "default_pairing_window_seconds": 0.2,
         "primary_metric": "tolerance_pass_fraction",
         "description": "Beat-level RR, QT and formula-explicit QTc measurements scored against exact synthetic timing truth.",
@@ -106,7 +106,7 @@ TARGET_CONTRACTS = {
     "morphology_assertions": {
         "scoreable": True,
         "score_type": "measurement",
-        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "accepted_formats": ["measurement_values_json_v2", "measurement_values_csv_v2"],
         "default_pairing_window_seconds": 0.2,
         "primary_metric": "tolerance_pass_fraction",
         "description": "Beat-, lead-, record-, axis-, and phenotype-level ECG measurements scored against exact synthetic ground truth.",
@@ -114,7 +114,7 @@ TARGET_CONTRACTS = {
     "ecg_ppg_alignment": {
         "scoreable": True,
         "score_type": "measurement",
-        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "accepted_formats": ["measurement_values_json_v2", "measurement_values_csv_v2"],
         "default_pairing_window_seconds": 0.2,
         "primary_metric": "tolerance_pass_fraction",
         "description": "Per-beat PTT and ECG-to-PPG peak delay scored as paired-signal measurements.",
@@ -122,7 +122,7 @@ TARGET_CONTRACTS = {
     "ppg_optical": {
         "scoreable": True,
         "score_type": "measurement",
-        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "accepted_formats": ["measurement_values_json_v2", "measurement_values_csv_v2"],
         "default_pairing_window_seconds": 0.2,
         "primary_metric": "tolerance_pass_fraction",
         "description": "Per-pulse red/infrared AC/DC, perfusion-index, ratio-of-ratios and oxygenation-trajectory measurements.",
@@ -130,7 +130,7 @@ TARGET_CONTRACTS = {
     "prv": {
         "scoreable": True,
         "score_type": "measurement",
-        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "accepted_formats": ["measurement_values_json_v2", "measurement_values_csv_v2"],
         "default_pairing_window_seconds": 0.2,
         "primary_metric": "tolerance_pass_fraction",
         "description": "Pulse-interval variability metrics and accepted/excluded PPG interval measurements against explicit PRV truth.",
@@ -138,7 +138,7 @@ TARGET_CONTRACTS = {
     "respiratory_rate": {
         "scoreable": True,
         "score_type": "measurement",
-        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "accepted_formats": ["measurement_values_json_v2", "measurement_values_csv_v2"],
         "default_pairing_window_seconds": 0.2,
         "primary_metric": "tolerance_pass_fraction",
         "description": "Respiratory-rate record and trajectory measurements against the deterministic coupling reference.",
@@ -146,7 +146,7 @@ TARGET_CONTRACTS = {
     "rhythm_burden": {
         "scoreable": True,
         "score_type": "measurement",
-        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "accepted_formats": ["measurement_values_json_v2", "measurement_values_csv_v2"],
         "default_pairing_window_seconds": 0.2,
         "primary_metric": "tolerance_pass_fraction",
         "description": "Overall and class-specific episode duration, fraction and count measurements against exact interval truth.",
@@ -180,8 +180,8 @@ LOCAL_VERIFIER_SMOKE_TESTS = {
     ],
     "hrv": [
         {
-            "test_id": "TEST-HRV-SCORING-001",
-            "scope": "core HRV metric scoring smoke test",
+            "test_id": "TEST-HRV-GENERIC-001",
+            "scope": "generic measurement-path HRV scoring smoke test",
         },
         {
             "test_id": "TEST-PYTHON-SCORING-001",
@@ -459,11 +459,15 @@ def verification_protocol_metadata(pack_path, pack, source_root):
         return {"available": False, "artifact_role": "", "source_path": "", "source_content_sha256": "", "document": None}
     protocol_path = os.path.join(os.path.dirname(pack_path), relative_path)
     protocol = read_json(protocol_path)
-    required = set(["schema_version", "contract", "protocol_id", "pack_id", "context_of_use", "pre_specified_profile", "required_targets", "acceptance", "stress_matrix", "truth_policy", "evidence_boundary"])
-    if not isinstance(protocol, dict) or not required.issubset(set(protocol)):
+    required = set(["schema_version", "contract", "protocol_id", "pack_id", "context_of_use", "scoring_contract", "required_case_targets", "acceptance_profile", "stress_strata", "truth_policy", "evidence_boundary"])
+    if not isinstance(protocol, dict) or set(protocol) != required:
         raise RuntimeError("verification protocol has an incomplete envelope: %s" % protocol_path)
-    if protocol["schema_version"] != 1 or protocol["contract"] != "synsigra_verification_protocol_v1" or protocol["pack_id"] != pack["pack_id"]:
+    if protocol["schema_version"] != 2 or protocol["contract"] != "synsigra_verification_protocol_v2" or protocol["pack_id"] != pack["pack_id"] or protocol["scoring_contract"] != "synsigra_local_verification_v2":
         raise RuntimeError("verification protocol identity does not match pack: %s" % protocol_path)
+    expected_matrix = [(item["id"], item["targets"]) for item in pack["scenarios"]]
+    protocol_matrix = [(item.get("case_id"), item.get("targets")) for item in protocol["required_case_targets"]]
+    if protocol_matrix != expected_matrix:
+        raise RuntimeError("verification protocol case-target matrix does not match pack: %s" % protocol_path)
     return {
         "available": True,
         "artifact_role": "verification_protocol_json",

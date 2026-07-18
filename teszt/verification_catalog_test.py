@@ -61,7 +61,7 @@ def main():
             compatibility = entry["generator_compatibility"]
             assert compatibility.get("pack_schema_version", 2) == 2
             assert compatibility.get("challenge_package_contract", "synsigra_challenge_package_v3") == "synsigra_challenge_package_v3"
-            assert compatibility.get("local_verifier_min_version", "0.9.0") == "0.9.0"
+            assert compatibility.get("local_verifier_min_version", "0.10.0") == "0.10.0"
         pack_path = os.path.normpath(os.path.join(os.path.dirname(catalog_path), entry["path"]))
         assert os.path.isfile(pack_path)
         assert run([cli, "pack", "validate", pack_path]).startswith("status=valid\n")

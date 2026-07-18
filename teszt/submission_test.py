@@ -78,12 +78,12 @@ try:
     first = manifest["outputs"][0]
     first_path = os.path.join(submission_dir, *first["path"].split("/"))
     os.remove(first_path)
-    missing = verify_package(package, submission_dir, os.path.join(work, "missing"), cases=[first["case_id"]], targets=[first["target"]])
+    missing = verify_package(package, submission_dir, os.path.join(work, "missing"), mode="diagnostic", cases=[first["case_id"]], targets=[first["target"]])
     assert missing.summary["cases"][0]["status"] == "missing_output"
     assert "%s/%s" % (first["case_id"], first["target"]) in missing.summary["cases"][0]["message"]
 
     write_json(first_path, {"schema_version": 1, "events": [{"time_seconds": "invalid"}]})
-    malformed = verify_package(package, submission_dir, os.path.join(work, "malformed"), cases=[first["case_id"]], targets=[first["target"]])
+    malformed = verify_package(package, submission_dir, os.path.join(work, "malformed"), mode="diagnostic", cases=[first["case_id"]], targets=[first["target"]])
     assert malformed.summary["cases"][0]["status"] == "scoring_error"
     assert "%s/%s" % (first["case_id"], first["target"]) in malformed.summary["cases"][0]["message"]
     package.close()

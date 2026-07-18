@@ -19,29 +19,34 @@ assert contract_process.stderr == ""
 contract = json.loads(contract_process.stdout)
 assert contract_process.stdout.strip() == json.dumps(contract, separators=(",", ":"))
 assert contract["schema_version"] == 1
-assert contract["contract"] == "synsigra_core_integration_v6"
+assert contract["contract"] == "synsigra_core_integration_v7"
 assert contract["external_noise"]["scenario_schema_version"] == 8
-assert contract["contracts"]["cpp_facade"] == "1.4.0"
+assert contract["contracts"]["cpp_facade"] == "1.5.0"
 assert contract["contracts"]["pack_schema_version"] == 2
-assert contract["contracts"]["python_verifier"] == "0.9.0"
+assert contract["contracts"]["python_verifier"] == "0.10.0"
 assert contract["scenario"] == {"latest_schema_version": 9, "supported_schema_versions": [2, 3, 4, 5, 6, 7, 8, 9]}
 assert contract["hrv"]["metric_definition"] == "synsigra_hrv_metrics_v2"
+assert contract["hrv"]["scoring_contract"] == "synsigra_measurement_score_v2"
 assert contract["hrv"]["metrics"] == ["mean_rr_seconds", "mean_heart_rate_bpm", "sdnn_seconds", "rmssd_seconds", "pnn50_percent", "sd1_seconds", "sd2_seconds", "sd1_sd2_ratio", "vlf_power_seconds2", "lf_power_seconds2", "hf_power_seconds2", "lf_hf_ratio", "lf_normalized_units", "hf_normalized_units", "total_power_seconds2"]
 assert contract["contracts"]["challenge_package"] == "synsigra_challenge_package_v3"
-assert contract["contracts"]["verification_protocol"] == "synsigra_verification_protocol_v1"
-assert contract["contracts"]["scoring_manifest"] == "synsigra_scoring_manifest_v2"
+assert contract["contracts"]["verification_protocol"] == "synsigra_verification_protocol_v2"
+assert contract["contracts"]["scoring_manifest"] == "synsigra_scoring_manifest_v3"
 assert contract["contracts"]["submission"] == "synsigra_submission_v1"
-assert contract["contracts"]["submission_formats"] == "synsigra_submission_formats_v1"
+assert contract["contracts"]["submission_formats"] == "synsigra_submission_formats_v2"
+assert contract["contracts"]["measurement_values"] == "synsigra_measurement_values_v2"
+assert contract["contracts"]["measurement_truth"] == "synsigra_measurement_truth_v2"
+assert contract["contracts"]["measurement_scoring"] == "synsigra_measurement_score_v2"
+assert contract["contracts"]["local_verification"] == "synsigra_local_verification_v2"
 assert contract["cli"]["challenge_success_media_type"] == "application/json"
 assert contract["cli"]["comparison_targets"] == ["r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification"]
 assert contract["cli"]["interval_targets"] == ["rhythm_episode", "signal_quality"]
 assert contract["cli"]["interval_output_schemas"] == ["interval_json_v1", "interval_csv_v1"]
 assert contract["cli"]["delineation_targets"] == ["ecg_delineation"]
 assert contract["cli"]["delineation_output_schemas"] == ["point_events_json_v1", "point_events_csv_v1"]
-assert contract["cli"]["hrv_targets"] == ["hrv"]
-assert contract["cli"]["measurement_targets"] == ["rr_interval", "qtc", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"]
+assert "hrv_targets" not in contract["cli"]
+assert contract["cli"]["measurement_targets"] == ["rr_interval", "qtc", "hrv", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"]
 assert contract["cli"]["customer_verification_command"].startswith("synsigra-verify")
-assert contract["cli"]["customer_output_schemas"] == ["point_events_json_v1", "point_events_csv_v1", "interval_events_json_v1", "interval_events_csv_v1", "hrv_metrics_json_v1", "measurement_values_json_v1", "measurement_values_csv_v1"]
+assert contract["cli"]["customer_output_schemas"] == ["point_events_json_v1", "point_events_csv_v1", "interval_events_json_v1", "interval_events_csv_v1", "measurement_values_json_v2", "measurement_values_csv_v2"]
 
 shutil.rmtree(work_dir, ignore_errors=True)
 os.makedirs(work_dir)
@@ -71,11 +76,12 @@ assert os.path.isfile(os.path.join(challenge_dir, "user-output-template", "submi
 with open(os.path.join(challenge_dir, "scoring_manifest.json"), "r") as handle:
     scoring_manifest = json.load(handle)
 assert scoring_manifest["submission_contract_version"] == "synsigra_submission_v1"
+assert scoring_manifest["schema_version"] == 3 and scoring_manifest["contract"] == "synsigra_scoring_manifest_v3"
 assert scoring_manifest["submission_template_path"] == "user-output-template/submission.json"
 assert scoring_manifest["submission_format_contract_path"] == "user-output-template/formats.json"
 with open(os.path.join(challenge_dir, "user-output-template", "formats.json"), "r") as handle:
     format_contract = json.load(handle)
-assert format_contract["contract"] == "synsigra_submission_formats_v1"
+assert format_contract["contract"] == "synsigra_submission_formats_v2"
 assert [item["name"] for item in format_contract["formats"]] == contract["cli"]["customer_output_schemas"]
 for case in scoring_manifest["cases"]:
     for entry in case["scoring"]:

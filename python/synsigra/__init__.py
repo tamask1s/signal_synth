@@ -13,7 +13,7 @@ from .measurements import MeasurementError, load_measurement_truth, load_measure
 from .local_verify import VerificationError, VerificationReport, verify_package
 from .profiles import ThresholdProfileError, load_threshold_profile, threshold_profile_names
 from .submission import Submission, SubmissionError, SubmissionOutput, load_submission
-from .scoring import ScoreReport, compare_beat_classes, compare_ppg_onsets, compare_ppg_peaks, compare_rpeaks, score_delineation, score_hrv, score_intervals, score_pack, score_rhythm_episodes, score_signal_quality
+from .scoring import ScoreReport, compare_beat_classes, compare_ppg_onsets, compare_ppg_peaks, compare_rpeaks, score_delineation, score_intervals, score_pack, score_rhythm_episodes, score_signal_quality
 
 __all__ = [
     "ChallengeCase",
@@ -47,7 +47,6 @@ __all__ = [
     "load_measurements",
     "load_submission",
     "load_threshold_profile",
-    "score_hrv",
     "score_delineation",
     "score_intervals",
     "score_measurements",

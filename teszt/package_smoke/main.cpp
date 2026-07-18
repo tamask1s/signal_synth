@@ -7,7 +7,8 @@
 #include <signal_synth/ecg_wfdb_export.h>
 #include <signal_synth/ecg_edf_bdf_export.h>
 #include <signal_synth/hrv_metrics.h>
-#include <signal_synth/hrv_scoring.h>
+#include <signal_synth/measurement_io.h>
+#include <signal_synth/measurement_scoring.h>
 #include <signal_synth/ecg_beat_classification.h>
 #include <signal_synth/ecg_compare.h>
 #include <signal_synth/ecg_morphology.h>
@@ -54,7 +55,7 @@ int main()
     signal_synth::wfdb_export_bundle wfdb_bundle;
     signal_synth::edf_bdf_export_bundle edf_bdf_bundle;
     signal_synth::hrv_analysis_result hrv_analysis;
-    signal_synth::hrv_score_result hrv_score;
+    signal_synth::measurement_score_result measurement_score;
     signal_synth::ecg_beat_classification_result beat_classification;
     signal_synth::scenario_pack_analysis authoring_analysis;
     signal_synth::scenario_parameter_draw parameter_draw;
@@ -107,7 +108,7 @@ int main()
         return 15;
     if (hrv_analysis.metric_definition_version.empty() || hrv_analysis.interpolation_rate_hz <= 0.0)
         return 16;
-    if (hrv_score.success || std::string(signal_synth::hrv_metric_name(signal_synth::hrv_metric_sdnn_seconds)).empty())
+    if (measurement_score.success || !signal_synth::measurement_target_supported("hrv"))
         return 17;
     if (beat_classification.success || std::string(signal_synth::ecg_beat_class_name(signal_synth::ecg_beat_normal)) != "normal")
         return 18;

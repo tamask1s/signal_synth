@@ -9,7 +9,7 @@ This document tracks the release-grade distribution path for the user-facing `sy
 - Supported local verification command:
 
 ```bash
-synsigra-verify package.zip submission/ verification-results/ --profile regression
+synsigra-verify package.zip submission/ verification-results/
 ```
 
 The verifier must be usable by algorithm developers and CI systems without building the C++ signal generator.
@@ -30,7 +30,7 @@ python -m pip install .
 External beta users receive and install the generator-free wheel:
 
 ```bash
-python -m pip install synsigra-0.9.0-py3-none-any.whl
+python -m pip install synsigra-0.10.0-py3-none-any.whl
 ```
 
 Build local distribution artifacts:
@@ -77,7 +77,8 @@ Before publishing or handing the package to external beta users:
 8. The top-level README and `python/README.md` describe the same canonical workflow.
 9. The GitHub Actions Python package workflow passes.
 10. Protocol-enabled challenge fixtures expose
-    `synsigra_verification_protocol_v1` through the manifest role.
+    `synsigra_verification_protocol_v2` through the manifest role and pass the
+    complete embedded evidence policy without caller overrides.
 11. Malformed/ambiguous ZIP members, unlisted files, symlinks, and manifest
     duplicate keys fail the package security test.
 

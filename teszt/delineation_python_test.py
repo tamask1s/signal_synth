@@ -129,7 +129,7 @@ for output in submission_manifest["outputs"]:
     with open(os.path.join(pack_submission, *output["path"].split("/")), "w") as handle:
         json.dump({"schema_version": 1, "events": [event_json(item) for item in case_truth if item.status == "present"]}, handle, sort_keys=True, separators=(",", ":"))
 pack_result_dir = os.path.join(work_dir, "pack_result")
-pack_result = ss.verify_package(pack_challenge, pack_submission, pack_result_dir)
+pack_result = ss.verify_package(pack_challenge, pack_submission, pack_result_dir, mode="diagnostic")
 assert pack_result.summary["success"]
 assert pack_result.summary["case_target_count"] == 8
 mobitz_report = json.load(open(os.path.join(pack_result_dir, "verification", "mobitz_ii_nonconducted_p", "comparison.json"), "r"))

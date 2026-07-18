@@ -74,6 +74,23 @@ namespace signal_synth
         measurement_score_metrics metrics;
     };
 
+    struct measurement_score_context_group
+    {
+        measurement_score_context_group();
+
+        std::string name;
+        measurement_scope scope;
+        std::string channel;
+        std::string formula;
+        std::string method_id;
+        std::string preprocessing_policy_id;
+        double window_start_seconds;
+        bool has_window_start_seconds;
+        double window_end_seconds;
+        bool has_window_end_seconds;
+        measurement_score_metrics metrics;
+    };
+
     struct measurement_score_match
     {
         measurement_score_match();
@@ -105,6 +122,7 @@ namespace signal_synth
         std::vector<measurement_score_group> measurements;
         std::vector<measurement_score_group> channels;
         std::vector<measurement_score_group> measurement_channels;
+        std::vector<measurement_score_context_group> contexts;
         std::vector<measurement_truth> ground_truth;
         std::vector<measurement_value> predictions;
         std::vector<measurement_score_match> matches;

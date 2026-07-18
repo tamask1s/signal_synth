@@ -16,8 +16,8 @@
       "path": "scoring_manifest.json",
       "role": "scoring_manifest_json",
       "media_type": "application/json",
-      "sha256": "sha256:a51c9d6d8cbb1b8d92b03b245ffe8e9013020e34dc083272e907c981dc61e6d7",
-      "size_bytes": 1596
+      "sha256": "sha256:230abf08bef3f2b25198b84f670fc24684a3559c52a3242e1a6f6ab572473224",
+      "size_bytes": 1642
     },
     {
       "path": "cases/clean/scenario.json",
@@ -51,8 +51,8 @@
       "path": "user-output-template/formats.json",
       "role": "submission_formats_json",
       "media_type": "application/json",
-      "sha256": "sha256:827621f5c471b2b22caf7f7bb217e3a865dd215519128a5a2db655d2226a5736",
-      "size_bytes": 2084
+      "sha256": "sha256:badf6e0ebf41bab93794fddee4f0240e5abc7dff68e591f40daf9f1551106772",
+      "size_bytes": 2628
     },
     {
       "path": "user-output-template/outputs/clean/r_peak.json",

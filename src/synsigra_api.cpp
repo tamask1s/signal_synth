@@ -201,12 +201,12 @@ namespace signal_synth
 
     const char* synsigra_api_version()
     {
-        return "1.4.0";
+        return "1.5.0";
     }
 
     const char* synsigra_integration_contract_version()
     {
-        return "synsigra_core_integration_v6";
+        return "synsigra_core_integration_v7";
     }
 
     std::string synsigra_integration_contract_json()
@@ -222,14 +222,18 @@ namespace signal_synth
                << ",\"scoring_manifest\":" << json_text(signal_synth_scoring_manifest_contract_version())
                << ",\"verification_protocol\":" << json_text(signal_synth_verification_protocol_contract_version())
                << ",\"submission\":\"synsigra_submission_v1\""
-               << ",\"submission_formats\":\"synsigra_submission_formats_v1\""
+               << ",\"submission_formats\":\"synsigra_submission_formats_v2\""
+               << ",\"measurement_values\":\"synsigra_measurement_values_v2\""
+               << ",\"measurement_truth\":\"synsigra_measurement_truth_v2\""
+               << ",\"measurement_scoring\":\"synsigra_measurement_score_v2\""
+               << ",\"local_verification\":\"synsigra_local_verification_v2\""
                << ",\"scenario_authoring\":" << json_text(scenario_authoring_metadata_version())
                << ",\"scenario_templates\":" << json_text(scenario_template_catalog_version())
                << ",\"python_verifier\":" << json_text(signal_synth_verifier_version())
                << ",\"external_noise_truth\":\"synsigra_external_noise_truth_v1\"}"
                << ",\"external_noise\":{\"scenario_schema_version\":8,\"asset_transport\":\"in_memory_csv_registry\",\"asset_bytes_in_challenge\":false,\"release_gate\":\"external_noise_truth.release_allowed\",\"redistribution_modes\":[\"local_only\",\"rendered_output\",\"source_and_output\"]}"
                << ",\"scenario\":{\"latest_schema_version\":9,\"supported_schema_versions\":[2,3,4,5,6,7,8,9]}"
-               << ",\"hrv\":{\"scenario_schema_version\":9,\"metric_definition\":\"synsigra_hrv_metrics_v2\",\"scoring_version\":\"synsigra_hrv_score_v2\",\"metrics\":[\"mean_rr_seconds\",\"mean_heart_rate_bpm\",\"sdnn_seconds\",\"rmssd_seconds\",\"pnn50_percent\",\"sd1_seconds\",\"sd2_seconds\",\"sd1_sd2_ratio\",\"vlf_power_seconds2\",\"lf_power_seconds2\",\"hf_power_seconds2\",\"lf_hf_ratio\",\"lf_normalized_units\",\"hf_normalized_units\",\"total_power_seconds2\"]}"
+               << ",\"hrv\":{\"scenario_schema_version\":9,\"metric_definition\":\"synsigra_hrv_metrics_v2\",\"preprocessing_policy\":\"synsigra_nn_exclusion_v2\",\"scoring_contract\":\"synsigra_measurement_score_v2\",\"metrics\":[\"mean_rr_seconds\",\"mean_heart_rate_bpm\",\"sdnn_seconds\",\"rmssd_seconds\",\"pnn50_percent\",\"sd1_seconds\",\"sd2_seconds\",\"sd1_sd2_ratio\",\"vlf_power_seconds2\",\"lf_power_seconds2\",\"hf_power_seconds2\",\"lf_hf_ratio\",\"lf_normalized_units\",\"hf_normalized_units\",\"total_power_seconds2\"]}"
                << ",\"cli\":{\"challenge_command\":\"signal-synth pack challenge <pack.json> --out <new-directory>\""
                << ",\"challenge_success_media_type\":\"application/json\""
                << ",\"comparison_targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ppg_pulse_onset\",\"ecg_beat_classification\"]"
@@ -237,10 +241,9 @@ namespace signal_synth
                << ",\"interval_output_schemas\":[\"interval_json_v1\",\"interval_csv_v1\"]"
                << ",\"delineation_targets\":[\"ecg_delineation\"]"
                << ",\"delineation_output_schemas\":[\"point_events_json_v1\",\"point_events_csv_v1\"]"
-               << ",\"hrv_targets\":[\"hrv\"]"
-               << ",\"measurement_targets\":[\"rr_interval\",\"qtc\",\"morphology_assertions\",\"ecg_ppg_alignment\",\"ppg_optical\",\"prv\",\"respiratory_rate\",\"rhythm_burden\"]"
+               << ",\"measurement_targets\":[\"rr_interval\",\"qtc\",\"hrv\",\"morphology_assertions\",\"ecg_ppg_alignment\",\"ppg_optical\",\"prv\",\"respiratory_rate\",\"rhythm_burden\"]"
                << ",\"customer_verification_command\":\"synsigra-verify <challenge> <submission-directory> <result-directory>\""
-               << ",\"customer_output_schemas\":[\"point_events_json_v1\",\"point_events_csv_v1\",\"interval_events_json_v1\",\"interval_events_csv_v1\",\"hrv_metrics_json_v1\",\"measurement_values_json_v1\",\"measurement_values_csv_v1\"]}}";
+               << ",\"customer_output_schemas\":[\"point_events_json_v1\",\"point_events_csv_v1\",\"interval_events_json_v1\",\"interval_events_csv_v1\",\"measurement_values_json_v2\",\"measurement_values_csv_v2\"]}}";
         return output.str();
     }
 

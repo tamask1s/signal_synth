@@ -50,7 +50,7 @@ def main():
         package = ss.load_challenge(fixture)
         assert package.scoring_manifest()["package_id"] == "python_distribution_smoke"
         assert package.submission_manifest()["challenge"]["package_id"] == "python_distribution_smoke"
-        assert package.submission_formats()["contract"] == "synsigra_submission_formats_v1"
+        assert package.submission_formats()["contract"] == "synsigra_submission_formats_v2"
         try:
             package.verification_protocol()
             raise AssertionError("fixture unexpectedly contains a verification protocol")

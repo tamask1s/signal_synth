@@ -8,6 +8,8 @@ import stat
 import tempfile
 import zipfile
 
+from .profiles import ThresholdProfileError, load_threshold_profile
+
 
 _MANIFEST_FIELDS = set(["schema_version", "contract", "package_id", "name", "version", "description", "package_type", "ground_truth_included", "waveform_formats", "generator_version", "usage_restrictions", "not_for", "files", "cases"])
 _FILE_FIELDS = set(["path", "role", "media_type", "sha256", "size_bytes"])
@@ -189,9 +191,12 @@ class ChallengePackage(object):
         return [item.id for item in self.cases]
 
     def file_by_role(self, role):
+        return self.resolve(self.file_entry_by_role(role).get("path", ""))
+
+    def file_entry_by_role(self, role):
         for item in self.files:
             if item.get("role") == role:
-                return self.resolve(item.get("path", ""))
+                return dict(item)
         raise KeyError(role)
 
     def read_json(self, relative_path):
@@ -213,6 +218,17 @@ class ChallengePackage(object):
         document = self.read_json_by_role("verification_protocol_json")
         _validate_verification_protocol(document, self.package_id)
         return document
+
+    def verification_protocol_identity(self):
+        entry = self.file_entry_by_role("verification_protocol_json")
+        protocol = self.verification_protocol()
+        return {
+            "protocol_id": protocol["protocol_id"],
+            "contract": protocol["contract"],
+            "path": entry["path"],
+            "size_bytes": entry["size_bytes"],
+            "sha256": entry["sha256"],
+        }
 
     def realism_population(self):
         return self.read_json_by_role("realism_population_json")
@@ -547,28 +563,69 @@ def _validate_layout(root, manifest):
 
 
 def _validate_verification_protocol(document, package_id):
-    required = set(["schema_version", "contract", "protocol_id", "pack_id", "context_of_use", "pre_specified_profile", "required_targets", "acceptance", "stress_matrix", "truth_policy", "evidence_boundary"])
-    if not isinstance(document, dict) or not required.issubset(set(document)):
-        raise ChallengeFormatError("verification protocol is missing required envelope fields")
-    if type(document["schema_version"]) is not int or document["schema_version"] != 1:
-        raise ChallengeFormatError("verification protocol schema_version must be 1")
-    if document["contract"] != "synsigra_verification_protocol_v1":
+    required = set(["schema_version", "contract", "protocol_id", "pack_id", "context_of_use", "scoring_contract", "required_case_targets", "acceptance_profile", "stress_strata", "truth_policy", "evidence_boundary"])
+    _exact_fields(document, required, "verification_protocol")
+    if type(document["schema_version"]) is not int or document["schema_version"] != 2:
+        raise ChallengeFormatError("verification protocol schema_version must be 2")
+    if document["contract"] != "synsigra_verification_protocol_v2":
         raise ChallengeFormatError("verification protocol contract is unsupported")
     _safe_id(document["protocol_id"], "verification_protocol.protocol_id")
     if document["pack_id"] != package_id:
         raise ChallengeFormatError("verification protocol pack_id does not match the challenge package")
     _string(document["context_of_use"], "verification_protocol.context_of_use")
-    if document["pre_specified_profile"] not in ("smoke", "regression", "stress", "benchmark"):
-        raise ChallengeFormatError("verification protocol pre_specified_profile is unsupported")
-    targets = document["required_targets"]
-    if not isinstance(targets, list) or not targets:
-        raise ChallengeFormatError("verification protocol required_targets must be non-empty")
-    for index, target in enumerate(targets):
-        _safe_id(target, "verification_protocol.required_targets[%d]" % index)
-    if not isinstance(document["acceptance"], dict) or not document["acceptance"]:
-        raise ChallengeFormatError("verification protocol acceptance must be a non-empty object")
-    if not isinstance(document["stress_matrix"], (dict, list)) or not document["stress_matrix"]:
-        raise ChallengeFormatError("verification protocol stress_matrix must be non-empty")
+    if document["scoring_contract"] != "synsigra_local_verification_v2":
+        raise ChallengeFormatError("verification protocol scoring_contract is unsupported")
+    matrix = document["required_case_targets"]
+    if not isinstance(matrix, list) or not matrix:
+        raise ChallengeFormatError("verification protocol required_case_targets must be a non-empty array")
+    case_ids = set()
+    required_targets = set()
+    for index, item in enumerate(matrix):
+        path = "verification_protocol.required_case_targets[%d]" % index
+        _exact_fields(item, set(["case_id", "targets"]), path)
+        case_id = _safe_id(item["case_id"], path + ".case_id")
+        if case_id in case_ids:
+            raise ChallengeFormatError("verification protocol contains duplicate case_id: %s" % case_id)
+        case_ids.add(case_id)
+        if not isinstance(item["targets"], list) or not item["targets"]:
+            raise ChallengeFormatError("%s.targets must be a non-empty array" % path)
+        targets = []
+        for target_index, target in enumerate(item["targets"]):
+            targets.append(_safe_id(target, "%s.targets[%d]" % (path, target_index)))
+        if len(set(targets)) != len(targets):
+            raise ChallengeFormatError("%s.targets contains duplicates" % path)
+        required_targets.update(targets)
+    try:
+        acceptance = load_threshold_profile(document["acceptance_profile"])
+    except ThresholdProfileError as error:
+        raise ChallengeFormatError("verification protocol acceptance_profile is invalid: %s" % error)
+    missing_acceptance = sorted(required_targets - set(acceptance["targets"]))
+    if missing_acceptance:
+        raise ChallengeFormatError("verification protocol acceptance_profile has no direct target section for: %s" % ", ".join(missing_acceptance))
+    strata = document["stress_strata"]
+    if not isinstance(strata, list) or not strata:
+        raise ChallengeFormatError("verification protocol stress_strata must be a non-empty array")
+    stratum_ids = set()
+    covered_cases = set()
+    for index, item in enumerate(strata):
+        path = "verification_protocol.stress_strata[%d]" % index
+        _exact_fields(item, set(["id", "case_ids"]), path)
+        stratum_id = _safe_id(item["id"], path + ".id")
+        if stratum_id in stratum_ids:
+            raise ChallengeFormatError("verification protocol contains duplicate stress stratum: %s" % stratum_id)
+        stratum_ids.add(stratum_id)
+        if not isinstance(item["case_ids"], list) or not item["case_ids"]:
+            raise ChallengeFormatError("%s.case_ids must be a non-empty array" % path)
+        normalized = [_safe_id(value, "%s.case_ids[%d]" % (path, case_index)) for case_index, value in enumerate(item["case_ids"])]
+        if len(set(normalized)) != len(normalized):
+            raise ChallengeFormatError("%s.case_ids contains duplicates" % path)
+        unknown = sorted(set(normalized) - case_ids)
+        if unknown:
+            raise ChallengeFormatError("%s.case_ids contains unknown cases: %s" % (path, ", ".join(unknown)))
+        covered_cases.update(normalized)
+    missing_cases = sorted(case_ids - covered_cases)
+    if missing_cases:
+        raise ChallengeFormatError("verification protocol stress_strata do not cover cases: %s" % ", ".join(missing_cases))
     if not isinstance(document["truth_policy"], dict) or not document["truth_policy"]:
         raise ChallengeFormatError("verification protocol truth_policy must be a non-empty object")
     _string(document["evidence_boundary"], "verification_protocol.evidence_boundary")

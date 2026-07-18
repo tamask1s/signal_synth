@@ -7,12 +7,12 @@ import os
 import re
 
 
-MEASUREMENT_FIELDS = ["name", "value", "unit", "status", "scope", "time_seconds", "beat_index", "channel", "formula", "confidence"]
+MEASUREMENT_FIELDS = ["name", "value", "unit", "status", "scope", "time_seconds", "beat_index", "window_start_seconds", "window_end_seconds", "channel", "formula", "method_id", "preprocessing_policy_id", "confidence"]
 MEASUREMENT_STATUSES = set(["valid", "undefined", "absent", "not_evaluable"])
-MEASUREMENT_SCOPES = set(["record", "lead", "beat", "beat_lead", "paired_signal"])
+MEASUREMENT_SCOPES = set(["record", "lead", "beat", "beat_lead", "paired_signal", "window", "window_lead"])
 MEASUREMENT_UNITS = set(["s", "s2", "mV", "mV/s", "deg", "count", "ratio", "nu", "%", "bpm", "a.u.", "bool"])
 QT_FORMULAS = set(["fixed", "bazett", "fridericia", "framingham", "hodges"])
-MEASUREMENT_TARGETS = frozenset(["rr_interval", "qtc", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"])
+MEASUREMENT_TARGETS = frozenset(["rr_interval", "qtc", "hrv", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"])
 
 
 class MeasurementError(ValueError):
@@ -20,17 +20,17 @@ class MeasurementError(ValueError):
 
 
 def load_measurements(path, format_name=None):
-    """Load and strictly validate a measurement_values_v1 user output."""
-    selected = format_name or ("measurement_values_csv_v1" if str(path).lower().endswith(".csv") else "measurement_values_json_v1")
-    if selected == "measurement_values_json_v1":
+    """Load and strictly validate a measurement_values_v2 user output."""
+    selected = format_name or ("measurement_values_csv_v2" if str(path).lower().endswith(".csv") else "measurement_values_json_v2")
+    if selected == "measurement_values_json_v2":
         with open(path, "r") as handle:
             raw = json.load(handle, object_pairs_hook=_unique_object)
-        if not isinstance(raw, dict) or set(raw) != set(["schema_version", "measurements"]):
-            raise MeasurementError("measurement JSON must contain exactly schema_version and measurements")
-        if isinstance(raw["schema_version"], bool) or raw["schema_version"] != 1 or not isinstance(raw["measurements"], list):
-            raise MeasurementError("measurement JSON requires schema_version 1 and a measurements array")
+        if not isinstance(raw, dict) or set(raw) != set(["schema_version", "contract", "measurements"]):
+            raise MeasurementError("measurement JSON must contain exactly schema_version, contract, and measurements")
+        if isinstance(raw["schema_version"], bool) or raw["schema_version"] != 2 or raw["contract"] != "synsigra_measurement_values_v2" or not isinstance(raw["measurements"], list):
+            raise MeasurementError("measurement JSON requires the synsigra_measurement_values_v2 contract and a measurements array")
         records = raw["measurements"]
-    elif selected == "measurement_values_csv_v1":
+    elif selected == "measurement_values_csv_v2":
         try:
             with open(path, "r", newline="") as handle:
                 reader = csv.reader(handle, strict=True)
@@ -38,7 +38,7 @@ def load_measurements(path, format_name=None):
         except csv.Error as error:
             raise MeasurementError("invalid measurement CSV: %s" % error)
         if not rows or rows[0] != MEASUREMENT_FIELDS:
-            raise MeasurementError("measurement CSV header must exactly match the v1 column order")
+            raise MeasurementError("measurement CSV header must exactly match the v2 column order")
         if any(len(row) != len(MEASUREMENT_FIELDS) for row in rows[1:]):
             raise MeasurementError("measurement CSV row has the wrong number of columns")
         records = [_csv_record(row, index) for index, row in enumerate(rows[1:])]
@@ -50,14 +50,14 @@ def load_measurements(path, format_name=None):
 
 
 def load_measurement_truth(path, target):
-    """Load one target from a package-internal synsigra_measurement_truth_v1 artifact."""
+    """Load one target from a package-internal synsigra_measurement_truth_v2 artifact."""
     if target not in MEASUREMENT_TARGETS:
         raise MeasurementError("unsupported measurement target: %s" % target)
     with open(path, "r") as handle:
         raw = json.load(handle, object_pairs_hook=_unique_object)
     if not isinstance(raw, dict) or set(raw) != set(["schema_version", "contract", "targets"]):
         raise MeasurementError("measurement truth root has an invalid shape")
-    if isinstance(raw["schema_version"], bool) or raw["schema_version"] != 1 or raw["contract"] != "synsigra_measurement_truth_v1" or not isinstance(raw["targets"], list):
+    if isinstance(raw["schema_version"], bool) or raw["schema_version"] != 2 or raw["contract"] != "synsigra_measurement_truth_v2" or not isinstance(raw["targets"], list):
         raise MeasurementError("measurement truth contract is not supported")
     target_map = {}
     for item in raw["targets"]:
@@ -97,7 +97,7 @@ def load_measurement_truth(path, target):
 
 
 def score_measurements(ground_truth, predictions, target, pairing_window_seconds=0.2):
-    """Score measurement records using the C++ measurement_score_v1 policy."""
+    """Score measurement records using the C++ measurement_score_v2 policy."""
     if target not in MEASUREMENT_TARGETS:
         raise MeasurementError("unsupported measurement target: %s" % target)
     predictions = [_validate_measurement(dict(item), index) for index, item in enumerate(predictions)]
@@ -114,7 +114,7 @@ def score_measurements(ground_truth, predictions, target, pairing_window_seconds
             exact_beat = "beat_index" in truth and "beat_index" in prediction and truth["beat_index"] == prediction["beat_index"]
             if "beat_index" in truth and "beat_index" in prediction and not exact_beat:
                 continue
-            if truth["scope"] in ("record", "lead"):
+            if truth["scope"] in ("record", "lead", "window", "window_lead"):
                 distance = 0.0
             elif exact_beat:
                 distance = abs(truth.get("time_seconds", 0.0) - prediction.get("time_seconds", 0.0)) if "time_seconds" in truth and "time_seconds" in prediction else 0.0
@@ -144,11 +144,17 @@ def score_measurements(ground_truth, predictions, target, pairing_window_seconds
             "unit": truth["unit"],
             "scope": truth["scope"],
             "channel": truth.get("channel", "") or "global",
+            "formula": truth.get("formula", ""),
+            "method_id": truth.get("method_id", ""),
+            "preprocessing_policy_id": truth.get("preprocessing_policy_id", ""),
             "ground_truth_status": truth["status"],
             "prediction_status": prediction["status"],
             "status_matches": truth["status"] == prediction["status"],
             "numeric_pair": truth["status"] == "valid" and prediction["status"] == "valid",
         }
+        if "window_start_seconds" in truth:
+            match["window_start_seconds"] = truth["window_start_seconds"]
+            match["window_end_seconds"] = truth["window_end_seconds"]
         if match["numeric_pair"]:
             error = prediction["value"] - truth["value"]
             if truth_item["error_model"] == "circular_degrees":
@@ -170,16 +176,18 @@ def score_measurements(ground_truth, predictions, target, pairing_window_seconds
     names = sorted(set([item["measurement"]["name"] for item in ground_truth] + [item["name"] for item in predictions]))
     channels = sorted(set([item["measurement"].get("channel", "") for item in ground_truth] + [item.get("channel", "") for item in predictions]))
     pairs = sorted(set([(item["measurement"]["name"], item["measurement"].get("channel", "")) for item in ground_truth] + [(item["name"], item.get("channel", "")) for item in predictions]))
+    descriptors = sorted(set([_descriptor(item["measurement"]) for item in ground_truth] + [_descriptor(item) for item in predictions]))
     return {
-        "schema_version": 1,
+        "schema_version": 2,
+        "contract": "synsigra_measurement_score_v2",
         "score_type": "measurement_qa",
-        "scoring_version": "synsigra_measurement_score_v1",
         "target": target,
         "options": {"pairing_window_seconds": pairing_window},
         "overall": _metrics(context),
         "by_measurement": [{"name": name, "metrics": _metrics(context, name=name)} for name in names],
         "by_channel": [{"channel": channel or "global", "metrics": _metrics(context, channel=channel)} for channel in channels],
         "by_measurement_channel": [{"name": name, "channel": channel or "global", "metrics": _metrics(context, name=name, channel=channel)} for name, channel in pairs],
+        "by_measurement_context": [_context_result(descriptor, _metrics(context, descriptor=descriptor)) for descriptor in descriptors],
         "matches": matches,
         "missing_ground_truth_indices": missing,
         "extra_prediction_indices": extra,
@@ -190,25 +198,28 @@ def score_measurements(ground_truth, predictions, target, pairing_window_seconds
 def measurement_comparison_csv(report):
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["row_type", "name", "channel", "ground_truth_count", "prediction_count", "matched_count", "truth_match_fraction", "prediction_match_fraction", "numeric_pair_count", "tolerance_pass_count", "tolerance_pass_fraction", "status_mismatch_count", "missing_count", "extra_count", "bias", "mean_absolute_error", "root_mean_square_error", "p95_absolute_error"])
-    rows = [("overall", "", "", report["overall"])] + [("measurement_channel", item["name"], item["channel"], item["metrics"]) for item in report["by_measurement_channel"]]
-    for row_type, name, channel, metrics in rows:
+    writer.writerow(["row_type", "name", "scope", "channel", "formula", "method_id", "preprocessing_policy_id", "window_start_seconds", "window_end_seconds", "ground_truth_count", "prediction_count", "matched_count", "truth_match_fraction", "prediction_match_fraction", "numeric_pair_count", "tolerance_pass_count", "tolerance_pass_fraction", "status_mismatch_count", "missing_count", "extra_count", "bias", "mean_absolute_error", "root_mean_square_error", "p95_absolute_error"])
+    rows = [("overall", {}, report["overall"])] + [("measurement_context", item, item["metrics"]) for item in report["by_measurement_context"]]
+    for row_type, item, metrics in rows:
         error = metrics["error"]
-        writer.writerow([row_type, name, channel, metrics["ground_truth_count"], metrics["prediction_count"], metrics["matched_count"], _optional(metrics["truth_match_fraction"]), _optional(metrics["prediction_match_fraction"]), metrics["numeric_pair_count"], metrics["tolerance_pass_count"], _optional(metrics["tolerance_pass_fraction"]), metrics["status_mismatch_count"], metrics["missing_count"], metrics["extra_count"], _optional(error["bias"]), _optional(error["mean_absolute"]), _optional(error["root_mean_square"]), _optional(error["p95_absolute"])])
+        writer.writerow([row_type, item.get("name", ""), item.get("scope", ""), item.get("channel", ""), item.get("formula", ""), item.get("method_id", ""), item.get("preprocessing_policy_id", ""), item.get("window_start_seconds", ""), item.get("window_end_seconds", ""), metrics["ground_truth_count"], metrics["prediction_count"], metrics["matched_count"], _optional(metrics["truth_match_fraction"]), _optional(metrics["prediction_match_fraction"]), metrics["numeric_pair_count"], metrics["tolerance_pass_count"], _optional(metrics["tolerance_pass_fraction"]), metrics["status_mismatch_count"], metrics["missing_count"], metrics["extra_count"], _optional(error["bias"]), _optional(error["mean_absolute"]), _optional(error["root_mean_square"]), _optional(error["p95_absolute"])])
     return output.getvalue()
 
 
 def measurement_comparison_html(report):
     rows = []
-    for item in report["by_measurement"]:
+    for item in report["by_measurement_context"]:
         metrics = item["metrics"]
-        rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (html.escape(item["name"]), metrics["ground_truth_count"], metrics["prediction_count"], metrics["numeric_pair_count"], _optional(metrics["tolerance_pass_fraction"]), metrics["status_mismatch_count"], metrics["missing_count"], metrics["extra_count"], _optional(metrics["error"]["mean_absolute"])))
-    return "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font:14px Arial,sans-serif;color:#202124;max-width:1100px;margin:32px auto;padding:0 20px}table{border-collapse:collapse;width:100%%}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}th{background:#f3f4f6}.notice{border-left:4px solid #b42318;padding:10px 14px;background:#fef3f2}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA only; not a clinical validation certificate.</p><p>Target: %s | Pairing window: %.6g s</p><table><tr><th>Measurement</th><th>Truth</th><th>Predictions</th><th>Numeric pairs</th><th>Pass fraction</th><th>Status mismatch</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>%s</table></body></html>" % (html.escape(report["target"]), report["options"]["pairing_window_seconds"], "".join(rows))
+        window = ""
+        if "window_start_seconds" in item:
+            window = "[%s, %s)" % (_optional(item["window_start_seconds"]), _optional(item["window_end_seconds"]))
+        rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (html.escape(item["name"]), html.escape(item["scope"]), html.escape(item.get("method_id", "")), html.escape(item.get("preprocessing_policy_id", "")), html.escape(window), metrics["ground_truth_count"], metrics["prediction_count"], metrics["numeric_pair_count"], _optional(metrics["tolerance_pass_fraction"]), metrics["missing_count"], metrics["extra_count"], _optional(metrics["error"]["mean_absolute"])))
+    return "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font:14px Arial,sans-serif;color:#202124;max-width:1400px;margin:32px auto;padding:0 20px}table{border-collapse:collapse;width:100%%}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}th{background:#f3f4f6}.notice{border-left:4px solid #b42318;padding:10px 14px;background:#fef3f2}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA only; not a clinical validation certificate.</p><p>Target: %s | Pairing window: %.6g s</p><table><tr><th>Measurement</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Truth</th><th>Predictions</th><th>Numeric pairs</th><th>Pass fraction</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>%s</table></body></html>" % (html.escape(report["target"]), report["options"]["pairing_window_seconds"], "".join(rows))
 
 
-def _metrics(context, name=None, channel=None):
-    truth_selected = [index for index, item in enumerate(context["ground_truth"]) if (name is None or item["measurement"]["name"] == name) and (channel is None or item["measurement"].get("channel", "") == channel)]
-    prediction_selected = [index for index, item in enumerate(context["predictions"]) if (name is None or item["name"] == name) and (channel is None or item.get("channel", "") == channel)]
+def _metrics(context, name=None, channel=None, descriptor=None):
+    truth_selected = [index for index, item in enumerate(context["ground_truth"]) if (name is None or item["measurement"]["name"] == name) and (channel is None or item["measurement"].get("channel", "") == channel) and (descriptor is None or _descriptor(item["measurement"]) == descriptor)]
+    prediction_selected = [index for index, item in enumerate(context["predictions"]) if (name is None or item["name"] == name) and (channel is None or item.get("channel", "") == channel) and (descriptor is None or _descriptor(item) == descriptor)]
     truth_set, prediction_set = set(truth_selected), set(prediction_selected)
     selected_matches = [item for item in context["matches"] if item["ground_truth_index"] in truth_set and item["prediction_index"] in prediction_set]
     statuses = [context["ground_truth"][index]["measurement"]["status"] for index in truth_selected]
@@ -247,7 +258,7 @@ def _validate_measurement(item, index):
         raise MeasurementError("measurement name must be lower-case ASCII dotted snake case")
     if output["unit"] not in MEASUREMENT_UNITS or output["status"] not in MEASUREMENT_STATUSES or output["scope"] not in MEASUREMENT_SCOPES:
         raise MeasurementError("measurement %s contains unsupported unit, status, or scope" % index)
-    for field in ("value", "time_seconds", "confidence"):
+    for field in ("value", "time_seconds", "window_start_seconds", "window_end_seconds", "confidence"):
         if field in output:
             output[field] = _finite_number(output[field], field)
     if output["status"] == "valid" and "value" not in output:
@@ -263,12 +274,22 @@ def _validate_measurement(item, index):
     for field, limit in (("channel", 128), ("formula", 64)):
         if field in output and (not isinstance(output[field], str) or len(output[field]) > limit or any(ord(ch) < 32 for ch in output[field])):
             raise MeasurementError("measurement %s has invalid %s" % (index, field))
+    for field in ("method_id", "preprocessing_policy_id"):
+        if field in output and (not isinstance(output[field], str) or not re.match(r"^[a-z][a-z0-9_.]{0,127}$", output[field])):
+            raise MeasurementError("measurement %s has invalid %s" % (index, field))
     beat_like = output["scope"] in ("beat", "beat_lead", "paired_signal")
-    channel_scope = output["scope"] in ("lead", "beat_lead", "paired_signal")
+    window_like = output["scope"] in ("window", "window_lead")
+    channel_scope = output["scope"] in ("lead", "beat_lead", "paired_signal", "window_lead")
     if beat_like != ("time_seconds" in output or "beat_index" in output):
         raise MeasurementError("measurement scope has an invalid temporal anchor")
     if channel_scope != bool(output.get("channel", "")):
         raise MeasurementError("measurement scope has an invalid channel")
+    if window_like != ("window_start_seconds" in output and "window_end_seconds" in output):
+        raise MeasurementError("measurement scope has an invalid window")
+    if ("window_start_seconds" in output) != ("window_end_seconds" in output):
+        raise MeasurementError("measurement window endpoints must occur together")
+    if window_like and (output["window_start_seconds"] < 0.0 or output["window_end_seconds"] <= output["window_start_seconds"]):
+        raise MeasurementError("measurement window must satisfy 0 <= start < end")
     if output["name"] == "qtc_interval" and output.get("formula") not in QT_FORMULAS:
         raise MeasurementError("qtc_interval requires a supported formula")
     return output
@@ -276,7 +297,7 @@ def _validate_measurement(item, index):
 
 def _csv_record(row, index):
     output = dict((name, value) for name, value in zip(MEASUREMENT_FIELDS, row) if value != "")
-    for field in ("value", "time_seconds", "confidence"):
+    for field in ("value", "time_seconds", "window_start_seconds", "window_end_seconds", "confidence"):
         if field in output:
             output[field] = _finite_number(output[field], field)
     return output
@@ -292,12 +313,21 @@ def _require_unique(records):
 
 
 def _identity(item):
-    anchor = "b" + item["beat_index"] if "beat_index" in item else "t" + repr(item["time_seconds"]) if "time_seconds" in item else "r"
+    anchor = "b" + item["beat_index"] if "beat_index" in item else "t" + repr(item["time_seconds"]) if "time_seconds" in item else "w" + repr(item["window_start_seconds"]) + ":" + repr(item["window_end_seconds"]) if "window_start_seconds" in item else "r"
     return _descriptor(item) + (anchor,)
 
 
 def _descriptor(item):
-    return item["name"], item["unit"], item["scope"], item.get("channel", ""), item.get("formula", "")
+    return item["name"], item["unit"], item["scope"], item.get("channel", ""), item.get("formula", ""), item.get("method_id", ""), item.get("preprocessing_policy_id", ""), item.get("window_start_seconds"), item.get("window_end_seconds")
+
+
+def _context_result(descriptor, metrics):
+    name, _unit, scope, channel, formula, method_id, preprocessing_policy_id, window_start, window_end = descriptor
+    output = {"name": name, "scope": scope, "channel": channel or "global", "formula": formula, "method_id": method_id, "preprocessing_policy_id": preprocessing_policy_id, "metrics": metrics}
+    if window_start is not None:
+        output["window_start_seconds"] = window_start
+        output["window_end_seconds"] = window_end
+    return output
 
 
 def _finite_number(value, name):

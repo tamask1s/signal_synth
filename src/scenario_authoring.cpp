@@ -312,8 +312,6 @@ namespace
             output.push_back("point_events_json_v1");
             output.push_back("point_events_csv_v1");
         }
-        else if (target == "hrv")
-            output.push_back("hrv_metrics_json_v1");
         else if (target == "rhythm_episode" || target == "signal_quality")
         {
             output.push_back("interval_events_json_v1");
@@ -324,10 +322,10 @@ namespace
             output.push_back("point_events_json_v1");
             output.push_back("point_events_csv_v1");
         }
-        else if (target == "rr_interval" || target == "qtc" || target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical" || target == "prv" || target == "respiratory_rate" || target == "rhythm_burden")
+        else if (target == "rr_interval" || target == "qtc" || target == "hrv" || target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical" || target == "prv" || target == "respiratory_rate" || target == "rhythm_burden")
         {
-            output.push_back("measurement_values_json_v1");
-            output.push_back("measurement_values_csv_v1");
+            output.push_back("measurement_values_json_v2");
+            output.push_back("measurement_values_csv_v2");
         }
         return output;
     }
@@ -980,7 +978,7 @@ namespace signal_synth
                << ",\"pack_version\":" << json_string(analysis.pack_version)
                << ",\"scoring_mode\":" << json_string(analysis_scoring_mode(analysis))
                << ",\"recommended_verifier_profile\":" << json_string(recommended_profile_for_analysis(analysis))
-               << ",\"generator_compatibility\":{\"pack_schema_version\":2,\"scenario_schema_versions\":[2,3,4,5,6,7,8,9],\"challenge_package_contract\":\"synsigra_challenge_package_v3\",\"scoring_manifest_contract\":\"synsigra_scoring_manifest_v2\"}"
+               << ",\"generator_compatibility\":{\"pack_schema_version\":2,\"scenario_schema_versions\":[2,3,4,5,6,7,8,9],\"challenge_package_contract\":\"synsigra_challenge_package_v3\",\"scoring_manifest_contract\":\"synsigra_scoring_manifest_v3\"}"
                << ",\"summary\":{\"case_count\":" << analysis.case_count
                << ",\"total_duration_seconds\":" << analysis.total_duration_seconds
                << ",\"total_sample_count\":" << analysis.total_sample_count

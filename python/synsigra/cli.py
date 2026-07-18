@@ -16,17 +16,20 @@ def main(argv=None):
     parser.add_argument("output_dir", help="New output directory for verification reports.")
     parser.add_argument("--case", dest="cases", action="append", help="Restrict verification to a case id. Can be repeated.")
     parser.add_argument("--target", dest="targets", action="append", help="Restrict verification to a target. Can be repeated.")
-    parser.add_argument("--profile", default="regression", help="Threshold profile name (%s) or JSON file." % ", ".join(threshold_profile_names()))
+    parser.add_argument("--mode", choices=("evidence", "diagnostic"), default="evidence", help="Evidence uses the complete packaged protocol; diagnostic permits filters and custom profiles.")
+    parser.add_argument("--profile", help="Diagnostic threshold profile name (%s) or JSON file." % ", ".join(threshold_profile_names()))
     parser.add_argument("--force", action="store_true", help="Replace output_dir if it already exists.")
     args = parser.parse_args(argv)
     try:
-        report = verify_package(args.challenge, args.submission_dir, args.output_dir, cases=args.cases, targets=args.targets, profile=args.profile, force=args.force)
+        report = verify_package(args.challenge, args.submission_dir, args.output_dir, cases=args.cases, targets=args.targets, mode=args.mode, profile=args.profile, force=args.force)
     except (ChallengeIntegrityError, ThresholdProfileError, VerificationError, OSError, ValueError) as error:
         print("status=failed")
         print("error=%s" % str(error))
         return 1
     summary = report.summary
     print("status=%s" % summary["status"])
+    print("mode=%s" % summary["verification"]["mode"])
+    print("evidence_eligible=%s" % str(summary["verification"]["evidence_eligible"]).lower())
     print("package_id=%s" % summary["package"].get("package_id", ""))
     print("case_target_count=%s" % summary["case_target_count"])
     print("passed_case_target_count=%s" % summary["passed_case_target_count"])

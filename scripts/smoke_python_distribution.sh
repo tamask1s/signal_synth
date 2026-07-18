@@ -41,7 +41,7 @@ with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED) as archive:
             archive.write(path, os.path.relpath(path, source))
 PY
 
-synsigra-verify "$TMPDIR/challenge.zip" "$FIXTURE/submissions/pass" "$TMPDIR/pass-results" --profile regression
+synsigra-verify "$TMPDIR/challenge.zip" "$FIXTURE/submissions/pass" "$TMPDIR/pass-results" --mode diagnostic --profile regression
 test -f "$TMPDIR/pass-results/verification_summary.json"
 test -f "$TMPDIR/pass-results/verification_summary.csv"
 test -f "$TMPDIR/pass-results/verification_report.html"
@@ -55,7 +55,7 @@ assert summary["success"] is True
 assert summary["policy"]["passed"] is True
 PY
 
-if synsigra-verify "$TMPDIR/challenge.zip" "$FIXTURE/submissions/fail" "$TMPDIR/fail-results" --profile regression; then
+if synsigra-verify "$TMPDIR/challenge.zip" "$FIXTURE/submissions/fail" "$TMPDIR/fail-results" --mode diagnostic --profile regression; then
     echo "Expected failing submission to return a non-zero exit code." >&2
     exit 1
 fi
@@ -75,7 +75,7 @@ python - <<'PY'
 import importlib.metadata
 import synsigra
 assert "site-packages" in synsigra.__file__, synsigra.__file__
-assert importlib.metadata.version("synsigra") == "0.9.0"
+assert importlib.metadata.version("synsigra") == "0.10.0"
 assert callable(synsigra.load_measurements)
 assert callable(synsigra.score_measurements)
 PY

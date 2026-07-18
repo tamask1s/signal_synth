@@ -8,7 +8,6 @@
 #include "detection_io.h"
 #include "delineation_io.h"
 #include "delineation_scoring.h"
-#include "hrv_scoring.h"
 #include "interval_io.h"
 #include "interval_scoring.h"
 #include "measurement_io.h"
@@ -91,8 +90,7 @@ namespace
                   << "       signal-synth compare <r_peak|ppg_systolic_peak|ppg_pulse_onset|ecg_beat_classification> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth interval score <rhythm_episode|signal_quality> <scenario.json|-> <intervals.csv|intervals.json> --out <new-directory> [--minimum-iou <ratio>]\n"
                   << "       signal-synth delineation score <scenario.json|-> <point-events.csv|point-events.json> --out <new-directory> [--tolerance-ms <ms>]\n"
-                  << "       signal-synth measurement score <rr_interval|qtc|morphology_assertions|ecg_ppg_alignment|ppg_optical|prv|respiratory_rate|rhythm_burden> <scenario.json|-> <measurements.csv|measurements.json> --out <new-directory> [--pairing-window-ms <ms>]\n"
-                  << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
+                  << "       signal-synth measurement score <rr_interval|qtc|hrv|morphology_assertions|ecg_ppg_alignment|ppg_optical|prv|respiratory_rate|rhythm_burden> <scenario.json|-> <measurements.csv|measurements.json> --out <new-directory> [--pairing-window-ms <ms>]\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack analyze <pack.json>\n"
                   << "       signal-synth pack render <pack.json> --out <new-directory> [--noise-assets <directory>]\n"
@@ -429,10 +427,9 @@ namespace
     enum scoring_input_kind
     {
         scoring_input_event = 0,
-        scoring_input_hrv = 1,
-        scoring_input_interval = 2,
-        scoring_input_delineation = 3,
-        scoring_input_measurement = 4
+        scoring_input_interval = 1,
+        scoring_input_delineation = 2,
+        scoring_input_measurement = 3
     };
 
     bool scoring_command_for_target(const std::string& target, std::string& score_type, std::string& command_name, scoring_input_kind& input_kind);
@@ -445,13 +442,6 @@ namespace
     bool scoring_command_for_target(const std::string& target, std::string& score_type, std::string& command_name, scoring_input_kind& input_kind)
     {
         input_kind = scoring_input_event;
-        if (target == "hrv")
-        {
-            score_type = "hrv_metrics";
-            command_name = "hrv score";
-            input_kind = scoring_input_hrv;
-            return true;
-        }
         if (target == "ecg_delineation")
         {
             score_type = "ecg_delineation";
@@ -484,23 +474,19 @@ namespace
 
     const char* recommended_submission_format(scoring_input_kind input_kind)
     {
-        if (input_kind == scoring_input_hrv)
-            return "hrv_metrics_json_v1";
         if (input_kind == scoring_input_interval)
             return "interval_events_json_v1";
         if (input_kind == scoring_input_measurement)
-            return "measurement_values_json_v1";
+            return "measurement_values_json_v2";
         return "point_events_json_v1";
     }
 
     void write_accepted_submission_formats(std::ostringstream& output, scoring_input_kind input_kind)
     {
-        if (input_kind == scoring_input_hrv)
-            output << "[\"hrv_metrics_json_v1\"]";
-        else if (input_kind == scoring_input_interval)
+        if (input_kind == scoring_input_interval)
             output << "[\"interval_events_json_v1\",\"interval_events_csv_v1\"]";
         else if (input_kind == scoring_input_measurement)
-            output << "[\"measurement_values_json_v1\",\"measurement_values_csv_v1\"]";
+            output << "[\"measurement_values_json_v2\",\"measurement_values_csv_v2\"]";
         else
             output << "[\"point_events_json_v1\",\"point_events_csv_v1\"]";
     }
@@ -548,12 +534,10 @@ namespace
 
     std::string submission_payload_template(scoring_input_kind input_kind)
     {
-        if (input_kind == scoring_input_hrv)
-            return "{\"schema_version\":1,\"metrics\":{},\"rr_intervals\":[]}\n";
         if (input_kind == scoring_input_interval)
             return "{\"schema_version\":1,\"intervals\":[]}\n";
         if (input_kind == scoring_input_measurement)
-            return "{\"schema_version\":1,\"measurements\":[]}\n";
+            return "{\"schema_version\":2,\"contract\":\"synsigra_measurement_values_v2\",\"measurements\":[]}\n";
         return "{\"schema_version\":1,\"events\":[]}\n";
     }
 
@@ -587,22 +571,21 @@ namespace
     std::string submission_formats_json()
     {
         return
-            "{\"schema_version\":1,\"contract\":\"synsigra_submission_formats_v1\",\"formats\":["
+            "{\"schema_version\":2,\"contract\":\"synsigra_submission_formats_v2\",\"formats\":["
             "{\"name\":\"point_events_json_v1\",\"media_type\":\"application/json\",\"container_fields\":[\"schema_version\",\"events\"],\"record_fields\":[\"time_seconds\",\"sample_index\",\"channel\",\"label\",\"confidence\"],\"required_record_fields\":[\"time_seconds\"]},"
             "{\"name\":\"point_events_csv_v1\",\"media_type\":\"text/csv\",\"columns\":[\"time_seconds\",\"sample_index\",\"channel\",\"label\",\"confidence\"],\"required_columns\":[\"time_seconds\"]},"
             "{\"name\":\"interval_events_json_v1\",\"media_type\":\"application/json\",\"container_fields\":[\"schema_version\",\"intervals\"],\"record_fields\":[\"start_seconds\",\"end_seconds\",\"label\",\"channel\",\"confidence\"],\"required_record_fields\":[\"start_seconds\",\"end_seconds\",\"label\"]},"
             "{\"name\":\"interval_events_csv_v1\",\"media_type\":\"text/csv\",\"columns\":[\"start_seconds\",\"end_seconds\",\"label\",\"channel\",\"confidence\"],\"required_columns\":[\"start_seconds\",\"end_seconds\",\"label\"]},"
-            "{\"name\":\"hrv_metrics_json_v1\",\"media_type\":\"application/json\",\"container_fields\":[\"schema_version\",\"metrics\",\"rr_intervals\"],\"rr_record_fields\":[\"beat_time_seconds\",\"rr_seconds\"]},"
-            "{\"name\":\"measurement_values_json_v1\",\"media_type\":\"application/json\",\"container_fields\":[\"schema_version\",\"measurements\"],\"record_fields\":[\"name\",\"value\",\"unit\",\"status\",\"scope\",\"time_seconds\",\"beat_index\",\"channel\",\"formula\",\"confidence\"],\"required_record_fields\":[\"name\",\"unit\",\"status\",\"scope\"]},"
-            "{\"name\":\"measurement_values_csv_v1\",\"media_type\":\"text/csv\",\"columns\":[\"name\",\"value\",\"unit\",\"status\",\"scope\",\"time_seconds\",\"beat_index\",\"channel\",\"formula\",\"confidence\"],\"required_columns\":[\"name\",\"value\",\"unit\",\"status\",\"scope\",\"time_seconds\",\"beat_index\",\"channel\",\"formula\",\"confidence\"]}],"
-            "\"measurement_contract\":{\"statuses\":[\"valid\",\"undefined\",\"absent\",\"not_evaluable\"],\"scopes\":[\"record\",\"lead\",\"beat\",\"beat_lead\",\"paired_signal\"],\"units\":[\"s\",\"s2\",\"mV\",\"mV/s\",\"deg\",\"count\",\"ratio\",\"nu\",\"%\",\"bpm\",\"a.u.\",\"bool\"],\"qt_formulas\":[\"fixed\",\"bazett\",\"fridericia\",\"framingham\",\"hodges\"]},"
+            "{\"name\":\"measurement_values_json_v2\",\"media_type\":\"application/json\",\"recommended\":true,\"container_fields\":[\"schema_version\",\"contract\",\"measurements\"],\"record_fields\":[\"name\",\"value\",\"unit\",\"status\",\"scope\",\"time_seconds\",\"beat_index\",\"window_start_seconds\",\"window_end_seconds\",\"channel\",\"formula\",\"method_id\",\"preprocessing_policy_id\",\"confidence\"],\"required_record_fields\":[\"name\",\"unit\",\"status\",\"scope\"]},"
+            "{\"name\":\"measurement_values_csv_v2\",\"media_type\":\"text/csv\",\"columns\":[\"name\",\"value\",\"unit\",\"status\",\"scope\",\"time_seconds\",\"beat_index\",\"window_start_seconds\",\"window_end_seconds\",\"channel\",\"formula\",\"method_id\",\"preprocessing_policy_id\",\"confidence\"],\"required_columns\":[\"name\",\"value\",\"unit\",\"status\",\"scope\",\"time_seconds\",\"beat_index\",\"window_start_seconds\",\"window_end_seconds\",\"channel\",\"formula\",\"method_id\",\"preprocessing_policy_id\",\"confidence\"]}],"
+            "\"measurement_contract\":{\"statuses\":[\"valid\",\"undefined\",\"absent\",\"not_evaluable\"],\"scopes\":[\"record\",\"lead\",\"beat\",\"beat_lead\",\"paired_signal\",\"window\",\"window_lead\"],\"units\":[\"s\",\"s2\",\"mV\",\"mV/s\",\"deg\",\"count\",\"ratio\",\"nu\",\"%\",\"bpm\",\"a.u.\",\"bool\"],\"qt_formulas\":[\"fixed\",\"bazett\",\"fridericia\",\"framingham\",\"hodges\"]},"
             "\"target_adapters\":{"
             "\"r_peak\":{\"format_family\":\"point_events\",\"required_record_fields\":[\"time_seconds\"]},"
             "\"ppg_systolic_peak\":{\"format_family\":\"point_events\",\"required_record_fields\":[\"time_seconds\"]},"
             "\"ppg_pulse_onset\":{\"format_family\":\"point_events\",\"required_record_fields\":[\"time_seconds\"]},"
             "\"ecg_beat_classification\":{\"format_family\":\"point_events\",\"label\":\"beat_class\",\"required_record_fields\":[\"time_seconds\",\"label\"]},"
             "\"ecg_delineation\":{\"format_family\":\"point_events\",\"channel\":\"standard_ecg_lead\",\"label\":\"fiducial_kind\",\"required_record_fields\":[\"time_seconds\",\"channel\",\"label\"]},"
-            "\"hrv\":{\"format_family\":\"hrv_metrics\"},"
+            "\"hrv\":{\"format_family\":\"measurement_values\",\"scopes\":[\"beat\",\"window\"],\"measurements\":[\"rr_interval\",\"mean_rr_seconds\",\"mean_heart_rate_bpm\",\"sdnn_seconds\",\"rmssd_seconds\",\"pnn50_percent\",\"sd1_seconds\",\"sd2_seconds\",\"sd1_sd2_ratio\",\"vlf_power_seconds2\",\"lf_power_seconds2\",\"hf_power_seconds2\",\"lf_hf_ratio\",\"lf_normalized_units\",\"hf_normalized_units\",\"total_power_seconds2\"]},"
             "\"rhythm_episode\":{\"format_family\":\"interval_events\",\"channel\":\"global\"},"
             "\"signal_quality\":{\"format_family\":\"interval_events\",\"channel\":\"global_or_physical_channel\"},"
             "\"rr_interval\":{\"format_family\":\"measurement_values\",\"scopes\":[\"beat\"],\"measurements\":[\"rr_interval\"]},"
@@ -734,7 +717,7 @@ namespace
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << std::setprecision(std::numeric_limits<double>::max_digits10)
-               << "{\"schema_version\":1,\"package_id\":" << json_text(manifest.pack_id)
+               << "{\"schema_version\":3,\"contract\":\"synsigra_scoring_manifest_v3\",\"package_id\":" << json_text(manifest.pack_id)
                << ",\"pack_version\":" << json_text(manifest.version)
                << ",\"pack_fingerprint\":" << json_text(identity.pack_fingerprint)
                << ",\"generator_version\":" << json_text(signal_synth::signal_synth_generator_version())
@@ -1076,8 +1059,8 @@ int main(int argc, char** argv)
             signal_synth::measurement_output_document measurement_document;
             signal_synth::measurement_io_result measurement_result;
             const bool parsed = starts_with_json_object(measurement_input)
-                ? signal_synth::parse_measurement_values_json_v1(measurement_input, measurement_document, measurement_result)
-                : signal_synth::parse_measurement_values_csv_v1(measurement_input, measurement_document, measurement_result);
+                ? signal_synth::parse_measurement_values_json_v2(measurement_input, measurement_document, measurement_result)
+                : signal_synth::parse_measurement_values_csv_v2(measurement_input, measurement_document, measurement_result);
             if (!parsed)
             {
                 for (std::size_t i = 0; i < measurement_result.messages.size(); ++i)
@@ -1366,92 +1349,6 @@ int main(int argc, char** argv)
             else
                 std::cout << "NA";
             std::cout << '\n';
-            return 0;
-        }
-        catch (const std::bad_alloc&)
-        {
-            std::cerr << "error=INTERNAL_ERROR path=$ message=memory allocation failed\n";
-        }
-        catch (...)
-        {
-            std::cerr << "error=INTERNAL_ERROR path=$ message=unexpected failure\n";
-        }
-        return 5;
-    }
-    if (command == "hrv")
-    {
-        if (argc != 7 || std::string(argv[2]) != "score" || std::string(argv[5]) != "--out")
-        {
-            print_usage();
-            return 2;
-        }
-        try
-        {
-            if (std::string(argv[3]) == "-" && std::string(argv[4]) == "-")
-            {
-                std::cerr << "error=INPUT_READ_FAILED path=- message=scenario and HRV output cannot both be read from stdin\n";
-                return 3;
-            }
-            std::string scenario_json;
-            std::string user_json;
-            if (!read_input(argv[3], scenario_json))
-            {
-                std::cerr << "error=INPUT_READ_FAILED path=" << argv[3] << " message=unable to read scenario input or input exceeds 16 MiB\n";
-                return 3;
-            }
-            if (!read_input(argv[4], user_json))
-            {
-                std::cerr << "error=INPUT_READ_FAILED path=" << argv[4] << " message=unable to read HRV output or input exceeds 16 MiB\n";
-                return 3;
-            }
-            signal_synth::ecg_scenario_document document;
-            signal_synth::ecg_scenario_json_result scenario_result;
-            if (!signal_synth::parse_ecg_scenario_json(scenario_json, document, scenario_result))
-            {
-                print_errors(scenario_result);
-                return 4;
-            }
-            signal_synth::hrv_user_output user;
-            std::vector<std::string> user_messages;
-            if (!signal_synth::parse_hrv_user_output_json(user_json, user, user_messages))
-            {
-                for (std::size_t i = 0; i < user_messages.size(); ++i)
-                    std::cerr << "error=HRV_INPUT_FAILED path=$ message=" << user_messages[i] << '\n';
-                return 4;
-            }
-            signal_synth::ecg_render_bundle render;
-            signal_synth::ecg_document_render_result render_result;
-            if (!signal_synth::render_ecg_document(document, render, render_result))
-            {
-                std::cerr << "error=RENDER_FAILED path=$ message=" << (render_result.messages.empty() ? "render failed" : render_result.messages[0]) << '\n';
-                return 4;
-            }
-            signal_synth::hrv_score_result score;
-            if (!signal_synth::score_hrv_user_output(render, user, score))
-            {
-                std::cerr << "error=HRV_SCORE_FAILED path=$ message=" << (score.messages.empty() ? "HRV scoring failed" : score.messages[0]) << '\n';
-                return 4;
-            }
-            const std::string output_directory(argv[6]);
-            if (!create_directory(output_directory))
-            {
-                std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=output directory must be new and writable\n";
-                return 3;
-            }
-            if (!write_text_file(join_path(output_directory, "hrv_score.json"), signal_synth::hrv_score_result_json(score))
-                || !write_text_file(join_path(output_directory, "hrv_score.csv"), signal_synth::hrv_score_result_csv(score))
-                || !write_text_file(join_path(output_directory, "hrv_score_report.html"), signal_synth::hrv_score_report_html(score)))
-            {
-                std::cerr << "error=OUTPUT_WRITE_FAILED path=" << output_directory << " message=unable to write HRV scoring output files\n";
-                return 3;
-            }
-            std::cout << "status=hrv-scored\n"
-                      << "output_directory=" << output_directory << '\n'
-                      << "scenario_id=" << score.scenario_id << '\n'
-                      << "metric_count=" << score.metrics.size() << '\n'
-                      << "passed_metric_count=" << score.passed_metric_count << '\n'
-                      << "metric_pass_fraction=" << score.metric_pass_fraction << '\n'
-                      << "rr_matched_count=" << score.rr.matched_count << '\n';
             return 0;
         }
         catch (const std::bad_alloc&)

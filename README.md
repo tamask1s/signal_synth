@@ -181,13 +181,13 @@ External beta users install the generator-free wheel supplied with the
 release:
 
 ```bash
-python -m pip install synsigra-0.9.0-py3-none-any.whl
+python -m pip install synsigra-0.10.0-py3-none-any.whl
 ```
 
 Run local verification:
 
 ```bash
-synsigra-verify package.zip submission/ verification-results/ --profile regression
+synsigra-verify package.zip submission/ verification-results/
 ```
 
 Each challenge supplies `user-output-template/`; the user records algorithm
@@ -196,8 +196,10 @@ verifier reads package ground truth and the explicit submission locally. It
 does not invoke the C++ generator. It writes `verification_summary.json`,
 `verification_summary.csv`, `verification_report.html`, and per-case evidence
 under `verification/`. Exit code `0` means pass, `1` means verification
-failure, and `2` means invalid CLI usage. Built-in profiles are `smoke`,
-`regression`, `stress`, and `benchmark`.
+failure, and `2` means invalid CLI usage. Evidence mode is the default and uses
+the immutable protocol carried by the package. Case/target filters and the
+`smoke`, `regression`, `stress`, or `benchmark` profiles are available only in
+explicit `--mode diagnostic` runs, which are always reported as non-evidence.
 
 Protocol-enabled packs also carry `verification_protocol.json`, resolved by
 its manifest role. The Python loader rejects malformed manifests, ambiguous or

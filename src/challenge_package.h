@@ -15,13 +15,13 @@ namespace signal_synth
         challenge_package_json_duplicate_id = 5
     };
 
-    enum challenge_package_type
+    enum challenge_package_type : int
     {
         challenge_package_single_scenario = 0,
         challenge_package_scenario_pack = 1
     };
 
-    enum challenge_file_role
+    enum challenge_file_role : int
     {
         challenge_file_scenario_json = 0,
         challenge_file_pack_json = 1,

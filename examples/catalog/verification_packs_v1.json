@@ -31,13 +31,13 @@
       ],
       "changelog": [{"version": "1.0", "date": "2026-07-18", "changes": ["Initial beta pack with exact in-record RR truth, rate boundaries, analytic artifacts and calibrated external noise."]}],
       "generator_compatibility": {
-        "minimum_generator_version": "0.9.0-dev",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [2, 8],
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.9.0"
+        "local_verifier_min_version": "0.10.0"
       }
     },
     {
@@ -65,13 +65,13 @@
       ],
       "changelog": [{"version": "1.0", "date": "2026-07-18", "changes": ["Initial beta pack with five correction formulae, exact beat-level timing truth and difficult repolarization cases."]}],
       "generator_compatibility": {
-        "minimum_generator_version": "0.9.0-dev",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [3, 7],
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.9.0"
+        "local_verifier_min_version": "0.10.0"
       }
     },
     {
@@ -99,13 +99,13 @@
       ],
       "changelog": [{"version": "1.0", "date": "2026-07-17", "changes": ["Initial beta pack with seven extended morphology components and periodic fusion beats."]}],
       "generator_compatibility": {
-        "minimum_generator_version": "0.9.0-dev",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [7],
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.9.0"
+        "local_verifier_min_version": "0.10.0"
       }
     },
     {
@@ -133,13 +133,13 @@
       ],
       "changelog": [{"version": "1.0", "date": "2026-07-17", "changes": ["Initial beta pack with multi-episode interval truth, class burden scoring, deterministic VF and beat-free asystole."]}],
       "generator_compatibility": {
-        "minimum_generator_version": "0.9.0-dev",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [2],
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.9.0"
+        "local_verifier_min_version": "0.10.0"
       }
     },
     {
@@ -177,13 +177,13 @@
         }
       ],
       "generator_compatibility": {
-        "minimum_generator_version": "0.9.0-dev",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [2, 3, 4],
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.9.0"
+        "local_verifier_min_version": "0.10.0"
       }
     },
     {
@@ -221,13 +221,13 @@
         }
       ],
       "generator_compatibility": {
-        "minimum_generator_version": "0.9.0-dev",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [2, 9],
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.9.0"
+        "local_verifier_min_version": "0.10.0"
       }
     },
     {
@@ -390,7 +390,7 @@
           ]
         }
       ],
-      "generator_compatibility": {"local_verifier_min_version": "0.9.0"}
+      "generator_compatibility": {"local_verifier_min_version": "0.10.0"}
     },
     {
       "pack_id": "ppg_alignment_v1",
@@ -433,7 +433,7 @@
           ]
         }
       ],
-      "generator_compatibility": {"local_verifier_min_version": "0.9.0"}
+      "generator_compatibility": {"local_verifier_min_version": "0.10.0"}
     },
     {
       "pack_id": "combined_worst_case_v1",
@@ -512,7 +512,7 @@
           ]
         }
       ],
-      "generator_compatibility": {"local_verifier_min_version": "0.9.0"}
+      "generator_compatibility": {"local_verifier_min_version": "0.10.0"}
     },
     {
       "pack_id": "ppg_benchmark_v1",
@@ -591,13 +591,13 @@
         }
       ],
       "generator_compatibility": {
-        "minimum_generator_version": "0.9.0-dev",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [6],
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.9.0"
+        "local_verifier_min_version": "0.10.0"
       }
     },
     {
@@ -643,13 +643,13 @@
         }
       ],
       "generator_compatibility": {
-        "minimum_generator_version": "0.9.0-dev",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [2, 3, 4],
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.9.0"
+        "local_verifier_min_version": "0.10.0"
       }
     },
     {
@@ -687,13 +687,13 @@
         }
       ],
       "generator_compatibility": {
-        "minimum_generator_version": "0.9.0-dev",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [4],
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.9.0"
+        "local_verifier_min_version": "0.10.0"
       }
     },
     {
@@ -721,13 +721,13 @@
       ],
       "changelog": [{"version": "1.0", "date": "2026-07-17", "changes": ["Initial beta pack with deterministic resampling, calibrated per-lead SNR, tapers, clean reference, clipping accounting and release gating."]}],
       "generator_compatibility": {
-        "minimum_generator_version": "0.9.0-dev",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [8],
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.9.0"
+        "local_verifier_min_version": "0.10.0"
       }
     }
   ]

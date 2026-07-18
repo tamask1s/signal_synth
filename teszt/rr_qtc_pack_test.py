@@ -62,7 +62,7 @@ def make_perfect_submission(challenge_dir, submission_dir):
         elif target == "ecg_delineation":
             write_json(path, {"schema_version": 1, "events": delineation_events(case)})
         elif target in ("rr_interval", "qtc"):
-            write_json(path, {"schema_version": 1, "measurements": [dict(item["measurement"]) for item in case.measurement_truth(target)]})
+            write_json(path, {"schema_version": 2, "contract": "synsigra_measurement_values_v2", "measurements": [dict(item["measurement"]) for item in case.measurement_truth(target)]})
         else:
             raise AssertionError("unexpected target: %s" % target)
     challenge.close()
@@ -184,9 +184,9 @@ def main():
     assert rr_challenge.verify_integrity()["ok"] and qtc_challenge.verify_integrity()["ok"]
     rr_protocol = rr_challenge.verification_protocol()
     qtc_protocol = qtc_challenge.verification_protocol()
-    assert rr_protocol["contract"] == qtc_protocol["contract"] == "synsigra_verification_protocol_v1"
-    assert rr_protocol["pack_id"] == "r_peak_rr_noise_v1" and rr_protocol["pre_specified_profile"] == "stress"
-    assert qtc_protocol["pack_id"] == "ecg_qtc_verification_v1" and qtc_protocol["pre_specified_profile"] == "regression"
+    assert rr_protocol["contract"] == qtc_protocol["contract"] == "synsigra_verification_protocol_v2"
+    assert rr_protocol["pack_id"] == "r_peak_rr_noise_v1" and rr_protocol["acceptance_profile"]["profile_id"] == "r_peak_rr_noise_v1_acceptance"
+    assert qtc_protocol["pack_id"] == "ecg_qtc_verification_v1" and qtc_protocol["acceptance_profile"]["profile_id"] == "ecg_qtc_verification_v1_acceptance"
     rr_roles = dict((item["path"], item["role"]) for item in rr_challenge.manifest["files"])
     assert rr_roles["scoring_manifest.json"] == "scoring_manifest_json"
     assert rr_roles["verification_protocol.json"] == "verification_protocol_json"
@@ -204,31 +204,49 @@ def main():
     qtc_submission = os.path.join(work, "qtc_submission")
     rr_manifest = make_perfect_submission(rr_challenge_dir, rr_submission)
     qtc_manifest = make_perfect_submission(qtc_challenge_dir, qtc_submission)
-    rr_perfect = ss.verify_package(rr_challenge, rr_submission, os.path.join(work, "rr_perfect"), profile="stress")
-    qtc_perfect = ss.verify_package(qtc_challenge, qtc_submission, os.path.join(work, "qtc_perfect"), profile="regression")
+    rr_perfect = ss.verify_package(rr_challenge, rr_submission, os.path.join(work, "rr_perfect"))
+    qtc_perfect = ss.verify_package(qtc_challenge, qtc_submission, os.path.join(work, "qtc_perfect"))
     assert rr_perfect.summary["success"] and qtc_perfect.summary["success"]
+    assert rr_perfect.summary["verification"]["mode"] == "evidence" and rr_perfect.summary["verification"]["evidence_eligible"]
+    assert rr_perfect.summary["verification"]["protocol"]["sha256"].startswith("sha256:") and rr_perfect.summary["verification"]["matrix_complete"]
     assert target_result(rr_perfect, "rr_interval")["policy"]["passed"]
     assert target_result(qtc_perfect, "qtc")["policy"]["passed"]
+
+    incomplete_submission = os.path.join(work, "incomplete_submission")
+    shutil.copytree(rr_submission, incomplete_submission)
+    missing_output = rr_manifest["outputs"][0]
+    os.remove(output_path(incomplete_submission, missing_output))
+    incomplete = ss.verify_package(rr_challenge, incomplete_submission, os.path.join(work, "incomplete"))
+    assert not incomplete.summary["success"] and not incomplete.summary["verification"]["matrix_complete"]
+    assert not incomplete.summary["verification"]["evidence_eligible"] and incomplete.summary["status"] == "evidence_failed"
 
     rpeak_bad_submission = os.path.join(work, "rpeak_bad_submission")
     shutil.copytree(rr_submission, rpeak_bad_submission)
     remove_artifact_r_peaks(rr_challenge, rpeak_bad_submission, rr_manifest)
-    rpeak_bad = ss.verify_package(rr_challenge, rpeak_bad_submission, os.path.join(work, "rpeak_bad"), profile="stress")
+    rpeak_bad = ss.verify_package(rr_challenge, rpeak_bad_submission, os.path.join(work, "rpeak_bad"))
     rpeak_result = target_result(rpeak_bad, "r_peak")
     assert not rpeak_bad.summary["success"] and not rpeak_result["policy"]["passed"]
     assert any(item["section"] == "artifact" and not item["passed"] for item in rpeak_result["policy"]["checks"] if item["applicable"])
 
     shift_measurement(rr_submission, rr_manifest, "rr_interval", "rr_interval", 0.040)
-    rr_bad = ss.verify_package(rr_challenge, rr_submission, os.path.join(work, "rr_bad"), profile="stress")
+    rr_bad = ss.verify_package(rr_challenge, rr_submission, os.path.join(work, "rr_bad"))
     rr_result = target_result(rr_bad, "rr_interval")
     assert not rr_bad.summary["success"] and not rr_result["policy"]["passed"]
     assert any(item["section"] == "rr_interval" and not item["passed"] for item in rr_result["policy"]["checks"] if item["applicable"])
 
     shift_measurement(qtc_submission, qtc_manifest, "qtc", "qtc_interval", 0.040)
-    qtc_bad = ss.verify_package(qtc_challenge, qtc_submission, os.path.join(work, "qtc_bad"), profile="regression")
+    qtc_bad = ss.verify_package(qtc_challenge, qtc_submission, os.path.join(work, "qtc_bad"))
     qtc_result = target_result(qtc_bad, "qtc")
     assert not qtc_bad.summary["success"] and not qtc_result["policy"]["passed"]
     assert any(item["section"] == "qtc_interval" and not item["passed"] for item in qtc_result["policy"]["checks"] if item["applicable"])
+
+    try:
+        ss.verify_package(rr_challenge, rpeak_bad_submission, os.path.join(work, "forbidden_override"), profile="smoke")
+        raise AssertionError("evidence mode accepted a caller-selected profile")
+    except ss.VerificationError:
+        pass
+    diagnostic = ss.verify_package(rr_challenge, rpeak_bad_submission, os.path.join(work, "diagnostic"), mode="diagnostic", cases=["clean_70"], targets=["r_peak"], profile="smoke")
+    assert diagnostic.summary["verification"]["mode"] == "diagnostic" and not diagnostic.summary["verification"]["evidence_eligible"]
 
     rr_challenge.close()
     qtc_challenge.close()

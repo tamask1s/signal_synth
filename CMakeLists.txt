@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(signal_synth VERSION 0.9.0 LANGUAGES CXX)
+project(signal_synth VERSION 0.10.0 LANGUAGES CXX)
 
 option(SIGNAL_SYNTH_BUILD_TESTS "Build signal_synth verification tests" ON)
 option(SIGNAL_SYNTH_BUILD_CLI "Build the signal-synth command-line tool" ON)
@@ -17,7 +17,6 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/ecg_wfdb_export.h
     src/ecg_edf_bdf_export.h
     src/hrv_metrics.h
-    src/hrv_scoring.h
     src/cardiorespiratory.h
     src/ecg_beat_classification.h
     src/ecg_compare.h
@@ -56,7 +55,6 @@ add_library(
     src/ecg_wfdb_export.cpp
     src/ecg_edf_bdf_export.cpp
     src/hrv_metrics.cpp
-    src/hrv_scoring.cpp
     src/cardiorespiratory.cpp
     src/ecg_beat_classification.cpp
     src/ecg_compare.cpp

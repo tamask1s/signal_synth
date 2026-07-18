@@ -296,16 +296,16 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           2,
           8
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -452,8 +452,8 @@
         },
         {
           "accepted_formats": [
-            "measurement_values_json_v1",
-            "measurement_values_csv_v1"
+            "measurement_values_json_v2",
+            "measurement_values_csv_v2"
           ],
           "case_count": 8,
           "case_ids": [
@@ -506,8 +506,8 @@
       "submission_output_schemas": [
         "point_events_json_v1",
         "point_events_csv_v1",
-        "measurement_values_json_v1",
-        "measurement_values_csv_v1",
+        "measurement_values_json_v2",
+        "measurement_values_csv_v2",
         "interval_events_json_v1",
         "interval_events_csv_v1"
       ],
@@ -547,72 +547,187 @@
         "artifact_role": "verification_protocol_json",
         "available": true,
         "document": {
-          "acceptance": {
-            "r_peak": {
-              "profile_section": "event_detection",
-              "required_bins": [
-                "total",
-                "clean",
-                "artifact"
-              ]
-            },
-            "rr_interval": {
-              "maximum_mean_absolute_error_seconds": 0.025,
-              "minimum_prediction_match_fraction": 0.75,
-              "minimum_tolerance_pass_fraction": 0.75,
-              "minimum_truth_match_fraction": 0.75
-            },
-            "signal_quality": {
-              "profile_section": "interval_detection"
+          "acceptance_profile": {
+            "description": "Pre-specified acceptance limits for the complete R-peak and RR noise protocol.",
+            "profile_id": "r_peak_rr_noise_v1_acceptance",
+            "schema_version": 1,
+            "targets": {
+              "r_peak": {
+                "artifact": {
+                  "f1_score": {
+                    "min": 0.6
+                  }
+                },
+                "clean": {
+                  "f1_score": {
+                    "min": 0.9
+                  }
+                },
+                "total": {
+                  "f1_score": {
+                    "min": 0.75
+                  },
+                  "mean_absolute_error_seconds": {
+                    "max": 0.08
+                  }
+                }
+              },
+              "rr_interval": {
+                "overall": {
+                  "prediction_match_fraction": {
+                    "min": 0.75
+                  },
+                  "status_match_fraction": {
+                    "min": 0.75
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.75
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.75
+                  }
+                },
+                "rr_interval": {
+                  "mean_absolute_error": {
+                    "max": 0.025
+                  },
+                  "p95_absolute_error": {
+                    "max": 0.05
+                  },
+                  "prediction_match_fraction": {
+                    "min": 0.75
+                  },
+                  "status_match_fraction": {
+                    "min": 0.75
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.75
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.75
+                  }
+                }
+              },
+              "signal_quality": {
+                "overall": {
+                  "mean_absolute_offset_error_seconds": {
+                    "max": 0.4
+                  },
+                  "mean_absolute_onset_error_seconds": {
+                    "max": 0.4
+                  },
+                  "temporal_iou": {
+                    "min": 0.5
+                  },
+                  "time_f1_score": {
+                    "min": 0.65
+                  }
+                }
+              }
             }
           },
           "context_of_use": "Deterministic synthetic engineering QA for ECG R-peak detection and observable R-R interval reconstruction under controlled acquisition disturbances.",
-          "contract": "synsigra_verification_protocol_v1",
+          "contract": "synsigra_verification_protocol_v2",
           "evidence_boundary": "Synthetic engineering evidence only; not FDA qualification, clinical validation, diagnostic performance evidence, or a substitute for sponsor-specific risk analysis and representative clinical data.",
           "pack_id": "r_peak_rr_noise_v1",
-          "pre_specified_profile": "stress",
           "protocol_id": "r_peak_rr_noise_v1",
-          "required_targets": [
-            "r_peak",
-            "rr_interval",
-            "signal_quality"
+          "required_case_targets": [
+            {
+              "case_id": "clean_70",
+              "targets": [
+                "r_peak",
+                "rr_interval"
+              ]
+            },
+            {
+              "case_id": "slow_45",
+              "targets": [
+                "r_peak",
+                "rr_interval"
+              ]
+            },
+            {
+              "case_id": "fast_120",
+              "targets": [
+                "r_peak",
+                "rr_interval"
+              ]
+            },
+            {
+              "case_id": "baseline_powerline",
+              "targets": [
+                "r_peak",
+                "rr_interval",
+                "signal_quality"
+              ]
+            },
+            {
+              "case_id": "dropout_saturation",
+              "targets": [
+                "r_peak",
+                "rr_interval",
+                "signal_quality"
+              ]
+            },
+            {
+              "case_id": "analytic_extreme",
+              "targets": [
+                "r_peak",
+                "rr_interval",
+                "signal_quality"
+              ]
+            },
+            {
+              "case_id": "external_calibrated",
+              "targets": [
+                "r_peak",
+                "rr_interval",
+                "signal_quality"
+              ]
+            },
+            {
+              "case_id": "external_extreme",
+              "targets": [
+                "r_peak",
+                "rr_interval",
+                "signal_quality"
+              ]
+            }
           ],
-          "schema_version": 1,
-          "stress_matrix": {
-            "analytic_artifacts": [
-              "baseline_wander",
-              "emg_noise",
-              "powerline",
-              "quantization",
-              "adc_clipping",
-              "dropout",
-              "saturation"
-            ],
-            "external_noise_channels": [
-              "baseline_wander",
-              "muscle",
-              "electrode_motion"
-            ],
-            "external_noise_snr_db": [
-              12,
-              6,
-              0,
-              -6,
-              -12
-            ],
-            "rate_bpm": [
-              45,
-              70,
-              120
-            ]
-          },
+          "schema_version": 2,
+          "scoring_contract": "synsigra_local_verification_v2",
+          "stress_strata": [
+            {
+              "case_ids": [
+                "clean_70",
+                "slow_45",
+                "fast_120"
+              ],
+              "id": "rate_range"
+            },
+            {
+              "case_ids": [
+                "baseline_powerline",
+                "dropout_saturation",
+                "analytic_extreme"
+              ],
+              "id": "analytic_artifacts"
+            },
+            {
+              "case_ids": [
+                "external_calibrated",
+                "external_extreme"
+              ],
+              "id": "external_noise"
+            }
+          ],
           "truth_policy": {
-            "artifact_overlap": "Retained for RR scoring; signal-quality/HRV exclusion policy does not remove physiological RR truth.",
+            "artifact_overlap": "Retained for RR scoring; signal-quality and HRV exclusion policy does not remove physiological RR truth.",
             "first_beat": "Excluded because no preceding in-record R peak is observable.",
             "rr_definition": "Difference between consecutive present-QRS construction R-peak times inside the record."
           }
         },
-        "source_content_sha256": "sha256:9241ba631bc62d262ab8e7c56254641911f9f1342c8fb0004d345c03428432a7",
+        "source_content_sha256": "sha256:1295d423e97e5de8ef203610e194785661e4be283e077d95c50ebc1428120e56",
         "source_path": "examples/packs/r_peak_rr_noise_v1_expectations.json"
       },
       "version": "1.0"
@@ -1016,16 +1131,16 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           3,
           7
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -1196,8 +1311,8 @@
         },
         {
           "accepted_formats": [
-            "measurement_values_json_v1",
-            "measurement_values_csv_v1"
+            "measurement_values_json_v2",
+            "measurement_values_csv_v2"
           ],
           "case_count": 12,
           "case_ids": [
@@ -1233,8 +1348,8 @@
       "submission_output_schemas": [
         "point_events_json_v1",
         "point_events_csv_v1",
-        "measurement_values_json_v1",
-        "measurement_values_csv_v1"
+        "measurement_values_json_v2",
+        "measurement_values_csv_v2"
       ],
       "supported_threshold_profiles": [
         "smoke",
@@ -1272,71 +1387,252 @@
         "artifact_role": "verification_protocol_json",
         "available": true,
         "document": {
-          "acceptance": {
-            "ecg_delineation": {
-              "default_leads": [
-                "II",
-                "V2"
-              ],
-              "required_kinds": [
-                "qrs_onset",
-                "r_peak",
-                "t_onset",
-                "t_peak",
-                "t_offset"
-              ]
-            },
-            "qtc": {
-              "maximum_qt_mae_seconds": 0.025,
-              "maximum_qtc_mae_seconds": 0.025,
-              "maximum_rr_mae_seconds": 0.015,
-              "minimum_prediction_match_fraction": 0.9,
-              "minimum_tolerance_pass_fraction": 0.9,
-              "minimum_truth_match_fraction": 0.9
-            },
-            "r_peak": {
-              "profile_section": "event_detection"
+          "acceptance_profile": {
+            "description": "Pre-specified acceptance limits for the complete QT and QTc verification protocol.",
+            "profile_id": "ecg_qtc_verification_v1_acceptance",
+            "schema_version": 1,
+            "targets": {
+              "ecg_delineation": {
+                "overall": {
+                  "f1_score": {
+                    "min": 0.85
+                  },
+                  "mean_absolute_error_seconds": {
+                    "max": 0.04
+                  }
+                }
+              },
+              "qtc": {
+                "overall": {
+                  "prediction_match_fraction": {
+                    "min": 0.9
+                  },
+                  "status_match_fraction": {
+                    "min": 0.9
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.9
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.9
+                  }
+                },
+                "qt_interval": {
+                  "mean_absolute_error": {
+                    "max": 0.025
+                  },
+                  "p95_absolute_error": {
+                    "max": 0.05
+                  },
+                  "prediction_match_fraction": {
+                    "min": 0.9
+                  },
+                  "status_match_fraction": {
+                    "min": 0.9
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.9
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.9
+                  }
+                },
+                "qtc_interval": {
+                  "mean_absolute_error": {
+                    "max": 0.025
+                  },
+                  "p95_absolute_error": {
+                    "max": 0.05
+                  },
+                  "prediction_match_fraction": {
+                    "min": 0.9
+                  },
+                  "status_match_fraction": {
+                    "min": 0.9
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.9
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.9
+                  }
+                },
+                "rr_interval": {
+                  "mean_absolute_error": {
+                    "max": 0.015
+                  },
+                  "p95_absolute_error": {
+                    "max": 0.03
+                  },
+                  "prediction_match_fraction": {
+                    "min": 0.9
+                  },
+                  "status_match_fraction": {
+                    "min": 0.9
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.9
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.9
+                  }
+                }
+              },
+              "r_peak": {
+                "artifact": {
+                  "f1_score": {
+                    "min": 0.7
+                  }
+                },
+                "clean": {
+                  "f1_score": {
+                    "min": 0.95
+                  }
+                },
+                "total": {
+                  "f1_score": {
+                    "min": 0.9
+                  },
+                  "mean_absolute_error_seconds": {
+                    "max": 0.05
+                  }
+                }
+              }
             }
           },
           "context_of_use": "Deterministic synthetic engineering QA for ECG R-peak, T-offset, QT and heart-rate-corrected QT implementations.",
-          "contract": "synsigra_verification_protocol_v1",
+          "contract": "synsigra_verification_protocol_v2",
           "evidence_boundary": "Synthetic engineering evidence only; not an FDA-qualified MDDT, clinical validation, diagnostic performance evidence, or a substitute for sponsor-specific protocol, risk analysis and representative clinical data.",
-          "formula_matrix": {
-            "bazett": [
-              45,
-              120
-            ],
-            "fixed": [
-              60
-            ],
-            "framingham": [
-              45,
-              120
-            ],
-            "fridericia": [
-              45,
-              120
-            ],
-            "hodges": [
-              45,
-              120
-            ]
-          },
           "pack_id": "ecg_qtc_verification_v1",
-          "pre_specified_profile": "regression",
           "protocol_id": "ecg_qtc_verification_v1",
-          "required_targets": [
-            "r_peak",
-            "ecg_delineation",
-            "qtc"
+          "required_case_targets": [
+            {
+              "case_id": "bazett_brady_45",
+              "targets": [
+                "r_peak",
+                "ecg_delineation",
+                "qtc"
+              ]
+            },
+            {
+              "case_id": "bazett_tachy_120",
+              "targets": [
+                "r_peak",
+                "ecg_delineation",
+                "qtc"
+              ]
+            },
+            {
+              "case_id": "fridericia_brady_45",
+              "targets": [
+                "r_peak",
+                "ecg_delineation",
+                "qtc"
+              ]
+            },
+            {
+              "case_id": "fridericia_tachy_120",
+              "targets": [
+                "r_peak",
+                "ecg_delineation",
+                "qtc"
+              ]
+            },
+            {
+              "case_id": "framingham_brady_45",
+              "targets": [
+                "r_peak",
+                "ecg_delineation",
+                "qtc"
+              ]
+            },
+            {
+              "case_id": "framingham_tachy_120",
+              "targets": [
+                "r_peak",
+                "ecg_delineation",
+                "qtc"
+              ]
+            },
+            {
+              "case_id": "hodges_brady_45",
+              "targets": [
+                "r_peak",
+                "ecg_delineation",
+                "qtc"
+              ]
+            },
+            {
+              "case_id": "hodges_tachy_120",
+              "targets": [
+                "r_peak",
+                "ecg_delineation",
+                "qtc"
+              ]
+            },
+            {
+              "case_id": "fixed_normal_60",
+              "targets": [
+                "r_peak",
+                "ecg_delineation",
+                "qtc"
+              ]
+            },
+            {
+              "case_id": "dynamic_long_qt",
+              "targets": [
+                "r_peak",
+                "ecg_delineation",
+                "qtc"
+              ]
+            },
+            {
+              "case_id": "difficult_t_u",
+              "targets": [
+                "r_peak",
+                "ecg_delineation",
+                "qtc"
+              ]
+            },
+            {
+              "case_id": "low_t_baseline",
+              "targets": [
+                "r_peak",
+                "ecg_delineation",
+                "qtc"
+              ]
+            }
           ],
-          "schema_version": 1,
-          "stress_matrix": [
-            "dynamic_long_qt_episode",
-            "biphasic_and_notched_t",
-            "u_wave",
-            "low_amplitude_t",
-            "baseline_wander"
+          "schema_version": 2,
+          "scoring_contract": "synsigra_local_verification_v2",
+          "stress_strata": [
+            {
+              "case_ids": [
+                "bazett_brady_45",
+                "bazett_tachy_120",
+                "fridericia_brady_45",
+                "fridericia_tachy_120",
+                "framingham_brady_45",
+                "framingham_tachy_120",
+                "hodges_brady_45",
+                "hodges_tachy_120",
+                "fixed_normal_60"
+              ],
+              "id": "formula_and_rate"
+            },
+            {
+              "case_ids": [
+                "dynamic_long_qt"
+              ],
+              "id": "dynamic_adaptation"
+            },
+            {
+              "case_ids": [
+                "difficult_t_u",
+                "low_t_baseline"
+              ],
+              "id": "difficult_repolarization"
+            }
           ],
           "truth_policy": {
             "fiducial_limit": "Model-defined endpoints do not represent human-reader uncertainty.",
@@ -1345,7 +1641,7 @@
             "qtc_definition": "Scenario-declared formula applied by the cardiac timing model; formula identity is part of measurement identity."
           }
         },
-        "source_content_sha256": "sha256:65df846f3f54c34832c3d1db6ac35219fcbd9a7e371f79875a6c5c8bf559438d",
+        "source_content_sha256": "sha256:46a20cf52f412dc9f723bf4599db2216a08b582b03ee3a3cb77885e16d4e6382",
         "source_path": "examples/packs/ecg_qtc_verification_v1_expectations.json"
       },
       "version": "1.0"
@@ -1498,15 +1794,15 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           7
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -1640,8 +1936,8 @@
         },
         {
           "accepted_formats": [
-            "measurement_values_json_v1",
-            "measurement_values_csv_v1"
+            "measurement_values_json_v2",
+            "measurement_values_csv_v2"
           ],
           "case_count": 3,
           "case_ids": [
@@ -1685,8 +1981,8 @@
       "submission_output_schemas": [
         "point_events_json_v1",
         "point_events_csv_v1",
-        "measurement_values_json_v1",
-        "measurement_values_csv_v1"
+        "measurement_values_json_v2",
+        "measurement_values_csv_v2"
       ],
       "supported_threshold_profiles": [
         "smoke",
@@ -1875,15 +2171,15 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           2
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -2013,8 +2309,8 @@
         },
         {
           "accepted_formats": [
-            "measurement_values_json_v1",
-            "measurement_values_csv_v1"
+            "measurement_values_json_v2",
+            "measurement_values_csv_v2"
           ],
           "case_count": 3,
           "case_ids": [
@@ -2041,8 +2337,8 @@
       "submission_output_schemas": [
         "interval_events_json_v1",
         "interval_events_csv_v1",
-        "measurement_values_json_v1",
-        "measurement_values_csv_v1"
+        "measurement_values_json_v2",
+        "measurement_values_csv_v2"
       ],
       "supported_threshold_profiles": [
         "smoke",
@@ -2245,17 +2541,17 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           2,
           3,
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -2786,16 +3082,16 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           2,
           9
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -2808,9 +3104,9 @@
           "test_id": "TEST-PYTHON-SCORING-001"
         },
         {
-          "scope": "core HRV metric scoring smoke test",
+          "scope": "generic measurement-path HRV scoring smoke test",
           "target": "hrv",
-          "test_id": "TEST-HRV-SCORING-001"
+          "test_id": "TEST-HRV-GENERIC-001"
         },
         {
           "scope": "local HRV user-output scoring smoke test",
@@ -2901,6 +3197,10 @@
         {
           "required": true,
           "role": "rr_tachogram_csv"
+        },
+        {
+          "required": true,
+          "role": "measurement_truth_json"
         }
       ],
       "pack_id": "hrv_robustness_v2",
@@ -2947,7 +3247,8 @@
         },
         {
           "accepted_formats": [
-            "hrv_metrics_json_v1"
+            "measurement_values_json_v2",
+            "measurement_values_csv_v2"
           ],
           "case_count": 10,
           "case_ids": [
@@ -2964,7 +3265,7 @@
           ],
           "description": "HRV metric and RR-interval scoring against exact synthetic tachogram ground truth.",
           "primary_metric": "metric_pass_fraction",
-          "score_type": "hrv_metrics",
+          "score_type": "measurement",
           "scoreable": true,
           "support": "local_scoring",
           "target": "hrv"
@@ -2999,7 +3300,8 @@
       "submission_output_schemas": [
         "point_events_json_v1",
         "point_events_csv_v1",
-        "hrv_metrics_json_v1",
+        "measurement_values_json_v2",
+        "measurement_values_csv_v2",
         "interval_events_json_v1",
         "interval_events_csv_v1"
       ],
@@ -3040,113 +3342,411 @@
         "artifact_role": "verification_protocol_json",
         "available": true,
         "document": {
-          "acceptance": {
-            "metric_definition_version": "synsigra_hrv_metrics_v2",
-            "required_pipeline_stages": [
-              "r_peak_detection",
-              "rr_interval_reconstruction",
-              "hrv_metric_computation"
-            ],
-            "scoring_version": "synsigra_hrv_score_v2"
+          "acceptance_profile": {
+            "description": "Pre-specified acceptance limits for the complete HRV robustness protocol.",
+            "profile_id": "hrv_robustness_v2_acceptance",
+            "schema_version": 1,
+            "targets": {
+              "hrv": {
+                "hf_normalized_units": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "hf_power_seconds2": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "lf_hf_ratio": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "lf_normalized_units": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "lf_power_seconds2": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "mean_heart_rate_bpm": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "mean_rr_seconds": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "overall": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "pnn50_percent": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "rmssd_seconds": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "rr_interval": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "sd1_sd2_ratio": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "sd1_seconds": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "sd2_seconds": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "sdnn_seconds": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "total_power_seconds2": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                },
+                "vlf_power_seconds2": {
+                  "prediction_match_fraction": {
+                    "min": 0.95
+                  },
+                  "status_match_fraction": {
+                    "min": 0.95
+                  },
+                  "tolerance_pass_fraction": {
+                    "min": 0.95
+                  },
+                  "truth_match_fraction": {
+                    "min": 0.95
+                  }
+                }
+              },
+              "r_peak": {
+                "artifact": {
+                  "f1_score": {
+                    "min": 0.8
+                  }
+                },
+                "clean": {
+                  "f1_score": {
+                    "min": 0.98
+                  }
+                },
+                "total": {
+                  "f1_score": {
+                    "min": 0.95
+                  },
+                  "mean_absolute_error_seconds": {
+                    "max": 0.03
+                  }
+                }
+              },
+              "signal_quality": {
+                "overall": {
+                  "mean_absolute_offset_error_seconds": {
+                    "max": 0.1
+                  },
+                  "mean_absolute_onset_error_seconds": {
+                    "max": 0.1
+                  },
+                  "temporal_iou": {
+                    "min": 0.9
+                  },
+                  "time_f1_score": {
+                    "min": 0.95
+                  }
+                }
+              }
+            }
           },
           "context_of_use": "Deterministic synthetic engineering QA for ECG R-peak detection, NN interval reconstruction, time-domain HRV and VLF/LF/HF metric implementations.",
-          "contract": "synsigra_verification_protocol_v1",
+          "contract": "synsigra_verification_protocol_v2",
           "evidence_boundary": "Synthetic engineering evidence only; not clinical autonomic validation, patient-population evidence, diagnostic performance evidence, or a substitute for sponsor-specific protocol and representative clinical data.",
-          "negative_cases": {
-            "short_window_rejected": {
-              "expected_error_code": "SCENARIO_JSON_RANGE",
-              "expected_error_path": "$.hrv",
-              "path": "../scenarios/hrv/hrv_short_window_rejected.json",
-              "reason": "HRV spectral ground truth requires duration_seconds >= 300"
-            }
-          },
           "pack_id": "hrv_robustness_v2",
-          "pre_specified_profile": "benchmark",
           "protocol_id": "hrv_robustness_v2",
-          "required_targets": [
-            "r_peak",
-            "hrv",
-            "signal_quality"
-          ],
-          "scenario_expectations": {
-            "baseline_wander_stress": {
-              "required_targets": [
+          "required_case_targets": [
+            {
+              "case_id": "clean_baseline",
+              "targets": [
+                "r_peak",
+                "hrv"
+              ]
+            },
+            {
+              "case_id": "vlf_dominant",
+              "targets": [
+                "r_peak",
+                "hrv"
+              ]
+            },
+            {
+              "case_id": "lf_dominant",
+              "targets": [
+                "r_peak",
+                "hrv"
+              ]
+            },
+            {
+              "case_id": "hf_dominant",
+              "targets": [
+                "r_peak",
+                "hrv"
+              ]
+            },
+            {
+              "case_id": "high_variability",
+              "targets": [
+                "r_peak",
+                "hrv"
+              ]
+            },
+            {
+              "case_id": "respiratory_variation",
+              "targets": [
+                "r_peak",
+                "hrv"
+              ]
+            },
+            {
+              "case_id": "ectopic_contamination",
+              "targets": [
+                "r_peak",
+                "hrv"
+              ]
+            },
+            {
+              "case_id": "baseline_wander_stress",
+              "targets": [
                 "r_peak",
                 "hrv",
                 "signal_quality"
               ]
             },
-            "clean_baseline": {
-              "excluded_interval_count": {
-                "equals": 0
-              },
-              "sdnn_seconds": {
-                "equals": 0
-              }
-            },
-            "drift_dropout_stress": {
-              "required_targets": [
+            {
+              "case_id": "powerline_emg_stress",
+              "targets": [
                 "r_peak",
                 "hrv",
                 "signal_quality"
               ]
             },
-            "ectopic_contamination": {
-              "required_exclusion": "ectopic_or_adjacent"
-            },
-            "hf_dominant": {
-              "lf_hf_ratio": {
-                "maximum": 0.6
-              }
-            },
-            "high_variability": {
-              "sdnn_seconds": {
-                "minimum": 0.07
-              }
-            },
-            "lf_dominant": {
-              "lf_hf_ratio": {
-                "minimum": 3
-              }
-            },
-            "powerline_emg_stress": {
-              "required_targets": [
+            {
+              "case_id": "drift_dropout_stress",
+              "targets": [
                 "r_peak",
                 "hrv",
                 "signal_quality"
               ]
-            },
-            "respiratory_variation": {
-              "rmssd_seconds": {
-                "minimum": 0.075
-              }
-            },
-            "vlf_dominant": {
-              "duration_seconds": {
-                "minimum": 600
-              },
-              "vlf_power_relation": "vlf_power_seconds2 > 4 * (lf_power_seconds2 + hf_power_seconds2)"
             }
-          },
-          "schema_version": 1,
-          "stress_matrix": [
-            "vlf_dominant",
-            "lf_dominant",
-            "hf_dominant",
-            "high_variability",
-            "respiratory_variation",
-            "ectopic_contamination",
-            "baseline_wander",
-            "powerline_emg",
-            "drift_dropout"
+          ],
+          "schema_version": 2,
+          "scoring_contract": "synsigra_local_verification_v2",
+          "stress_strata": [
+            {
+              "case_ids": [
+                "clean_baseline"
+              ],
+              "id": "clean_reference"
+            },
+            {
+              "case_ids": [
+                "vlf_dominant",
+                "lf_dominant",
+                "hf_dominant"
+              ],
+              "id": "spectral_content"
+            },
+            {
+              "case_ids": [
+                "high_variability",
+                "respiratory_variation",
+                "ectopic_contamination"
+              ],
+              "id": "variability_and_ectopy"
+            },
+            {
+              "case_ids": [
+                "baseline_wander_stress",
+                "powerline_emg_stress",
+                "drift_dropout_stress"
+              ],
+              "id": "acquisition_artifacts"
+            }
           ],
           "truth_policy": {
             "exclusion": "Ectopic intervals and their adjacent intervals are explicitly excluded; excluded intervals are never bridged for successive-difference metrics.",
             "interval_definition": "NN intervals are derived from consecutive accepted construction R peaks.",
+            "negative_case": "The hrv_short_window_rejected scenario remains an assembly-time range-rejection test and is not an executable evidence-matrix case.",
             "spectral_window": "Frequency-domain truth requires at least 300 seconds and uses the declared metric-definition interpolation policy."
           }
         },
-        "source_content_sha256": "sha256:0485fb0176c165634d531c69caa0dae06fcd8855b34cab3e23fb83fb72f32c11",
+        "source_content_sha256": "sha256:299a7dae0d7ff0d9691900ae27af9331af81977703ff39efe12e043121f69b5b",
         "source_path": "examples/packs/hrv_robustness_v2_expectations.json"
       },
       "version": "2.0"
@@ -3333,8 +3933,8 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           2,
@@ -3346,9 +3946,9 @@
           8,
           9
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -3793,8 +4393,8 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           2,
@@ -3806,9 +4406,9 @@
           8,
           9
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -4228,8 +4828,8 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           2,
@@ -4241,9 +4841,9 @@
           8,
           9
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -4626,8 +5226,8 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           2,
@@ -4639,9 +5239,9 @@
           8,
           9
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -4754,8 +5354,8 @@
       "scoreable_targets": [
         {
           "accepted_formats": [
-            "measurement_values_json_v1",
-            "measurement_values_csv_v1"
+            "measurement_values_json_v2",
+            "measurement_values_csv_v2"
           ],
           "case_count": 4,
           "case_ids": [
@@ -4798,8 +5398,8 @@
         "source_content_sha256": "sha256:5ac5a8bbcd371a8e3eb0d74296376584d1a9871ad1c9930637fc19d113165504"
       },
       "submission_output_schemas": [
-        "measurement_values_json_v1",
-        "measurement_values_csv_v1",
+        "measurement_values_json_v2",
+        "measurement_values_csv_v2",
         "interval_events_json_v1",
         "interval_events_csv_v1"
       ],
@@ -5021,8 +5621,8 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           2,
@@ -5034,9 +5634,9 @@
           8,
           9
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -5175,8 +5775,8 @@
         },
         {
           "accepted_formats": [
-            "measurement_values_json_v1",
-            "measurement_values_csv_v1"
+            "measurement_values_json_v2",
+            "measurement_values_csv_v2"
           ],
           "case_count": 2,
           "case_ids": [
@@ -5220,8 +5820,8 @@
       "submission_output_schemas": [
         "point_events_json_v1",
         "point_events_csv_v1",
-        "measurement_values_json_v1",
-        "measurement_values_csv_v1",
+        "measurement_values_json_v2",
+        "measurement_values_csv_v2",
         "interval_events_json_v1",
         "interval_events_csv_v1"
       ],
@@ -5432,8 +6032,8 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           2,
@@ -5445,9 +6045,9 @@
           8,
           9
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -5460,9 +6060,9 @@
           "test_id": "TEST-PYTHON-SCORING-001"
         },
         {
-          "scope": "core HRV metric scoring smoke test",
+          "scope": "generic measurement-path HRV scoring smoke test",
           "target": "hrv",
-          "test_id": "TEST-HRV-SCORING-001"
+          "test_id": "TEST-HRV-GENERIC-001"
         },
         {
           "scope": "local HRV user-output scoring smoke test",
@@ -5555,6 +6155,10 @@
         {
           "required": true,
           "role": "rr_tachogram_csv"
+        },
+        {
+          "required": true,
+          "role": "measurement_truth_json"
         }
       ],
       "pack_id": "combined_worst_case_v1",
@@ -5594,7 +6198,8 @@
         },
         {
           "accepted_formats": [
-            "hrv_metrics_json_v1"
+            "measurement_values_json_v2",
+            "measurement_values_csv_v2"
           ],
           "case_count": 1,
           "case_ids": [
@@ -5602,7 +6207,7 @@
           ],
           "description": "HRV metric and RR-interval scoring against exact synthetic tachogram ground truth.",
           "primary_metric": "metric_pass_fraction",
-          "score_type": "hrv_metrics",
+          "score_type": "measurement",
           "scoreable": true,
           "support": "local_scoring",
           "target": "hrv"
@@ -5653,7 +6258,8 @@
       "submission_output_schemas": [
         "point_events_json_v1",
         "point_events_csv_v1",
-        "hrv_metrics_json_v1",
+        "measurement_values_json_v2",
+        "measurement_values_csv_v2",
         "interval_events_json_v1",
         "interval_events_csv_v1"
       ],
@@ -5934,8 +6540,8 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           2,
@@ -5947,9 +6553,9 @@
           8,
           9
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -6124,8 +6730,8 @@
         },
         {
           "accepted_formats": [
-            "measurement_values_json_v1",
-            "measurement_values_csv_v1"
+            "measurement_values_json_v2",
+            "measurement_values_csv_v2"
           ],
           "case_count": 5,
           "case_ids": [
@@ -6154,8 +6760,8 @@
       "submission_output_schemas": [
         "point_events_json_v1",
         "point_events_csv_v1",
-        "measurement_values_json_v1",
-        "measurement_values_csv_v1"
+        "measurement_values_json_v2",
+        "measurement_values_csv_v2"
       ],
       "supported_threshold_profiles": [
         "smoke",
@@ -6520,8 +7126,8 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           2,
@@ -6533,9 +7139,9 @@
           8,
           9
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -6960,15 +7566,15 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           6
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -7107,8 +7713,8 @@
       "scoreable_targets": [
         {
           "accepted_formats": [
-            "measurement_values_json_v1",
-            "measurement_values_csv_v1"
+            "measurement_values_json_v2",
+            "measurement_values_csv_v2"
           ],
           "case_count": 4,
           "case_ids": [
@@ -7174,8 +7780,8 @@
         "source_content_sha256": "sha256:f55c8f6fce1515f50f1707fce9d1e3555f65c03e56c3a06094b3f2ed0ab7f607"
       },
       "submission_output_schemas": [
-        "measurement_values_json_v1",
-        "measurement_values_csv_v1",
+        "measurement_values_json_v2",
+        "measurement_values_csv_v2",
         "point_events_json_v1",
         "point_events_csv_v1"
       ],
@@ -7489,17 +8095,17 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           2,
           3,
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -7835,15 +8441,15 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           4
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -7970,8 +8576,8 @@
       "scoreable_targets": [
         {
           "accepted_formats": [
-            "measurement_values_json_v1",
-            "measurement_values_csv_v1"
+            "measurement_values_json_v2",
+            "measurement_values_csv_v2"
           ],
           "case_count": 3,
           "case_ids": [
@@ -7989,8 +8595,8 @@
         },
         {
           "accepted_formats": [
-            "measurement_values_json_v1",
-            "measurement_values_csv_v1"
+            "measurement_values_json_v2",
+            "measurement_values_csv_v2"
           ],
           "case_count": 3,
           "case_ids": [
@@ -8015,8 +8621,8 @@
         "source_content_sha256": "sha256:de19db5338fb364135c2d5c0071cd89af6c6e884e9d557983d2e64c341f3da2c"
       },
       "submission_output_schemas": [
-        "measurement_values_json_v1",
-        "measurement_values_csv_v1"
+        "measurement_values_json_v2",
+        "measurement_values_csv_v2"
       ],
       "supported_threshold_profiles": [
         "smoke",
@@ -8157,15 +8763,15 @@
       ],
       "generator_compatibility": {
         "challenge_package_contract": "synsigra_challenge_package_v3",
-        "local_verifier_min_version": "0.9.0",
-        "minimum_generator_version": "0.9.0-dev",
+        "local_verifier_min_version": "0.10.0",
+        "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [
           8
         ],
-        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "verification_protocol_contract": "synsigra_verification_protocol_v1"
+        "verification_protocol_contract": "synsigra_verification_protocol_v2"
       },
       "limitations": {
         "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
@@ -8366,5 +8972,5 @@
   "release_set_id": "synsigra_curated_release_2026_07_18",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:6d3aee0b11acac2f29e23162ae9bd71cfc6120778bdb53b9da612890ab38d367"
+  "source_catalog_sha256": "sha256:2ab03e48ed533636d2abb5bc5a6f90590f1d9abbb4ed8664ed9efd0dac06892e"
 }
