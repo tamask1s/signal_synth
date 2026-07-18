@@ -3,6 +3,23 @@
 This file records public engineering-verification release notes for the
 `signal_synth` core generator and local verifier contracts.
 
+## 0.8.0-dev
+
+Status: active development baseline.
+
+- Added the `r_peak_rr_noise_v1` clean, analytic-noise, and calibrated
+  external-noise challenge pack with separate R-peak, observable RR, and
+  signal-quality scoring.
+- Added the `ecg_qtc_verification_v1` pack with fixed, Bazett, Fridericia,
+  Framingham, and Hodges correction, rate boundaries, difficult T/U
+  morphology, and dynamic long-QT stress.
+- Added uniform `rr_interval` and formula-explicit `qtc` measurement targets,
+  target-specific threshold sections, and generator-free local scoring.
+- Advanced the integration contract to v5, C++ facade to 1.3.0, authoring
+  metadata to v17, and curated catalog to 2.6.
+- Reused persistent Python build tooling by default; clean isolated builds
+  remain available through `SYNSIGRA_BUILD_ISOLATION=1`.
+
 ## 0.7.0-dev
 
 Status: active development baseline.

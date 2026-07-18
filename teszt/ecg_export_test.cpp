@@ -150,8 +150,8 @@ int main()
     signal_synth::ecg_render_bundle incomplete;
     signal_synth::ecg_export_bundle preserved_export = bundle;
     ok &= check(!signal_synth::build_ecg_export_bundle(incomplete, preserved_export, result) && preserved_export.artifacts.size() == 22, "failed_export_is_transactional");
-    ok &= check(std::string(signal_synth::signal_synth_generator_version()) == "0.7.0-dev", "runtime_generator_version");
-    ok &= check(std::string(signal_synth::signal_synth_package_contract_version()) == "synsigra_challenge_package_v2" && std::string(signal_synth::signal_synth_scoring_manifest_contract_version()) == "synsigra_scoring_manifest_v2" && std::string(signal_synth::signal_synth_verifier_version()) == "0.7.0-dev", "runtime_contract_versions");
+    ok &= check(std::string(signal_synth::signal_synth_generator_version()) == "0.8.0-dev", "runtime_generator_version");
+    ok &= check(std::string(signal_synth::signal_synth_package_contract_version()) == "synsigra_challenge_package_v2" && std::string(signal_synth::signal_synth_scoring_manifest_contract_version()) == "synsigra_scoring_manifest_v2" && std::string(signal_synth::signal_synth_verifier_version()) == "0.8.0-dev", "runtime_contract_versions");
 
     signal_synth::ecg_scenario_document paced_document = document;
     paced_document.schema_version = 2;

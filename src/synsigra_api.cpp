@@ -201,12 +201,12 @@ namespace signal_synth
 
     const char* synsigra_api_version()
     {
-        return "1.2.0";
+        return "1.3.0";
     }
 
     const char* synsigra_integration_contract_version()
     {
-        return "synsigra_core_integration_v4";
+        return "synsigra_core_integration_v5";
     }
 
     std::string synsigra_integration_contract_json()
@@ -235,7 +235,7 @@ namespace signal_synth
                << ",\"delineation_targets\":[\"ecg_delineation\"]"
                << ",\"delineation_output_schemas\":[\"point_events_json_v1\",\"point_events_csv_v1\"]"
                << ",\"hrv_targets\":[\"hrv\"]"
-               << ",\"measurement_targets\":[\"morphology_assertions\",\"ecg_ppg_alignment\",\"ppg_optical\",\"prv\",\"respiratory_rate\",\"rhythm_burden\"]"
+               << ",\"measurement_targets\":[\"rr_interval\",\"qtc\",\"morphology_assertions\",\"ecg_ppg_alignment\",\"ppg_optical\",\"prv\",\"respiratory_rate\",\"rhythm_burden\"]"
                << ",\"customer_verification_command\":\"synsigra-verify <challenge> <submission-directory> <result-directory>\""
                << ",\"customer_output_schemas\":[\"point_events_json_v1\",\"point_events_csv_v1\",\"interval_events_json_v1\",\"interval_events_csv_v1\",\"hrv_metrics_json_v1\",\"measurement_values_json_v1\",\"measurement_values_csv_v1\"]}}";
         return output.str();

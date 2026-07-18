@@ -86,6 +86,22 @@ TARGET_CONTRACTS = {
         "primary_metric": "f1_score",
         "description": "Lead-specific P, QRS, J-point, and T fiducial timing against exact synthetic construction ground truth.",
     },
+    "rr_interval": {
+        "scoreable": True,
+        "score_type": "measurement",
+        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "default_pairing_window_seconds": 0.2,
+        "primary_metric": "tolerance_pass_fraction",
+        "description": "Every observable beat-to-beat R-R interval scored independently of artifact-exclusion policy.",
+    },
+    "qtc": {
+        "scoreable": True,
+        "score_type": "measurement",
+        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "default_pairing_window_seconds": 0.2,
+        "primary_metric": "tolerance_pass_fraction",
+        "description": "Beat-level RR, QT and formula-explicit QTc measurements scored against exact synthetic timing truth.",
+    },
     "morphology_assertions": {
         "scoreable": True,
         "score_type": "measurement",
@@ -182,6 +198,12 @@ LOCAL_VERIFIER_SMOKE_TESTS = {
     "ecg_delineation": [
         {"test_id": "TEST-DELINEATION-SCORING-001", "scope": "core lead-specific delineation scoring smoke test"},
         {"test_id": "TEST-DELINEATION-PYTHON-001", "scope": "generator-free delineation scoring and C++/Python parity test"},
+    ],
+    "rr_interval": [
+        {"test_id": "TEST-RR-QTC-PACK-001", "scope": "generator-free observable RR measurement scoring with negative controls"},
+    ],
+    "qtc": [
+        {"test_id": "TEST-RR-QTC-PACK-001", "scope": "generator-free formula-explicit QT/QTc scoring with negative controls"},
     ],
     "morphology_assertions": [
         {"test_id": "TEST-MEASUREMENT-SCORING-001", "scope": "core morphology measurement scoring smoke test"},

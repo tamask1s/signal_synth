@@ -189,7 +189,7 @@ def main():
     assert challenge.case_ids() == ["clean_ecg", "ppg_clean", "ppg_stress", "ppg_motion", "hrv_mild", "rhythm_episode", "signal_quality"]
     provenance = read_json(os.path.join(challenge_dir, "provenance.json"))
     assert provenance["metadata_type"] == "synsigra_package_provenance"
-    assert provenance["generator"]["version"] == "0.7.0-dev"
+    assert provenance["generator"]["version"] == "0.8.0-dev"
     assert provenance["verifier"]["package_contract_version"] == "synsigra_challenge_package_v2"
     assert "clinical validation" in provenance["claim_boundary"]["not_for"]
     assert os.path.exists(os.path.join(challenge_dir, "ENGINEERING_CLAIM_BOUNDARY.txt"))

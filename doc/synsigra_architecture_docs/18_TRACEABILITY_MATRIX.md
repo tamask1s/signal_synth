@@ -2,7 +2,7 @@
 
 **Document ID:** SYN-TRACE-001
 
-**Version:** 0.9
+**Version:** 0.10
 
 **Status:** Living demonstration record
 
@@ -76,6 +76,7 @@ The authoritative implementation/result details remain in the linked issues.
 | `TRC-ECG-DELINEATION-001` | Supporting `REQ-GEN-005..006`, `REQ-EXP-001..005`, `REQ-SCORE-001..006`, `REQ-PY-001..008`, `REQ-NFR-002..008` | Lead-specific ECG fiducial output and scoring | `src/delineation_io.*`, `src/delineation_scoring.*`, `apps/signal_synth_cli/`, `python/synsigra/`, `examples/packs/ecg_delineation_v2.json` | `TEST-DELINEATION-IO-001`, `TEST-DELINEATION-SCORING-001`, `TEST-DELINEATION-PYTHON-001`, `TEST-CLI-001`, `TEST-DATABROWSER-GCC49-001` | [signal_synth#75](https://github.com/tamask1s/signal_synth/issues/75), [signal_synth#87](https://github.com/tamask1s/signal_synth/issues/87) |
 | `TRC-SUBMISSION-001` | Supporting `REQ-EXP-001..005`, `REQ-SCORE-001..006`, `REQ-PY-001..008`, `REQ-NFR-002..008` | Generator-free unified customer submission manifest, templates, format adapters and verifier provenance | `apps/signal_synth_cli/`, `python/synsigra/submission.py`, `python/synsigra/local_verify.py`, `scripts/export_curated_pack_metadata.py` | `TEST-SUBMISSION-001`, `TEST-PYTHON-SCORING-001`, `TEST-INTEGRATION-CONTRACT-001`, `TEST-CLI-001`, `TEST-PACK-METADATA-EXPORT-001` | [signal_synth#86](https://github.com/tamask1s/signal_synth/issues/86) |
 | `TRC-MEASUREMENT-001` | Supporting `REQ-EXP-001..005`, `REQ-SCORE-001..006`, `REQ-PY-001..008`, `REQ-NFR-002..008` | Uniform scalar, beat, lead and paired-signal measurement output and scoring | `src/measurement_io.*`, `src/measurement_scoring.*`, `apps/signal_synth_cli/`, `python/synsigra/measurements.py`, `python/synsigra/local_verify.py` | `TEST-MEASUREMENT-IO-001`, `TEST-MEASUREMENT-SCORING-001`, `TEST-MEASUREMENT-PYTHON-001`, `TEST-INTEGRATION-CONTRACT-001`, `TEST-PACK-METADATA-EXPORT-001` | [signal_synth#76](https://github.com/tamask1s/signal_synth/issues/76) |
+| `TRC-RR-QTC-001` | `RRQTC-REQ-001..010`, supporting `REQ-GT-001..002`, `REQ-EXP-001..005`, `REQ-SCORE-001..006`, `REQ-PY-001..008`, `REQ-NFR-002..008` | Noisy R-peak/RR and formula-explicit QTc verification | `src/measurement_scoring.cpp`, `python/synsigra/`, `examples/packs/r_peak_rr_noise_v1*`, `examples/packs/ecg_qtc_verification_v1*`, `examples/scenarios/packs/` | `TEST-RR-QTC-PACK-001`, `TEST-MEASUREMENT-SCORING-001`, `TEST-MEASUREMENT-PYTHON-001`, `TEST-CLI-001`, `TEST-DATABROWSER-GCC49-001` | [signal_synth#90](https://github.com/tamask1s/signal_synth/issues/90) |
 | `TRC-DSP-001` | Supporting `REQ-NFR-003`, `REQ-NFR-008` | Shared DSP ownership | RSPT FIR design API | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#1](https://github.com/tamask1s/rspt_module/issues/1) |
 | `TRC-DSP-002` | Supporting `REQ-NFR-008` | IIR coefficient contract | RSPT IIR/filter consumers | Manual RSPT/DataBrowser integration; automated evidence gap | [rspt_module#2](https://github.com/tamask1s/rspt_module/issues/2) |
 
@@ -115,6 +116,7 @@ The authoritative implementation/result details remain in the linked issues.
 | `TEST-MEASUREMENT-IO-001` | `teszt/measurement_io_test.cpp` | Strict JSON/CSV parsing, canonical round trips, unit/status/scope validation, decimal beat identity and duplicate rejection |
 | `TEST-MEASUREMENT-SCORING-001` | `teszt/measurement_scoring_test.cpp` | Measurement truth adapters, temporal/index matching, circular axes, explicit statuses, grouped metrics and report contracts |
 | `TEST-MEASUREMENT-PYTHON-001` | `teszt/measurement_python_test.py` | Generator-free morphology/alignment verification, package truth loading, CSV input and exact C++/Python scorer parity |
+| `TEST-RR-QTC-PACK-001` | `teszt/rr_qtc_pack_test.py` | End-to-end noisy R-peak/RR and QTc pack integrity, RR/QTc truth arithmetic, calibrated 12-lead SNR, perfect-output acceptance, and systematic-bias rejection |
 | `TEST-SUBMISSION-001` | `teszt/submission_test.py` | Strict challenge identity, algorithm provenance, output coverage, format, duplicate, and safe-path validation |
 | `TEST-CLI-001` | `teszt/cli_test.cmake` | CLI file/stdin, stdout/stderr, exit codes, size limit, pack rendering/scoring, and challenge package generation |
 | `TEST-BUILD-001` | `teszt/package_smoke/` | Installed package discovery, public-header compilation, link and execution |

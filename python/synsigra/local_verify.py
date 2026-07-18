@@ -90,7 +90,7 @@ def verify_package(challenge, submission_dir, out_dir, cases=None, targets=None,
                 if not entry.get("supported", False):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
-                if target not in ("r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality", "ecg_delineation", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"):
+                if target not in ("r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality", "ecg_delineation", "rr_interval", "qtc", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
                 result = _verify_case_target(package, case, case_summary, annotations, entry, submission, out_dir)
@@ -125,7 +125,7 @@ def _verify_case_target(package, case, case_summary, annotations, entry, submiss
         return _error_result(package, case, case_summary, entry, target_dir, "missing_output", "submission output file is missing for %s/%s: %s" % (case.id, target, submitted.relative_path))
     algorithm = dict(submission.algorithm)
     try:
-        if target in ("morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"):
+        if target in ("rr_interval", "qtc", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"):
             predictions = load_measurements(detection_path, format_name=submitted.format)
             truth_path = entry.get("ground_truth_path", "")
             if not truth_path:
@@ -1002,7 +1002,7 @@ def _case_result_from_report(case, case_summary, target, relative_out, submissio
         result["by_kind"] = list(report_json.get("by_kind", []))
         result["by_lead"] = list(report_json.get("by_lead", []))
         result["_delineation_errors"] = [float(item["error_seconds"]) for item in report_json.get("matches", [])]
-    elif target in ("morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"):
+    elif target in ("rr_interval", "qtc", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"):
         result["score_type"] = "measurement"
         result["exclusion_policy"] = "Measurement identity includes name, unit, scope, channel, formula, and beat/time anchor; explicit non-valid states are status-scored without numeric error."
         result["summary"] = dict(report_json.get("overall", {}))
@@ -1511,6 +1511,13 @@ def _evaluate_policy(targets, profile):
             overall = target.get("overall", {})
             applicable = int(overall.get("ground_truth_count", 0)) > 0 or int(overall.get("prediction_count", 0)) > 0
             target_checks.extend(_threshold_checks(target["target"], "overall", overall, definition.get("overall", {}), applicable))
+            measurements = dict((item.get("name", ""), item.get("metrics", {})) for item in target.get("by_measurement", []))
+            for section_name, limits in definition.items():
+                if section_name == "overall":
+                    continue
+                metrics = _measurement_policy_metrics(measurements.get(section_name, {}))
+                applicable = int(metrics.get("ground_truth_count", 0)) > 0 or int(metrics.get("prediction_count", 0)) > 0
+                target_checks.extend(_threshold_checks(target["target"], section_name, metrics, limits, applicable))
         target_passed = bool(target_checks) and all(item["passed"] for item in target_checks if item["applicable"])
         target["policy"] = {"profile_id": profile["profile_id"], "passed": target_passed, "checks": target_checks}
         target_results.append({"target": target["target"], "passed": target_passed, "check_count": len(target_checks)})
@@ -1527,6 +1534,18 @@ def _evaluate_policy(targets, profile):
         "targets": target_results,
         "checks": checks,
     }
+
+
+def _measurement_policy_metrics(metrics):
+    output = dict(metrics)
+    error = metrics.get("error", {})
+    output.update({
+        "mean_absolute_error": error.get("mean_absolute"),
+        "root_mean_square_error": error.get("root_mean_square"),
+        "p95_absolute_error": error.get("p95_absolute"),
+        "maximum_absolute_error": error.get("maximum_absolute"),
+    })
+    return output
 
 
 def _threshold_checks(target, section, metrics, limits, applicable):

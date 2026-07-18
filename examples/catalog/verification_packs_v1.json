@@ -1,11 +1,79 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "2.5",
+  "version": "2.6",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
   "packs": [
+    {
+      "pack_id": "r_peak_rr_noise_v1",
+      "path": "../packs/r_peak_rr_noise_v1.json",
+      "modality": ["ECG"],
+      "targets": ["r_peak", "rr_interval", "signal_quality"],
+      "difficulty": ["regression", "stress"],
+      "recommended_profile": "stress",
+      "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
+      "scoring_mode": "local",
+      "feature_tags": ["r_peak", "rr_interval", "baseline_wander", "powerline", "emg", "quantization", "clipping", "dropout", "external_noise", "calibrated_snr"],
+      "release_status": "beta",
+      "release_date": "2026-07-18",
+      "deprecation_message": "",
+      "recommended_for": [
+        "R-peak detector and observable RR reconstruction QA in controlled noise",
+        "Clean and artifact-bin sensitivity, precision and timing-error regression",
+        "Analytic and project-owned external-noise stress from +12 to -12 dB SNR"
+      ],
+      "not_recommended_for": [
+        "Clinical detector validation or regulatory clearance claims",
+        "Patient-derived prevalence or noise-distribution claims",
+        "HRV metric validation without the separate HRV robustness pack"
+      ],
+      "changelog": [{"version": "1.0", "date": "2026-07-18", "changes": ["Initial beta pack with exact in-record RR truth, rate boundaries, analytic artifacts and calibrated external noise."]}],
+      "generator_compatibility": {
+        "minimum_generator_version": "0.8.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [2, 8],
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1",
+        "local_verifier_min_version": "0.8.0"
+      }
+    },
+    {
+      "pack_id": "ecg_qtc_verification_v1",
+      "path": "../packs/ecg_qtc_verification_v1.json",
+      "modality": ["ECG"],
+      "targets": ["r_peak", "ecg_delineation", "qtc"],
+      "difficulty": ["regression", "stress"],
+      "recommended_profile": "regression",
+      "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
+      "scoring_mode": "local",
+      "feature_tags": ["qt", "qtc", "t_offset", "bazett", "fridericia", "framingham", "hodges", "rate_correction", "dynamic_repolarization", "difficult_t"],
+      "release_status": "beta",
+      "release_date": "2026-07-18",
+      "deprecation_message": "",
+      "recommended_for": [
+        "R-peak, T-offset, QT and formula-explicit QTc algorithm QA",
+        "Correction-formula regression at bradycardic and tachycardic rate boundaries",
+        "Dynamic long-QT, low-amplitude T, notched or biphasic T and U-wave stress"
+      ],
+      "not_recommended_for": [
+        "Clinical QT safety conclusions or drug-effect claims",
+        "Human-reader variability or adjudication studies",
+        "Regulatory acceptance without sponsor-specific clinical and risk evidence"
+      ],
+      "changelog": [{"version": "1.0", "date": "2026-07-18", "changes": ["Initial beta pack with five correction formulae, exact beat-level timing truth and difficult repolarization cases."]}],
+      "generator_compatibility": {
+        "minimum_generator_version": "0.8.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [3, 7],
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1",
+        "local_verifier_min_version": "0.8.0"
+      }
+    },
     {
       "pack_id": "ecg_extended_morphology_v1",
       "path": "../packs/ecg_extended_morphology_v1.json",

@@ -1,12 +1,1193 @@
 {
   "catalog_id": "synsigra_verification_packs",
-  "catalog_version": "2.5",
+  "catalog_version": "2.6",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "metadata_type": "synsigra_curated_pack_catalog",
   "metadata_version": "synsigra_curated_pack_metadata_export_v1",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
-  "pack_count": 16,
+  "pack_count": 18,
   "packs": [
+    {
+      "case_count": 8,
+      "case_ids": [
+        "clean_70",
+        "slow_45",
+        "fast_120",
+        "baseline_powerline",
+        "dropout_saturation",
+        "analytic_extreme",
+        "external_calibrated",
+        "external_extreme"
+      ],
+      "cases": [
+        {
+          "case_id": "clean_70",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 3918400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "rpeak_clean_70",
+          "scoreable_targets": [
+            "r_peak",
+            "rr_interval"
+          ],
+          "targets": [
+            "r_peak",
+            "rr_interval"
+          ]
+        },
+        {
+          "case_id": "slow_45",
+          "channel_count": 12,
+          "duration_seconds": 30,
+          "estimated_binary_signal_bytes": 1260000,
+          "estimated_package_bytes": 5491400,
+          "estimated_peak_memory_bytes": 8248576,
+          "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 15000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "rpeak_slow_45",
+          "scoreable_targets": [
+            "r_peak",
+            "rr_interval"
+          ],
+          "targets": [
+            "r_peak",
+            "rr_interval"
+          ]
+        },
+        {
+          "case_id": "fast_120",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 4190400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "rpeak_fast_120",
+          "scoreable_targets": [
+            "r_peak",
+            "rr_interval"
+          ],
+          "targets": [
+            "r_peak",
+            "rr_interval"
+          ]
+        },
+        {
+          "case_id": "baseline_powerline",
+          "channel_count": 12,
+          "duration_seconds": 30,
+          "estimated_binary_signal_bytes": 1260000,
+          "estimated_package_bytes": 5695400,
+          "estimated_peak_memory_bytes": 8248576,
+          "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 15000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "sq_baseline_powerline",
+          "scoreable_targets": [
+            "r_peak",
+            "rr_interval",
+            "signal_quality"
+          ],
+          "targets": [
+            "r_peak",
+            "rr_interval",
+            "signal_quality"
+          ]
+        },
+        {
+          "case_id": "dropout_saturation",
+          "channel_count": 12,
+          "duration_seconds": 30,
+          "estimated_binary_signal_bytes": 1260000,
+          "estimated_package_bytes": 5712400,
+          "estimated_peak_memory_bytes": 8248576,
+          "estimated_waveform_csv_bytes": 3510256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 15000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "sq_dropout_saturation",
+          "scoreable_targets": [
+            "r_peak",
+            "rr_interval",
+            "signal_quality"
+          ],
+          "targets": [
+            "r_peak",
+            "rr_interval",
+            "signal_quality"
+          ]
+        },
+        {
+          "case_id": "analytic_extreme",
+          "channel_count": 12,
+          "duration_seconds": 40,
+          "estimated_binary_signal_bytes": 1680000,
+          "estimated_package_bytes": 7574400,
+          "estimated_peak_memory_bytes": 10648576,
+          "estimated_waveform_csv_bytes": 4680256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 20000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "rpeak_analytic_noise_extreme_v2",
+          "scoreable_targets": [
+            "r_peak",
+            "rr_interval",
+            "signal_quality"
+          ],
+          "targets": [
+            "r_peak",
+            "rr_interval",
+            "signal_quality"
+          ]
+        },
+        {
+          "case_id": "external_calibrated",
+          "channel_count": 12,
+          "duration_seconds": 18,
+          "estimated_binary_signal_bytes": 756000,
+          "estimated_package_bytes": 3566400,
+          "estimated_peak_memory_bytes": 6232576,
+          "estimated_waveform_csv_bytes": 2106256,
+          "external_noise": true,
+          "external_noise_asset_ids": [
+            "synsigra_project_noise_v1"
+          ],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 9000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "ecg_hybrid_noise_v8",
+          "scoreable_targets": [
+            "r_peak",
+            "rr_interval",
+            "signal_quality"
+          ],
+          "targets": [
+            "r_peak",
+            "rr_interval",
+            "signal_quality"
+          ]
+        },
+        {
+          "case_id": "external_extreme",
+          "channel_count": 12,
+          "duration_seconds": 18,
+          "estimated_binary_signal_bytes": 756000,
+          "estimated_package_bytes": 3566400,
+          "estimated_peak_memory_bytes": 6232576,
+          "estimated_waveform_csv_bytes": 2106256,
+          "external_noise": true,
+          "external_noise_asset_ids": [
+            "synsigra_project_noise_v1"
+          ],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 9000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "rpeak_external_noise_extreme_v8",
+          "scoreable_targets": [
+            "r_peak",
+            "rr_interval",
+            "signal_quality"
+          ],
+          "targets": [
+            "r_peak",
+            "rr_interval",
+            "signal_quality"
+          ]
+        }
+      ],
+      "catalog_scoring_mode": "local",
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta pack with exact in-record RR truth, rate boundaries, analytic artifacts and calibrated external noise."
+          ],
+          "date": "2026-07-18",
+          "version": "1.0"
+        }
+      ],
+      "channels": {
+        "families": [
+          {
+            "channel_count": 12,
+            "channels": [
+              "I",
+              "II",
+              "III",
+              "aVR",
+              "aVL",
+              "aVF",
+              "V1",
+              "V2",
+              "V3",
+              "V4",
+              "V5",
+              "V6"
+            ],
+            "name": "standard_12_lead_ecg"
+          }
+        ],
+        "maximum_channel_count": 12,
+        "minimum_channel_count": 12
+      },
+      "declared_targets": [
+        "r_peak",
+        "rr_interval",
+        "signal_quality"
+      ],
+      "deprecation_message": "",
+      "description": "Deterministic clean, analytic and calibrated external-noise cases for R-peak detection and observable RR reconstruction QA.",
+      "difficulty": [
+        "regression",
+        "stress"
+      ],
+      "duration": {
+        "maximum_case_seconds": 40,
+        "minimum_case_seconds": 18,
+        "total_seconds": 206
+      },
+      "estimated_package": {
+        "bytes": 39715200,
+        "peak_memory_bytes": 10648576,
+        "size_class": "medium"
+      },
+      "feature_tags": [
+        "r_peak",
+        "rr_interval",
+        "baseline_wander",
+        "powerline",
+        "emg",
+        "quantization",
+        "clipping",
+        "dropout",
+        "external_noise",
+        "calibrated_snr"
+      ],
+      "generator_compatibility": {
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.8.0",
+        "minimum_generator_version": "0.8.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [
+          2,
+          8
+        ],
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
+      },
+      "limitations": {
+        "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
+        "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
+      },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "local event-detection scoring smoke test",
+          "target": "r_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
+          "scope": "generator-free observable RR measurement scoring with negative controls",
+          "target": "rr_interval",
+          "test_id": "TEST-RR-QTC-PACK-001"
+        },
+        {
+          "scope": "core signal-quality interval scoring smoke test",
+          "target": "signal_quality",
+          "test_id": "TEST-INTERVAL-SCORING-001"
+        },
+        {
+          "scope": "local signal-quality interval scoring parity test",
+          "target": "signal_quality",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        }
+      ],
+      "messages": [],
+      "metadata_type": "synsigra_curated_pack_metadata",
+      "metadata_version": "synsigra_curated_pack_metadata_export_v1",
+      "modality": [
+        "ECG"
+      ],
+      "name": "R-peak and RR Noise Verification Pack v1",
+      "not_recommended_for": [
+        "Clinical detector validation or regulatory clearance claims",
+        "Patient-derived prevalence or noise-distribution claims",
+        "HRV metric validation without the separate HRV robustness pack"
+      ],
+      "output_artifacts": [
+        {
+          "required": true,
+          "role": "manifest_json"
+        },
+        {
+          "required": true,
+          "role": "scoring_manifest_json"
+        },
+        {
+          "required": true,
+          "role": "provenance_json"
+        },
+        {
+          "required": true,
+          "role": "engineering_claim_boundary_txt"
+        },
+        {
+          "required": true,
+          "role": "case_summary_json"
+        },
+        {
+          "required": true,
+          "role": "annotations_json"
+        },
+        {
+          "required": true,
+          "role": "waveform_csv"
+        },
+        {
+          "required": true,
+          "role": "wfdb"
+        },
+        {
+          "required": true,
+          "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
+        },
+        {
+          "required": true,
+          "role": "external_noise_truth_json"
+        },
+        {
+          "required": true,
+          "role": "external_noise_clean_ecg_csv"
+        },
+        {
+          "required": true,
+          "role": "measurement_truth_json"
+        }
+      ],
+      "pack_id": "r_peak_rr_noise_v1",
+      "recommended_for": [
+        "R-peak detector and observable RR reconstruction QA in controlled noise",
+        "Clean and artifact-bin sensitivity, precision and timing-error regression",
+        "Analytic and project-owned external-noise stress from +12 to -12 dB SNR"
+      ],
+      "recommended_profile": "stress",
+      "reference_only_targets": [],
+      "release_date": "2026-07-18",
+      "release_status": "beta",
+      "sampling_rates_hz": [
+        500
+      ],
+      "schema_version": 1,
+      "scoreable_targets": [
+        {
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
+          ],
+          "case_count": 8,
+          "case_ids": [
+            "clean_70",
+            "slow_45",
+            "fast_120",
+            "baseline_powerline",
+            "dropout_saturation",
+            "analytic_extreme",
+            "external_calibrated",
+            "external_extreme"
+          ],
+          "default_tolerance_seconds": 0.05,
+          "description": "R-peak detector event timing against exact synthetic beat annotations.",
+          "primary_metric": "f1_score",
+          "score_type": "event_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "r_peak"
+        },
+        {
+          "accepted_formats": [
+            "measurement_values_json_v1",
+            "measurement_values_csv_v1"
+          ],
+          "case_count": 8,
+          "case_ids": [
+            "clean_70",
+            "slow_45",
+            "fast_120",
+            "baseline_powerline",
+            "dropout_saturation",
+            "analytic_extreme",
+            "external_calibrated",
+            "external_extreme"
+          ],
+          "default_pairing_window_seconds": 0.2,
+          "description": "Every observable beat-to-beat R-R interval scored independently of artifact-exclusion policy.",
+          "primary_metric": "tolerance_pass_fraction",
+          "score_type": "measurement",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "rr_interval"
+        },
+        {
+          "accepted_formats": [
+            "interval_events_json_v1",
+            "interval_events_csv_v1"
+          ],
+          "case_count": 5,
+          "case_ids": [
+            "baseline_powerline",
+            "dropout_saturation",
+            "analytic_extreme",
+            "external_calibrated",
+            "external_extreme"
+          ],
+          "default_minimum_iou": 0.1,
+          "description": "Signal-quality interval labels and channels scored against exact synthetic artifact ground truth.",
+          "primary_metric": "time_f1_score",
+          "score_type": "interval_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "signal_quality"
+        }
+      ],
+      "scoring_mode": "local",
+      "source": {
+        "catalog_path": "examples/catalog/verification_packs_v1.json",
+        "pack_fingerprint": "sha256:c8c1f76606ee9d5510529e9a4923f0151fde56b94e9a11688db537bfb6f07e5e",
+        "pack_path": "../packs/r_peak_rr_noise_v1.json",
+        "source_content_sha256": "sha256:7e9f9fa0cf3b42b2bb9d1fe04ee084c26cb3e729feebb6f3ea7d05dcb8cea29c"
+      },
+      "submission_output_schemas": [
+        "point_events_json_v1",
+        "point_events_csv_v1",
+        "measurement_values_json_v1",
+        "measurement_values_csv_v1",
+        "interval_events_json_v1",
+        "interval_events_csv_v1"
+      ],
+      "supported_threshold_profiles": [
+        "smoke",
+        "regression",
+        "stress",
+        "benchmark"
+      ],
+      "targets": [
+        "r_peak",
+        "rr_interval",
+        "signal_quality"
+      ],
+      "threshold_profile_contract": {
+        "policy_failure_exit_code": 1,
+        "recommended_profile": "stress",
+        "supported_profiles": [
+          "smoke",
+          "regression",
+          "stress",
+          "benchmark"
+        ]
+      },
+      "ui": {
+        "primary_badges": [
+          "regression",
+          "stress",
+          "r_peak",
+          "rr_interval",
+          "baseline_wander"
+        ],
+        "reference_only_before_job": false,
+        "scoreable_before_job": true
+      },
+      "version": "1.0"
+    },
+    {
+      "case_count": 12,
+      "case_ids": [
+        "bazett_brady_45",
+        "bazett_tachy_120",
+        "fridericia_brady_45",
+        "fridericia_tachy_120",
+        "framingham_brady_45",
+        "framingham_tachy_120",
+        "hodges_brady_45",
+        "hodges_tachy_120",
+        "fixed_normal_60",
+        "dynamic_long_qt",
+        "difficult_t_u",
+        "low_t_baseline"
+      ],
+      "cases": [
+        {
+          "case_id": "bazett_brady_45",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 3765400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "qtc_bazett_brady_45_v3",
+          "scoreable_targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ],
+          "targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ]
+        },
+        {
+          "case_id": "bazett_tachy_120",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 4190400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "qtc_bazett_tachy_120_v3",
+          "scoreable_targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ],
+          "targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ]
+        },
+        {
+          "case_id": "fridericia_brady_45",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 3765400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "qtc_fridericia_brady_45_v3",
+          "scoreable_targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ],
+          "targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ]
+        },
+        {
+          "case_id": "fridericia_tachy_120",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 4190400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "qtc_fridericia_tachy_120_v3",
+          "scoreable_targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ],
+          "targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ]
+        },
+        {
+          "case_id": "framingham_brady_45",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 3765400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "qtc_framingham_brady_45_v3",
+          "scoreable_targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ],
+          "targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ]
+        },
+        {
+          "case_id": "framingham_tachy_120",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 4190400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "qtc_framingham_tachy_120_v3",
+          "scoreable_targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ],
+          "targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ]
+        },
+        {
+          "case_id": "hodges_brady_45",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 3765400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "qtc_hodges_brady_45_v3",
+          "scoreable_targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ],
+          "targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ]
+        },
+        {
+          "case_id": "hodges_tachy_120",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 4190400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "qtc_hodges_tachy_120_v3",
+          "scoreable_targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ],
+          "targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ]
+        },
+        {
+          "case_id": "fixed_normal_60",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 3850400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "qtc_fixed_normal_60_v3",
+          "scoreable_targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ],
+          "targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ]
+        },
+        {
+          "case_id": "dynamic_long_qt",
+          "channel_count": 12,
+          "duration_seconds": 12,
+          "estimated_binary_signal_bytes": 504000,
+          "estimated_package_bytes": 2476400,
+          "estimated_peak_memory_bytes": 3928576,
+          "estimated_waveform_csv_bytes": 1404256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 6000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "dynamic_repolarization_long_qt_v3",
+          "scoreable_targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ],
+          "targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ]
+        },
+        {
+          "case_id": "difficult_t_u",
+          "channel_count": 12,
+          "duration_seconds": 20,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 3918400,
+          "estimated_peak_memory_bytes": 5848576,
+          "estimated_waveform_csv_bytes": 2340256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 10000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "ecg_extended_wave_components_v7",
+          "scoreable_targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ],
+          "targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ]
+        },
+        {
+          "case_id": "low_t_baseline",
+          "channel_count": 12,
+          "duration_seconds": 24,
+          "estimated_binary_signal_bytes": 1008000,
+          "estimated_package_bytes": 4639400,
+          "estimated_peak_memory_bytes": 6808576,
+          "estimated_waveform_csv_bytes": 2808256,
+          "external_noise": false,
+          "external_noise_asset_ids": [],
+          "external_noise_release_allowed": true,
+          "reference_only_targets": [],
+          "sample_count": 12000,
+          "sampling_rate_hz": 500,
+          "scenario_id": "qtc_low_t_baseline_v3",
+          "scoreable_targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ],
+          "targets": [
+            "r_peak",
+            "ecg_delineation",
+            "qtc"
+          ]
+        }
+      ],
+      "catalog_scoring_mode": "local",
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta pack with five correction formulae, exact beat-level timing truth and difficult repolarization cases."
+          ],
+          "date": "2026-07-18",
+          "version": "1.0"
+        }
+      ],
+      "channels": {
+        "families": [
+          {
+            "channel_count": 12,
+            "channels": [
+              "I",
+              "II",
+              "III",
+              "aVR",
+              "aVL",
+              "aVF",
+              "V1",
+              "V2",
+              "V3",
+              "V4",
+              "V5",
+              "V6"
+            ],
+            "name": "standard_12_lead_ecg"
+          }
+        ],
+        "maximum_channel_count": 12,
+        "minimum_channel_count": 12
+      },
+      "declared_targets": [
+        "r_peak",
+        "ecg_delineation",
+        "qtc"
+      ],
+      "deprecation_message": "",
+      "description": "Formula-explicit QT/QTc and T-offset verification across rate extremes, dynamic adaptation and difficult repolarization morphology.",
+      "difficulty": [
+        "regression",
+        "stress"
+      ],
+      "duration": {
+        "maximum_case_seconds": 24,
+        "minimum_case_seconds": 12,
+        "total_seconds": 236
+      },
+      "estimated_package": {
+        "bytes": 46707800,
+        "peak_memory_bytes": 6808576,
+        "size_class": "medium"
+      },
+      "feature_tags": [
+        "qt",
+        "qtc",
+        "t_offset",
+        "bazett",
+        "fridericia",
+        "framingham",
+        "hodges",
+        "rate_correction",
+        "dynamic_repolarization",
+        "difficult_t"
+      ],
+      "generator_compatibility": {
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.8.0",
+        "minimum_generator_version": "0.8.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [
+          3,
+          7
+        ],
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
+      },
+      "limitations": {
+        "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
+        "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
+      },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "local event-detection scoring smoke test",
+          "target": "r_peak",
+          "test_id": "TEST-PYTHON-SCORING-001"
+        },
+        {
+          "scope": "core lead-specific delineation scoring smoke test",
+          "target": "ecg_delineation",
+          "test_id": "TEST-DELINEATION-SCORING-001"
+        },
+        {
+          "scope": "generator-free delineation scoring and C++/Python parity test",
+          "target": "ecg_delineation",
+          "test_id": "TEST-DELINEATION-PYTHON-001"
+        },
+        {
+          "scope": "generator-free formula-explicit QT/QTc scoring with negative controls",
+          "target": "qtc",
+          "test_id": "TEST-RR-QTC-PACK-001"
+        }
+      ],
+      "messages": [],
+      "metadata_type": "synsigra_curated_pack_metadata",
+      "metadata_version": "synsigra_curated_pack_metadata_export_v1",
+      "modality": [
+        "ECG"
+      ],
+      "name": "ECG QT/QTc Verification Pack v1",
+      "not_recommended_for": [
+        "Clinical QT safety conclusions or drug-effect claims",
+        "Human-reader variability or adjudication studies",
+        "Regulatory acceptance without sponsor-specific clinical and risk evidence"
+      ],
+      "output_artifacts": [
+        {
+          "required": true,
+          "role": "manifest_json"
+        },
+        {
+          "required": true,
+          "role": "scoring_manifest_json"
+        },
+        {
+          "required": true,
+          "role": "provenance_json"
+        },
+        {
+          "required": true,
+          "role": "engineering_claim_boundary_txt"
+        },
+        {
+          "required": true,
+          "role": "case_summary_json"
+        },
+        {
+          "required": true,
+          "role": "annotations_json"
+        },
+        {
+          "required": true,
+          "role": "waveform_csv"
+        },
+        {
+          "required": true,
+          "role": "wfdb"
+        },
+        {
+          "required": true,
+          "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
+        },
+        {
+          "required": true,
+          "role": "measurement_truth_json"
+        }
+      ],
+      "pack_id": "ecg_qtc_verification_v1",
+      "recommended_for": [
+        "R-peak, T-offset, QT and formula-explicit QTc algorithm QA",
+        "Correction-formula regression at bradycardic and tachycardic rate boundaries",
+        "Dynamic long-QT, low-amplitude T, notched or biphasic T and U-wave stress"
+      ],
+      "recommended_profile": "regression",
+      "reference_only_targets": [],
+      "release_date": "2026-07-18",
+      "release_status": "beta",
+      "sampling_rates_hz": [
+        500
+      ],
+      "schema_version": 1,
+      "scoreable_targets": [
+        {
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
+          ],
+          "case_count": 12,
+          "case_ids": [
+            "bazett_brady_45",
+            "bazett_tachy_120",
+            "fridericia_brady_45",
+            "fridericia_tachy_120",
+            "framingham_brady_45",
+            "framingham_tachy_120",
+            "hodges_brady_45",
+            "hodges_tachy_120",
+            "fixed_normal_60",
+            "dynamic_long_qt",
+            "difficult_t_u",
+            "low_t_baseline"
+          ],
+          "default_tolerance_seconds": 0.05,
+          "description": "R-peak detector event timing against exact synthetic beat annotations.",
+          "primary_metric": "f1_score",
+          "score_type": "event_detection",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "r_peak"
+        },
+        {
+          "accepted_formats": [
+            "point_events_json_v1",
+            "point_events_csv_v1"
+          ],
+          "case_count": 12,
+          "case_ids": [
+            "bazett_brady_45",
+            "bazett_tachy_120",
+            "fridericia_brady_45",
+            "fridericia_tachy_120",
+            "framingham_brady_45",
+            "framingham_tachy_120",
+            "hodges_brady_45",
+            "hodges_tachy_120",
+            "fixed_normal_60",
+            "dynamic_long_qt",
+            "difficult_t_u",
+            "low_t_baseline"
+          ],
+          "default_tolerance_seconds": 0.04,
+          "description": "Lead-specific P, QRS, J-point, and T fiducial timing against exact synthetic construction ground truth.",
+          "primary_metric": "f1_score",
+          "score_type": "ecg_delineation",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "ecg_delineation"
+        },
+        {
+          "accepted_formats": [
+            "measurement_values_json_v1",
+            "measurement_values_csv_v1"
+          ],
+          "case_count": 12,
+          "case_ids": [
+            "bazett_brady_45",
+            "bazett_tachy_120",
+            "fridericia_brady_45",
+            "fridericia_tachy_120",
+            "framingham_brady_45",
+            "framingham_tachy_120",
+            "hodges_brady_45",
+            "hodges_tachy_120",
+            "fixed_normal_60",
+            "dynamic_long_qt",
+            "difficult_t_u",
+            "low_t_baseline"
+          ],
+          "default_pairing_window_seconds": 0.2,
+          "description": "Beat-level RR, QT and formula-explicit QTc measurements scored against exact synthetic timing truth.",
+          "primary_metric": "tolerance_pass_fraction",
+          "score_type": "measurement",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "qtc"
+        }
+      ],
+      "scoring_mode": "local",
+      "source": {
+        "catalog_path": "examples/catalog/verification_packs_v1.json",
+        "pack_fingerprint": "sha256:00b545b8ae978fff31e7494df491532b92d1cacfa09d8c5415667a84803f9104",
+        "pack_path": "../packs/ecg_qtc_verification_v1.json",
+        "source_content_sha256": "sha256:3c57472c86440178cc16e81d39534f06f198f0e29b582b8067499baf0b763dc9"
+      },
+      "submission_output_schemas": [
+        "point_events_json_v1",
+        "point_events_csv_v1",
+        "measurement_values_json_v1",
+        "measurement_values_csv_v1"
+      ],
+      "supported_threshold_profiles": [
+        "smoke",
+        "regression",
+        "stress",
+        "benchmark"
+      ],
+      "targets": [
+        "r_peak",
+        "ecg_delineation",
+        "qtc"
+      ],
+      "threshold_profile_contract": {
+        "policy_failure_exit_code": 1,
+        "recommended_profile": "regression",
+        "supported_profiles": [
+          "smoke",
+          "regression",
+          "stress",
+          "benchmark"
+        ]
+      },
+      "ui": {
+        "primary_badges": [
+          "regression",
+          "stress",
+          "qt",
+          "qtc",
+          "t_offset"
+        ],
+        "reference_only_before_job": false,
+        "scoreable_before_job": true
+      },
+      "version": "1.0"
+    },
     {
       "case_count": 3,
       "case_ids": [
@@ -6785,5 +7966,5 @@
   "release_set_id": "synsigra_curated_release_2026_07_18",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:d6a989c500dde86fa2bb0b5f168a08b0553790f79992ee3fea8c79c616ed53df"
+  "source_catalog_sha256": "sha256:9a0faa46d364302f3de26bb8c549d5294c48b0dea20c9b32aab1e97a14a251c7"
 }

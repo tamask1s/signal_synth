@@ -28,6 +28,20 @@ def _measurement_thresholds(pass_fraction, status_fraction):
     return {"overall": {"truth_match_fraction": {"min": pass_fraction}, "prediction_match_fraction": {"min": pass_fraction}, "tolerance_pass_fraction": {"min": pass_fraction}, "status_match_fraction": {"min": status_fraction}}}
 
 
+def _timing_measurement_thresholds(pass_fraction, status_fraction, error_limits):
+    output = _measurement_thresholds(pass_fraction, status_fraction)
+    for name, maximum_error in error_limits.items():
+        output[name] = {
+            "truth_match_fraction": {"min": pass_fraction},
+            "prediction_match_fraction": {"min": pass_fraction},
+            "tolerance_pass_fraction": {"min": pass_fraction},
+            "status_match_fraction": {"min": status_fraction},
+            "mean_absolute_error": {"max": maximum_error},
+            "p95_absolute_error": {"max": maximum_error * 2.0},
+        }
+    return output
+
+
 BUILTIN_THRESHOLD_PROFILES = {
     "smoke": {
         "schema_version": 1,
@@ -38,6 +52,8 @@ BUILTIN_THRESHOLD_PROFILES = {
             "interval_detection": _interval_thresholds(0.60, 0.40, 0.500),
             "ecg_delineation": _delineation_thresholds(0.60, 0.080),
             "measurement": _measurement_thresholds(0.70, 0.70),
+            "rr_interval": _timing_measurement_thresholds(0.70, 0.70, {"rr_interval": 0.025}),
+            "qtc": _timing_measurement_thresholds(0.70, 0.70, {"rr_interval": 0.025, "qt_interval": 0.035, "qtc_interval": 0.035}),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.70}}, "per_class": {"f1_score": {"min": 0.50}}},
             "hrv": {"summary": {"metric_pass_fraction": {"min": 0.70}}, "rr": {"pass_fraction": {"min": 0.70}}},
         },
@@ -51,6 +67,8 @@ BUILTIN_THRESHOLD_PROFILES = {
             "interval_detection": _interval_thresholds(0.85, 0.75, 0.200),
             "ecg_delineation": _delineation_thresholds(0.85, 0.040),
             "measurement": _measurement_thresholds(0.90, 0.90),
+            "rr_interval": _timing_measurement_thresholds(0.90, 0.90, {"rr_interval": 0.015}),
+            "qtc": _timing_measurement_thresholds(0.90, 0.90, {"rr_interval": 0.015, "qt_interval": 0.025, "qtc_interval": 0.025}),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.90}}, "per_class": {"f1_score": {"min": 0.80}}},
             "hrv": {"summary": {"metric_pass_fraction": {"min": 0.90}}, "rr": {"pass_fraction": {"min": 0.90}}},
         },
@@ -64,6 +82,8 @@ BUILTIN_THRESHOLD_PROFILES = {
             "interval_detection": _interval_thresholds(0.65, 0.50, 0.400),
             "ecg_delineation": _delineation_thresholds(0.65, 0.080),
             "measurement": _measurement_thresholds(0.75, 0.75),
+            "rr_interval": _timing_measurement_thresholds(0.75, 0.75, {"rr_interval": 0.025}),
+            "qtc": _timing_measurement_thresholds(0.75, 0.75, {"rr_interval": 0.025, "qt_interval": 0.035, "qtc_interval": 0.035}),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.75}}, "per_class": {"f1_score": {"min": 0.60}}},
             "hrv": {"summary": {"metric_pass_fraction": {"min": 0.75}}, "rr": {"pass_fraction": {"min": 0.75}}},
         },
@@ -77,6 +97,8 @@ BUILTIN_THRESHOLD_PROFILES = {
             "interval_detection": _interval_thresholds(0.95, 0.90, 0.100),
             "ecg_delineation": _delineation_thresholds(0.95, 0.020),
             "measurement": _measurement_thresholds(0.95, 0.95),
+            "rr_interval": _timing_measurement_thresholds(0.95, 0.95, {"rr_interval": 0.010}),
+            "qtc": _timing_measurement_thresholds(0.95, 0.95, {"rr_interval": 0.010, "qt_interval": 0.015, "qtc_interval": 0.015}),
             "ecg_beat_classification": {"summary": {"micro_f1_score": {"min": 0.95}}, "per_class": {"f1_score": {"min": 0.90}}},
             "hrv": {"summary": {"metric_pass_fraction": {"min": 1.0}}, "rr": {"pass_fraction": {"min": 0.95}}},
         },
@@ -118,6 +140,10 @@ PROFILE_SCHEMA["ppg_optical"] = PROFILE_SCHEMA["measurement"]
 PROFILE_SCHEMA["prv"] = PROFILE_SCHEMA["measurement"]
 PROFILE_SCHEMA["respiratory_rate"] = PROFILE_SCHEMA["measurement"]
 PROFILE_SCHEMA["rhythm_burden"] = PROFILE_SCHEMA["measurement"]
+
+TIMING_MEASUREMENT_METRICS = set(["truth_match_fraction", "prediction_match_fraction", "tolerance_pass_fraction", "status_match_fraction", "assertion_agreement_fraction", "mean_absolute_error", "root_mean_square_error", "p95_absolute_error", "maximum_absolute_error"])
+PROFILE_SCHEMA["rr_interval"] = {"overall": PROFILE_SCHEMA["measurement"]["overall"], "rr_interval": TIMING_MEASUREMENT_METRICS}
+PROFILE_SCHEMA["qtc"] = {"overall": PROFILE_SCHEMA["measurement"]["overall"], "rr_interval": TIMING_MEASUREMENT_METRICS, "qt_interval": TIMING_MEASUREMENT_METRICS, "qtc_interval": TIMING_MEASUREMENT_METRICS}
 
 
 def load_threshold_profile(profile="regression"):

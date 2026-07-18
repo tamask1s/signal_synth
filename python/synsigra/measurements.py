@@ -12,7 +12,7 @@ MEASUREMENT_STATUSES = set(["valid", "undefined", "absent", "not_evaluable"])
 MEASUREMENT_SCOPES = set(["record", "lead", "beat", "beat_lead", "paired_signal"])
 MEASUREMENT_UNITS = set(["s", "s2", "mV", "mV/s", "deg", "count", "ratio", "nu", "%", "bpm", "a.u.", "bool"])
 QT_FORMULAS = set(["fixed", "bazett", "fridericia", "framingham", "hodges"])
-MEASUREMENT_TARGETS = set(["morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"])
+MEASUREMENT_TARGETS = set(["rr_interval", "qtc", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"])
 
 
 class MeasurementError(ValueError):

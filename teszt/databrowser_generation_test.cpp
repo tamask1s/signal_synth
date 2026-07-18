@@ -121,6 +121,20 @@ namespace
             return render.record.episode_count() == 6u && render.record.episodes()[3].kind == signal_synth::clinical_episode_vf && render.record.episodes()[4].kind == signal_synth::clinical_episode_asystole;
         if (document.scenario_id == "ecg_extended_morphology_demo_v7")
             return document.ecg.morphology_component_count() == 7u && document.ecg.fusion_every_n_beats() == 4u && render.record.fiducial_count() > render.record.beat_count() * 12u;
+        if (document.scenario_id == "rpeak_analytic_noise_extreme_v2")
+            return render.record.beat_count() > 40u && render.signal_quality.artifacts.size() == 6u;
+        if (document.scenario_id.find("qtc_") == 0)
+        {
+            if (render.record.beat_count() < 10u)
+                return false;
+            for (unsigned int i = 0; i < render.record.beat_count(); ++i)
+            {
+                const signal_synth::clinical_beat_annotation& beat = render.record.beats()[i];
+                if (!beat.qrs_present || !beat.t_present || beat.qt_interval_seconds <= 0.0 || beat.qtc_interval_seconds <= 0.0)
+                    return false;
+            }
+            return true;
+        }
         return false;
     }
 
@@ -193,9 +207,9 @@ namespace
         return count == expected_scenarios;
     }
 
-    bool verify_external_noise_script()
+    bool verify_external_noise_script(const char* path, bool require_all_leads)
     {
-        const std::string script = read_text("examples/databrowser/087_ECG_Hybrid_External_Noise.txt");
+        const std::string script = read_text(path);
         const std::size_t call = script.find("GenerateECGExternalNoiseJSON(");
         const std::size_t first = call == std::string::npos ? std::string::npos : script.find('{', call);
         if (first == std::string::npos || script.find("SaveVarToFile") > script.find("DisplayData") || script.find(",, C,") != std::string::npos) return false;
@@ -213,7 +227,14 @@ namespace
                 signal_synth::external_noise_asset_input asset; asset.id = "synsigra_project_noise_v1"; asset.csv_content = read_text("examples/assets/noise/synsigra_project_noise_v1.csv");
                 std::vector<signal_synth::external_noise_asset_input> assets(1u, asset);
                 signal_synth::ecg_render_bundle render; signal_synth::ecg_document_render_result result;
-                return signal_synth::render_ecg_document(document, assets, render, result) && render.external_noise.intervals.size() == 3u && render.external_noise_clean_ecg_leads.size() == signal_synth::clinical_lead_count;
+                if (!signal_synth::render_ecg_document(document, assets, render, result) || render.external_noise.intervals.size() != 3u || render.external_noise_clean_ecg_leads.size() != signal_synth::clinical_lead_count)
+                    return false;
+                if (!require_all_leads)
+                    return true;
+                for (unsigned int interval = 0; interval < render.external_noise.intervals.size(); ++interval)
+                    if (render.external_noise.intervals[interval].channels.size() != signal_synth::clinical_lead_count)
+                        return false;
+                return true;
             }
         }
         return false;
@@ -233,7 +254,10 @@ int main()
     ok &= check(verify_specialized_script("examples/databrowser/084_Cardiorespiratory_PRV_Respiration.txt", "GenerateCardiorespiratoryScenarioJSON"), "cardiorespiratory_script");
     ok &= check(verify_script("examples/databrowser/085_ECG_Advanced_Rhythm_Burden.txt", 2), "advanced_rhythm_script");
     ok &= check(verify_script("examples/databrowser/086_ECG_Extended_Morphology.txt", 1), "extended_morphology_script");
-    ok &= check(verify_external_noise_script(), "external_noise_script");
+    ok &= check(verify_external_noise_script("examples/databrowser/087_ECG_Hybrid_External_Noise.txt", false), "external_noise_script");
+    ok &= check(verify_script("examples/databrowser/089_ECG_RPeak_RR_Noise.txt", 1), "rpeak_rr_noise_script");
+    ok &= check(verify_external_noise_script("examples/databrowser/089_ECG_RPeak_RR_Noise.txt", true), "rpeak_rr_external_noise_script");
+    ok &= check(verify_script("examples/databrowser/090_ECG_QTc_Verification.txt", 3), "qtc_verification_script");
 
     const std::string adapter = read_text("integrations/databrowser/SignalProc_RSPT.cpp");
     ok &= check(adapter.find("#include \"ecg_render.h\"") != std::string::npos && adapter.find("#include \"wearable_timebase.h\"") != std::string::npos && adapter.find("#include \"ecg_export.h\"") == std::string::npos, "adapter_uses_render_layer");

@@ -30,7 +30,7 @@ python -m pip install .
 External beta users receive and install the generator-free wheel:
 
 ```bash
-python -m pip install synsigra-0.7.0-py3-none-any.whl
+python -m pip install synsigra-0.8.0-py3-none-any.whl
 ```
 
 Build local distribution artifacts:
@@ -53,6 +53,14 @@ python3.8 -m venv .venv
 .venv/bin/pip install build==1.2.2.post1 setuptools==75.3.2 wheel==0.45.1
 PYTHON=.venv/bin/python ./scripts/build_python_distribution.sh
 PYTHON=.venv/bin/python ./scripts/smoke_python_distribution.sh
+```
+
+The build script reuses the selected Python environment by default and does
+not create or populate an isolated build environment. Use
+`SYNSIGRA_BUILD_ISOLATION=1` only for a deliberate clean release check:
+
+```bash
+SYNSIGRA_BUILD_ISOLATION=1 PYTHON=.venv/bin/python ./scripts/build_python_distribution.sh
 ```
 
 ## Release checklist

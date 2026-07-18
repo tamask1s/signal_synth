@@ -35,7 +35,7 @@ int main()
     bool ok = true;
     const std::string metadata = signal_synth::scenario_authoring_metadata_json();
     const std::string templates = signal_synth::scenario_template_catalog_json();
-    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v16"
+    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v17"
         && metadata.find("\"condition_count\"") == std::string::npos
         && metadata.find("\"code\":\"NORM\"") != std::string::npos
         && metadata.find("\"path\":\"$.hrv.target_sdnn_seconds\"") != std::string::npos
@@ -60,6 +60,8 @@ int main()
         && metadata.find("\"name\":\"ppg_systolic_peak\"") != std::string::npos
         && metadata.find("\"name\":\"ppg_pulse_onset\"") != std::string::npos
         && metadata.find("\"name\":\"ecg_delineation\"") != std::string::npos
+        && metadata.find("\"name\":\"rr_interval\",\"support\":\"local_scoring\"") != std::string::npos
+        && metadata.find("\"name\":\"qtc\",\"support\":\"local_scoring\"") != std::string::npos
         && metadata.find("\"name\":\"ppg_optical\",\"support\":\"local_scoring\"") != std::string::npos
         && metadata.find("\"name\":\"prv\",\"support\":\"local_scoring\"") != std::string::npos
         && metadata.find("\"name\":\"respiratory_rate\",\"support\":\"local_scoring\"") != std::string::npos, "metadata_contract");
@@ -74,6 +76,8 @@ int main()
         && signal_synth::scenario_target_support_for_name("ppg_pulse_onset") == signal_synth::scenario_target_local_scoring
         && signal_synth::scenario_target_support_for_name("signal_quality") == signal_synth::scenario_target_local_scoring
         && signal_synth::scenario_target_support_for_name("rhythm_episode") == signal_synth::scenario_target_local_scoring
+        && signal_synth::scenario_target_support_for_name("rr_interval") == signal_synth::scenario_target_local_scoring
+        && signal_synth::scenario_target_support_for_name("qtc") == signal_synth::scenario_target_local_scoring
         && signal_synth::scenario_target_support_for_name("morphology_assertions") == signal_synth::scenario_target_local_scoring
         && signal_synth::scenario_target_support_for_name("ecg_ppg_alignment") == signal_synth::scenario_target_local_scoring
         && signal_synth::scenario_target_support_for_name("ppg_optical") == signal_synth::scenario_target_local_scoring

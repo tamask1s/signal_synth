@@ -27,13 +27,17 @@ This file is the short checklist to check before and after every change.
    evidence should remain unambiguous.
 7. Run the relevant local tests before commit. For broad changes, run release
    CTest and sanitizer CTest unless a documented environment limitation applies.
-8. Synchronize the DataBrowser/SVN working copy whenever shared source files or
+8. Reuse repository-local, Git-ignored virtual environments, tool installs,
+   build directories, and downloaded fixtures across development sessions. Do
+   not delete and recreate them by default. Use a clean isolated environment
+   only for an explicit release or reproducibility check.
+9. Synchronize the DataBrowser/SVN working copy whenever shared source files or
    DataBrowser scripts are changed, and record manual evidence separately from
    automated CI evidence.
-9. Push only after the local working tree is understood. If history was
+10. Push only after the local working tree is understood. If history was
    rewritten, force-push intentionally and update issue comments if old commit
    hashes were previously recorded.
-10. Close the issue only after acceptance criteria, local verification, required
+11. Close the issue only after acceptance criteria, local verification, required
     CI jobs, traceability matrix updates, and residual limitations are recorded.
 
 ## Commit Message Template

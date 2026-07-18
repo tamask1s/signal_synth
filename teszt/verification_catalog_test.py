@@ -26,11 +26,11 @@ def main():
     catalog = load_json(catalog_path)
     assert catalog["schema_version"] == 1
     assert catalog["catalog_id"] == "synsigra_verification_packs"
-    assert catalog["version"] == "2.5"
+    assert catalog["version"] == "2.6"
     assert "clinical validation" in catalog["not_for"].lower()
 
     expected = set([
-        "r_peak_stress_v1", "hrv_robustness_v2", "ecg_beat_classification_v1", "ecg_rhythm_v1",
+        "r_peak_rr_noise_v1", "ecg_qtc_verification_v1", "r_peak_stress_v1", "hrv_robustness_v2", "ecg_beat_classification_v1", "ecg_rhythm_v1",
         "signal_quality_v1", "ecg_morphology_stress_v1", "ecg_extended_morphology_v1", "ppg_alignment_v1", "combined_worst_case_v1",
         "wearable_timebase_v2", "ppg_benchmark_v1", "ppg_optical_v2", "ecg_delineation_v2", "cardiorespiratory_v1", "advanced_rhythm_burden_v1", "ecg_hybrid_noise_v1",
     ])
@@ -42,7 +42,7 @@ def main():
         assert entry["modality"] and entry["targets"] and entry["difficulty"] and entry["feature_tags"]
         assert entry["scoring_mode"] in ("local", "mixed", "reference_only")
         assert entry["release_status"] == "beta"
-        assert entry["release_date"] == ("2026-07-18" if pack_id == "hrv_robustness_v2" else "2026-07-17" if pack_id in ("ecg_delineation_v2", "wearable_timebase_v2", "ppg_optical_v2", "cardiorespiratory_v1", "advanced_rhythm_burden_v1", "ecg_extended_morphology_v1", "ecg_hybrid_noise_v1") else "2026-07-06")
+        assert entry["release_date"] == ("2026-07-18" if pack_id in ("hrv_robustness_v2", "r_peak_rr_noise_v1", "ecg_qtc_verification_v1") else "2026-07-17" if pack_id in ("ecg_delineation_v2", "wearable_timebase_v2", "ppg_optical_v2", "cardiorespiratory_v1", "advanced_rhythm_burden_v1", "ecg_extended_morphology_v1", "ecg_hybrid_noise_v1") else "2026-07-06")
         assert "deprecation_message" in entry
         assert entry["recommended_for"] and entry["not_recommended_for"] and entry["changelog"]
         if entry["scoring_mode"] == "reference_only":

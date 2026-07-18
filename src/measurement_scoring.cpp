@@ -142,6 +142,53 @@ namespace
         truth.measurement.time_seconds = beat.r_peak_time_seconds;
     }
 
+    void add_rr_interval_truth(const signal_synth::ecg_render_bundle& render, std::vector<signal_synth::measurement_truth>& output)
+    {
+        const signal_synth::clinical_beat_annotation* beats = render.record.beats();
+        const signal_synth::clinical_beat_annotation* previous = 0;
+        for (unsigned int i = 0; beats && i < render.record.beat_count(); ++i)
+        {
+            const signal_synth::clinical_beat_annotation& beat = beats[i];
+            if (!beat.qrs_present)
+                continue;
+            if (previous)
+            {
+                signal_synth::measurement_truth rr = make_truth("rr_interval", "s", signal_synth::measurement_valid, signal_synth::measurement_beat, beat.r_peak_time_seconds - previous->r_peak_time_seconds, 0.010, 2.0, "");
+                set_beat_anchor(rr, beat);
+                output.push_back(rr);
+            }
+            previous = &beat;
+        }
+    }
+
+    void add_qtc_truth(const signal_synth::ecg_render_bundle& render, std::vector<signal_synth::measurement_truth>& output)
+    {
+        const signal_synth::clinical_beat_annotation* beats = render.record.beats();
+        const signal_synth::clinical_beat_annotation* previous = 0;
+        const char* formula = qt_formula_name(render.resolved_document.ecg.qt_adaptation_model());
+        for (unsigned int i = 0; beats && i < render.record.beat_count(); ++i)
+        {
+            const signal_synth::clinical_beat_annotation& beat = beats[i];
+            if (!beat.qrs_present)
+                continue;
+            const signal_synth::measurement_status status = beat.t_present ? signal_synth::measurement_valid : signal_synth::measurement_absent;
+            signal_synth::measurement_truth qt = make_truth("qt_interval", "s", status, signal_synth::measurement_beat, beat.qt_interval_seconds, 0.025, 5.0, beat.t_present ? "" : "t_wave_absent");
+            set_beat_anchor(qt, beat);
+            output.push_back(qt);
+            if (previous)
+            {
+                signal_synth::measurement_truth rr = make_truth("rr_interval", "s", signal_synth::measurement_valid, signal_synth::measurement_beat, beat.r_peak_time_seconds - previous->r_peak_time_seconds, 0.010, 2.0, "");
+                set_beat_anchor(rr, beat);
+                output.push_back(rr);
+                signal_synth::measurement_truth qtc = make_truth("qtc_interval", "s", status, signal_synth::measurement_beat, beat.qtc_interval_seconds, 0.025, 5.0, beat.t_present ? "" : "t_wave_absent");
+                set_beat_anchor(qtc, beat);
+                qtc.measurement.formula = formula;
+                output.push_back(qtc);
+            }
+            previous = &beat;
+        }
+    }
+
     void add_timing_truth(const signal_synth::ecg_render_bundle& render, std::vector<signal_synth::measurement_truth>& output)
     {
         const signal_synth::clinical_beat_annotation* beats = render.record.beats();
@@ -778,14 +825,18 @@ namespace signal_synth
 
     bool measurement_target_supported(const std::string& target)
     {
-        return target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical" || target == "prv" || target == "respiratory_rate" || target == "rhythm_burden";
+        return target == "rr_interval" || target == "qtc" || target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical" || target == "prv" || target == "respiratory_rate" || target == "rhythm_burden";
     }
 
     bool measurement_ground_truth_from_render(const ecg_render_bundle& render, const std::string& target, std::vector<measurement_truth>& output, std::vector<std::string>& messages)
     {
         output.clear();
         messages.clear();
-        if (target == "morphology_assertions")
+        if (target == "rr_interval")
+            add_rr_interval_truth(render, output);
+        else if (target == "qtc")
+            add_qtc_truth(render, output);
+        else if (target == "morphology_assertions")
         {
             add_timing_truth(render, output);
             add_lead_morphology_truth(render, output);

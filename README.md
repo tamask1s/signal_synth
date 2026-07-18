@@ -10,8 +10,8 @@ vector model, 12-lead projection, and construction/measured fiducials. `ecg_scen
 provides the versioned product-facing QA scenario contract, complete PTB-XL
 condition catalog, strict validation, reproducibility fingerprint, and audit
 report. `ecg_morphology` measures deterministic beat-by-lead morphology from
-the generated 12-lead signal. `ecg_scenario_json` provides strict schema-v1
-through schema-v6 JSON parsing, canonical serialization, and SHA-256 document
+the generated 12-lead signal. `ecg_scenario_json` provides strict schema-v2
+through schema-v9 JSON parsing, canonical serialization, and SHA-256 document
 identity. `ppg_model` generates a linked optical pulse channel with variable
 PTT, morphology, modulation, perfusion, weak-pulse, and missing-pulse ground
 truth from the exact ECG ventricular timeline. PPG QA includes deterministic
@@ -25,7 +25,8 @@ truth-side atrial/ventricular anchors, and explicit present, absent, and
 not-evaluable states.
 Generic measurement scoring uses one JSON/CSV contract for beat, lead, record,
 and paired-signal outputs, including ECG intervals, ST/T morphology, frontal
-axes, phenotype assertions, PTT, and ECG-to-PPG peak delay.
+axes, phenotype assertions, observable RR, formula-explicit QT/QTc, PTT, and
+ECG-to-PPG peak delay.
 `cardiorespiratory` derives explicit PRV from final measured PPG peaks, exports
 HRV-versus-PRV agreement and pulse-quality exclusions, and exposes a shared
 seeded respiratory reference coupled independently to RR, ECG baseline, PPG
@@ -129,6 +130,8 @@ Discover the SaaS-safe form contract, scenario templates, and pack estimates:
 /tmp/signal_synth-build/signal-synth authoring schema
 /tmp/signal_synth-build/signal-synth authoring templates
 /tmp/signal_synth-build/signal-synth pack analyze examples/packs/ecg_rhythm_v1.json
+/tmp/signal_synth-build/signal-synth pack challenge examples/packs/r_peak_rr_noise_v1.json --out /tmp/r_peak_rr_noise --noise-assets examples/assets/noise
+/tmp/signal_synth-build/signal-synth pack challenge examples/packs/ecg_qtc_verification_v1.json --out /tmp/ecg_qtc
 ```
 
 `signal-synth contract` is the machine-readable worker preflight contract.
@@ -178,7 +181,7 @@ External beta users install the generator-free wheel supplied with the
 release:
 
 ```bash
-python -m pip install synsigra-0.7.0-py3-none-any.whl
+python -m pip install synsigra-0.8.0-py3-none-any.whl
 ```
 
 Run local verification:

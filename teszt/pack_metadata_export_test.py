@@ -29,6 +29,8 @@ def pack(document, pack_id):
 
 
 RELEASE_PACK_IDS = [
+    "r_peak_rr_noise_v1",
+    "ecg_qtc_verification_v1",
     "ecg_extended_morphology_v1",
     "advanced_rhythm_burden_v1",
     "r_peak_stress_v1",
@@ -53,7 +55,7 @@ def assert_release_pack_metadata(item):
     assert item["metadata_type"] == "synsigra_curated_pack_metadata"
     assert isinstance(item["version"], str) and item["version"]
     assert item["release_status"] == "beta"
-    expected_date = "2026-07-18" if item["pack_id"] == "hrv_robustness_v2" else "2026-07-17" if item["pack_id"] in ("ecg_delineation_v2", "wearable_timebase_v2", "ppg_optical_v2", "cardiorespiratory_v1", "advanced_rhythm_burden_v1", "ecg_extended_morphology_v1", "ecg_hybrid_noise_v1") else "2026-07-06"
+    expected_date = "2026-07-18" if item["pack_id"] in ("hrv_robustness_v2", "r_peak_rr_noise_v1", "ecg_qtc_verification_v1") else "2026-07-17" if item["pack_id"] in ("ecg_delineation_v2", "wearable_timebase_v2", "ppg_optical_v2", "cardiorespiratory_v1", "advanced_rhythm_burden_v1", "ecg_extended_morphology_v1", "ecg_hybrid_noise_v1") else "2026-07-06"
     assert item["release_date"] == expected_date
     assert item["recommended_for"] and item["not_recommended_for"] and item["changelog"]
     assert item["source"]["pack_fingerprint"].startswith("sha256:")
@@ -245,6 +247,22 @@ def assert_hrv_robustness_metadata(item):
     assert {"hrv_metrics_json", "rr_tachogram_csv"}.issubset(set(artifact["role"] for artifact in item["output_artifacts"]))
 
 
+def assert_rr_qtc_metadata(generated):
+    rr = pack(generated, "r_peak_rr_noise_v1")
+    assert rr["case_count"] == 8 and rr["recommended_profile"] == "stress"
+    rr_targets = dict((target["target"], target) for target in rr["scoreable_targets"])
+    assert sorted(rr_targets) == ["r_peak", "rr_interval", "signal_quality"]
+    assert rr_targets["rr_interval"]["accepted_formats"] == ["measurement_values_json_v1", "measurement_values_csv_v1"]
+    assert rr["generator_compatibility"]["minimum_generator_version"] == "0.8.0-dev"
+    assert rr["generator_compatibility"]["local_verifier_min_version"] == "0.8.0"
+    qtc = pack(generated, "ecg_qtc_verification_v1")
+    assert qtc["case_count"] == 12 and qtc["recommended_profile"] == "regression"
+    qtc_targets = dict((target["target"], target) for target in qtc["scoreable_targets"])
+    assert sorted(qtc_targets) == ["ecg_delineation", "qtc", "r_peak"]
+    assert qtc_targets["qtc"]["accepted_formats"] == ["measurement_values_json_v1", "measurement_values_csv_v1"]
+    assert qtc["generator_compatibility"]["scenario_schema_versions"] == [3, 7]
+
+
 def main():
     source_dir = os.environ["SIGNAL_SYNTH_SOURCE_DIR"]
     cli = os.environ["SIGNAL_SYNTH_CLI"]
@@ -264,8 +282,8 @@ def main():
         assert generated["release_set_id"] == "synsigra_curated_release_2026_07_18"
         assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
-        assert generated["catalog_version"] == "2.5"
-        assert generated["pack_count"] == 16
+        assert generated["catalog_version"] == "2.6"
+        assert generated["pack_count"] == 18
         assert [item["pack_id"] for item in generated["packs"]] == RELEASE_PACK_IDS
         for pack_id in RELEASE_PACK_IDS:
             assert_release_pack_metadata(pack(generated, pack_id))
@@ -277,6 +295,7 @@ def main():
         assert_advanced_rhythm_metadata(pack(generated, "advanced_rhythm_burden_v1"))
         assert_hybrid_noise_metadata(pack(generated, "ecg_hybrid_noise_v1"))
         assert_hrv_robustness_metadata(pack(generated, "hrv_robustness_v2"))
+        assert_rr_qtc_metadata(generated)
         assert_measurement_metadata(pack(generated, "ecg_extended_morphology_v1"), "morphology_assertions", "0.6.0")
         assert_measurement_metadata(pack(generated, "ecg_morphology_stress_v1"), "morphology_assertions")
         assert_measurement_metadata(pack(generated, "ppg_alignment_v1"), "ecg_ppg_alignment")

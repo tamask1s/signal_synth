@@ -2,7 +2,7 @@
 
 **Document ID:** SYN-SAAS-HANDOFF-001
 
-**Version:** 2.3
+**Version:** 2.4
 
 **Status:** Core contract closed; SaaS consumer migration required
 
@@ -52,8 +52,8 @@ Pack metadata export:
 - regenerate it with `scripts/export_curated_pack_metadata.py`;
 - it distinguishes declared targets, effective scoreable targets, and
   reference-only ground-truth outputs before job creation.
-- current consumer baseline is curated catalog `2.5` and generator-free
-  verifier `0.7.0`; packs declare their own minimum verifier version;
+- current consumer baseline is curated catalog `2.6` and generator-free
+  verifier `0.8.0`; packs declare their own minimum verifier version;
 - schema-v5 wearable cases expose independent device streams and must not be
   normalized to one implicit sample rate or timestamp domain by the service.
 
@@ -116,7 +116,7 @@ This detects an accidentally mismatched linked library, CLI binary, or image.
 Successful challenge stdout is one compact JSON document:
 
 ```json
-{"schema_version":1,"contract":"synsigra_core_integration_v4","status":"challenge_rendered","output_directory":"<path>","package_id":"<pack-id>","scenario_count":4,"pack_fingerprint":"sha256:<64-hex>","package_fingerprint":"sha256:<64-hex>","generator":{"name":"signal_synth","version":"<version>","git_commit":"<commit>","build_identity":"<identity>"},"contracts":{"challenge_package":"synsigra_challenge_package_v2","scoring_manifest":"synsigra_scoring_manifest_v2"}}
+{"schema_version":1,"contract":"synsigra_core_integration_v5","status":"challenge_rendered","output_directory":"<path>","package_id":"<pack-id>","scenario_count":4,"pack_fingerprint":"sha256:<64-hex>","package_fingerprint":"sha256:<64-hex>","generator":{"name":"signal_synth","version":"<version>","git_commit":"<commit>","build_identity":"<identity>"},"contracts":{"challenge_package":"synsigra_challenge_package_v2","scoring_manifest":"synsigra_scoring_manifest_v2"}}
 ```
 
 Failure behavior follows the repository CLI contract: non-zero exit code,
@@ -302,7 +302,7 @@ Available from the core:
 - schema-v5 challenge packages expose explicit `wearable_samples_csv`,
   `wearable_timestamp_truth_csv`, `wearable_timebase_truth_json`, and
   `wearable_alignment_truth_json` manifest roles;
-- `wearable_timebase_v2` replaces `wearable_stress_v1`, and the Python 0.7.0
+- `wearable_timebase_v2` replaces `wearable_stress_v1`, and the Python 0.8.0
   package reads these artifacts without generator code;
 - schema-v9 adds controlled VLF modulation. `hrv_robustness_v2` replaces
   `hrv_v1` and targets `r_peak`, `hrv`, and `signal_quality` together;
@@ -311,6 +311,16 @@ Available from the core:
 - Python verification summaries contain `hrv_pipeline` diagnostics for
   R-peak detection, RR reconstruction, HRV metric computation, and optional
   signal-quality interval detection.
+- `r_peak_rr_noise_v1` adds a deterministic clean/analytic/calibrated-noise
+  detector matrix and the scoreable beat-level `rr_interval` target;
+- `ecg_qtc_verification_v1` adds formula-explicit `qtc` scoring over RR, QT,
+  and QTc measurements, with rate boundaries and difficult T/U morphology;
+- both new targets use the existing `measurement_values_json_v1` and
+  `measurement_values_csv_v1` customer formats. Formula, beat anchor, status,
+  and unit are identity fields and must not be normalized by the service;
+- profile results may include named measurement sections such as
+  `rr_interval`, `qt_interval`, and `qtc_interval`; the SaaS must preserve and
+  display these checks instead of reducing them to one opaque pass flag.
 
 Required in the SaaS service layer after this closure:
 
@@ -332,10 +342,16 @@ Required in the SaaS service layer after this closure:
   publishing artifacts;
 - preserve `external_noise_truth_json` and `external_noise_clean_ecg_csv`
   exactly as generated while excluding source asset bytes from archives.
-- require `synsigra_core_integration_v4`, scenario schema 9 support, curated
-  catalog 2.5, and the generator-free `synsigra` 0.7.0 verifier;
+- require `synsigra_core_integration_v5`, C++ facade 1.3.0, authoring contract
+  `synsigra_authoring_v17`, scenario schema 9 support, curated catalog 2.6,
+  and the generator-free `synsigra` 0.8.0 verifier;
 - remove the obsolete `hrv_v1` catalog/database records instead of aliasing
   them, ingest `hrv_robustness_v2`, and expose VLF plus pipeline-stage results.
+- ingest `r_peak_rr_noise_v1` and `ecg_qtc_verification_v1`, publish their
+  machine-readable expectation/claim-boundary metadata, and expose R-peak,
+  RR, delineation, QT, and QTc as separate result stages;
+- distribute each generated `measurement_truth.json` and user-output template
+  unchanged. Do not recompute RR/QTc truth or correction formulas in SaaS code.
 
 ## 7. SaaS Consumer Migration
 
@@ -353,6 +369,9 @@ Required in the SaaS service layer after this closure:
 7. For schema-v8 jobs, resolve every external asset from the operator-controlled
    registry, verify the declared checksum, and reject release when the core
    reports a local-only policy.
+8. Verify one perfect and one deliberately biased submission for each new pack
+   through the installed 0.8.0 verifier, retaining raw target reports and named
+   threshold checks with the job evidence.
 
 Do not add a compatibility parser for the old success format. If existing SaaS
 state contains only development data, reset it instead of introducing schema,

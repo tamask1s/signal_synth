@@ -51,4 +51,6 @@ examples/databrowser/085_ECG_Advanced_Rhythm_Burden.txt|SigForge/Scripts/085_ECG
 examples/databrowser/086_ECG_Extended_Morphology.txt|SigForge/Scripts/086_ECG_Extended_Morphology.txt
 examples/databrowser/087_ECG_Hybrid_External_Noise.txt|SigForge/Scripts/087_ECG_Hybrid_External_Noise.txt
 examples/databrowser/088_ECG_HRV_Robustness_V2.txt|SigForge/Scripts/088_ECG_HRV_Robustness_V2.txt
+examples/databrowser/089_ECG_RPeak_RR_Noise.txt|SigForge/Scripts/089_ECG_RPeak_RR_Noise.txt
+examples/databrowser/090_ECG_QTc_Verification.txt|SigForge/Scripts/090_ECG_QTc_Verification.txt
 examples/assets/noise/synsigra_project_noise_v1.csv|SigForge/Scripts/ExternalNoiseAssets/synsigra_project_noise_v1.csv

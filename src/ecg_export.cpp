@@ -1194,7 +1194,7 @@ namespace signal_synth
 
     const char* signal_synth_generator_version()
     {
-        return "0.7.0-dev";
+        return "0.8.0-dev";
     }
 
     const char* signal_synth_generator_git_commit()
