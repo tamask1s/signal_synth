@@ -83,7 +83,7 @@ namespace
                   << "       signal-synth compare <r_peak|ppg_systolic_peak|ppg_pulse_onset|ecg_beat_classification> <scenario.json|-> <detections.csv|detections.json> --out <new-directory> [--tolerance-ms <ms>]\n"
                   << "       signal-synth interval score <rhythm_episode|signal_quality> <scenario.json|-> <intervals.csv|intervals.json> --out <new-directory> [--minimum-iou <ratio>]\n"
                   << "       signal-synth delineation score <scenario.json|-> <point-events.csv|point-events.json> --out <new-directory> [--tolerance-ms <ms>]\n"
-                  << "       signal-synth measurement score <morphology_assertions|ecg_ppg_alignment|ppg_optical> <scenario.json|-> <measurements.csv|measurements.json> --out <new-directory> [--pairing-window-ms <ms>]\n"
+                  << "       signal-synth measurement score <morphology_assertions|ecg_ppg_alignment|ppg_optical|prv|respiratory_rate> <scenario.json|-> <measurements.csv|measurements.json> --out <new-directory> [--pairing-window-ms <ms>]\n"
                   << "       signal-synth hrv score <scenario.json|-> <hrv-output.json|-> --out <new-directory>\n"
                   << "       signal-synth pack validate <pack.json>\n"
                   << "       signal-synth pack analyze <pack.json>\n"
@@ -565,7 +565,7 @@ namespace
             "{\"name\":\"hrv_metrics_json_v1\",\"media_type\":\"application/json\",\"container_fields\":[\"schema_version\",\"metrics\",\"rr_intervals\"],\"rr_record_fields\":[\"beat_time_seconds\",\"rr_seconds\"]},"
             "{\"name\":\"measurement_values_json_v1\",\"media_type\":\"application/json\",\"container_fields\":[\"schema_version\",\"measurements\"],\"record_fields\":[\"name\",\"value\",\"unit\",\"status\",\"scope\",\"time_seconds\",\"beat_index\",\"channel\",\"formula\",\"confidence\"],\"required_record_fields\":[\"name\",\"unit\",\"status\",\"scope\"]},"
             "{\"name\":\"measurement_values_csv_v1\",\"media_type\":\"text/csv\",\"columns\":[\"name\",\"value\",\"unit\",\"status\",\"scope\",\"time_seconds\",\"beat_index\",\"channel\",\"formula\",\"confidence\"],\"required_columns\":[\"name\",\"value\",\"unit\",\"status\",\"scope\",\"time_seconds\",\"beat_index\",\"channel\",\"formula\",\"confidence\"]}],"
-            "\"measurement_contract\":{\"statuses\":[\"valid\",\"undefined\",\"absent\",\"not_evaluable\"],\"scopes\":[\"record\",\"lead\",\"beat\",\"beat_lead\",\"paired_signal\"],\"units\":[\"s\",\"mV\",\"mV/s\",\"deg\",\"count\",\"ratio\",\"%\",\"bpm\",\"a.u.\",\"bool\"],\"qt_formulas\":[\"fixed\",\"bazett\",\"fridericia\",\"framingham\",\"hodges\"]},"
+            "\"measurement_contract\":{\"statuses\":[\"valid\",\"undefined\",\"absent\",\"not_evaluable\"],\"scopes\":[\"record\",\"lead\",\"beat\",\"beat_lead\",\"paired_signal\"],\"units\":[\"s\",\"s2\",\"mV\",\"mV/s\",\"deg\",\"count\",\"ratio\",\"%\",\"bpm\",\"a.u.\",\"bool\"],\"qt_formulas\":[\"fixed\",\"bazett\",\"fridericia\",\"framingham\",\"hodges\"]},"
             "\"target_adapters\":{"
             "\"r_peak\":{\"format_family\":\"point_events\",\"required_record_fields\":[\"time_seconds\"]},"
             "\"ppg_systolic_peak\":{\"format_family\":\"point_events\",\"required_record_fields\":[\"time_seconds\"]},"
@@ -577,7 +577,9 @@ namespace
             "\"signal_quality\":{\"format_family\":\"interval_events\",\"channel\":\"global_or_physical_channel\"},"
             "\"morphology_assertions\":{\"format_family\":\"measurement_values\",\"scopes\":[\"record\",\"lead\",\"beat\",\"beat_lead\"]},"
             "\"ecg_ppg_alignment\":{\"format_family\":\"measurement_values\",\"scopes\":[\"paired_signal\"]},"
-            "\"ppg_optical\":{\"format_family\":\"measurement_values\",\"scopes\":[\"paired_signal\"]}}}\n";
+            "\"ppg_optical\":{\"format_family\":\"measurement_values\",\"scopes\":[\"paired_signal\"]},"
+            "\"prv\":{\"format_family\":\"measurement_values\",\"scopes\":[\"record\",\"paired_signal\"]},"
+            "\"respiratory_rate\":{\"format_family\":\"measurement_values\",\"scopes\":[\"record\",\"paired_signal\"]}}}\n";
     }
 
     void add_submission_template_files(signal_synth::challenge_package_build_options& options, const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_json_result& identity, const std::vector<pack_render_row>& rows)

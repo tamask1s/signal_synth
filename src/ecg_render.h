@@ -1,5 +1,6 @@
 #pragma once
 
+#include "cardiorespiratory.h"
 #include "clinical_ecg.h"
 #include "ecg_morphology.h"
 #include "ecg_scenario_json.h"
@@ -71,6 +72,7 @@ namespace signal_synth
         std::vector<unsigned long long> ppg_clipping_counts;
         wearable_timebase_record wearable;
         hrv_analysis_result hrv;
+        cardiorespiratory_analysis_result cardiorespiratory;
         ecg_ground_truth_metrics metrics;
     };
 

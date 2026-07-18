@@ -319,7 +319,7 @@ namespace signal_synth
         double minimum_rr_seconds() const;
         bool set_maximum_rr_seconds(double value);
         double maximum_rr_seconds() const;
-        bool set_hrv_modulation(double lf_hf_ratio, double lf_center_hz, double lf_bandwidth_hz, double hf_center_hz, double hf_bandwidth_hz, double respiratory_frequency_hz, double respiratory_amplitude_seconds);
+        bool set_hrv_modulation(double lf_hf_ratio, double lf_center_hz, double lf_bandwidth_hz, double hf_center_hz, double hf_bandwidth_hz, double respiratory_frequency_hz, double respiratory_amplitude_seconds, double respiratory_phase_radians = -1.0);
         bool set_activity_modulation(double start_seconds, double duration_seconds, double intensity);
         double activity_start_seconds() const;
         double activity_duration_seconds() const;

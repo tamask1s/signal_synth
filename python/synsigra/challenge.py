@@ -111,6 +111,15 @@ class ChallengeCase(object):
     def hrv_metrics(self):
         return self.package.read_json("cases/%s/hrv_metrics.json" % self.id)
 
+    def cardiorespiratory_truth(self):
+        return self.package.read_json("cases/%s/cardiorespiratory_truth.json" % self.id)
+
+    def prv_tachogram(self):
+        return read_waveform_csv(self._case_file_path("prv_tachogram.csv"))
+
+    def respiration_reference(self):
+        return read_waveform_csv(self._case_file_path("respiration_reference.csv"))
+
     def measurement_truth(self, target=None):
         document = self.package.read_json("cases/%s/measurement_truth.json" % self.id)
         if target is None:

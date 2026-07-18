@@ -1446,10 +1446,11 @@ CVariable* create_rendered_ecg_variable(const char* output_name, const signal_sy
 {
     const signal_synth::clinical_ecg_record& record = render.record;
     const unsigned int ppg_channel_count = rendered_ppg_channel_count(render);
+    const bool has_accelerometer = render.signal_quality.accelerometer.size() == record.sample_count();
     const unsigned int annotation_channel_count = annotation_output == clinical_annotations_channels ? 13U + 2U * ppg_channel_count : 0U;
     const unsigned int first_ppg_annotation_channel = signal_synth::clinical_lead_count + 13U;
     const unsigned int first_ppg_channel = signal_synth::clinical_lead_count + annotation_channel_count;
-    vector<unsigned int> channel_sizes(signal_synth::clinical_lead_count + annotation_channel_count + ppg_channel_count, record.sample_count());
+    vector<unsigned int> channel_sizes(signal_synth::clinical_lead_count + annotation_channel_count + ppg_channel_count + (has_accelerometer ? 1U : 0U), record.sample_count());
     CVariable* output = NewCVariable();
     output->Rebuild(channel_sizes.size(), channel_sizes.data());
 
@@ -1473,6 +1474,14 @@ CVariable* create_rendered_ecg_variable(const char* output_name, const signal_sy
         copy_fixed_string(output->m_labels.m_data[output_channel].s, render.ppg.channel_name(ppg_channel));
         copy_fixed_string(output->m_vertical_units.m_data[output_channel].s, render.ppg.channel_unit(ppg_channel));
         memcpy(output->m_data[output_channel], rendered_ppg_channel_data(render, ppg_channel), record.sample_count() * sizeof(double));
+    }
+    if (has_accelerometer)
+    {
+        const unsigned int channel = first_ppg_channel + ppg_channel_count;
+        output->m_sample_rates.m_data[channel] = record.sampling_rate_hz();
+        copy_fixed_string(output->m_labels.m_data[channel].s, "accelerometer");
+        copy_fixed_string(output->m_vertical_units.m_data[channel].s, "g");
+        memcpy(output->m_data[channel], render.signal_quality.accelerometer.data(), record.sample_count() * sizeof(double));
     }
     if (annotation_output == clinical_annotations_markers)
     {
@@ -1738,6 +1747,71 @@ char* GeneratePPGOpticalScenarioJSON(char* signal_output_name, char* truth_outpu
     return 0;
 }
 
+CVariable* create_cardiorespiratory_truth_variable(const signal_synth::ecg_render_bundle& render)
+{
+    if (!render.cardiorespiratory.prv_available || !render.cardiorespiratory.respiration_available || !render.record.sample_count()) return 0;
+    const unsigned int channel_count = 6U;
+    vector<unsigned int> sizes(channel_count, render.record.sample_count());
+    CVariable* output = NewCVariable();
+    output->Rebuild(channel_count, sizes.data());
+    const char* labels[] = {"GT respiration reference", "GT respiratory rate", "GT ECG RR interval", "GT PPG pulse interval", "GT ECG RR accepted", "GT PPG interval accepted"};
+    const char* units[] = {"ratio", "bpm", "s", "s", "bool", "bool"};
+    for (unsigned int channel = 0; channel < channel_count; ++channel)
+    {
+        output->m_sample_rates.m_data[channel] = render.record.sampling_rate_hz();
+        copy_fixed_string(output->m_labels.m_data[channel].s, labels[channel]);
+        copy_fixed_string(output->m_vertical_units.m_data[channel].s, units[channel]);
+        std::fill(output->m_data[channel], output->m_data[channel] + render.record.sample_count(), 0.0);
+    }
+    const vector<signal_synth::hrv_rr_interval>& hrv = render.hrv.intervals;
+    const vector<signal_synth::hrv_rr_interval>& prv = render.cardiorespiratory.prv.intervals;
+    unsigned int hrv_index = 0U;
+    unsigned int prv_index = 0U;
+    for (unsigned int sample = 0; sample < render.record.sample_count(); ++sample)
+    {
+        const double time = static_cast<double>(sample) / render.record.sampling_rate_hz();
+        output->m_data[0][sample] = signal_synth::physiology_respiration_value(render.resolved_document.physiology, time);
+        output->m_data[1][sample] = render.cardiorespiratory.respiratory_rate_bpm;
+        while (hrv_index + 1U < hrv.size() && hrv[hrv_index + 1U].beat_time_seconds <= time) ++hrv_index;
+        while (prv_index + 1U < prv.size() && prv[prv_index + 1U].beat_time_seconds <= time) ++prv_index;
+        if (!hrv.empty() && hrv[hrv_index].beat_time_seconds <= time)
+        {
+            output->m_data[2][sample] = hrv[hrv_index].rr_seconds;
+            output->m_data[4][sample] = hrv[hrv_index].excluded ? 0.0 : 1.0;
+        }
+        if (!prv.empty() && prv[prv_index].beat_time_seconds <= time)
+        {
+            output->m_data[3][sample] = prv[prv_index].rr_seconds;
+            output->m_data[5][sample] = prv[prv_index].excluded ? 0.0 : 1.0;
+        }
+    }
+    return output;
+}
+
+char* GenerateCardiorespiratoryScenarioJSON(char* signal_output_name, char* truth_output_name, char* scenario_json, char* annotation_output_text)
+{
+    if (!signal_output_name || !signal_output_name[0] || !truth_output_name || !truth_output_name[0] || !scenario_json)
+        return MakeString(NewChar, "ERROR: GenerateCardiorespiratoryScenarioJSON: not enough arguments.");
+    if (strcmp(signal_output_name, truth_output_name) == 0)
+        return MakeString(NewChar, "ERROR: GenerateCardiorespiratoryScenarioJSON: output names must differ.");
+    clinical_annotation_output annotation_output;
+    if (!parse_clinical_annotation_output(annotation_output_text, annotation_output))
+        return MakeString(NewChar, "ERROR: GenerateCardiorespiratoryScenarioJSON: annotation output must be 1 (markers), 2 (channels), or 3 (none).");
+    signal_synth::ecg_render_bundle render;
+    string error;
+    if (!render_scenario_json(scenario_json, render, error))
+        return MakeString(NewChar, "ERROR: GenerateCardiorespiratoryScenarioJSON: ", error.c_str());
+    CVariable* truth = create_cardiorespiratory_truth_variable(render);
+    if (!truth)
+        return MakeString(NewChar, "ERROR: GenerateCardiorespiratoryScenarioJSON: PPG and at least one respiratory coupling are required.");
+    CVariable* signals = create_rendered_ecg_variable(signal_output_name, render, annotation_output);
+    if (!signals)
+        return MakeString(NewChar, "ERROR: GenerateCardiorespiratoryScenarioJSON: output variable creation failed.");
+    copy_fixed_string(truth->m_varname, truth_output_name);
+    m_variable_list_ref->Insert(truth_output_name, truth);
+    return 0;
+}
+
 struct wearable_display_channel
 {
     const signal_synth::wearable_stream_record* stream;
@@ -1876,6 +1950,8 @@ extern "C"
             return GenerateWearableScenarioJSON(a_param1, a_param2, a_param3);
         case 13:
             return GeneratePPGOpticalScenarioJSON(a_param1, a_param2, a_param3, a_param4);
+        case 14:
+            return GenerateCardiorespiratoryScenarioJSON(a_param1, a_param2, a_param3, a_param4);
         }
         return 0;
     }
@@ -1910,6 +1986,7 @@ extern "C"
         FunctionList.AddElement("GenerateECGScenarioJSON(outdataname, scenario_json, annotation_output)");
         FunctionList.AddElement("GenerateWearableScenarioJSON(signal_outdataname, timing_outdataname, scenario_json)");
         FunctionList.AddElement("GeneratePPGOpticalScenarioJSON(signal_outdataname, truth_outdataname, scenario_json, annotation_output)");
+        FunctionList.AddElement("GenerateCardiorespiratoryScenarioJSON(signal_outdataname, truth_outdataname, scenario_json, annotation_output)");
         a_functionlibrary_reference->ParseFunctionList(&FunctionList);
         return FunctionList.m_size;
     }

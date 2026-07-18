@@ -91,6 +91,16 @@ namespace
 
 namespace signal_synth
 {
+    double physiology_respiration_phase_radians(const physiology_coupling_config& config)
+    {
+        return 2.0 * pi * unit(config.seed, "respiration_phase");
+    }
+
+    double physiology_respiration_value(const physiology_coupling_config& config, double time_seconds)
+    {
+        return std::sin(2.0 * pi * config.respiration_frequency_hz * time_seconds + physiology_respiration_phase_radians(config));
+    }
+
     bool resolve_scenario_controls(const ecg_scenario_document& input, ecg_scenario_document& resolved, std::vector<scenario_parameter_draw>& draws, std::vector<std::string>& messages)
     {
         ecg_scenario_document fresh = input;
@@ -149,12 +159,12 @@ namespace signal_synth
                 fresh.ecg.set_rr_variability_seconds(fresh.hrv.target_sdnn_seconds);
                 fresh.ecg.set_minimum_rr_seconds(fresh.hrv.minimum_rr_seconds);
                 fresh.ecg.set_maximum_rr_seconds(fresh.hrv.maximum_rr_seconds);
-                fresh.ecg.set_hrv_modulation(fresh.hrv.lf_hf_ratio, fresh.hrv.lf_center_hz, fresh.hrv.lf_bandwidth_hz, fresh.hrv.hf_center_hz, fresh.hrv.hf_bandwidth_hz, fresh.hrv.respiratory_frequency_hz, fresh.hrv.respiratory_amplitude_seconds);
+                fresh.ecg.set_hrv_modulation(fresh.hrv.lf_hf_ratio, fresh.hrv.lf_center_hz, fresh.hrv.lf_bandwidth_hz, fresh.hrv.hf_center_hz, fresh.hrv.hf_bandwidth_hz, fresh.hrv.respiratory_frequency_hz, fresh.hrv.respiratory_amplitude_seconds, physiology_respiration_phase_radians(fresh.physiology));
             }
             else
             {
                 fresh.ecg.set_rr_variability_seconds(std::max(fresh.ecg.rr_variability_seconds(), minimum_sdnn));
-                fresh.ecg.set_hrv_modulation(1.0, 0.10, 0.04, 0.25, 0.12, fresh.physiology.respiration_frequency_hz, fresh.physiology.respiratory_rr_amplitude_seconds);
+                fresh.ecg.set_hrv_modulation(1.0, 0.10, 0.04, 0.25, 0.12, fresh.physiology.respiration_frequency_hz, fresh.physiology.respiratory_rr_amplitude_seconds, physiology_respiration_phase_radians(fresh.physiology));
             }
         }
         else if (fresh.hrv.enabled)
@@ -195,13 +205,12 @@ namespace signal_synth
         for (std::size_t channel = 0; channel < waveforms.ppg_channels.size(); ++channel) if (waveforms.ppg_channels[channel].size() != sample_count) return false;
         if (!waveforms.accelerometer.empty() && waveforms.accelerometer.size() != sample_count)
             return false;
-        if (config.activity_intensity > 0.0 && waveforms.accelerometer.empty())
+        if ((config.activity_intensity > 0.0 || config.accelerometer_respiration_amplitude_g > 0.0) && waveforms.accelerometer.empty())
             waveforms.accelerometer.assign(sample_count, 0.0);
-        const double phase = 2.0 * pi * unit(config.seed, "respiration_phase");
         for (std::size_t sample = 0; sample < sample_count; ++sample)
         {
             const double time = static_cast<double>(sample) / sampling_rate_hz;
-            const double respiration = std::sin(2.0 * pi * config.respiration_frequency_hz * time + phase);
+            const double respiration = physiology_respiration_value(config, time);
             const double activity = activity_envelope(config, time);
             for (unsigned int lead = 0; lead < clinical_lead_count; ++lead)
             {
@@ -217,7 +226,7 @@ namespace signal_synth
                 waveforms.ppg_channels[channel][sample] = baseline + centered * modulation + activity * activity_scale * signed_unit(config.seed ^ 0x5050474143544956ULL ^ channel, sample);
             }
             if (!waveforms.accelerometer.empty())
-                waveforms.accelerometer[sample] += activity * (0.7 * std::sin(2.0 * pi * 1.7 * time) + 0.3 * signed_unit(config.seed ^ 0x4143434143544956ULL, sample));
+                waveforms.accelerometer[sample] += config.accelerometer_respiration_amplitude_g * respiration + activity * (0.7 * std::sin(2.0 * pi * 1.7 * time) + 0.3 * signed_unit(config.seed ^ 0x4143434143544956ULL, sample));
         }
         return true;
     }

@@ -196,5 +196,14 @@ int main()
     v1_with_ppg.ppg.enabled = true;
     ok &= check(!signal_synth::write_ecg_scenario_json(v1_with_ppg, invalid_result) && invalid_result.messages[0].path == "$.ppg", "schema_v1_rejects_unrepresentable_ppg");
 
+    signal_synth::ecg_scenario_document unsafe_delay;
+    unsafe_delay.schema_version = 4;
+    unsafe_delay.scenario_id = "unsafe_respiratory_delay";
+    unsafe_delay.ppg.enabled = true;
+    unsafe_delay.ppg.pulse_delay_ms = 50.0;
+    unsafe_delay.ppg.pulse_delay_jitter_ms = 30.0;
+    unsafe_delay.physiology.ppg_delay_modulation_ms = 30.0;
+    ok &= check(!signal_synth::write_ecg_scenario_json(unsafe_delay, invalid_result), "reject_combined_respiratory_delay_and_jitter_underflow");
+
     return ok ? 0 : 1;
 }

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "2.0",
+  "version": "2.1",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -505,6 +505,50 @@
         "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
         "submission_contract": "synsigra_submission_v1",
         "local_verifier_min_version": "0.4.0"
+      }
+    },
+    {
+      "pack_id": "cardiorespiratory_v1",
+      "path": "../packs/cardiorespiratory_v1.json",
+      "modality": ["ECG", "PPG", "accelerometer"],
+      "targets": ["prv", "respiratory_rate"],
+      "difficulty": ["regression", "stress", "benchmark"],
+      "recommended_profile": "regression",
+      "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
+      "scoring_mode": "local",
+      "feature_tags": ["prv", "hrv_prv_agreement", "respiratory_rate", "respiratory_coupling", "ptt_variation", "pulse_loss", "low_perfusion", "motion", "accelerometer"],
+      "release_status": "beta",
+      "release_date": "2026-07-17",
+      "deprecation_message": "",
+      "recommended_for": [
+        "PRV implementation and pulse-interval exclusion-policy QA",
+        "HRV-versus-PRV behavior under respiratory PTT modulation",
+        "Respiratory-rate algorithm regression against a deterministic multimodal reference",
+        "PPG pulse-loss, low-perfusion and motion stress testing"
+      ],
+      "not_recommended_for": [
+        "Clinical autonomic-function or respiratory validation claims",
+        "Patient-derived HRV or PRV norm claims",
+        "Medical respiratory monitoring certification",
+        "Pulse-transit-time blood-pressure claims"
+      ],
+      "changelog": [
+        {
+          "version": "1.0",
+          "date": "2026-07-17",
+          "changes": [
+            "Initial beta pack with shared respiratory phase truth, PRV metrics, HRV-versus-PRV agreement, pulse-quality exclusions and local measurement scoring."
+          ]
+        }
+      ],
+      "generator_compatibility": {
+        "minimum_generator_version": "0.6.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [4],
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1",
+        "local_verifier_min_version": "0.6.0"
       }
     }
   ]

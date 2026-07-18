@@ -13,6 +13,8 @@ src/ecg_render.cpp|src/SignalProcessors/ecg_render.cpp
 src/ecg_render.h|src/SignalProcessors/ecg_render.h
 src/hrv_metrics.cpp|src/SignalProcessors/hrv_metrics.cpp
 src/hrv_metrics.h|src/SignalProcessors/hrv_metrics.h
+src/cardiorespiratory.cpp|src/SignalProcessors/cardiorespiratory.cpp
+src/cardiorespiratory.h|src/SignalProcessors/cardiorespiratory.h
 src/ppg_model.cpp|src/SignalProcessors/ppg_model.cpp
 src/ppg_model.h|src/SignalProcessors/ppg_model.h
 src/scenario_stress.cpp|src/SignalProcessors/scenario_stress.cpp
@@ -42,3 +44,4 @@ examples/databrowser/080_ECG_Delineation_GroundTruth.txt|SigForge/Scripts/080_EC
 examples/databrowser/081_Wearable_Multirate_Timebase.txt|SigForge/Scripts/081_Wearable_Multirate_Timebase.txt
 examples/databrowser/082_PPG_Optical_Physiology_V2.txt|SigForge/Scripts/082_PPG_Optical_Physiology_V2.txt
 examples/databrowser/083_Wearable_Device_Site_Profiles.txt|SigForge/Scripts/083_Wearable_Device_Site_Profiles.txt
+examples/databrowser/084_Cardiorespiratory_PRV_Respiration.txt|SigForge/Scripts/084_Cardiorespiratory_PRV_Respiration.txt

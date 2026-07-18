@@ -218,6 +218,7 @@ namespace signal_synth
         double hrv_hf_bandwidth_hz;
         double hrv_respiratory_frequency_hz;
         double hrv_respiratory_amplitude_seconds;
+        double hrv_respiratory_phase_radians;
         double activity_start_seconds;
         double activity_duration_seconds;
         double activity_intensity;

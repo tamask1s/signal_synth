@@ -114,6 +114,7 @@ namespace signal_synth
         double dicrotic_amplitude_ratio;
         double pulse_delay_variation_ms;
         double pulse_delay_variation_hz;
+        double pulse_delay_variation_phase_radians;
         unsigned int missing_pulse_every_n_beats;
         double pulse_delay_jitter_ms;
         double low_frequency_amplitude_modulation_ratio;

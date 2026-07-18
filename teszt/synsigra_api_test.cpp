@@ -93,7 +93,7 @@ int main()
     signal_synth::synsigra_render_result render;
     ok &= check(signal_synth::synsigra_render_scenario_json(scenario, render) && render.success, "render_success");
     ok &= check(render.identity.render_identity.find(render.identity.document_fingerprint + ":ecg-run-") == 0, "render_identity");
-    ok &= check(render.artifacts.size() == 22 && render.find_artifact("waveform.csv") && render.find_artifact("annotations.json") && render.find_artifact("rr_tachogram.csv") && render.find_artifact("hrv_metrics.json") && render.find_artifact("realism_metrics.json") && render.find_artifact("realism_report.html") && render.find_artifact("provenance.json") && render.find_artifact("ENGINEERING_CLAIM_BOUNDARY.txt") && render.find_artifact("report.html") && render.find_artifact("synsigra.hea") && render.find_artifact("synsigra.edf") && render.find_artifact("synsigra.bdf"), "render_artifacts");
+    ok &= check(render.find_artifact("waveform.csv") && render.find_artifact("annotations.json") && render.find_artifact("rr_tachogram.csv") && render.find_artifact("hrv_metrics.json") && render.find_artifact("cardiorespiratory_truth.json") && render.find_artifact("prv_tachogram.csv") && render.find_artifact("realism_metrics.json") && render.find_artifact("realism_report.html") && render.find_artifact("provenance.json") && render.find_artifact("ENGINEERING_CLAIM_BOUNDARY.txt") && render.find_artifact("report.html") && render.find_artifact("synsigra.hea") && render.find_artifact("synsigra.edf") && render.find_artifact("synsigra.bdf"), "render_artifacts");
     ok &= check(render.find_artifact("waveform.csv")->content.find("ppg_green_au") != std::string::npos, "render_ppg_channel");
 
     std::vector<signal_synth::synsigra_detection_event> detections;
@@ -118,7 +118,8 @@ int main()
         && integration_contract.find("\"cpp_facade\":\"1.0.0\"") != std::string::npos
         && integration_contract.find("\"challenge_package\":\"synsigra_challenge_package_v2\"") != std::string::npos
         && integration_contract.find("\"submission\":\"synsigra_submission_v1\"") != std::string::npos
-        && integration_contract.find("\"comparison_targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ppg_pulse_onset\",\"ecg_beat_classification\"]") != std::string::npos, "integration_contract");
+        && integration_contract.find("\"comparison_targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ppg_pulse_onset\",\"ecg_beat_classification\"]") != std::string::npos
+        && integration_contract.find("\"measurement_targets\":[\"morphology_assertions\",\"ecg_ppg_alignment\",\"ppg_optical\",\"prv\",\"respiratory_rate\"]") != std::string::npos, "integration_contract");
 
     signal_synth::synsigra_validation_result invalid;
     ok &= check(!signal_synth::synsigra_validate_scenario_json("{\"schema_version\":2}", invalid) && !invalid.success && !invalid.messages.empty(), "invalid_has_messages");

@@ -1087,6 +1087,8 @@ namespace
             && document.physiology.respiratory_rr_amplitude_seconds == physiology.respiratory_rr_amplitude_seconds
             && document.physiology.ecg_baseline_amplitude_mv == physiology.ecg_baseline_amplitude_mv
             && document.physiology.ppg_amplitude_modulation_ratio == physiology.ppg_amplitude_modulation_ratio
+            && document.physiology.ppg_delay_modulation_ms == physiology.ppg_delay_modulation_ms
+            && document.physiology.accelerometer_respiration_amplitude_g == physiology.accelerometer_respiration_amplitude_g
             && document.physiology.activity_start_seconds == physiology.activity_start_seconds
             && document.physiology.activity_duration_seconds == physiology.activity_duration_seconds
             && document.physiology.activity_intensity == physiology.activity_intensity
@@ -1145,7 +1147,7 @@ namespace
 
     bool accelerometer_source_available(const signal_synth::ecg_scenario_document& document)
     {
-        if (document.physiology.activity_intensity > 0.0)
+        if (document.physiology.activity_intensity > 0.0 || document.physiology.accelerometer_respiration_amplitude_g > 0.0)
             return true;
         for (std::size_t i = 0; i < document.signal_quality.artifacts.size(); ++i)
             if (signal_synth::signal_quality_artifact_is_motion(document.signal_quality.artifacts[i].type))
@@ -1180,6 +1182,8 @@ namespace
             || !std::isfinite(physiology.respiratory_rr_amplitude_seconds) || physiology.respiratory_rr_amplitude_seconds < 0.0 || physiology.respiratory_rr_amplitude_seconds > 2.0
             || !std::isfinite(physiology.ecg_baseline_amplitude_mv) || physiology.ecg_baseline_amplitude_mv < 0.0 || physiology.ecg_baseline_amplitude_mv > 5.0
             || !std::isfinite(physiology.ppg_amplitude_modulation_ratio) || physiology.ppg_amplitude_modulation_ratio < 0.0 || physiology.ppg_amplitude_modulation_ratio > 1.0
+            || !std::isfinite(physiology.ppg_delay_modulation_ms) || physiology.ppg_delay_modulation_ms < 0.0 || physiology.ppg_delay_modulation_ms > 1000.0
+            || !std::isfinite(physiology.accelerometer_respiration_amplitude_g) || physiology.accelerometer_respiration_amplitude_g < 0.0 || physiology.accelerometer_respiration_amplitude_g > 5.0
             || !std::isfinite(physiology.activity_start_seconds) || physiology.activity_start_seconds < 0.0
             || !std::isfinite(physiology.activity_duration_seconds) || physiology.activity_duration_seconds < 0.0
             || !std::isfinite(physiology.activity_intensity) || physiology.activity_intensity < 0.0 || physiology.activity_intensity > 1.0
@@ -1192,13 +1196,15 @@ namespace
             || document.ecg.has_condition(signal_synth::ecg_condition_psvt) || document.ecg.has_condition(signal_synth::ecg_condition_svarr)
             || document.ecg.has_condition(signal_synth::ecg_condition_1avb) || document.ecg.has_condition(signal_synth::ecg_condition_2avb) || document.ecg.has_condition(signal_synth::ecg_condition_3avb)))
             return false;
-        if ((physiology.ppg_amplitude_modulation_ratio > 0.0 || document.ppg.pulse_delay_variation_ms > 0.0 || document.ppg.missing_pulse_every_n_beats > 0) && !document.ppg.enabled)
+        if ((physiology.ppg_amplitude_modulation_ratio > 0.0 || physiology.ppg_delay_modulation_ms > 0.0 || document.ppg.pulse_delay_variation_ms > 0.0 || document.ppg.missing_pulse_every_n_beats > 0) && !document.ppg.enabled)
+            return false;
+        if (physiology.ppg_delay_modulation_ms > 0.0 && document.ppg.pulse_delay_variation_ms > 0.0)
             return false;
         double minimum_pulse_delay_ms = document.ppg.pulse_delay_ms;
         for (std::size_t i = 0; i < randomization.envelopes.size(); ++i)
             if (randomization.envelopes[i].parameter == "ppg.pulse_delay_ms")
                 minimum_pulse_delay_ms = randomization.envelopes[i].minimum;
-        minimum_pulse_delay_ms -= document.ppg.pulse_delay_variation_ms;
+        minimum_pulse_delay_ms -= std::max(document.ppg.pulse_delay_variation_ms, physiology.ppg_delay_modulation_ms);
         if (minimum_pulse_delay_ms < 0.0)
             return false;
         if (document.output.compact && (document.output.retain_source_channels || document.output.include_waveform_csv || document.output.include_edf_bdf))
@@ -1225,7 +1231,7 @@ namespace
         for (std::size_t i = 0; i < document.randomization.envelopes.size(); ++i)
             if (document.randomization.envelopes[i].parameter == "ppg.pulse_delay_ms")
                 minimum_pulse_delay_ms = document.randomization.envelopes[i].minimum;
-        minimum_pulse_delay_ms -= document.ppg.pulse_delay_variation_ms + document.ppg.pulse_delay_jitter_ms;
+        minimum_pulse_delay_ms -= std::max(document.ppg.pulse_delay_variation_ms, document.physiology.ppg_delay_modulation_ms) + document.ppg.pulse_delay_jitter_ms;
         if (minimum_pulse_delay_ms < 0.0)
             return false;
         for (std::size_t i = 0; i < document.ppg.perfusion_episodes.size(); ++i)
@@ -1472,6 +1478,8 @@ namespace
                    << ",\"respiratory_rr_amplitude_seconds\":" << format_double(document.physiology.respiratory_rr_amplitude_seconds)
                    << ",\"ecg_baseline_amplitude_mv\":" << format_double(document.physiology.ecg_baseline_amplitude_mv)
                    << ",\"ppg_amplitude_modulation_ratio\":" << format_double(document.physiology.ppg_amplitude_modulation_ratio)
+                   << ",\"ppg_delay_modulation_ms\":" << format_double(document.physiology.ppg_delay_modulation_ms)
+                   << ",\"accelerometer_respiration_amplitude_g\":" << format_double(document.physiology.accelerometer_respiration_amplitude_g)
                    << ",\"activity_start_seconds\":" << format_double(document.physiology.activity_start_seconds)
                    << ",\"activity_duration_seconds\":" << format_double(document.physiology.activity_duration_seconds)
                    << ",\"activity_intensity\":" << format_double(document.physiology.activity_intensity)
@@ -1544,7 +1552,7 @@ namespace signal_synth
     }
 
     physiology_coupling_config::physiology_coupling_config()
-        : respiration_frequency_hz(0.25), respiratory_rr_amplitude_seconds(0.0), ecg_baseline_amplitude_mv(0.0), ppg_amplitude_modulation_ratio(0.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), seed(0x50485953494f5631ULL)
+        : respiration_frequency_hz(0.25), respiratory_rr_amplitude_seconds(0.0), ecg_baseline_amplitude_mv(0.0), ppg_amplitude_modulation_ratio(0.0), ppg_delay_modulation_ms(0.0), accelerometer_respiration_amplitude_g(0.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), seed(0x50485953494f5631ULL)
     {
     }
 
@@ -2222,8 +2230,8 @@ namespace signal_synth
                     add_message(fresh_result, ecg_json_type, "$.physiology", "field has the wrong JSON type");
                 else
                 {
-                    const char* fields[] = {"respiration_frequency_hz","respiratory_rr_amplitude_seconds","ecg_baseline_amplitude_mv","ppg_amplitude_modulation_ratio","activity_start_seconds","activity_duration_seconds","activity_intensity","seed"};
-                    allowed_fields(*physiology, fields, 8, "$.physiology", fresh_result);
+                    const char* fields[] = {"respiration_frequency_hz","respiratory_rr_amplitude_seconds","ecg_baseline_amplitude_mv","ppg_amplitude_modulation_ratio","activity_start_seconds","activity_duration_seconds","activity_intensity","seed","ppg_delay_modulation_ms","accelerometer_respiration_amplitude_g"};
+                    allowed_fields(*physiology, fields, 10, "$.physiology", fresh_result);
                     const json_value* values[7] = {
                         required(*physiology, fields[0], json_value::number_kind, "$.physiology", fresh_result),
                         required(*physiology, fields[1], json_value::number_kind, "$.physiology", fresh_result),
@@ -2240,6 +2248,12 @@ namespace signal_synth
                     if (values[4]) document.physiology.activity_start_seconds = values[4]->number;
                     if (values[5]) document.physiology.activity_duration_seconds = values[5]->number;
                     if (values[6]) document.physiology.activity_intensity = values[6]->number;
+                    const json_value* ppg_delay = member(*physiology, fields[8]);
+                    const json_value* accelerometer_respiration = member(*physiology, fields[9]);
+                    if (ppg_delay && ppg_delay->type != json_value::number_kind) add_message(fresh_result, ecg_json_type, "$.physiology.ppg_delay_modulation_ms", "field has the wrong JSON type");
+                    else if (ppg_delay) document.physiology.ppg_delay_modulation_ms = ppg_delay->number;
+                    if (accelerometer_respiration && accelerometer_respiration->type != json_value::number_kind) add_message(fresh_result, ecg_json_type, "$.physiology.accelerometer_respiration_amplitude_g", "field has the wrong JSON type");
+                    else if (accelerometer_respiration) document.physiology.accelerometer_respiration_amplitude_g = accelerometer_respiration->number;
                     if (physiology_seed)
                     {
                         if (!integral_number(*physiology_seed, std::numeric_limits<unsigned long long>::max(), integer))

@@ -106,6 +106,12 @@ namespace signal_synth
             return challenge_file_ppg_optical_latent_csv;
         if (artifact_name == "ppg_optical_truth.json")
             return challenge_file_ppg_optical_truth_json;
+        if (artifact_name == "cardiorespiratory_truth.json")
+            return challenge_file_cardiorespiratory_truth_json;
+        if (artifact_name == "prv_tachogram.csv")
+            return challenge_file_prv_tachogram_csv;
+        if (artifact_name == "respiration_reference.csv")
+            return challenge_file_respiration_reference_csv;
         if (artifact_name == "report.html")
             return challenge_file_report_html;
         if (artifact_name == "README.txt" || artifact_name == "ENGINEERING_CLAIM_BOUNDARY.txt")

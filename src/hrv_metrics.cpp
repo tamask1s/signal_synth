@@ -219,6 +219,26 @@ namespace signal_synth
     {
     }
 
+    bool analyze_variability_intervals(const std::vector<hrv_rr_interval>& intervals, const std::string& definition_version, const std::string& exclusion_policy, hrv_analysis_result& output)
+    {
+        hrv_analysis_result fresh;
+        if (definition_version.empty() || exclusion_policy.empty()) return false;
+        try
+        {
+            fresh.intervals = intervals;
+            fresh.metric_definition_version = definition_version;
+            fresh.exclusion_policy = exclusion_policy;
+            compute_time_metrics(fresh);
+            compute_frequency_metrics(fresh);
+        }
+        catch (...)
+        {
+            return false;
+        }
+        output = fresh;
+        return true;
+    }
+
     bool analyze_hrv_from_ecg(const clinical_ecg_record& record, const signal_quality_waveforms* signal_quality, hrv_analysis_result& output)
     {
         hrv_analysis_result fresh;
@@ -242,14 +262,11 @@ namespace signal_synth
                 interval.excluded = !beat.qrs_present || !finite_positive(beat.rr_interval_seconds) || interval.clipped || interval.ectopic || interval.artifact_overlap;
                 fresh.intervals.push_back(interval);
             }
-            compute_time_metrics(fresh);
-            compute_frequency_metrics(fresh);
         }
         catch (...)
         {
             return false;
         }
-        output = fresh;
-        return true;
+        return analyze_variability_intervals(fresh.intervals, fresh.metric_definition_version, fresh.exclusion_policy, output);
     }
 }

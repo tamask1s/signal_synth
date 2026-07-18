@@ -217,7 +217,14 @@ namespace signal_synth
             result = fresh_result;
             return false;
         }
-        if (!ppg_generator(fresh.resolved_document.ppg).generate(fresh.record, fresh.ppg))
+        ppg_config rendered_ppg = fresh.resolved_document.ppg;
+        if (fresh.resolved_document.physiology.ppg_delay_modulation_ms > 0.0)
+        {
+            rendered_ppg.pulse_delay_variation_ms = fresh.resolved_document.physiology.ppg_delay_modulation_ms;
+            rendered_ppg.pulse_delay_variation_hz = fresh.resolved_document.physiology.respiration_frequency_hz;
+            rendered_ppg.pulse_delay_variation_phase_radians = physiology_respiration_phase_radians(fresh.resolved_document.physiology);
+        }
+        if (!ppg_generator(rendered_ppg).generate(fresh.record, fresh.ppg))
         {
             fresh_result.messages.push_back("PPG generation failed");
             result = fresh_result;
@@ -265,6 +272,12 @@ namespace signal_synth
         if (!analyze_hrv_from_ecg(fresh.record, &fresh.signal_quality, fresh.hrv))
         {
             fresh_result.messages.push_back("HRV analysis failed");
+            result = fresh_result;
+            return false;
+        }
+        if (!analyze_cardiorespiratory(fresh.resolved_document.duration_seconds, fresh.resolved_document.physiology, fresh.ppg, &fresh.signal_quality, fresh.cardiorespiratory))
+        {
+            fresh_result.messages.push_back("cardiorespiratory analysis failed");
             result = fresh_result;
             return false;
         }

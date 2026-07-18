@@ -61,5 +61,6 @@ namespace signal_synth
         double hf_high_hz;
     };
 
+    bool analyze_variability_intervals(const std::vector<hrv_rr_interval>& intervals, const std::string& definition_version, const std::string& exclusion_policy, hrv_analysis_result& output);
     bool analyze_hrv_from_ecg(const clinical_ecg_record& record, const signal_quality_waveforms* signal_quality, hrv_analysis_result& output);
 }

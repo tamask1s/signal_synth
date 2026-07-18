@@ -223,6 +223,8 @@ namespace signal_synth
                << ",\"interval_output_schemas\":[\"interval_json_v1\",\"interval_csv_v1\"]"
                << ",\"delineation_targets\":[\"ecg_delineation\"]"
                << ",\"delineation_output_schemas\":[\"point_events_json_v1\",\"point_events_csv_v1\"]"
+               << ",\"hrv_targets\":[\"hrv\"]"
+               << ",\"measurement_targets\":[\"morphology_assertions\",\"ecg_ppg_alignment\",\"ppg_optical\",\"prv\",\"respiratory_rate\"]"
                << ",\"customer_verification_command\":\"synsigra-verify <challenge> <submission-directory> <result-directory>\""
                << ",\"customer_output_schemas\":[\"point_events_json_v1\",\"point_events_csv_v1\",\"interval_events_json_v1\",\"interval_events_csv_v1\",\"hrv_metrics_json_v1\",\"measurement_values_json_v1\",\"measurement_values_csv_v1\"]}}";
         return output.str();

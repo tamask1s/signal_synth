@@ -41,6 +41,7 @@ RELEASE_PACK_IDS = [
     "ppg_benchmark_v1",
     "ppg_optical_v2",
     "ecg_delineation_v2",
+    "cardiorespiratory_v1",
 ]
 
 
@@ -49,7 +50,7 @@ def assert_release_pack_metadata(item):
     assert item["metadata_type"] == "synsigra_curated_pack_metadata"
     assert isinstance(item["version"], str) and item["version"]
     assert item["release_status"] == "beta"
-    expected_date = "2026-07-17" if item["pack_id"] in ("ecg_delineation_v2", "wearable_timebase_v2", "ppg_optical_v2") else "2026-07-06"
+    expected_date = "2026-07-17" if item["pack_id"] in ("ecg_delineation_v2", "wearable_timebase_v2", "ppg_optical_v2", "cardiorespiratory_v1") else "2026-07-06"
     assert item["release_date"] == expected_date
     assert item["recommended_for"] and item["not_recommended_for"] and item["changelog"]
     assert item["source"]["pack_fingerprint"].startswith("sha256:")
@@ -196,6 +197,16 @@ def assert_measurement_metadata(item, target, verifier_version="0.5.0"):
     assert item["reference_only_targets"] == []
 
 
+def assert_cardiorespiratory_metadata(item):
+    assert item["pack_id"] == "cardiorespiratory_v1"
+    assert item["version"] == "1.0"
+    assert item["case_ids"] == ["clean_coupling", "ptt_variation", "pulse_loss_motion"]
+    assert_measurement_metadata(item, "prv", "0.6.0")
+    assert_measurement_metadata(item, "respiratory_rate", "0.6.0")
+    roles = set(artifact["role"] for artifact in item["output_artifacts"])
+    assert {"cardiorespiratory_truth_json", "prv_tachogram_csv", "respiration_reference_csv", "measurement_truth_json"}.issubset(roles)
+
+
 def main():
     source_dir = os.environ["SIGNAL_SYNTH_SOURCE_DIR"]
     cli = os.environ["SIGNAL_SYNTH_CLI"]
@@ -215,8 +226,8 @@ def main():
         assert generated["release_set_id"] == "synsigra_curated_release_2026_07_17"
         assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
-        assert generated["catalog_version"] == "2.0"
-        assert generated["pack_count"] == 12
+        assert generated["catalog_version"] == "2.1"
+        assert generated["pack_count"] == 13
         assert [item["pack_id"] for item in generated["packs"]] == RELEASE_PACK_IDS
         for pack_id in RELEASE_PACK_IDS:
             assert_release_pack_metadata(pack(generated, pack_id))
@@ -224,6 +235,7 @@ def main():
         assert_ppg_benchmark_metadata(pack(generated, "ppg_benchmark_v1"))
         assert_delineation_metadata(pack(generated, "ecg_delineation_v2"))
         assert_ppg_optical_metadata(pack(generated, "ppg_optical_v2"))
+        assert_cardiorespiratory_metadata(pack(generated, "cardiorespiratory_v1"))
         assert_measurement_metadata(pack(generated, "ecg_morphology_stress_v1"), "morphology_assertions")
         assert_measurement_metadata(pack(generated, "ppg_alignment_v1"), "ecg_ppg_alignment")
         wearable = pack(generated, "wearable_timebase_v2")

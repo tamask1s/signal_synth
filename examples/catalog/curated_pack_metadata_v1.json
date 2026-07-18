@@ -1,11 +1,11 @@
 {
   "catalog_id": "synsigra_verification_packs",
-  "catalog_version": "2.0",
+  "catalog_version": "2.1",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "metadata_type": "synsigra_curated_pack_catalog",
   "metadata_version": "synsigra_curated_pack_metadata_export_v1",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
-  "pack_count": 12,
+  "pack_count": 13,
   "packs": [
     {
       "case_count": 4,
@@ -5075,11 +5075,381 @@
         "scoreable_before_job": true
       },
       "version": "2.0"
+    },
+    {
+      "case_count": 3,
+      "case_ids": [
+        "clean_coupling",
+        "ptt_variation",
+        "pulse_loss_motion"
+      ],
+      "cases": [
+        {
+          "case_id": "clean_coupling",
+          "channel_count": 13,
+          "duration_seconds": 300,
+          "estimated_binary_signal_bytes": 780000,
+          "estimated_package_bytes": 14110400,
+          "estimated_peak_memory_bytes": 15928576,
+          "estimated_waveform_csv_bytes": 7560256,
+          "reference_only_targets": [],
+          "sample_count": 30000,
+          "sampling_rate_hz": 100,
+          "scenario_id": "cardiorespiratory_clean_v4",
+          "scoreable_targets": [
+            "prv",
+            "respiratory_rate"
+          ],
+          "targets": [
+            "prv",
+            "respiratory_rate"
+          ]
+        },
+        {
+          "case_id": "ptt_variation",
+          "channel_count": 13,
+          "duration_seconds": 300,
+          "estimated_binary_signal_bytes": 780000,
+          "estimated_package_bytes": 14620400,
+          "estimated_peak_memory_bytes": 15928576,
+          "estimated_waveform_csv_bytes": 7560256,
+          "reference_only_targets": [],
+          "sample_count": 30000,
+          "sampling_rate_hz": 100,
+          "scenario_id": "cardiorespiratory_ptt_variation_v4",
+          "scoreable_targets": [
+            "prv",
+            "respiratory_rate"
+          ],
+          "targets": [
+            "prv",
+            "respiratory_rate"
+          ]
+        },
+        {
+          "case_id": "pulse_loss_motion",
+          "channel_count": 14,
+          "duration_seconds": 300,
+          "estimated_binary_signal_bytes": 840000,
+          "estimated_package_bytes": 17260400,
+          "estimated_peak_memory_bytes": 15928576,
+          "estimated_waveform_csv_bytes": 8100256,
+          "reference_only_targets": [],
+          "sample_count": 30000,
+          "sampling_rate_hz": 100,
+          "scenario_id": "cardiorespiratory_pulse_loss_motion_v4",
+          "scoreable_targets": [
+            "prv",
+            "respiratory_rate"
+          ],
+          "targets": [
+            "prv",
+            "respiratory_rate"
+          ]
+        }
+      ],
+      "catalog_scoring_mode": "local",
+      "changelog": [
+        {
+          "changes": [
+            "Initial beta pack with shared respiratory phase truth, PRV metrics, HRV-versus-PRV agreement, pulse-quality exclusions and local measurement scoring."
+          ],
+          "date": "2026-07-17",
+          "version": "1.0"
+        }
+      ],
+      "channels": {
+        "families": [
+          {
+            "channel_count": 12,
+            "channels": [
+              "I",
+              "II",
+              "III",
+              "aVR",
+              "aVL",
+              "aVF",
+              "V1",
+              "V2",
+              "V3",
+              "V4",
+              "V5",
+              "V6"
+            ],
+            "name": "standard_12_lead_ecg"
+          },
+          {
+            "channel_count": 1,
+            "channels": [
+              "ppg_green"
+            ],
+            "name": "green_ppg"
+          },
+          {
+            "channel_count": 1,
+            "channels": [
+              "accel_motion"
+            ],
+            "name": "motion_reference"
+          }
+        ],
+        "maximum_channel_count": 14,
+        "minimum_channel_count": 13
+      },
+      "declared_targets": [
+        "prv",
+        "respiratory_rate"
+      ],
+      "deprecation_message": "",
+      "description": "Deterministic cardiorespiratory references for PRV, respiratory rate and explicit HRV-versus-PRV behavior under timing and pulse-quality stress.",
+      "difficulty": [
+        "regression",
+        "stress",
+        "benchmark"
+      ],
+      "duration": {
+        "maximum_case_seconds": 300,
+        "minimum_case_seconds": 300,
+        "total_seconds": 900
+      },
+      "estimated_package": {
+        "bytes": 45991200,
+        "peak_memory_bytes": 15928576,
+        "size_class": "medium"
+      },
+      "feature_tags": [
+        "prv",
+        "hrv_prv_agreement",
+        "respiratory_rate",
+        "respiratory_coupling",
+        "ptt_variation",
+        "pulse_loss",
+        "low_perfusion",
+        "motion",
+        "accelerometer"
+      ],
+      "generator_compatibility": {
+        "challenge_package_contract": "synsigra_challenge_package_v2",
+        "local_verifier_min_version": "0.6.0",
+        "minimum_generator_version": "0.6.0-dev",
+        "pack_schema_version": 1,
+        "scenario_schema_versions": [
+          4
+        ],
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
+        "submission_contract": "synsigra_submission_v1"
+      },
+      "limitations": {
+        "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
+        "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment"
+      },
+      "local_verifier_smoke_tests": [
+        {
+          "scope": "core PRV derivation, exclusion and measurement scoring smoke test",
+          "target": "prv",
+          "test_id": "TEST-CARDIORESPIRATORY-001"
+        },
+        {
+          "scope": "generator-free PRV measurement scoring test",
+          "target": "prv",
+          "test_id": "TEST-CARDIORESPIRATORY-PYTHON-001"
+        },
+        {
+          "scope": "core deterministic respiratory reference and measurement scoring smoke test",
+          "target": "respiratory_rate",
+          "test_id": "TEST-CARDIORESPIRATORY-001"
+        },
+        {
+          "scope": "generator-free respiratory-rate measurement scoring test",
+          "target": "respiratory_rate",
+          "test_id": "TEST-CARDIORESPIRATORY-PYTHON-001"
+        }
+      ],
+      "messages": [],
+      "metadata_type": "synsigra_curated_pack_metadata",
+      "metadata_version": "synsigra_curated_pack_metadata_export_v1",
+      "modality": [
+        "ECG",
+        "PPG",
+        "accelerometer"
+      ],
+      "name": "PRV and Respiratory Rate Pack v1",
+      "not_recommended_for": [
+        "Clinical autonomic-function or respiratory validation claims",
+        "Patient-derived HRV or PRV norm claims",
+        "Medical respiratory monitoring certification",
+        "Pulse-transit-time blood-pressure claims"
+      ],
+      "output_artifacts": [
+        {
+          "required": true,
+          "role": "manifest_json"
+        },
+        {
+          "required": true,
+          "role": "scoring_manifest_json"
+        },
+        {
+          "required": true,
+          "role": "provenance_json"
+        },
+        {
+          "required": true,
+          "role": "engineering_claim_boundary_txt"
+        },
+        {
+          "required": true,
+          "role": "case_summary_json"
+        },
+        {
+          "required": true,
+          "role": "annotations_json"
+        },
+        {
+          "required": true,
+          "role": "waveform_csv"
+        },
+        {
+          "required": true,
+          "role": "wfdb"
+        },
+        {
+          "required": true,
+          "role": "edf_bdf"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_json"
+        },
+        {
+          "required": true,
+          "role": "realism_metrics_csv"
+        },
+        {
+          "required": true,
+          "role": "realism_report_html"
+        },
+        {
+          "required": true,
+          "role": "cardiorespiratory_truth_json"
+        },
+        {
+          "required": true,
+          "role": "prv_tachogram_csv"
+        },
+        {
+          "required": true,
+          "role": "respiration_reference_csv"
+        },
+        {
+          "required": true,
+          "role": "measurement_truth_json"
+        }
+      ],
+      "pack_id": "cardiorespiratory_v1",
+      "recommended_for": [
+        "PRV implementation and pulse-interval exclusion-policy QA",
+        "HRV-versus-PRV behavior under respiratory PTT modulation",
+        "Respiratory-rate algorithm regression against a deterministic multimodal reference",
+        "PPG pulse-loss, low-perfusion and motion stress testing"
+      ],
+      "recommended_profile": "regression",
+      "reference_only_targets": [],
+      "release_date": "2026-07-17",
+      "release_status": "beta",
+      "sampling_rates_hz": [
+        100
+      ],
+      "schema_version": 1,
+      "scoreable_targets": [
+        {
+          "accepted_formats": [
+            "measurement_values_json_v1",
+            "measurement_values_csv_v1"
+          ],
+          "case_count": 3,
+          "case_ids": [
+            "clean_coupling",
+            "ptt_variation",
+            "pulse_loss_motion"
+          ],
+          "default_pairing_window_seconds": 0.2,
+          "description": "Pulse-interval variability metrics and accepted/excluded PPG interval measurements against explicit PRV truth.",
+          "primary_metric": "tolerance_pass_fraction",
+          "score_type": "measurement",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "prv"
+        },
+        {
+          "accepted_formats": [
+            "measurement_values_json_v1",
+            "measurement_values_csv_v1"
+          ],
+          "case_count": 3,
+          "case_ids": [
+            "clean_coupling",
+            "ptt_variation",
+            "pulse_loss_motion"
+          ],
+          "default_pairing_window_seconds": 0.2,
+          "description": "Respiratory-rate record and trajectory measurements against the deterministic coupling reference.",
+          "primary_metric": "tolerance_pass_fraction",
+          "score_type": "measurement",
+          "scoreable": true,
+          "support": "local_scoring",
+          "target": "respiratory_rate"
+        }
+      ],
+      "scoring_mode": "local",
+      "source": {
+        "catalog_path": "examples/catalog/verification_packs_v1.json",
+        "pack_fingerprint": "sha256:199beb7300eb1e74e65160ec212eb8fa6b4f0578dfc827e1d2489582ef30fb17",
+        "pack_path": "../packs/cardiorespiratory_v1.json",
+        "source_content_sha256": "sha256:079340088aed6ac70e67e29fbe6178697100b4b93681ec5b7e4d1289d8eb0f75"
+      },
+      "submission_output_schemas": [
+        "measurement_values_json_v1",
+        "measurement_values_csv_v1"
+      ],
+      "supported_threshold_profiles": [
+        "smoke",
+        "regression",
+        "stress",
+        "benchmark"
+      ],
+      "targets": [
+        "prv",
+        "respiratory_rate"
+      ],
+      "threshold_profile_contract": {
+        "policy_failure_exit_code": 1,
+        "recommended_profile": "regression",
+        "supported_profiles": [
+          "smoke",
+          "regression",
+          "stress",
+          "benchmark"
+        ]
+      },
+      "ui": {
+        "primary_badges": [
+          "regression",
+          "stress",
+          "benchmark",
+          "prv",
+          "hrv_prv_agreement",
+          "respiratory_rate"
+        ],
+        "reference_only_before_job": false,
+        "scoreable_before_job": true
+      },
+      "version": "1.0"
     }
   ],
   "product": "Synsigra Testbench",
   "release_set_id": "synsigra_curated_release_2026_07_17",
   "release_set_status": "beta",
   "schema_version": 1,
-  "source_catalog_sha256": "sha256:c78151c69795bd94ea1cd6fdbcbe5e638da58fef649baa14b0cd6509fa6e5552"
+  "source_catalog_sha256": "sha256:b3881ff509fd0d2773be060080b2be3003636c4ddf5c90b8da2b09b3f3d9b4bb"
 }

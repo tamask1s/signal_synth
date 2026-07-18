@@ -141,6 +141,8 @@
 		<Unit filename="ecg_render.h" />
 		<Unit filename="hrv_metrics.cpp" />
 		<Unit filename="hrv_metrics.h" />
+		<Unit filename="cardiorespiratory.cpp" />
+		<Unit filename="cardiorespiratory.h" />
 		<Unit filename="ppg_model.cpp" />
 		<Unit filename="ppg_model.h" />
 		<Unit filename="scenario_stress.cpp" />

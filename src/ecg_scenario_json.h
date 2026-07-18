@@ -53,6 +53,8 @@ namespace signal_synth
         double respiratory_rr_amplitude_seconds;
         double ecg_baseline_amplitude_mv;
         double ppg_amplitude_modulation_ratio;
+        double ppg_delay_modulation_ms;
+        double accelerometer_respiration_amplitude_g;
         double activity_start_seconds;
         double activity_duration_seconds;
         double activity_intensity;

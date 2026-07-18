@@ -75,6 +75,7 @@ namespace
             && finite(config.dicrotic_amplitude_ratio) && config.dicrotic_amplitude_ratio >= 0.0 && config.dicrotic_amplitude_ratio <= 1.0
             && finite(config.pulse_delay_variation_ms) && config.pulse_delay_variation_ms >= 0.0 && config.pulse_delay_variation_ms <= 1000.0
             && finite(config.pulse_delay_variation_hz) && config.pulse_delay_variation_hz >= 0.0 && config.pulse_delay_variation_hz <= 10.0
+            && finite(config.pulse_delay_variation_phase_radians) && config.pulse_delay_variation_phase_radians >= -1.0
             && finite(config.pulse_delay_jitter_ms) && config.pulse_delay_jitter_ms >= 0.0 && config.pulse_delay_jitter_ms <= 1000.0
             && finite(config.low_frequency_amplitude_modulation_ratio) && config.low_frequency_amplitude_modulation_ratio >= 0.0 && config.low_frequency_amplitude_modulation_ratio <= 0.95
             && finite(config.low_frequency_amplitude_modulation_hz) && config.low_frequency_amplitude_modulation_hz > 0.0 && config.low_frequency_amplitude_modulation_hz <= 1.0
@@ -374,7 +375,7 @@ namespace signal_synth
     }
 
     ppg_config::ppg_config()
-        : enabled(false), pulse_delay_ms(180.0), rise_time_ms(120.0), decay_time_ms(300.0), amplitude_au(1.0), baseline_au(0.0), dicrotic_delay_ms(180.0), dicrotic_width_ms(80.0), dicrotic_amplitude_ratio(0.15), pulse_delay_variation_ms(0.0), pulse_delay_variation_hz(0.0), missing_pulse_every_n_beats(0), pulse_delay_jitter_ms(0.0), low_frequency_amplitude_modulation_ratio(0.0), low_frequency_amplitude_modulation_hz(0.1), rise_time_variation_ratio(0.0), decay_time_variation_ratio(0.0), pac_pulse_amplitude_scale(1.0), pvc_pulse_amplitude_scale(1.0), paced_pulse_amplitude_scale(1.0), seed(0x5050475f53545253ULL), optical(), perfusion_episodes()
+        : enabled(false), pulse_delay_ms(180.0), rise_time_ms(120.0), decay_time_ms(300.0), amplitude_au(1.0), baseline_au(0.0), dicrotic_delay_ms(180.0), dicrotic_width_ms(80.0), dicrotic_amplitude_ratio(0.15), pulse_delay_variation_ms(0.0), pulse_delay_variation_hz(0.0), pulse_delay_variation_phase_radians(-1.0), missing_pulse_every_n_beats(0), pulse_delay_jitter_ms(0.0), low_frequency_amplitude_modulation_ratio(0.0), low_frequency_amplitude_modulation_hz(0.1), rise_time_variation_ratio(0.0), decay_time_variation_ratio(0.0), pac_pulse_amplitude_scale(1.0), pvc_pulse_amplitude_scale(1.0), paced_pulse_amplitude_scale(1.0), seed(0x5050475f53545253ULL), optical(), perfusion_episodes()
     {
     }
 
@@ -581,7 +582,7 @@ namespace signal_synth
             for (std::size_t i = 0; i < config_.optical.oxygenation_episodes.size(); ++i)
                 if (config_.optical.oxygenation_episodes[i].start_seconds + config_.optical.oxygenation_episodes[i].duration_seconds > record_end + 1.0 / timeline.sampling_rate_hz())
                     return false;
-            const double variation_phase = 2.0 * pi * deterministic_unit(config_.seed);
+            const double variation_phase = config_.pulse_delay_variation_phase_radians >= 0.0 ? config_.pulse_delay_variation_phase_radians : 2.0 * pi * deterministic_unit(config_.seed);
             const double amplitude_phase = 2.0 * pi * deterministic_unit(config_.seed ^ 0x4c465f414d505f31ULL);
             std::vector<unsigned int> episode_pulse_counts(config_.perfusion_episodes.size(), 0u);
             for (unsigned int beat_index = 0; beat_index < timeline.beat_count(); ++beat_index)

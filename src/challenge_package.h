@@ -47,7 +47,10 @@ namespace signal_synth
         challenge_file_realism_population_json = 21,
         challenge_file_ppg_optical_latent_csv = 22,
         challenge_file_ppg_optical_truth_json = 23,
-        challenge_file_other = 24
+        challenge_file_cardiorespiratory_truth_json = 24,
+        challenge_file_prv_tachogram_csv = 25,
+        challenge_file_respiration_reference_csv = 26,
+        challenge_file_other = 27
     };
 
     struct challenge_package_json_message

@@ -12,7 +12,7 @@
 
 namespace
 {
-    const char* metadata_version = "synsigra_authoring_v12";
+    const char* metadata_version = "synsigra_authoring_v13";
     const char* template_version = "synsigra_templates_v4";
 
     struct field_definition
@@ -140,14 +140,19 @@ namespace
             message = "PPG event scoring requires ppg.enabled=true.";
             return false;
         }
-        if (target == "ecg_ppg_alignment" && !document.ppg.enabled)
+        if ((target == "ecg_ppg_alignment" || target == "prv") && !document.ppg.enabled)
         {
-            message = "ECG/PPG alignment reference requires ppg.enabled=true.";
+            message = target == "prv" ? "PRV scoring requires ppg.enabled=true." : "ECG/PPG alignment reference requires ppg.enabled=true.";
             return false;
         }
         if (target == "ppg_optical" && !document.ppg.optical.enabled)
         {
             message = "PPG optical measurement scoring requires ppg.optical.enabled=true.";
+            return false;
+        }
+        if (target == "respiratory_rate" && document.physiology.respiratory_rr_amplitude_seconds <= 0.0 && document.physiology.ecg_baseline_amplitude_mv <= 0.0 && document.physiology.ppg_amplitude_modulation_ratio <= 0.0 && document.physiology.ppg_delay_modulation_ms <= 0.0 && document.physiology.accelerometer_respiration_amplitude_g <= 0.0)
+        {
+            message = "Respiratory-rate scoring requires at least one respiratory coupling.";
             return false;
         }
         if (target == "hrv" && !document.hrv.enabled)
@@ -263,7 +268,7 @@ namespace
             return "interval_detection";
         if (target == "ecg_delineation")
             return "ecg_delineation";
-        if (target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical")
+        if (target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical" || target == "prv" || target == "respiratory_rate")
             return "measurement";
         return "generated_reference_only";
     }
@@ -278,7 +283,7 @@ namespace
             return "time_f1_score";
         if (target == "ecg_delineation")
             return "f1_score";
-        if (target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical")
+        if (target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical" || target == "prv" || target == "respiratory_rate")
             return "tolerance_pass_fraction";
         if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset")
             return "f1_score";
@@ -318,7 +323,7 @@ namespace
             output.push_back("point_events_json_v1");
             output.push_back("point_events_csv_v1");
         }
-        else if (target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical")
+        else if (target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical" || target == "prv" || target == "respiratory_rate")
         {
             output.push_back("measurement_values_json_v1");
             output.push_back("measurement_values_csv_v1");
@@ -355,6 +360,20 @@ namespace
             output.push_back("ppg_optical_latent_csv");
             output.push_back("ppg_optical_truth_json");
             output.push_back("waveform_channels");
+            output.push_back("case_summary_json");
+        }
+        else if (target == "prv")
+        {
+            output.push_back("cardiorespiratory_truth_json");
+            output.push_back("prv_tachogram_csv");
+            output.push_back("measurement_truth_json");
+            output.push_back("case_summary_json");
+        }
+        else if (target == "respiratory_rate")
+        {
+            output.push_back("cardiorespiratory_truth_json");
+            output.push_back("respiration_reference_csv");
+            output.push_back("measurement_truth_json");
             output.push_back("case_summary_json");
         }
         else
@@ -478,11 +497,15 @@ namespace
         bool has_hrv = false;
         bool has_wearable = false;
         bool has_optical = false;
+        bool has_prv = false;
+        bool has_respiration = false;
         std::vector<std::string> reference_targets;
         for (std::size_t i = 0; i < analysis.targets.size(); ++i)
         {
             has_hrv = has_hrv || analysis.targets[i].target == "hrv";
             has_optical = has_optical || analysis.targets[i].target == "ppg_optical";
+            has_prv = has_prv || analysis.targets[i].target == "prv";
+            has_respiration = has_respiration || analysis.targets[i].target == "respiratory_rate";
             if (analysis.targets[i].support == signal_synth::scenario_target_reference_only)
                 reference_targets.push_back(analysis.targets[i].target);
         }
@@ -494,6 +517,12 @@ namespace
             output << ",{\"role\":\"wearable_samples_csv\",\"required\":true},{\"role\":\"wearable_timestamp_truth_csv\",\"required\":true},{\"role\":\"wearable_timebase_truth_json\",\"required\":true},{\"role\":\"wearable_alignment_truth_json\",\"required\":true}";
         if (has_optical)
             output << ",{\"role\":\"ppg_optical_latent_csv\",\"required\":true},{\"role\":\"ppg_optical_truth_json\",\"required\":true}";
+        if (has_prv || has_respiration)
+            output << ",{\"role\":\"cardiorespiratory_truth_json\",\"required\":true}";
+        if (has_prv)
+            output << ",{\"role\":\"prv_tachogram_csv\",\"required\":true}";
+        if (has_respiration)
+            output << ",{\"role\":\"respiration_reference_csv\",\"required\":true}";
         if (!reference_targets.empty())
         {
             output << ",{\"role\":\"reference_ground_truth\",\"required\":true,\"targets\":";
@@ -536,7 +565,7 @@ namespace signal_synth
 
     scenario_target_support scenario_target_support_for_name(const std::string& target)
     {
-        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset" || target == "ecg_beat_classification" || target == "hrv" || target == "rhythm_episode" || target == "signal_quality" || target == "ecg_delineation" || target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical")
+        if (target == "r_peak" || target == "ppg_systolic_peak" || target == "ppg_pulse_onset" || target == "ecg_beat_classification" || target == "hrv" || target == "rhythm_episode" || target == "signal_quality" || target == "ecg_delineation" || target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical" || target == "prv" || target == "respiratory_rate")
             return scenario_target_local_scoring;
         return scenario_target_unsupported;
     }
@@ -642,6 +671,8 @@ namespace signal_synth
             {"$.physiology.respiratory_rr_amplitude_seconds","Respiratory RR modulation","physiology","number","number","0","0","2","0.001","s",0,0,true},
             {"$.physiology.ecg_baseline_amplitude_mv","Respiratory ECG baseline","physiology","number","number","0","0","5","0.01","mV",0,0,true},
             {"$.physiology.ppg_amplitude_modulation_ratio","Respiratory PPG amplitude modulation","physiology","number","number","0","0","1","0.01","ratio",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
+            {"$.physiology.ppg_delay_modulation_ms","Respiratory PPG delay modulation","physiology","number","number","0","0","1000","1","ms",0,"{\"path\":\"$.ppg.enabled\",\"equals\":true}",true},
+            {"$.physiology.accelerometer_respiration_amplitude_g","Respiratory accelerometer amplitude","physiology","number","number","0","0","5","0.001","g",0,0,true},
             {"$.physiology.activity_start_seconds","Activity start","physiology","number","number","0","0","86400","0.1","s",0,0,true},
             {"$.physiology.activity_duration_seconds","Activity duration","physiology","number","number","0","0","86400","0.1","s",0,0,true},
             {"$.physiology.activity_intensity","Activity intensity","physiology","number","slider","0","0","1","0.01","ratio",0,0,true},
@@ -759,7 +790,9 @@ namespace signal_synth
                << "{\"name\":\"ecg_delineation\",\"support\":\"local_scoring\",\"requires\":[]},"
                << "{\"name\":\"morphology_assertions\",\"support\":\"local_scoring\",\"requires\":[\"ecg.conditions\"]},"
                << "{\"name\":\"ecg_ppg_alignment\",\"support\":\"local_scoring\",\"requires\":[\"ppg.enabled\"]},"
-               << "{\"name\":\"ppg_optical\",\"support\":\"local_scoring\",\"requires\":[\"ppg.optical.enabled\"]}],"
+               << "{\"name\":\"ppg_optical\",\"support\":\"local_scoring\",\"requires\":[\"ppg.optical.enabled\"]},"
+               << "{\"name\":\"prv\",\"support\":\"local_scoring\",\"requires\":[\"ppg.enabled\"]},"
+               << "{\"name\":\"respiratory_rate\",\"support\":\"local_scoring\",\"requires\":[\"at least one respiratory coupling\"]}],"
                << "\"cross_field_rules\":["
                << "{\"id\":\"sample_count\",\"expression\":\"duration_seconds * sample_rate_hz is an integer in [1,4294967295]\",\"message\":\"Duration and sample rate must produce a positive 32-bit sample count.\"},"
                << "{\"id\":\"hrv_window\",\"expression\":\"!hrv.enabled || duration_seconds >= 300\",\"message\":\"Enabled spectral HRV requires at least 300 seconds.\"},"

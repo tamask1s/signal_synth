@@ -110,6 +110,22 @@ TARGET_CONTRACTS = {
         "primary_metric": "tolerance_pass_fraction",
         "description": "Per-pulse red/infrared AC/DC, perfusion-index, ratio-of-ratios and oxygenation-trajectory measurements.",
     },
+    "prv": {
+        "scoreable": True,
+        "score_type": "measurement",
+        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "default_pairing_window_seconds": 0.2,
+        "primary_metric": "tolerance_pass_fraction",
+        "description": "Pulse-interval variability metrics and accepted/excluded PPG interval measurements against explicit PRV truth.",
+    },
+    "respiratory_rate": {
+        "scoreable": True,
+        "score_type": "measurement",
+        "accepted_formats": ["measurement_values_json_v1", "measurement_values_csv_v1"],
+        "default_pairing_window_seconds": 0.2,
+        "primary_metric": "tolerance_pass_fraction",
+        "description": "Respiratory-rate record and trajectory measurements against the deterministic coupling reference.",
+    },
 }
 
 LOCAL_VERIFIER_SMOKE_TESTS = {
@@ -170,6 +186,14 @@ LOCAL_VERIFIER_SMOKE_TESTS = {
     "ppg_optical": [
         {"test_id": "TEST-PPG-OPTICAL-V2-001", "scope": "core optical physiology and measurement-truth smoke test"},
         {"test_id": "TEST-MEASUREMENT-PYTHON-001", "scope": "generator-free optical measurement scoring parity test"},
+    ],
+    "prv": [
+        {"test_id": "TEST-CARDIORESPIRATORY-001", "scope": "core PRV derivation, exclusion and measurement scoring smoke test"},
+        {"test_id": "TEST-CARDIORESPIRATORY-PYTHON-001", "scope": "generator-free PRV measurement scoring test"},
+    ],
+    "respiratory_rate": [
+        {"test_id": "TEST-CARDIORESPIRATORY-001", "scope": "core deterministic respiratory reference and measurement scoring smoke test"},
+        {"test_id": "TEST-CARDIORESPIRATORY-PYTHON-001", "scope": "generator-free respiratory-rate measurement scoring test"},
     ],
 }
 

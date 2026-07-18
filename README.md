@@ -11,7 +11,7 @@ provides the versioned product-facing QA scenario contract, complete PTB-XL
 condition catalog, strict validation, reproducibility fingerprint, and audit
 report. `ecg_morphology` measures deterministic beat-by-lead morphology from
 the generated 12-lead signal. `ecg_scenario_json` provides strict schema-v1
-through schema-v5 JSON parsing, canonical serialization, and SHA-256 document
+through schema-v6 JSON parsing, canonical serialization, and SHA-256 document
 identity. `ppg_model` generates a linked optical pulse channel with variable
 PTT, morphology, modulation, perfusion, weak-pulse, and missing-pulse ground
 truth from the exact ECG ventricular timeline. PPG QA includes deterministic
@@ -26,6 +26,10 @@ not-evaluable states.
 Generic measurement scoring uses one JSON/CSV contract for beat, lead, record,
 and paired-signal outputs, including ECG intervals, ST/T morphology, frontal
 axes, phenotype assertions, PTT, and ECG-to-PPG peak delay.
+`cardiorespiratory` derives explicit PRV from final measured PPG peaks, exports
+HRV-versus-PRV agreement and pulse-quality exclusions, and exposes a shared
+seeded respiratory reference coupled independently to RR, ECG baseline, PPG
+amplitude/timing, and accelerometer signals.
 `wearable_timebase` samples the final latent ECG, PPG, and accelerometer signals
 through independent device rates and clocks, with deterministic timestamp
 jitter, packet loss, exact latent mappings, and physiological-versus-device

@@ -301,7 +301,7 @@ namespace
 
     bool supported_unit(const std::string& unit)
     {
-        static const char* units[] = {"s", "mV", "mV/s", "deg", "count", "ratio", "%", "bpm", "a.u.", "bool"};
+        static const char* units[] = {"s", "s2", "mV", "mV/s", "deg", "count", "ratio", "%", "bpm", "a.u.", "bool"};
         for (std::size_t i = 0; i < sizeof(units) / sizeof(units[0]); ++i)
             if (unit == units[i])
                 return true;

@@ -114,6 +114,9 @@ PROFILE_SCHEMA["rhythm_episode"] = PROFILE_SCHEMA["interval_detection"]
 PROFILE_SCHEMA["signal_quality"] = PROFILE_SCHEMA["interval_detection"]
 PROFILE_SCHEMA["morphology_assertions"] = PROFILE_SCHEMA["measurement"]
 PROFILE_SCHEMA["ecg_ppg_alignment"] = PROFILE_SCHEMA["measurement"]
+PROFILE_SCHEMA["ppg_optical"] = PROFILE_SCHEMA["measurement"]
+PROFILE_SCHEMA["prv"] = PROFILE_SCHEMA["measurement"]
+PROFILE_SCHEMA["respiratory_rate"] = PROFILE_SCHEMA["measurement"]
 
 
 def load_threshold_profile(profile="regression"):

@@ -115,6 +115,8 @@ namespace
             const signal_synth::wearable_stream_record* ppg = render.wearable.stream(signal_synth::wearable_stream_ppg);
             return ecg && ppg && ecg->profile_id == "patch_left_chest_vector_v1" && ecg->channel_count() == 1u && ppg->profile_id == "wrist_reflectance_v1" && ppg->channel_count() == 3u;
         }
+        if (document.scenario_id == "cardiorespiratory_databrowser_v4")
+            return render.cardiorespiratory.prv_available && render.cardiorespiratory.respiration_available && !render.signal_quality.accelerometer.empty() && render.cardiorespiratory.prv.metrics.excluded_interval_count > 0U;
         return false;
     }
 
@@ -198,6 +200,7 @@ int main()
     ok &= check(verify_specialized_script("examples/databrowser/081_Wearable_Multirate_Timebase.txt", "GenerateWearableScenarioJSON"), "wearable_timebase_script");
     ok &= check(verify_specialized_script("examples/databrowser/082_PPG_Optical_Physiology_V2.txt", "GeneratePPGOpticalScenarioJSON"), "ppg_optical_script");
     ok &= check(verify_specialized_script("examples/databrowser/083_Wearable_Device_Site_Profiles.txt", "GenerateWearableScenarioJSON"), "wearable_profiles_script");
+    ok &= check(verify_specialized_script("examples/databrowser/084_Cardiorespiratory_PRV_Respiration.txt", "GenerateCardiorespiratoryScenarioJSON"), "cardiorespiratory_script");
 
     const std::string adapter = read_text("integrations/databrowser/SignalProc_RSPT.cpp");
     ok &= check(adapter.find("#include \"ecg_render.h\"") != std::string::npos && adapter.find("#include \"wearable_timebase.h\"") != std::string::npos && adapter.find("#include \"ecg_export.h\"") == std::string::npos, "adapter_uses_render_layer");
@@ -205,9 +208,10 @@ int main()
     ok &= check(adapter.find("ecg_document_render_result render_result") != std::string::npos, "adapter_render_result_contract");
     ok &= check(adapter.find("GenerateWearableScenarioJSON") != std::string::npos && adapter.find("timestamp error") != std::string::npos && adapter.find("packet availability") != std::string::npos, "adapter_wearable_api");
     ok &= check(adapter.find("GeneratePPGOpticalScenarioJSON") != std::string::npos && adapter.find("GT SpO2 target") != std::string::npos && adapter.find("GenerateSyntheticECGPPG") == std::string::npos, "adapter_optical_api");
+    ok &= check(adapter.find("GenerateCardiorespiratoryScenarioJSON") != std::string::npos && adapter.find("GT respiration reference") != std::string::npos && adapter.find("GT PPG pulse interval") != std::string::npos, "adapter_cardiorespiratory_api");
 
     const std::string project = read_text("integrations/databrowser/SignalProc_RSPT.cbp");
-    ok &= check(project.find("ecg_render.cpp") != std::string::npos && project.find("hrv_metrics.cpp") != std::string::npos && project.find("scenario_stress.cpp") != std::string::npos && project.find("wearable_timebase.cpp") != std::string::npos && project.find("wearable_profiles.cpp") != std::string::npos, "codeblocks_generation_dependencies");
+    ok &= check(project.find("ecg_render.cpp") != std::string::npos && project.find("hrv_metrics.cpp") != std::string::npos && project.find("cardiorespiratory.cpp") != std::string::npos && project.find("scenario_stress.cpp") != std::string::npos && project.find("wearable_timebase.cpp") != std::string::npos && project.find("wearable_profiles.cpp") != std::string::npos, "codeblocks_generation_dependencies");
     ok &= check(project.find("ecg_export.cpp") == std::string::npos && project.find("challenge_package.cpp") == std::string::npos && project.find("ecg_compare.cpp") == std::string::npos && project.find("synsigra_api.cpp") == std::string::npos && project.find("ecg_pack.cpp") == std::string::npos, "codeblocks_excludes_distribution_stack");
     return ok ? 0 : 1;
 }

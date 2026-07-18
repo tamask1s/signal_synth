@@ -516,6 +516,57 @@ namespace
         return output.str();
     }
 
+    void append_variability_summary(std::ostringstream& output, const signal_synth::hrv_metric_summary& metrics)
+    {
+        output << "{\"interval_count\":" << metrics.interval_count << ",\"accepted_interval_count\":" << metrics.accepted_interval_count << ",\"excluded_interval_count\":" << metrics.excluded_interval_count
+               << ",\"mean_interval_seconds\":" << metrics.mean_rr_seconds << ",\"mean_rate_bpm\":" << metrics.mean_heart_rate_bpm << ",\"sdnn_seconds\":" << metrics.sdnn_seconds << ",\"rmssd_seconds\":" << metrics.rmssd_seconds
+               << ",\"pnn50_percent\":" << metrics.pnn50_percent << ",\"sd1_seconds\":" << metrics.sd1_seconds << ",\"sd2_seconds\":" << metrics.sd2_seconds << ",\"sd1_sd2_ratio\":" << metrics.sd1_sd2_ratio
+               << ",\"lf_power_seconds2\":" << metrics.lf_power_seconds2 << ",\"hf_power_seconds2\":" << metrics.hf_power_seconds2 << ",\"lf_hf_ratio\":" << metrics.lf_hf_ratio << ",\"total_power_seconds2\":" << metrics.total_power_seconds2 << '}';
+    }
+
+    std::string cardiorespiratory_truth_json(const signal_synth::ecg_render_bundle& render)
+    {
+        const signal_synth::cardiorespiratory_analysis_result& analysis = render.cardiorespiratory;
+        const signal_synth::hrv_metric_summary& hrv = render.hrv.metrics;
+        const signal_synth::hrv_metric_summary& prv = analysis.prv.metrics;
+        std::ostringstream output; output.imbue(std::locale::classic()); output << std::setprecision(std::numeric_limits<double>::max_digits10)
+            << "{\"schema_version\":1,\"contract\":\"synsigra_cardiorespiratory_truth_v1\",\"prv_available\":" << boolean(analysis.prv_available) << ",\"respiration_available\":" << boolean(analysis.respiration_available);
+        if (analysis.prv_available)
+        {
+            output << ",\"prv\":{\"definition_version\":" << json_string(analysis.prv.metric_definition_version) << ",\"exclusion_policy\":" << json_string(analysis.prv.exclusion_policy) << ",\"metrics\":";
+            append_variability_summary(output, prv);
+            output << "},\"hrv_prv_agreement\":{\"signed_difference_definition\":\"prv_minus_hrv\",\"mean_interval_seconds\":" << prv.mean_rr_seconds - hrv.mean_rr_seconds << ",\"mean_rate_bpm\":" << prv.mean_heart_rate_bpm - hrv.mean_heart_rate_bpm
+                   << ",\"sdnn_seconds\":" << prv.sdnn_seconds - hrv.sdnn_seconds << ",\"rmssd_seconds\":" << prv.rmssd_seconds - hrv.rmssd_seconds << ",\"pnn50_percent\":" << prv.pnn50_percent - hrv.pnn50_percent
+                   << ",\"sd1_seconds\":" << prv.sd1_seconds - hrv.sd1_seconds << ",\"sd2_seconds\":" << prv.sd2_seconds - hrv.sd2_seconds << ",\"sd1_sd2_ratio\":" << prv.sd1_sd2_ratio - hrv.sd1_sd2_ratio
+                   << ",\"lf_power_seconds2\":" << prv.lf_power_seconds2 - hrv.lf_power_seconds2 << ",\"hf_power_seconds2\":" << prv.hf_power_seconds2 - hrv.hf_power_seconds2 << ",\"lf_hf_ratio\":" << prv.lf_hf_ratio - hrv.lf_hf_ratio << '}';
+        }
+        if (analysis.respiration_available)
+            output << ",\"respiration\":{\"reference_sample_rate_hz\":" << analysis.respiration_sample_rate_hz << ",\"frequency_hz\":" << render.resolved_document.physiology.respiration_frequency_hz << ",\"rate_bpm\":" << analysis.respiratory_rate_bpm << ",\"phase_radians\":" << analysis.respiration_phase_radians
+                   << ",\"couplings\":{\"rr_amplitude_seconds\":" << render.resolved_document.physiology.respiratory_rr_amplitude_seconds << ",\"ecg_baseline_amplitude_mv\":" << render.resolved_document.physiology.ecg_baseline_amplitude_mv
+                   << ",\"ppg_amplitude_modulation_ratio\":" << render.resolved_document.physiology.ppg_amplitude_modulation_ratio << ",\"ppg_delay_modulation_ms\":" << render.resolved_document.physiology.ppg_delay_modulation_ms
+                   << ",\"accelerometer_amplitude_g\":" << render.resolved_document.physiology.accelerometer_respiration_amplitude_g << "}}";
+        output << ",\"claim_boundary\":\"Engineering cardiorespiratory coupling and algorithm QA only; no clinical respiration or autonomic validation claim.\"}";
+        return output.str();
+    }
+
+    std::string prv_tachogram_csv(const signal_synth::cardiorespiratory_analysis_result& analysis)
+    {
+        std::ostringstream output; output.imbue(std::locale::classic()); output << std::setprecision(std::numeric_limits<double>::max_digits10) << "beat_index,peak_time_seconds,pulse_interval_seconds,excluded,low_quality_or_missing,arrhythmia_linked,artifact_overlap\n";
+        for (std::size_t i = 0; i < analysis.prv.intervals.size(); ++i)
+        {
+            const signal_synth::hrv_rr_interval& interval = analysis.prv.intervals[i];
+            output << interval.beat_index << ',' << interval.beat_time_seconds << ',' << interval.rr_seconds << ',' << (interval.excluded ? 1 : 0) << ',' << (interval.excluded && !interval.ectopic && !interval.artifact_overlap ? 1 : 0) << ',' << (interval.ectopic ? 1 : 0) << ',' << (interval.artifact_overlap ? 1 : 0) << '\n';
+        }
+        return output.str();
+    }
+
+    std::string respiration_reference_csv(const signal_synth::cardiorespiratory_analysis_result& analysis)
+    {
+        std::ostringstream output; output.imbue(std::locale::classic()); output << std::setprecision(std::numeric_limits<double>::max_digits10) << "time_seconds,phase_radians,respiration_reference,respiratory_rate_bpm\n";
+        for (std::size_t i = 0; i < analysis.respiration.size(); ++i) output << analysis.respiration[i].time_seconds << ',' << analysis.respiration[i].phase_radians << ',' << analysis.respiration[i].waveform << ',' << analysis.respiration[i].respiratory_rate_bpm << '\n';
+        return output.str();
+    }
+
     std::string annotations_json(const signal_synth::ecg_render_bundle& render)
     {
         std::ostringstream output;
@@ -1185,6 +1236,12 @@ namespace signal_synth
         add_artifact(fresh, "annotations.json", "application/json", annotations_json(render));
         add_artifact(fresh, "rr_tachogram.csv", "text/csv", rr_tachogram_csv(render));
         add_artifact(fresh, "hrv_metrics.json", "application/json", hrv_metrics_json(render));
+        if (render.cardiorespiratory.prv_available || render.cardiorespiratory.respiration_available)
+        {
+            add_artifact(fresh, "cardiorespiratory_truth.json", "application/json", cardiorespiratory_truth_json(render));
+            if (render.cardiorespiratory.prv_available) add_artifact(fresh, "prv_tachogram.csv", "text/csv", prv_tachogram_csv(render.cardiorespiratory));
+            if (render.cardiorespiratory.respiration_available) add_artifact(fresh, "respiration_reference.csv", "text/csv", respiration_reference_csv(render.cardiorespiratory));
+        }
         add_artifact(fresh, "ground_truth_metrics.json", "application/json", metrics_json(render));
         add_artifact(fresh, "warnings.json", "application/json", warnings_json(render));
         add_artifact(fresh, "ENGINEERING_CLAIM_BOUNDARY.txt", "text/plain", signal_synth_engineering_claim_boundary_text());

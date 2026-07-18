@@ -372,6 +372,57 @@ namespace
         }
     }
 
+    void add_prv_metric(std::vector<signal_synth::measurement_truth>& output, const char* name, const char* unit, double value, bool valid, double absolute_tolerance)
+    {
+        output.push_back(make_truth(name, unit, valid ? signal_synth::measurement_valid : signal_synth::measurement_undefined, signal_synth::measurement_record, value, absolute_tolerance, 10.0, valid ? "" : "insufficient_valid_pulse_intervals"));
+    }
+
+    void add_prv_truth(const signal_synth::ecg_render_bundle& render, std::vector<signal_synth::measurement_truth>& output)
+    {
+        const signal_synth::hrv_analysis_result& prv = render.cardiorespiratory.prv;
+        const signal_synth::hrv_metric_summary& metrics = prv.metrics;
+        const bool any = metrics.accepted_interval_count > 0u;
+        const bool successive = metrics.accepted_interval_count > 1u;
+        bool spectral = false;
+        double first = 0.0, last = 0.0;
+        for (std::size_t i = 0; i < prv.intervals.size(); ++i) if (!prv.intervals[i].excluded) { if (!spectral) first = prv.intervals[i].beat_time_seconds; last = prv.intervals[i].beat_time_seconds; spectral = true; }
+        spectral = spectral && last - first >= 60.0 && metrics.accepted_interval_count >= 8u;
+        add_prv_metric(output, "mean_pulse_interval_seconds", "s", metrics.mean_rr_seconds, any, 0.010);
+        add_prv_metric(output, "mean_pulse_rate_bpm", "bpm", metrics.mean_heart_rate_bpm, any, 1.0);
+        add_prv_metric(output, "prv_sdnn_seconds", "s", metrics.sdnn_seconds, any, 0.010);
+        add_prv_metric(output, "prv_rmssd_seconds", "s", metrics.rmssd_seconds, successive, 0.010);
+        add_prv_metric(output, "prv_pnn50_percent", "%", metrics.pnn50_percent, successive, 2.0);
+        add_prv_metric(output, "prv_sd1_seconds", "s", metrics.sd1_seconds, successive, 0.010);
+        add_prv_metric(output, "prv_sd2_seconds", "s", metrics.sd2_seconds, successive, 0.010);
+        add_prv_metric(output, "prv_sd1_sd2_ratio", "ratio", metrics.sd1_sd2_ratio, successive, 0.10);
+        add_prv_metric(output, "prv_lf_power_seconds2", "s2", metrics.lf_power_seconds2, spectral, 0.0005);
+        add_prv_metric(output, "prv_hf_power_seconds2", "s2", metrics.hf_power_seconds2, spectral, 0.0005);
+        add_prv_metric(output, "prv_lf_hf_ratio", "ratio", metrics.lf_hf_ratio, spectral && metrics.hf_power_seconds2 > 0.0, 0.20);
+        add_prv_metric(output, "prv_total_power_seconds2", "s2", metrics.total_power_seconds2, spectral, 0.001);
+        for (std::size_t i = 0; i < prv.intervals.size(); ++i)
+        {
+            const signal_synth::hrv_rr_interval& interval = prv.intervals[i];
+            signal_synth::measurement_truth truth = make_truth("pulse_interval", "s", interval.excluded ? signal_synth::measurement_not_evaluable : signal_synth::measurement_valid, signal_synth::measurement_paired_signal, interval.rr_seconds, 0.020, 5.0, interval.excluded ? interval.artifact_overlap ? "ppg_artifact_overlap" : interval.ectopic ? "arrhythmia_linked_pulse" : "missing_or_low_perfusion_pulse" : "");
+            truth.measurement.has_time_seconds = true; truth.measurement.time_seconds = interval.beat_time_seconds;
+            truth.measurement.has_beat_index = true; truth.measurement.beat_index = interval.beat_index;
+            truth.measurement.channel = "ppg_green";
+            output.push_back(truth);
+        }
+    }
+
+    void add_respiratory_rate_truth(const signal_synth::ecg_render_bundle& render, std::vector<signal_synth::measurement_truth>& output)
+    {
+        const signal_synth::cardiorespiratory_analysis_result& analysis = render.cardiorespiratory;
+        output.push_back(make_truth("respiratory_rate_mean", "bpm", signal_synth::measurement_valid, signal_synth::measurement_record, analysis.respiratory_rate_bpm, 1.0, 5.0, ""));
+        for (std::size_t i = 0; i < analysis.respiration.size(); i += analysis.respiration_sample_rate_hz)
+        {
+            signal_synth::measurement_truth truth = make_truth("respiratory_rate", "bpm", signal_synth::measurement_valid, signal_synth::measurement_paired_signal, analysis.respiration[i].respiratory_rate_bpm, 1.0, 5.0, "");
+            truth.measurement.has_time_seconds = true; truth.measurement.time_seconds = analysis.respiration[i].time_seconds;
+            truth.measurement.channel = "respiration_reference";
+            output.push_back(truth);
+        }
+    }
+
     bool same_descriptor(const signal_synth::measurement_value& truth, const signal_synth::measurement_value& prediction)
     {
         return truth.name == prediction.name && truth.unit == prediction.unit && truth.scope == prediction.scope && truth.channel == prediction.channel && truth.formula == prediction.formula;
@@ -619,7 +670,7 @@ namespace signal_synth
 
     bool measurement_target_supported(const std::string& target)
     {
-        return target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical";
+        return target == "morphology_assertions" || target == "ecg_ppg_alignment" || target == "ppg_optical" || target == "prv" || target == "respiratory_rate";
     }
 
     bool measurement_ground_truth_from_render(const ecg_render_bundle& render, const std::string& target, std::vector<measurement_truth>& output, std::vector<std::string>& messages)
@@ -650,6 +701,16 @@ namespace signal_synth
                 return false;
             }
             add_optical_truth(render, output);
+        }
+        else if (target == "prv")
+        {
+            if (!render.cardiorespiratory.prv_available) { messages.push_back("PRV measurement truth requires PPG"); return false; }
+            add_prv_truth(render, output);
+        }
+        else if (target == "respiratory_rate")
+        {
+            if (!render.cardiorespiratory.respiration_available) { messages.push_back("respiratory-rate truth requires at least one respiratory coupling"); return false; }
+            add_respiratory_rate_truth(render, output);
         }
         else
         {

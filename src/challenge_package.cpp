@@ -570,6 +570,9 @@ namespace signal_synth
         case challenge_file_realism_population_json: return "realism_population_json";
         case challenge_file_ppg_optical_latent_csv: return "ppg_optical_latent_csv";
         case challenge_file_ppg_optical_truth_json: return "ppg_optical_truth_json";
+        case challenge_file_cardiorespiratory_truth_json: return "cardiorespiratory_truth_json";
+        case challenge_file_prv_tachogram_csv: return "prv_tachogram_csv";
+        case challenge_file_respiration_reference_csv: return "respiration_reference_csv";
         case challenge_file_other: return "other";
         }
         return "other";

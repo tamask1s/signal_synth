@@ -444,6 +444,7 @@ namespace signal_synth
         double hrv_hf_bandwidth_hz;
         double hrv_respiratory_frequency_hz;
         double hrv_respiratory_amplitude_seconds;
+        double hrv_respiratory_phase_radians;
         bool morphology_enabled[ecg_morphology_control_count];
         double morphology_values[ecg_morphology_control_count];
         bool qt_adaptation_enabled;
@@ -467,7 +468,7 @@ namespace signal_synth
         ecg_scenario_fidelity_policy fidelity_policy;
 
         implementation()
-            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), qt_adaptation_enabled(false), qt_adaptation_model(ecg_qt_adaptation_fridericia), qt_adaptation_qtc_ms(400.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), retain_source_channels(true), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), flutter_conduction_pattern(ecg_flutter_fixed), pacing_mode(ecg_pacing_ventricular), pacing_non_capture_every_n_beats(0), fidelity_policy(ecg_fidelity_allow_parameterized)
+            : sampling_rate_hz(500), seed(DEFAULT_SEED), heart_rate_bpm(0.0), rr_variability_seconds(0.0), minimum_rr_seconds(0.0), maximum_rr_seconds(0.0), hrv_modulation_enabled(false), hrv_lf_hf_ratio(1.0), hrv_lf_center_hz(0.10), hrv_lf_bandwidth_hz(0.04), hrv_hf_center_hz(0.25), hrv_hf_bandwidth_hz(0.12), hrv_respiratory_frequency_hz(0.25), hrv_respiratory_amplitude_seconds(0.0), hrv_respiratory_phase_radians(-1.0), qt_adaptation_enabled(false), qt_adaptation_model(ecg_qt_adaptation_fridericia), qt_adaptation_qtc_ms(400.0), activity_start_seconds(0.0), activity_duration_seconds(0.0), activity_intensity(0.0), retain_source_channels(true), ectopic_every_n_beats(0), second_degree_pattern(ecg_second_degree_unspecified), q_wave_territory(ecg_q_wave_unspecified), episode_type(ecg_episode_none), episode_start_seconds(2.0), episode_duration_seconds(4.0), episode_rate_bpm(170.0), flutter_conduction_pattern(ecg_flutter_fixed), pacing_mode(ecg_pacing_ventricular), pacing_non_capture_every_n_beats(0), fidelity_policy(ecg_fidelity_allow_parameterized)
         {
             for (unsigned int index = 0; index < ecg_morphology_control_count; ++index)
             {
@@ -1145,6 +1146,7 @@ namespace signal_synth
             config.rhythm.hrv_hf_bandwidth_hz = scenario.hrv_hf_bandwidth_hz;
             config.rhythm.hrv_respiratory_frequency_hz = scenario.hrv_respiratory_frequency_hz;
             config.rhythm.hrv_respiratory_amplitude_seconds = scenario.hrv_respiratory_amplitude_seconds;
+            config.rhythm.hrv_respiratory_phase_radians = scenario.hrv_respiratory_phase_radians;
             config.rhythm.activity_start_seconds = scenario.activity_start_seconds;
             config.rhythm.activity_duration_seconds = scenario.activity_duration_seconds;
             config.rhythm.activity_intensity = scenario.activity_intensity;
@@ -2823,13 +2825,13 @@ namespace signal_synth
         return implementation_->maximum_rr_seconds;
     }
 
-    bool ecg_qa_scenario::set_hrv_modulation(double lf_hf_ratio, double lf_center_hz, double lf_bandwidth_hz, double hf_center_hz, double hf_bandwidth_hz, double respiratory_frequency_hz, double respiratory_amplitude_seconds)
+    bool ecg_qa_scenario::set_hrv_modulation(double lf_hf_ratio, double lf_center_hz, double lf_bandwidth_hz, double hf_center_hz, double hf_bandwidth_hz, double respiratory_frequency_hz, double respiratory_amplitude_seconds, double respiratory_phase_radians)
     {
-        const double values[] = {lf_hf_ratio, lf_center_hz, lf_bandwidth_hz, hf_center_hz, hf_bandwidth_hz, respiratory_frequency_hz, respiratory_amplitude_seconds};
+        const double values[] = {lf_hf_ratio, lf_center_hz, lf_bandwidth_hz, hf_center_hz, hf_bandwidth_hz, respiratory_frequency_hz, respiratory_amplitude_seconds, respiratory_phase_radians};
         for (unsigned int i = 0; i < sizeof(values) / sizeof(values[0]); ++i)
             if (!std::isfinite(values[i]))
                 return false;
-        if (lf_hf_ratio < 0.0 || lf_hf_ratio > 100.0 || lf_center_hz <= 0.0 || lf_center_hz > 1.0 || lf_bandwidth_hz <= 0.0 || lf_bandwidth_hz > 1.0 || hf_center_hz <= 0.0 || hf_center_hz > 1.0 || hf_bandwidth_hz <= 0.0 || hf_bandwidth_hz > 1.0 || respiratory_frequency_hz <= 0.0 || respiratory_frequency_hz > 1.0 || respiratory_amplitude_seconds < 0.0 || respiratory_amplitude_seconds > 2.0)
+        if (lf_hf_ratio < 0.0 || lf_hf_ratio > 100.0 || lf_center_hz <= 0.0 || lf_center_hz > 1.0 || lf_bandwidth_hz <= 0.0 || lf_bandwidth_hz > 1.0 || hf_center_hz <= 0.0 || hf_center_hz > 1.0 || hf_bandwidth_hz <= 0.0 || hf_bandwidth_hz > 1.0 || respiratory_frequency_hz <= 0.0 || respiratory_frequency_hz > 1.0 || respiratory_amplitude_seconds < 0.0 || respiratory_amplitude_seconds > 2.0 || respiratory_phase_radians < -1.0)
             return false;
         implementation_->hrv_modulation_enabled = true;
         implementation_->hrv_lf_hf_ratio = lf_hf_ratio;
@@ -2839,6 +2841,7 @@ namespace signal_synth
         implementation_->hrv_hf_bandwidth_hz = hf_bandwidth_hz;
         implementation_->hrv_respiratory_frequency_hz = respiratory_frequency_hz;
         implementation_->hrv_respiratory_amplitude_seconds = respiratory_amplitude_seconds;
+        implementation_->hrv_respiratory_phase_radians = respiratory_phase_radians;
         return true;
     }
 
@@ -3055,6 +3058,7 @@ namespace signal_synth
             hash_u64(hash, quantize(implementation_->hrv_hf_bandwidth_hz, 1000000.0));
             hash_u64(hash, quantize(implementation_->hrv_respiratory_frequency_hz, 1000000.0));
             hash_u64(hash, quantize(implementation_->hrv_respiratory_amplitude_seconds, 1000000.0));
+            if (implementation_->hrv_respiratory_phase_radians >= 0.0) hash_u64(hash, quantize(implementation_->hrv_respiratory_phase_radians, 1000000.0));
             hash_u64(hash, quantize(implementation_->activity_start_seconds, 1000000.0));
             hash_u64(hash, quantize(implementation_->activity_duration_seconds, 1000000.0));
             hash_u64(hash, quantize(implementation_->activity_intensity, 1000000.0));
