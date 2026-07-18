@@ -16,7 +16,7 @@
 
 **Exact runtime baseline:** [`13fd76d`](https://github.com/tamask1s/signal_synth/commit/13fd76d)
 
-**Local core verification:** release CTest 64/64, ASan/UBSan 63/63 applicable runtime tests, Python 0.10.0 sdist/wheel build and installed-wheel smoke, and DataBrowser SHA-256 sync 55/55.
+**Core verification:** [Verification run 29648632075](https://github.com/tamask1s/signal_synth/actions/runs/29648632075), [Python package run 29648632069](https://github.com/tamask1s/signal_synth/actions/runs/29648632069); local release CTest 64/64, ASan/UBSan 63/63 applicable runtime tests, Python 0.10.0 sdist/wheel build and installed-wheel smoke, and DataBrowser SHA-256 sync 55/55.
 
 ## 1. Product Boundary
 
