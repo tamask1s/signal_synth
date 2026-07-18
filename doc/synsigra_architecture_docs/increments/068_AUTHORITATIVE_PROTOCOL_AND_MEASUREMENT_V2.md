@@ -4,6 +4,10 @@
 
 **Issues:** [signal_synth#92](https://github.com/tamask1s/signal_synth/issues/92), [signal_synth#93](https://github.com/tamask1s/signal_synth/issues/93)
 
+**Implementation baseline:** [`13fd76d`](https://github.com/tamask1s/signal_synth/commit/13fd76d)
+
+**SaaS integration:** [signal_synth_saas#71](https://github.com/tamask1s/signal_synth_saas/issues/71)
+
 **Version:** 1.0
 
 **Status:** Implemented and locally verified
@@ -218,8 +222,9 @@ existing dry-run manifest check remains part of final verification.
   implementation equivalence or clinical validity.
 - Synthetic engineering evidence is not FDA qualification, clinical validation,
   or a substitute for a sponsor-specific protocol and representative data.
-- Existing SaaS state cannot be migrated implicitly; a separate SaaS issue must
-  coordinate destructive reset and adoption of core integration v7.
+- Existing SaaS state cannot be migrated implicitly; the destructive reset and
+  core integration v7 adoption are tracked in
+  [signal_synth_saas#71](https://github.com/tamask1s/signal_synth_saas/issues/71).
 
 ## 10. Implementation Sequence
 
@@ -245,3 +250,5 @@ existing dry-run manifest check remains part of final verification.
   tests. LeakSanitizer is unavailable under the execution environment's
   `ptrace`; `TEST-BUILD-001` is intentionally verified only in the normal build
   because its external consumer does not link sanitizer runtimes.
+- SaaS migration requirements were frozen in handoff v4.0 and published as
+  signal_synth_saas#71; no v6 or v1 compatibility path is permitted.
