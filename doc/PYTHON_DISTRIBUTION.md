@@ -30,7 +30,7 @@ python -m pip install .
 External beta users receive and install the generator-free wheel:
 
 ```bash
-python -m pip install synsigra-0.8.0-py3-none-any.whl
+python -m pip install synsigra-0.9.0-py3-none-any.whl
 ```
 
 Build local distribution artifacts:
@@ -76,6 +76,10 @@ Before publishing or handing the package to external beta users:
 7. The challenge-generated `user-output-template/` is sufficient to prepare a submission without source-code inspection.
 8. The top-level README and `python/README.md` describe the same canonical workflow.
 9. The GitHub Actions Python package workflow passes.
+10. Protocol-enabled challenge fixtures expose
+    `synsigra_verification_protocol_v1` through the manifest role.
+11. Malformed/ambiguous ZIP members, unlisted files, symlinks, and manifest
+    duplicate keys fail the package security test.
 
 ## CI contract
 

@@ -3,9 +3,27 @@
 This file records public engineering-verification release notes for the
 `signal_synth` core generator and local verifier contracts.
 
-## 0.8.0-dev
+## 0.9.0-dev
 
 Status: active development baseline.
+
+- Replaced pack schema v1 with v2 and made pre-specified verification
+  protocols explicit pack inputs and challenge artifacts.
+- Added dedicated manifest roles for scoring, submission-format, submission,
+  and verification-protocol documents; removed the redundant per-file
+  `required` flag.
+- Hardened the generator-free Python loader with strict manifest, duplicate-key,
+  path, archive-layout, symlink, size, and unlisted-payload validation.
+- Centralized Python target-family dispatch and corrected package provenance to
+  report verifier `0.9.0` independently from generator `0.9.0-dev`.
+- Added a versioned CMake config package and removed the duplicate unused
+  Python build-system declaration.
+- Advanced the integration contract to v6, challenge package to v3, C++ facade
+  to 1.4.0, authoring metadata to v18, and curated catalog to 3.0.
+
+## 0.8.0-dev
+
+Status: superseded by 0.9.0-dev.
 
 - Added the `r_peak_rr_noise_v1` clean, analytic-noise, and calibrated
   external-noise challenge pack with separate R-peak, observable RR, and

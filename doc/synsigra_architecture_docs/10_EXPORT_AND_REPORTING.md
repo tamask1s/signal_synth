@@ -1,7 +1,7 @@
 # Export and Reporting Design
 
-Version: 0.1  
-Status: Draft  
+Version: 0.2
+Status: Implemented baseline; evolving
 Scope: Export package formats, report contents, watermark metadata and evidence package.
 
 ## 1. Purpose
@@ -94,13 +94,13 @@ Required fields:
   "generator": {
     "name": "signal_synth",
     "product": "Synsigra Testbench",
-    "version": "0.1.0",
+    "version": "0.9.0-dev",
     "git_commit": "unknown",
     "build_identity": "signal_synth/unknown"
   },
   "scenario": {
     "id": "hrv_clean_lfhf_001",
-    "schema_version": "1.0",
+    "schema_version": 9,
     "fingerprint": "sha256:..."
   },
   "render": {
@@ -109,9 +109,10 @@ Required fields:
     "timestamp_policy": "not_recorded_for_deterministic_local_export"
   },
   "contracts": {
-    "package_contract_version": "synsigra_challenge_package_v2",
+    "package_contract_version": "synsigra_challenge_package_v3",
     "scoring_manifest_contract_version": "synsigra_scoring_manifest_v2",
-    "verifier_version": "0.6.0-dev"
+    "verification_protocol_contract_version": "synsigra_verification_protocol_v1",
+    "verifier_version": "0.9.0"
   },
   "license": {
     "export_id": "exp_...",

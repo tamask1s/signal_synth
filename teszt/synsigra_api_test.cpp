@@ -110,20 +110,23 @@ int main()
     ok &= check(std::string(signal_synth::synsigra_compare_target_name(static_cast<signal_synth::synsigra_compare_target>(99))).empty()
         && signal_synth::synsigra_default_compare_tolerance_seconds(static_cast<signal_synth::synsigra_compare_target>(99)) == 0.0, "invalid_target_has_no_fallback");
     const std::string integration_contract = signal_synth::synsigra_integration_contract_json();
-    ok &= check(std::string(signal_synth::synsigra_integration_contract_version()) == "synsigra_core_integration_v5"
-        && integration_contract.find("\"contract\":\"synsigra_core_integration_v5\"") != std::string::npos
-        && integration_contract.find("\"cpp_facade\":\"1.3.0\"") != std::string::npos
+    ok &= check(std::string(signal_synth::synsigra_integration_contract_version()) == "synsigra_core_integration_v6"
+        && integration_contract.find("\"contract\":\"synsigra_core_integration_v6\"") != std::string::npos
+        && integration_contract.find("\"cpp_facade\":\"1.4.0\"") != std::string::npos
+        && integration_contract.find("\"pack_schema_version\":2") != std::string::npos
+        && integration_contract.find("\"python_verifier\":\"0.9.0\"") != std::string::npos
         && integration_contract.find("\"latest_schema_version\":9") != std::string::npos
         && integration_contract.find("\"metric_definition\":\"synsigra_hrv_metrics_v2\"") != std::string::npos
         && integration_contract.find("\"sd1_sd2_ratio\"") != std::string::npos
-        && integration_contract.find("\"challenge_package\":\"synsigra_challenge_package_v2\"") != std::string::npos
+        && integration_contract.find("\"challenge_package\":\"synsigra_challenge_package_v3\"") != std::string::npos
+        && integration_contract.find("\"verification_protocol\":\"synsigra_verification_protocol_v1\"") != std::string::npos
         && integration_contract.find("\"submission\":\"synsigra_submission_v1\"") != std::string::npos
         && integration_contract.find("\"comparison_targets\":[\"r_peak\",\"ppg_systolic_peak\",\"ppg_pulse_onset\",\"ecg_beat_classification\"]") != std::string::npos
         && integration_contract.find("\"measurement_targets\":[\"rr_interval\",\"qtc\",\"morphology_assertions\",\"ecg_ppg_alignment\",\"ppg_optical\",\"prv\",\"respiratory_rate\",\"rhythm_burden\"]") != std::string::npos, "integration_contract");
 
     signal_synth::synsigra_validation_result invalid;
     ok &= check(!signal_synth::synsigra_validate_scenario_json("{\"schema_version\":2}", invalid) && !invalid.success && !invalid.messages.empty(), "invalid_has_messages");
-    ok &= check(std::string(signal_synth::synsigra_api_version()) == "1.3.0", "api_version");
+    ok &= check(std::string(signal_synth::synsigra_api_version()) == "1.4.0", "api_version");
 
     return ok ? 0 : 1;
 }

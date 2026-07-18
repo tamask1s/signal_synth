@@ -83,7 +83,8 @@ def main():
         assert analysis["pack_version"] == pack["version"]
         assert analysis["scoring_mode"] in ("local", "mixed", "reference_only")
         assert analysis["recommended_verifier_profile"] in ("smoke", "regression", "stress", "benchmark")
-        assert analysis["generator_compatibility"]["challenge_package_contract"] == "synsigra_challenge_package_v2"
+        assert analysis["generator_compatibility"]["challenge_package_contract"] == "synsigra_challenge_package_v3"
+        assert analysis["generator_compatibility"]["pack_schema_version"] == 2
         assert analysis["summary"]["case_count"] > 0
         assert analysis["summary"]["total_duration_seconds"] > 0
         assert analysis["summary"]["estimated_package_bytes"] > 0

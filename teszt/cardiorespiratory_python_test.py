@@ -40,7 +40,7 @@ def main():
     shutil.copyfile(os.path.join(source, "examples", "scenarios", "packs", "cardiorespiratory_clean_v4.json"), os.path.join(work, "source", "scenarios", "clean.json"))
     pack_path = os.path.join(work, "source", "pack.json")
     write_json(pack_path, {
-        "schema_version": 1, "pack_id": "cardiorespiratory_python_test", "name": "Cardiorespiratory Python Test", "version": "1", "description": "Generator-free PRV and respiratory-rate scoring fixture.",
+        "schema_version": 2, "pack_id": "cardiorespiratory_python_test", "name": "Cardiorespiratory Python Test", "version": "1", "description": "Generator-free PRV and respiratory-rate scoring fixture.",
         "targets": ["prv", "respiratory_rate"],
         "scenarios": [{"id": "clean", "path": "scenarios/clean.json", "targets": ["prv", "respiratory_rate"]}],
     })

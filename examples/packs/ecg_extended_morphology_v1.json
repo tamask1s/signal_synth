@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version":2,
   "pack_id": "ecg_extended_morphology_v1",
   "name": "Extended ECG wave and beat morphology",
   "description": "Lead-selective P/T notching and biphasic waves, U waves, R-prime, fragmented QRS and periodic fusion beats with exact point and measurement truth.",

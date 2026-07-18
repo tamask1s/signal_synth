@@ -50,7 +50,11 @@ namespace signal_synth
         challenge_file_cardiorespiratory_truth_json = 24,
         challenge_file_prv_tachogram_csv = 25,
         challenge_file_respiration_reference_csv = 26,
-        challenge_file_other = 27
+        challenge_file_scoring_manifest_json = 27,
+        challenge_file_submission_manifest_json = 28,
+        challenge_file_submission_formats_json = 29,
+        challenge_file_verification_protocol_json = 30,
+        challenge_file_other = 31
     };
 
     struct challenge_package_json_message
@@ -69,7 +73,6 @@ namespace signal_synth
         std::string media_type;
         std::string sha256;
         unsigned long long size_bytes;
-        bool required;
     };
 
     struct challenge_package_case
@@ -112,6 +115,7 @@ namespace signal_synth
     };
 
     const char* challenge_package_json_message_code_name(challenge_package_json_message_code code);
+    const char* challenge_package_contract_version();
     const char* challenge_package_type_name(challenge_package_type type);
     const char* challenge_file_role_name(challenge_file_role role);
     bool challenge_package_type_from_name(const std::string& name, challenge_package_type& output);

@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version":2,
   "pack_id": "ppg_benchmark_v1",
   "name": "PPG Detection Benchmark v1",
   "version": "1.1",

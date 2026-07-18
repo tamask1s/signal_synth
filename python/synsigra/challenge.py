@@ -2,9 +2,34 @@ import csv
 import hashlib
 import json
 import os
+import re
 import shutil
+import stat
 import tempfile
 import zipfile
+
+
+_MANIFEST_FIELDS = set(["schema_version", "contract", "package_id", "name", "version", "description", "package_type", "ground_truth_included", "waveform_formats", "generator_version", "usage_restrictions", "not_for", "files", "cases"])
+_FILE_FIELDS = set(["path", "role", "media_type", "sha256", "size_bytes"])
+_CASE_FIELDS = set(["id", "scenario_id", "scenario_path", "document_fingerprint", "render_identity", "files"])
+_FILE_ROLES = set([
+    "scenario_json", "pack_json", "metadata_json", "waveform_csv", "annotations_json",
+    "ground_truth_metrics_json", "report_html", "readme", "wfdb_header", "wfdb_signal",
+    "wfdb_annotation", "edf", "bdf", "measurement_truth_json", "wearable_samples_csv",
+    "wearable_timestamp_truth_csv", "wearable_timebase_truth_json", "wearable_alignment_truth_json",
+    "realism_metrics_json", "realism_metrics_csv", "realism_report_html", "realism_population_json",
+    "ppg_optical_latent_csv", "ppg_optical_truth_json", "cardiorespiratory_truth_json",
+    "prv_tachogram_csv", "respiration_reference_csv", "scoring_manifest_json",
+    "submission_manifest_json", "submission_formats_json", "verification_protocol_json", "other",
+])
+_SINGLETON_ROLES = set(["pack_json", "scoring_manifest_json", "submission_manifest_json", "submission_formats_json", "verification_protocol_json", "realism_population_json"])
+_GROUND_TRUTH_ROLES = set(["annotations_json", "ground_truth_metrics_json", "measurement_truth_json"])
+_SAFE_ID = re.compile(r"^[A-Za-z0-9_.-]{1,128}$")
+_SHA256 = re.compile(r"^sha256:[0-9a-f]{64}$")
+_MEDIA_TYPE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*$")
+_MAX_ARCHIVE_MEMBERS = 100000
+_MAX_ARCHIVE_MEMBER_BYTES = 32 * 1024 * 1024 * 1024
+_MAX_ARCHIVE_TOTAL_BYTES = 64 * 1024 * 1024 * 1024
 
 
 class _TemporaryDirectory(object):
@@ -33,6 +58,10 @@ class WaveformTable(object):
 
 
 class ChallengeIntegrityError(ValueError):
+    pass
+
+
+class ChallengeFormatError(ValueError):
     pass
 
 
@@ -71,16 +100,13 @@ class ChallengeCase(object):
         return read_waveform_csv(self._case_file_path("wearable_timestamp_truth.csv"))
 
     def wearable_timebase_truth(self):
-        with open(self._case_file_path("wearable_timebase_truth.json"), "r") as handle:
-            return json.load(handle)
+        return _read_json_strict(self._case_file_path("wearable_timebase_truth.json"))
 
     def wearable_alignment_truth(self):
-        with open(self._case_file_path("wearable_alignment_truth.json"), "r") as handle:
-            return json.load(handle)
+        return _read_json_strict(self._case_file_path("wearable_alignment_truth.json"))
 
     def realism_metrics(self):
-        with open(self.file_path("realism_metrics_json"), "r") as handle:
-            return json.load(handle)
+        return _read_json_strict(self.file_path("realism_metrics_json"))
 
     def realism_table(self):
         return read_waveform_csv(self.file_path("realism_metrics_csv"))
@@ -92,12 +118,10 @@ class ChallengeCase(object):
         return read_waveform_csv(self.file_path("ppg_optical_latent_csv"))
 
     def ppg_optical_truth(self):
-        with open(self.file_path("ppg_optical_truth_json"), "r") as handle:
-            return json.load(handle)
+        return _read_json_strict(self.file_path("ppg_optical_truth_json"))
 
     def annotations(self):
-        with open(self.file_path("annotations_json"), "r") as handle:
-            return json.load(handle)
+        return _read_json_strict(self.file_path("annotations_json"))
 
     def case_summary(self):
         return self.package.read_json("cases/%s/case_summary.json" % self.id)
@@ -152,10 +176,11 @@ class ChallengePackage(object):
             self._tempdir = None
 
     def resolve(self, relative_path):
-        normalized = relative_path.replace("\\", "/")
-        if os.path.isabs(normalized) or ".." in normalized.split("/"):
-            raise ValueError("challenge package path is not safe: %s" % relative_path)
-        return os.path.join(self.root, normalized)
+        normalized = _safe_relative_path(relative_path, "challenge package path")
+        path = os.path.join(self.root, *normalized.split("/"))
+        if os.path.islink(path) or not _inside_root(self.root, path):
+            raise ChallengeIntegrityError("challenge package path escapes through a symlink: %s" % relative_path)
+        return path
 
     def case(self, case_id):
         return self._case_map[case_id]
@@ -170,24 +195,41 @@ class ChallengePackage(object):
         raise KeyError(role)
 
     def read_json(self, relative_path):
-        with open(self.resolve(relative_path), "r") as handle:
-            return json.load(handle)
+        return _read_json_strict(self.resolve(relative_path))
+
+    def read_json_by_role(self, role):
+        return _read_json_strict(self.file_by_role(role))
 
     def scoring_manifest(self):
-        return self.read_json("scoring_manifest.json")
+        return self.read_json_by_role("scoring_manifest_json")
+
+    def submission_manifest(self):
+        return self.read_json_by_role("submission_manifest_json")
+
+    def submission_formats(self):
+        return self.read_json_by_role("submission_formats_json")
+
+    def verification_protocol(self):
+        document = self.read_json_by_role("verification_protocol_json")
+        _validate_verification_protocol(document, self.package_id)
+        return document
 
     def realism_population(self):
-        return self.read_json("realism_population.json")
+        return self.read_json_by_role("realism_population_json")
 
     def verify_integrity(self):
         errors = []
         checked_files = 0
         total_bytes = 0
+        try:
+            _validate_layout(self.root, self.manifest)
+        except ChallengeIntegrityError as error:
+            errors.append(str(error))
         for item in self.files:
             relative_path = item.get("path", "")
             try:
                 path = self.resolve(relative_path)
-            except ValueError as error:
+            except (ValueError, ChallengeIntegrityError) as error:
                 errors.append(str(error))
                 continue
             if not os.path.isfile(path):
@@ -224,26 +266,72 @@ class ChallengePackage(object):
 
 
 def load_challenge(path):
+    path = os.fspath(path)
     root = path
     tempdir = None
-    if not os.path.isdir(path):
-        tempdir = _TemporaryDirectory()
-        with zipfile.ZipFile(path, "r") as archive:
-            _extract_archive_safely(archive, tempdir.name)
-        root = tempdir.name
-    manifest_path = os.path.join(root, "manifest.json")
-    with open(manifest_path, "r") as handle:
-        manifest = json.load(handle)
-    return ChallengePackage(root, manifest, tempdir)
+    try:
+        if not os.path.isdir(path):
+            tempdir = _TemporaryDirectory()
+            with zipfile.ZipFile(path, "r") as archive:
+                _extract_archive_safely(archive, tempdir.name)
+            root = tempdir.name
+        manifest_path = _validate_root_manifest_path(root)
+        manifest = _read_json_strict(manifest_path)
+        _validate_manifest(manifest)
+        _validate_layout(root, manifest)
+        package = ChallengePackage(root, manifest, tempdir)
+        if any(item["role"] == "verification_protocol_json" for item in package.files):
+            package.verification_protocol()
+        return package
+    except Exception:
+        if tempdir is not None:
+            tempdir.cleanup()
+        raise
 
 
 def _extract_archive_safely(archive, destination):
-    for member in archive.infolist():
-        name = member.filename.replace("\\", "/")
-        if os.path.isabs(name) or ".." in name.split("/"):
-            raise ValueError("challenge archive path is not safe: %s" % member.filename)
+    members = archive.infolist()
+    if len(members) > _MAX_ARCHIVE_MEMBERS:
+        raise ChallengeFormatError("challenge archive contains too many members")
+    validated = []
+    seen = set()
+    files = set()
+    all_paths = set()
+    total_bytes = 0
+    for member in members:
+        if member.flag_bits & 1:
+            raise ChallengeFormatError("encrypted challenge archive members are not supported: %s" % member.filename)
+        unix_mode = (member.external_attr >> 16) & 0xffff
+        if unix_mode and stat.S_ISLNK(unix_mode):
+            raise ChallengeFormatError("challenge archive symlinks are not supported: %s" % member.filename)
+        is_directory = member.is_dir()
+        raw_name = member.filename
+        if "\\" in raw_name:
+            raise ChallengeFormatError("challenge archive path must use forward slashes: %s" % raw_name)
+        name = raw_name[:-1] if is_directory and raw_name.endswith("/") else raw_name
+        name = _safe_relative_path(name, "challenge archive path")
+        if raw_name != name + ("/" if is_directory else ""):
+            raise ChallengeFormatError("challenge archive path is not canonical: %s" % raw_name)
+        folded = name.lower()
+        if folded in seen:
+            raise ChallengeFormatError("duplicate or case-colliding challenge archive path: %s" % name)
+        seen.add(folded)
+        all_paths.add(folded)
+        if not is_directory:
+            files.add(folded)
+            if member.file_size > _MAX_ARCHIVE_MEMBER_BYTES:
+                raise ChallengeFormatError("challenge archive member is too large: %s" % name)
+            total_bytes += member.file_size
+            if total_bytes > _MAX_ARCHIVE_TOTAL_BYTES:
+                raise ChallengeFormatError("challenge archive expands beyond the supported size limit")
+        validated.append((member, name, is_directory))
+    for file_path in files:
+        for other in all_paths:
+            if other != file_path and other.startswith(file_path + "/"):
+                raise ChallengeFormatError("challenge archive file/directory path conflict: %s" % file_path)
+    for member, name, is_directory in validated:
         target = os.path.join(destination, name)
-        if member.is_dir():
+        if is_directory:
             if not os.path.exists(target):
                 os.makedirs(target)
             continue
@@ -253,6 +341,237 @@ def _extract_archive_safely(archive, destination):
         with archive.open(member, "r") as source:
             with open(target, "wb") as handle:
                 shutil.copyfileobj(source, handle)
+
+
+def _read_json_strict(path):
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            return json.load(handle, object_pairs_hook=_unique_json_object)
+    except ChallengeFormatError:
+        raise
+    except (OSError, ValueError) as error:
+        raise ChallengeFormatError("invalid JSON document %s: %s" % (path, error))
+
+
+def _unique_json_object(pairs):
+    output = {}
+    for key, value in pairs:
+        if key in output:
+            raise ChallengeFormatError("duplicate JSON object key: %s" % key)
+        output[key] = value
+    return output
+
+
+def _safe_relative_path(value, label):
+    if not isinstance(value, str) or not value or len(value) > 512:
+        raise ChallengeFormatError("%s must contain 1 to 512 characters" % label)
+    if value.startswith("/") or "\\" in value or ":" in value:
+        raise ChallengeFormatError("%s is not a portable relative path: %s" % (label, value))
+    if any(ord(character) < 0x20 or ord(character) > 0x7e for character in value):
+        raise ChallengeFormatError("%s must contain printable ASCII only: %s" % (label, value))
+    components = value.split("/")
+    if any(component in ("", ".", "..") for component in components):
+        raise ChallengeFormatError("%s is not canonical: %s" % (label, value))
+    return value
+
+
+def _inside_root(root, path):
+    root_real = os.path.realpath(root)
+    path_real = os.path.realpath(path)
+    try:
+        return os.path.commonpath([root_real, path_real]) == root_real
+    except ValueError:
+        return False
+
+
+def _validate_root_manifest_path(root):
+    if not os.path.isdir(root) or os.path.islink(root):
+        raise ChallengeIntegrityError("challenge package root must be a real directory")
+    manifest_path = os.path.join(root, "manifest.json")
+    if os.path.islink(manifest_path) or not _inside_root(root, manifest_path) or not os.path.isfile(manifest_path):
+        raise ChallengeIntegrityError("challenge package manifest must be a real file inside the package root")
+    return manifest_path
+
+
+def _exact_fields(document, expected, path):
+    if not isinstance(document, dict):
+        raise ChallengeFormatError("%s must be an object" % path)
+    actual = set(document)
+    if actual != expected:
+        missing = sorted(expected - actual)
+        unknown = sorted(actual - expected)
+        details = []
+        if missing:
+            details.append("missing %s" % ", ".join(missing))
+        if unknown:
+            details.append("unknown %s" % ", ".join(unknown))
+        raise ChallengeFormatError("%s has invalid fields: %s" % (path, "; ".join(details)))
+
+
+def _string(value, path, maximum=None):
+    if not isinstance(value, str) or not value or (maximum is not None and len(value) > maximum):
+        raise ChallengeFormatError("%s must be a non-empty string%s" % (path, " of at most %d characters" % maximum if maximum else ""))
+    return value
+
+
+def _safe_id(value, path):
+    if not isinstance(value, str) or not _SAFE_ID.match(value):
+        raise ChallengeFormatError("%s must be a safe identifier" % path)
+    return value
+
+
+def _validate_manifest(manifest):
+    _exact_fields(manifest, _MANIFEST_FIELDS, "manifest")
+    if type(manifest["schema_version"]) is not int or manifest["schema_version"] != 1:
+        raise ChallengeFormatError("manifest.schema_version must be 1")
+    if manifest["contract"] != "synsigra_challenge_package_v3":
+        raise ChallengeFormatError("manifest.contract is unsupported")
+    _safe_id(manifest["package_id"], "manifest.package_id")
+    _string(manifest["name"], "manifest.name", 256)
+    _string(manifest["version"], "manifest.version", 64)
+    _string(manifest["description"], "manifest.description")
+    if manifest["package_type"] not in ("single_scenario", "scenario_pack"):
+        raise ChallengeFormatError("manifest.package_type is unsupported")
+    if manifest["ground_truth_included"] is not True:
+        raise ChallengeFormatError("manifest.ground_truth_included must be true")
+    formats = manifest["waveform_formats"]
+    if not isinstance(formats, list) or not formats:
+        raise ChallengeFormatError("manifest.waveform_formats must be a non-empty array")
+    for index, value in enumerate(formats):
+        _safe_id(value, "manifest.waveform_formats[%d]" % index)
+    if len(set(formats)) != len(formats):
+        raise ChallengeFormatError("manifest.waveform_formats contains duplicates")
+    _string(manifest["generator_version"], "manifest.generator_version")
+    _string(manifest["usage_restrictions"], "manifest.usage_restrictions")
+    not_for = _string(manifest["not_for"], "manifest.not_for")
+    if "diagnosis" not in not_for or "clinical validation" not in not_for:
+        raise ChallengeFormatError("manifest.not_for must include diagnosis and clinical validation limitations")
+
+    files = manifest["files"]
+    if not isinstance(files, list) or not files:
+        raise ChallengeFormatError("manifest.files must be a non-empty array")
+    file_paths = {}
+    portable_paths = set()
+    singleton_roles = set()
+    has_ground_truth = False
+    for index, item in enumerate(files):
+        path = "manifest.files[%d]" % index
+        _exact_fields(item, _FILE_FIELDS, path)
+        relative_path = _safe_relative_path(item["path"], path + ".path")
+        folded = relative_path.lower()
+        if folded in portable_paths:
+            raise ChallengeFormatError("%s duplicates or case-collides with another file path" % (path + ".path"))
+        for previous in portable_paths:
+            if _path_prefix_conflict(previous, folded):
+                raise ChallengeFormatError("%s conflicts with a file/directory prefix" % (path + ".path"))
+        portable_paths.add(folded)
+        role = item["role"]
+        if not isinstance(role, str) or role not in _FILE_ROLES:
+            raise ChallengeFormatError("%s.role is unsupported" % path)
+        if role in _SINGLETON_ROLES:
+            if role in singleton_roles:
+                raise ChallengeFormatError("%s.role duplicates singleton role %s" % (path, role))
+            singleton_roles.add(role)
+        has_ground_truth = has_ground_truth or role in _GROUND_TRUTH_ROLES
+        if not isinstance(item["media_type"], str) or not _MEDIA_TYPE.match(item["media_type"]):
+            raise ChallengeFormatError("%s.media_type is invalid" % path)
+        if not isinstance(item["sha256"], str) or not _SHA256.match(item["sha256"]):
+            raise ChallengeFormatError("%s.sha256 is invalid" % path)
+        if type(item["size_bytes"]) is not int or item["size_bytes"] < 0:
+            raise ChallengeFormatError("%s.size_bytes must be a non-negative integer" % path)
+        file_paths[relative_path] = role
+    if not has_ground_truth:
+        raise ChallengeFormatError("manifest.files must include ground truth")
+
+    cases = manifest["cases"]
+    if not isinstance(cases, list) or not cases:
+        raise ChallengeFormatError("manifest.cases must be a non-empty array")
+    case_ids = set()
+    for index, item in enumerate(cases):
+        path = "manifest.cases[%d]" % index
+        _exact_fields(item, _CASE_FIELDS, path)
+        case_id = _safe_id(item["id"], path + ".id")
+        if case_id.lower() in case_ids:
+            raise ChallengeFormatError("%s.id duplicates or case-collides with another case" % path)
+        case_ids.add(case_id.lower())
+        _string(item["scenario_id"], path + ".scenario_id")
+        scenario_path = _safe_relative_path(item["scenario_path"], path + ".scenario_path")
+        if not isinstance(item["document_fingerprint"], str) or not _SHA256.match(item["document_fingerprint"]):
+            raise ChallengeFormatError("%s.document_fingerprint is invalid" % path)
+        _string(item["render_identity"], path + ".render_identity")
+        case_files = item["files"]
+        if not isinstance(case_files, list) or not case_files:
+            raise ChallengeFormatError("%s.files must be a non-empty array" % path)
+        normalized_case_files = []
+        for file_index, relative_path in enumerate(case_files):
+            relative_path = _safe_relative_path(relative_path, "%s.files[%d]" % (path, file_index))
+            normalized_case_files.append(relative_path)
+            if relative_path not in file_paths:
+                raise ChallengeFormatError("%s.files references an unlisted path: %s" % (path, relative_path))
+        if len(set(normalized_case_files)) != len(normalized_case_files):
+            raise ChallengeFormatError("%s.files contains duplicates" % path)
+        if scenario_path not in case_files or file_paths.get(scenario_path) != "scenario_json":
+            raise ChallengeFormatError("%s.scenario_path must reference the case scenario_json file" % path)
+
+
+def _path_prefix_conflict(left, right):
+    return left.startswith(right + "/") or right.startswith(left + "/")
+
+
+def _validate_layout(root, manifest):
+    if not os.path.isdir(root) or os.path.islink(root):
+        raise ChallengeIntegrityError("challenge package root must be a real directory")
+    actual = set()
+    errors = []
+    for current, directories, files in os.walk(root, followlinks=False):
+        for name in directories:
+            path = os.path.join(current, name)
+            if os.path.islink(path):
+                errors.append("symlink directory is not allowed: %s" % os.path.relpath(path, root))
+        for name in files:
+            path = os.path.join(current, name)
+            relative_path = os.path.relpath(path, root).replace(os.sep, "/")
+            if os.path.islink(path) or not _inside_root(root, path):
+                errors.append("symlink file is not allowed: %s" % relative_path)
+            else:
+                actual.add(relative_path)
+    expected = set(["manifest.json"] + [item["path"] for item in manifest["files"]])
+    missing = sorted(expected - actual)
+    unlisted = sorted(actual - expected)
+    if missing:
+        errors.append("missing package files: %s" % ", ".join(missing))
+    if unlisted:
+        errors.append("unlisted package files: %s" % ", ".join(unlisted))
+    if errors:
+        raise ChallengeIntegrityError("; ".join(errors))
+
+
+def _validate_verification_protocol(document, package_id):
+    required = set(["schema_version", "contract", "protocol_id", "pack_id", "context_of_use", "pre_specified_profile", "required_targets", "acceptance", "stress_matrix", "truth_policy", "evidence_boundary"])
+    if not isinstance(document, dict) or not required.issubset(set(document)):
+        raise ChallengeFormatError("verification protocol is missing required envelope fields")
+    if type(document["schema_version"]) is not int or document["schema_version"] != 1:
+        raise ChallengeFormatError("verification protocol schema_version must be 1")
+    if document["contract"] != "synsigra_verification_protocol_v1":
+        raise ChallengeFormatError("verification protocol contract is unsupported")
+    _safe_id(document["protocol_id"], "verification_protocol.protocol_id")
+    if document["pack_id"] != package_id:
+        raise ChallengeFormatError("verification protocol pack_id does not match the challenge package")
+    _string(document["context_of_use"], "verification_protocol.context_of_use")
+    if document["pre_specified_profile"] not in ("smoke", "regression", "stress", "benchmark"):
+        raise ChallengeFormatError("verification protocol pre_specified_profile is unsupported")
+    targets = document["required_targets"]
+    if not isinstance(targets, list) or not targets:
+        raise ChallengeFormatError("verification protocol required_targets must be non-empty")
+    for index, target in enumerate(targets):
+        _safe_id(target, "verification_protocol.required_targets[%d]" % index)
+    if not isinstance(document["acceptance"], dict) or not document["acceptance"]:
+        raise ChallengeFormatError("verification protocol acceptance must be a non-empty object")
+    if not isinstance(document["stress_matrix"], (dict, list)) or not document["stress_matrix"]:
+        raise ChallengeFormatError("verification protocol stress_matrix must be non-empty")
+    if not isinstance(document["truth_policy"], dict) or not document["truth_policy"]:
+        raise ChallengeFormatError("verification protocol truth_policy must be a non-empty object")
+    _string(document["evidence_boundary"], "verification_protocol.evidence_boundary")
 
 
 def _sha256_file(path):

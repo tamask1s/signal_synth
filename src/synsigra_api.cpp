@@ -201,12 +201,12 @@ namespace signal_synth
 
     const char* synsigra_api_version()
     {
-        return "1.3.0";
+        return "1.4.0";
     }
 
     const char* synsigra_integration_contract_version()
     {
-        return "synsigra_core_integration_v5";
+        return "synsigra_core_integration_v6";
     }
 
     std::string synsigra_integration_contract_json()
@@ -217,12 +217,15 @@ namespace signal_synth
                << ",\"git_commit\":" << json_text(signal_synth_generator_git_commit())
                << ",\"build_identity\":" << json_text(signal_synth_build_identity()) << "}"
                << ",\"contracts\":{\"cpp_facade\":" << json_text(synsigra_api_version())
+               << ",\"pack_schema_version\":2"
                << ",\"challenge_package\":" << json_text(signal_synth_package_contract_version())
                << ",\"scoring_manifest\":" << json_text(signal_synth_scoring_manifest_contract_version())
+               << ",\"verification_protocol\":" << json_text(signal_synth_verification_protocol_contract_version())
                << ",\"submission\":\"synsigra_submission_v1\""
                << ",\"submission_formats\":\"synsigra_submission_formats_v1\""
                << ",\"scenario_authoring\":" << json_text(scenario_authoring_metadata_version())
                << ",\"scenario_templates\":" << json_text(scenario_template_catalog_version())
+               << ",\"python_verifier\":" << json_text(signal_synth_verifier_version())
                << ",\"external_noise_truth\":\"synsigra_external_noise_truth_v1\"}"
                << ",\"external_noise\":{\"scenario_schema_version\":8,\"asset_transport\":\"in_memory_csv_registry\",\"asset_bytes_in_challenge\":false,\"release_gate\":\"external_noise_truth.release_allowed\",\"redistribution_modes\":[\"local_only\",\"rendered_output\",\"source_and_output\"]}"
                << ",\"scenario\":{\"latest_schema_version\":9,\"supported_schema_versions\":[2,3,4,5,6,7,8,9]}"

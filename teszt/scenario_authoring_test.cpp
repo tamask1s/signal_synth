@@ -35,7 +35,7 @@ int main()
     bool ok = true;
     const std::string metadata = signal_synth::scenario_authoring_metadata_json();
     const std::string templates = signal_synth::scenario_template_catalog_json();
-    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v17"
+    ok &= check(std::string(signal_synth::scenario_authoring_metadata_version()) == "synsigra_authoring_v18"
         && metadata.find("\"condition_count\"") == std::string::npos
         && metadata.find("\"code\":\"NORM\"") != std::string::npos
         && metadata.find("\"path\":\"$.hrv.target_sdnn_seconds\"") != std::string::npos

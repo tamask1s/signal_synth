@@ -4,11 +4,12 @@
   "pack_version": "1.0",
   "pack_fingerprint": "sha256:fixture",
   "generator_version": "fixture",
-  "package_contract_version": "synsigra_challenge_package_v2",
+  "package_contract_version": "synsigra_challenge_package_v3",
   "scoring_manifest_contract_version": "synsigra_scoring_manifest_v2",
   "submission_contract_version": "synsigra_submission_v1",
   "submission_template_path": "user-output-template/submission.json",
   "submission_format_contract_path": "user-output-template/formats.json",
+  "verification_protocol_path": "",
   "verification_output_directory": "verification",
   "targets": [
     {

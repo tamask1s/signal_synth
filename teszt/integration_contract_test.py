@@ -19,13 +19,16 @@ assert contract_process.stderr == ""
 contract = json.loads(contract_process.stdout)
 assert contract_process.stdout.strip() == json.dumps(contract, separators=(",", ":"))
 assert contract["schema_version"] == 1
-assert contract["contract"] == "synsigra_core_integration_v5"
+assert contract["contract"] == "synsigra_core_integration_v6"
 assert contract["external_noise"]["scenario_schema_version"] == 8
-assert contract["contracts"]["cpp_facade"] == "1.3.0"
+assert contract["contracts"]["cpp_facade"] == "1.4.0"
+assert contract["contracts"]["pack_schema_version"] == 2
+assert contract["contracts"]["python_verifier"] == "0.9.0"
 assert contract["scenario"] == {"latest_schema_version": 9, "supported_schema_versions": [2, 3, 4, 5, 6, 7, 8, 9]}
 assert contract["hrv"]["metric_definition"] == "synsigra_hrv_metrics_v2"
 assert contract["hrv"]["metrics"] == ["mean_rr_seconds", "mean_heart_rate_bpm", "sdnn_seconds", "rmssd_seconds", "pnn50_percent", "sd1_seconds", "sd2_seconds", "sd1_sd2_ratio", "vlf_power_seconds2", "lf_power_seconds2", "hf_power_seconds2", "lf_hf_ratio", "lf_normalized_units", "hf_normalized_units", "total_power_seconds2"]
-assert contract["contracts"]["challenge_package"] == "synsigra_challenge_package_v2"
+assert contract["contracts"]["challenge_package"] == "synsigra_challenge_package_v3"
+assert contract["contracts"]["verification_protocol"] == "synsigra_verification_protocol_v1"
 assert contract["contracts"]["scoring_manifest"] == "synsigra_scoring_manifest_v2"
 assert contract["contracts"]["submission"] == "synsigra_submission_v1"
 assert contract["contracts"]["submission_formats"] == "synsigra_submission_formats_v1"
@@ -59,6 +62,7 @@ assert receipt["package_fingerprint"].startswith("sha256:")
 assert receipt["generator"] == contract["generator"]
 assert receipt["contracts"]["challenge_package"] == contract["contracts"]["challenge_package"]
 assert receipt["contracts"]["scoring_manifest"] == contract["contracts"]["scoring_manifest"]
+assert receipt["contracts"]["verification_protocol"] == contract["contracts"]["verification_protocol"]
 
 with open(os.path.join(challenge_dir, "manifest.json"), "r") as manifest_file:
     manifest = json.load(manifest_file)

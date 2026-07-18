@@ -44,7 +44,7 @@ def create_challenge_with_cli(source_dir, work_dir, cli):
     shutil.copyfile(os.path.join(source_dir, "examples", "scenarios", "packs", "sq_baseline_powerline.json"), os.path.join(scenario_dir, "signal_quality.json"))
     pack_path = os.path.join(pack_source_dir, "pack.json")
     write_json(pack_path, {
-        "schema_version": 1,
+        "schema_version": 2,
         "pack_id": "python_scoring_challenge",
         "name": "Python Scoring Challenge",
         "version": "1",
@@ -189,8 +189,9 @@ def main():
     assert challenge.case_ids() == ["clean_ecg", "ppg_clean", "ppg_stress", "ppg_motion", "hrv_mild", "rhythm_episode", "signal_quality"]
     provenance = read_json(os.path.join(challenge_dir, "provenance.json"))
     assert provenance["metadata_type"] == "synsigra_package_provenance"
-    assert provenance["generator"]["version"] == "0.8.0-dev"
-    assert provenance["verifier"]["package_contract_version"] == "synsigra_challenge_package_v2"
+    assert provenance["generator"]["version"] == "0.9.0-dev"
+    assert provenance["verifier"]["version"] == "0.9.0"
+    assert provenance["verifier"]["package_contract_version"] == "synsigra_challenge_package_v3"
     assert "clinical validation" in provenance["claim_boundary"]["not_for"]
     assert os.path.exists(os.path.join(challenge_dir, "ENGINEERING_CLAIM_BOUNDARY.txt"))
     case_provenance = read_json(os.path.join(challenge_dir, "cases", "clean_ecg", "provenance.json"))

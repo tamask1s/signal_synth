@@ -14,6 +14,7 @@ CTest exposes these stable verification suite IDs:
 - `TEST-PPG-001`
 - `TEST-CLI-001`
 - `TEST-BUILD-001`
+- `TEST-CHALLENGE-PYTHON-SECURITY-001`
 
 GitHub Actions procedure `CI-VER-001` executes all suites on Linux and
 Windows. See `doc/synsigra_architecture_docs/17_TRACEABILITY_SOP.md` for the

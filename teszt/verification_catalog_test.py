@@ -26,7 +26,7 @@ def main():
     catalog = load_json(catalog_path)
     assert catalog["schema_version"] == 1
     assert catalog["catalog_id"] == "synsigra_verification_packs"
-    assert catalog["version"] == "2.6"
+    assert catalog["version"] == "3.0"
     assert "clinical validation" in catalog["not_for"].lower()
 
     expected = set([
@@ -56,12 +56,20 @@ def main():
             assert entry["release_status"] == "beta"
             assert entry["supported_threshold_profiles"] == ["smoke", "regression", "stress", "benchmark"]
             assert entry["recommended_for"] and entry["not_recommended_for"] and entry["changelog"]
-            assert entry["generator_compatibility"]["challenge_package_contract"] == "synsigra_challenge_package_v2"
+            assert entry["generator_compatibility"]["challenge_package_contract"] == "synsigra_challenge_package_v3"
+        if "generator_compatibility" in entry:
+            compatibility = entry["generator_compatibility"]
+            assert compatibility.get("pack_schema_version", 2) == 2
+            assert compatibility.get("challenge_package_contract", "synsigra_challenge_package_v3") == "synsigra_challenge_package_v3"
+            assert compatibility.get("local_verifier_min_version", "0.9.0") == "0.9.0"
         pack_path = os.path.normpath(os.path.join(os.path.dirname(catalog_path), entry["path"]))
         assert os.path.isfile(pack_path)
         assert run([cli, "pack", "validate", pack_path]).startswith("status=valid\n")
         pack = load_json(pack_path)
         assert pack["pack_id"] == pack_id
+        assert pack["schema_version"] == 2
+        if pack_id in ("hrv_robustness_v2", "r_peak_rr_noise_v1", "ecg_qtc_verification_v1"):
+            assert pack["verification_protocol_path"].endswith("_expectations.json")
         assert set(pack["targets"]) == set(entry["targets"])
         for case in pack["scenarios"]:
             scenario_path = os.path.normpath(os.path.join(os.path.dirname(pack_path), case["path"]))

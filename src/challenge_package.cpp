@@ -302,15 +302,49 @@ namespace
 
     bool safe_relative_path(const std::string& value)
     {
-        if (value.empty() || value.size() > 512 || value[0] == '/' || value[0] == '\\' || value.find("..") != std::string::npos)
+        if (value.empty() || value.size() > 512 || value[0] == '/' || value[value.size() - 1] == '/')
             return false;
+        std::size_t component_start = 0;
         for (std::size_t i = 0; i < value.size(); ++i)
         {
-            const char ch = value[i];
-            if (ch < 0x20 || ch == ':')
+            const unsigned char ch = static_cast<unsigned char>(value[i]);
+            if (ch < 0x20 || ch > 0x7e || ch == ':' || ch == '\\')
                 return false;
+            if (ch == '/')
+            {
+                const std::string component = value.substr(component_start, i - component_start);
+                if (component.empty() || component == "." || component == "..")
+                    return false;
+                component_start = i + 1;
+            }
         }
-        return true;
+        const std::string component = value.substr(component_start);
+        return !component.empty() && component != "." && component != "..";
+    }
+
+    std::string ascii_lower(const std::string& value)
+    {
+        std::string output(value);
+        for (std::size_t i = 0; i < output.size(); ++i)
+            if (output[i] >= 'A' && output[i] <= 'Z')
+                output[i] = static_cast<char>(output[i] - 'A' + 'a');
+        return output;
+    }
+
+    bool path_prefix_conflict(const std::string& left, const std::string& right)
+    {
+        return (left.size() < right.size() && right.compare(0, left.size(), left) == 0 && right[left.size()] == '/')
+            || (right.size() < left.size() && left.compare(0, right.size(), right) == 0 && left[right.size()] == '/');
+    }
+
+    bool singleton_package_role(signal_synth::challenge_file_role role)
+    {
+        return role == signal_synth::challenge_file_pack_json
+            || role == signal_synth::challenge_file_scoring_manifest_json
+            || role == signal_synth::challenge_file_submission_manifest_json
+            || role == signal_synth::challenge_file_submission_formats_json
+            || role == signal_synth::challenge_file_verification_protocol_json
+            || role == signal_synth::challenge_file_realism_population_json;
     }
 
     bool valid_sha256(const std::string& value)
@@ -475,6 +509,7 @@ namespace
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << "{\"schema_version\":" << manifest.schema_version
+               << ",\"contract\":" << escape_json(signal_synth::challenge_package_contract_version())
                << ",\"package_id\":" << escape_json(manifest.package_id)
                << ",\"name\":" << escape_json(manifest.name)
                << ",\"version\":" << escape_json(manifest.version)
@@ -494,8 +529,7 @@ namespace
                    << ",\"role\":" << escape_json(signal_synth::challenge_file_role_name(file.role))
                    << ",\"media_type\":" << escape_json(file.media_type)
                    << ",\"sha256\":" << escape_json(file.sha256)
-                   << ",\"size_bytes\":" << file.size_bytes
-                   << ",\"required\":" << (file.required ? "true" : "false") << "}";
+                   << ",\"size_bytes\":" << file.size_bytes << "}";
         }
         output << "],\"cases\":[";
         for (std::size_t i = 0; i < manifest.cases.size(); ++i)
@@ -517,11 +551,16 @@ namespace
 
 namespace signal_synth
 {
-    challenge_package_file::challenge_package_file() : role(challenge_file_other), size_bytes(0), required(true) {}
+    challenge_package_file::challenge_package_file() : role(challenge_file_other), size_bytes(0) {}
 
     challenge_package_manifest::challenge_package_manifest() : schema_version(1), package_type(challenge_package_single_scenario), ground_truth_included(true) {}
 
     challenge_package_json_result::challenge_package_json_result() : success(false) {}
+
+    const char* challenge_package_contract_version()
+    {
+        return "synsigra_challenge_package_v3";
+    }
 
     const char* challenge_package_json_message_code_name(challenge_package_json_message_code code)
     {
@@ -573,6 +612,10 @@ namespace signal_synth
         case challenge_file_cardiorespiratory_truth_json: return "cardiorespiratory_truth_json";
         case challenge_file_prv_tachogram_csv: return "prv_tachogram_csv";
         case challenge_file_respiration_reference_csv: return "respiration_reference_csv";
+        case challenge_file_scoring_manifest_json: return "scoring_manifest_json";
+        case challenge_file_submission_manifest_json: return "submission_manifest_json";
+        case challenge_file_submission_formats_json: return "submission_formats_json";
+        case challenge_file_verification_protocol_json: return "verification_protocol_json";
         case challenge_file_other: return "other";
         }
         return "other";
@@ -625,6 +668,8 @@ namespace signal_synth
             add_message(fresh, challenge_package_json_range, "$.version", "version must contain 1 to 64 characters");
         if (manifest.description.empty())
             add_message(fresh, challenge_package_json_range, "$.description", "description is required");
+        if (manifest.package_type != challenge_package_single_scenario && manifest.package_type != challenge_package_scenario_pack)
+            add_message(fresh, challenge_package_json_range, "$.package_type", "unsupported package_type");
         if (manifest.generator_version.empty())
             add_message(fresh, challenge_package_json_range, "$.generator_version", "generator_version is required");
         if (!manifest.ground_truth_included)
@@ -645,18 +690,31 @@ namespace signal_synth
 
         bool has_ground_truth = false;
         std::set<std::string> file_paths;
+        std::set<std::string> portable_file_paths;
+        std::set<challenge_file_role> singleton_roles;
         for (std::size_t i = 0; i < manifest.files.size(); ++i)
         {
             const challenge_package_file& file = manifest.files[i];
             const std::string path = "$.files[" + json_index(i) + "]";
             if (!safe_relative_path(file.path))
                 add_message(fresh, challenge_package_json_range, path + ".path", "file path must be a safe relative path");
-            else if (!file_paths.insert(file.path).second)
-                add_message(fresh, challenge_package_json_duplicate_id, path + ".path", "duplicate file path");
+            else
+            {
+                const std::string portable_path = ascii_lower(file.path);
+                if (!file_paths.insert(file.path).second || !portable_file_paths.insert(portable_path).second)
+                    add_message(fresh, challenge_package_json_duplicate_id, path + ".path", "duplicate or case-colliding file path");
+                for (std::set<std::string>::const_iterator previous = portable_file_paths.begin(); previous != portable_file_paths.end(); ++previous)
+                    if (*previous != portable_path && path_prefix_conflict(*previous, portable_path))
+                        add_message(fresh, challenge_package_json_range, path + ".path", "file path conflicts with a file/directory prefix");
+            }
             if (!valid_media_type(file.media_type))
                 add_message(fresh, challenge_package_json_range, path + ".media_type", "media_type must be a compact type/subtype value");
+            if (file.role < challenge_file_scenario_json || file.role > challenge_file_other)
+                add_message(fresh, challenge_package_json_range, path + ".role", "unsupported file role");
             if (!valid_sha256(file.sha256))
                 add_message(fresh, challenge_package_json_range, path + ".sha256", "sha256 must be sha256:<64 lowercase hex characters>");
+            if (singleton_package_role(file.role) && !singleton_roles.insert(file.role).second)
+                add_message(fresh, challenge_package_json_duplicate_id, path + ".role", "singleton package role appears more than once");
             if (file.role == challenge_file_annotations_json || file.role == challenge_file_ground_truth_metrics_json || file.role == challenge_file_measurement_truth_json)
                 has_ground_truth = true;
         }
@@ -682,10 +740,19 @@ namespace signal_synth
                 add_message(fresh, challenge_package_json_range, path + ".render_identity", "render_identity is required");
             if (item.files.empty())
                 add_message(fresh, challenge_package_json_range, path + ".files", "case must reference at least one file");
+            bool scenario_file = false;
+            for (std::size_t file = 0; file < manifest.files.size(); ++file)
+                if (manifest.files[file].path == item.scenario_path && manifest.files[file].role == challenge_file_scenario_json)
+                    scenario_file = true;
+            if (std::find(item.files.begin(), item.files.end(), item.scenario_path) == item.files.end() || !scenario_file)
+                add_message(fresh, challenge_package_json_range, path + ".scenario_path", "scenario_path must reference a listed scenario_json case file");
+            std::set<std::string> case_files;
             for (std::size_t file = 0; file < item.files.size(); ++file)
             {
                 if (!safe_relative_path(item.files[file]))
                     add_message(fresh, challenge_package_json_range, path + ".files[" + json_index(file) + "]", "case file must be a safe relative path");
+                else if (!case_files.insert(item.files[file]).second)
+                    add_message(fresh, challenge_package_json_duplicate_id, path + ".files[" + json_index(file) + "]", "duplicate case file path");
                 else if (file_paths.find(item.files[file]) == file_paths.end())
                     add_message(fresh, challenge_package_json_range, path + ".files[" + json_index(file) + "]", "case references a file not listed in $.files");
             }
@@ -719,9 +786,10 @@ namespace signal_synth
             result = fresh_result;
             return false;
         }
-        const char* top_fields[] = {"schema_version","package_id","name","version","description","package_type","ground_truth_included","waveform_formats","generator_version","usage_restrictions","not_for","files","cases"};
+        const char* top_fields[] = {"schema_version","contract","package_id","name","version","description","package_type","ground_truth_included","waveform_formats","generator_version","usage_restrictions","not_for","files","cases"};
         allowed_fields(root, top_fields, sizeof(top_fields) / sizeof(top_fields[0]), "$", fresh_result);
         const json_value* schema = required(root, "schema_version", json_value::number_kind, "$", fresh_result);
+        const json_value* contract = required(root, "contract", json_value::string_kind, "$", fresh_result);
         const json_value* package_id = required(root, "package_id", json_value::string_kind, "$", fresh_result);
         const json_value* name = required(root, "name", json_value::string_kind, "$", fresh_result);
         const json_value* version = required(root, "version", json_value::string_kind, "$", fresh_result);
@@ -743,6 +811,8 @@ namespace signal_synth
         challenge_package_manifest manifest;
         if (schema->number != 1.0)
             add_message(fresh_result, challenge_package_json_range, "$.schema_version", "only schema version 1 is supported");
+        if (contract->string != challenge_package_contract_version())
+            add_message(fresh_result, challenge_package_json_range, "$.contract", "unsupported challenge package contract");
         manifest.schema_version = 1;
         manifest.package_id = package_id->string;
         manifest.name = name->string;
@@ -770,15 +840,14 @@ namespace signal_synth
                 add_message(fresh_result, challenge_package_json_type, item_path, "file must be an object");
                 continue;
             }
-            const char* file_fields[] = {"path","role","media_type","sha256","size_bytes","required"};
+            const char* file_fields[] = {"path","role","media_type","sha256","size_bytes"};
             allowed_fields(item, file_fields, sizeof(file_fields) / sizeof(file_fields[0]), item_path, fresh_result);
             const json_value* path = required(item, "path", json_value::string_kind, item_path, fresh_result);
             const json_value* role = required(item, "role", json_value::string_kind, item_path, fresh_result);
             const json_value* media_type = required(item, "media_type", json_value::string_kind, item_path, fresh_result);
             const json_value* sha = required(item, "sha256", json_value::string_kind, item_path, fresh_result);
             const json_value* size = required(item, "size_bytes", json_value::number_kind, item_path, fresh_result);
-            const json_value* required_file = required(item, "required", json_value::bool_kind, item_path, fresh_result);
-            if (!path || !role || !media_type || !sha || !size || !required_file)
+            if (!path || !role || !media_type || !sha || !size)
                 continue;
             challenge_package_file file;
             file.path = path->string;
@@ -788,7 +857,6 @@ namespace signal_synth
             file.sha256 = sha->string;
             if (!integer_number(*size, file.size_bytes))
                 add_message(fresh_result, challenge_package_json_range, item_path + ".size_bytes", "size_bytes must be a non-negative integer");
-            file.required = bool_value(*required_file);
             manifest.files.push_back(file);
         }
         for (std::size_t i = 0; i < cases->array.size(); ++i)

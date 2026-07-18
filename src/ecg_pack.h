@@ -38,6 +38,7 @@ namespace signal_synth
         std::string name;
         std::string version;
         std::string description;
+        std::string verification_protocol_path;
         std::vector<std::string> targets;
         std::vector<ecg_pack_scenario> scenarios;
     };

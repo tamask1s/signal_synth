@@ -12,7 +12,7 @@
 
 namespace
 {
-    const char* metadata_version = "synsigra_authoring_v17";
+    const char* metadata_version = "synsigra_authoring_v18";
     const char* template_version = "synsigra_templates_v5";
 
     struct field_definition
@@ -980,7 +980,7 @@ namespace signal_synth
                << ",\"pack_version\":" << json_string(analysis.pack_version)
                << ",\"scoring_mode\":" << json_string(analysis_scoring_mode(analysis))
                << ",\"recommended_verifier_profile\":" << json_string(recommended_profile_for_analysis(analysis))
-               << ",\"generator_compatibility\":{\"pack_schema_version\":1,\"scenario_schema_versions\":[2,3,4,5,6,7,8,9],\"challenge_package_contract\":\"synsigra_challenge_package_v2\",\"scoring_manifest_contract\":\"synsigra_scoring_manifest_v2\"}"
+               << ",\"generator_compatibility\":{\"pack_schema_version\":2,\"scenario_schema_versions\":[2,3,4,5,6,7,8,9],\"challenge_package_contract\":\"synsigra_challenge_package_v3\",\"scoring_manifest_contract\":\"synsigra_scoring_manifest_v2\"}"
                << ",\"summary\":{\"case_count\":" << analysis.case_count
                << ",\"total_duration_seconds\":" << analysis.total_duration_seconds
                << ",\"total_sample_count\":" << analysis.total_sample_count

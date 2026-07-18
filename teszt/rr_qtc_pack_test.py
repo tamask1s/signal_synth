@@ -182,6 +182,16 @@ def main():
     rr_challenge = ss.load_challenge(rr_challenge_dir)
     qtc_challenge = ss.load_challenge(qtc_challenge_dir)
     assert rr_challenge.verify_integrity()["ok"] and qtc_challenge.verify_integrity()["ok"]
+    rr_protocol = rr_challenge.verification_protocol()
+    qtc_protocol = qtc_challenge.verification_protocol()
+    assert rr_protocol["contract"] == qtc_protocol["contract"] == "synsigra_verification_protocol_v1"
+    assert rr_protocol["pack_id"] == "r_peak_rr_noise_v1" and rr_protocol["pre_specified_profile"] == "stress"
+    assert qtc_protocol["pack_id"] == "ecg_qtc_verification_v1" and qtc_protocol["pre_specified_profile"] == "regression"
+    rr_roles = dict((item["path"], item["role"]) for item in rr_challenge.manifest["files"])
+    assert rr_roles["scoring_manifest.json"] == "scoring_manifest_json"
+    assert rr_roles["verification_protocol.json"] == "verification_protocol_json"
+    assert rr_roles["user-output-template/submission.json"] == "submission_manifest_json"
+    assert rr_roles["user-output-template/formats.json"] == "submission_formats_json"
     assert_rr_truth(rr_challenge)
     assert_qtc_truth(qtc_challenge)
     external_truth = read_json(os.path.join(rr_challenge_dir, "cases", "external_extreme", "external_noise_truth.json"))

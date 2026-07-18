@@ -340,7 +340,6 @@ namespace
         file.role = role;
         file.media_type = media_type;
         file.content = content;
-        file.required = true;
         return file;
     }
 
@@ -618,8 +617,8 @@ namespace
 
     void add_submission_template_files(signal_synth::challenge_package_build_options& options, const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_json_result& identity, const std::vector<pack_render_row>& rows)
     {
-        options.package_files.push_back(make_challenge_file("user-output-template/submission.json", signal_synth::challenge_file_other, "application/json", submission_template_json(manifest, identity, rows)));
-        options.package_files.push_back(make_challenge_file("user-output-template/formats.json", signal_synth::challenge_file_other, "application/json", submission_formats_json()));
+        options.package_files.push_back(make_challenge_file("user-output-template/submission.json", signal_synth::challenge_file_submission_manifest_json, "application/json", submission_template_json(manifest, identity, rows)));
+        options.package_files.push_back(make_challenge_file("user-output-template/formats.json", signal_synth::challenge_file_submission_formats_json, "application/json", submission_formats_json()));
         for (std::size_t row = 0; row < rows.size(); ++row)
         {
             for (std::size_t target = 0; target < rows[row].targets.size(); ++target)
@@ -745,6 +744,7 @@ namespace
                << ",\"submission_contract_version\":\"synsigra_submission_v1\""
                << ",\"submission_template_path\":\"user-output-template/submission.json\""
                << ",\"submission_format_contract_path\":\"user-output-template/formats.json\""
+               << ",\"verification_protocol_path\":" << json_text(manifest.verification_protocol_path.empty() ? "" : "verification_protocol.json")
                << ",\"verification_output_directory\":\"verification\""
                << ",\"targets\":[";
         for (std::size_t i = 0; i < targets.size(); ++i)
@@ -824,11 +824,16 @@ namespace
                << ",\"verifier\":{\"name\":\"synsigra\",\"version\":"
                << json_text(signal_synth::signal_synth_verifier_version())
                << ",\"package_contract_version\":" << json_text(signal_synth::signal_synth_package_contract_version())
-               << ",\"scoring_manifest_contract_version\":" << json_text(signal_synth::signal_synth_scoring_manifest_contract_version()) << '}'
+               << ",\"scoring_manifest_contract_version\":" << json_text(signal_synth::signal_synth_scoring_manifest_contract_version())
+               << ",\"verification_protocol_contract_version\":" << json_text(signal_synth::signal_synth_verification_protocol_contract_version()) << '}'
                << ",\"provenance_checklist\":["
                << "{\"item\":\"manifest_json\",\"artifact\":\"manifest.json\",\"required\":true},"
                << "{\"item\":\"pack_manifest\",\"artifact\":\"pack.json\",\"required\":true},"
-               << "{\"item\":\"scoring_manifest\",\"artifact\":\"scoring_manifest.json\",\"required\":true},"
+               << "{\"item\":\"scoring_manifest\",\"artifact\":\"scoring_manifest.json\",\"required\":true},";
+        if (!manifest.verification_protocol_path.empty())
+            output << "{\"item\":\"verification_protocol\",\"artifact\":\"verification_protocol.json\",\"required\":true},";
+        output << "{\"item\":\"submission_contract\",\"artifact\":\"user-output-template/submission.json\",\"required\":true},"
+               << "{\"item\":\"submission_formats\",\"artifact\":\"user-output-template/formats.json\",\"required\":true},"
                << "{\"item\":\"package_provenance\",\"artifact\":\"provenance.json\",\"required\":true},"
                << "{\"item\":\"claim_boundary\",\"artifact\":\"ENGINEERING_CLAIM_BOUNDARY.txt\",\"required\":true},"
                << "{\"item\":\"per_case_provenance\",\"artifact\":\"cases/<case_id>/provenance.json\",\"required\":true},"
@@ -1822,6 +1827,17 @@ int main(int argc, char** argv)
                 return 3;
             }
             const std::string base_directory = std::string(argv[3]) == "-" ? "." : directory_name(argv[3]);
+            std::string verification_protocol_json;
+            if (pack_challenge && !manifest.verification_protocol_path.empty() && !read_input(join_path(base_directory, manifest.verification_protocol_path), verification_protocol_json))
+            {
+                std::cerr << "error=INPUT_READ_FAILED path=" << manifest.verification_protocol_path << " message=unable to read pack verification protocol\n";
+                return 3;
+            }
+            if (pack_challenge && !manifest.verification_protocol_path.empty() && verification_protocol_json.empty())
+            {
+                std::cerr << "error=PACK_PROTOCOL_INVALID path=" << manifest.verification_protocol_path << " message=verification protocol must not be empty\n";
+                return 4;
+            }
             std::vector<pack_render_row> rows;
             std::vector<signal_synth::challenge_package_case_input> challenge_cases;
             for (std::size_t i = 0; i < manifest.scenarios.size(); ++i)
@@ -1943,8 +1959,10 @@ int main(int argc, char** argv)
                 options.package_files.push_back(make_challenge_file("summary.json", signal_synth::challenge_file_metadata_json, "application/json", summary_json));
                 options.package_files.push_back(make_challenge_file("summary.csv", signal_synth::challenge_file_other, "text/csv", summary_csv));
                 options.package_files.push_back(make_challenge_file("index.html", signal_synth::challenge_file_readme, "text/html", index_html));
-                options.package_files.push_back(make_challenge_file("scoring_manifest.json", signal_synth::challenge_file_metadata_json, "application/json", scoring_json));
+                options.package_files.push_back(make_challenge_file("scoring_manifest.json", signal_synth::challenge_file_scoring_manifest_json, "application/json", scoring_json));
                 options.package_files.push_back(make_challenge_file("realism_population.json", signal_synth::challenge_file_realism_population_json, "application/json", realism_population_json));
+                if (!verification_protocol_json.empty())
+                    options.package_files.push_back(make_challenge_file("verification_protocol.json", signal_synth::challenge_file_verification_protocol_json, "application/json", verification_protocol_json));
                 add_submission_template_files(options, manifest, pack_result, rows);
                 signal_synth::challenge_package_build_result challenge_result;
                 if (!signal_synth::build_challenge_package_manifest(options, challenge_cases, challenge_result))
@@ -1974,7 +1992,8 @@ int main(int argc, char** argv)
                           << ",\"git_commit\":" << json_text(signal_synth::signal_synth_generator_git_commit())
                           << ",\"build_identity\":" << json_text(signal_synth::signal_synth_build_identity()) << "}"
                           << ",\"contracts\":{\"challenge_package\":" << json_text(signal_synth::signal_synth_package_contract_version())
-                          << ",\"scoring_manifest\":" << json_text(signal_synth::signal_synth_scoring_manifest_contract_version()) << "}}\n";
+                          << ",\"scoring_manifest\":" << json_text(signal_synth::signal_synth_scoring_manifest_contract_version())
+                          << ",\"verification_protocol\":" << json_text(signal_synth::signal_synth_verification_protocol_contract_version()) << "}}\n";
                 return 0;
             }
             if (!write_text_file(join_path(output_directory, "pack.json"), pack_result.canonical_json)

@@ -44,14 +44,13 @@ namespace
         file.media_type = source.media_type;
         file.sha256 = signal_synth::challenge_package_content_sha256(source.content);
         file.size_bytes = static_cast<unsigned long long>(source.content.size());
-        file.required = source.required;
         manifest.files.push_back(file);
     }
 }
 
 namespace signal_synth
 {
-    challenge_package_input_file::challenge_package_input_file() : role(challenge_file_other), required(true)
+    challenge_package_input_file::challenge_package_input_file() : role(challenge_file_other)
     {
     }
 
@@ -78,7 +77,9 @@ namespace signal_synth
     {
         if (artifact_name == "scenario.json")
             return challenge_file_scenario_json;
-        if (artifact_name == "metadata.json" || artifact_name == "provenance.json" || artifact_name == "resolved_scenario.json" || artifact_name == "randomization.json" || artifact_name == "warnings.json" || artifact_name == "wfdb_metadata.json" || artifact_name == "edf_bdf_metadata.json" || artifact_name == "case_summary.json" || artifact_name == "scoring_manifest.json")
+        if (artifact_name == "scoring_manifest.json")
+            return challenge_file_scoring_manifest_json;
+        if (artifact_name == "metadata.json" || artifact_name == "provenance.json" || artifact_name == "resolved_scenario.json" || artifact_name == "randomization.json" || artifact_name == "warnings.json" || artifact_name == "wfdb_metadata.json" || artifact_name == "edf_bdf_metadata.json" || artifact_name == "case_summary.json")
             return challenge_file_metadata_json;
         if (artifact_name == "waveform.csv")
             return challenge_file_waveform_csv;

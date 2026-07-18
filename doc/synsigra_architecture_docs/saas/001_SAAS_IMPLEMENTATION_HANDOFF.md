@@ -2,395 +2,336 @@
 
 **Document ID:** SYN-SAAS-HANDOFF-001
 
-**Version:** 2.4
+**Version:** 3.0
 
-**Status:** Core contract closed; SaaS consumer migration required
+**Status:** Core v6 migration baseline defined; exact verified commit pending
 
-**Date:** 2026-07-17
+**Date:** 2026-07-18
+
+**SaaS migration issue:** [signal_synth_saas#68](https://github.com/tamask1s/signal_synth_saas/issues/68)
+
+**Core closure issue:** [signal_synth#91](https://github.com/tamask1s/signal_synth/issues/91)
+
+**Exact runtime baseline:** `TO_BE_RECORDED_AFTER_CORE_VERIFICATION`
 
 ## 1. Product Boundary
 
-Synsigra should be positioned as a B2B/developer-tool platform for synthetic
-biosignal ground-truth QA, not as a diagnostic product and not as a clinical
-validation service.
+Synsigra is a B2B/developer tool for synthetic ECG/PPG algorithm QA. The first
+hosted workflow is deliberately offline-first:
 
-Initial SaaS model:
+1. Synsigra generates a curated scenario pack.
+2. The customer downloads waveform, ground truth, submission templates, and
+   the pre-specified verification protocol in one immutable challenge.
+3. The customer runs its proprietary algorithm locally.
+4. The customer scores declared CSV/JSON output locally with the pure-Python
+   `synsigra` verifier.
 
-1. Synsigra generates a scenario or pack.
-2. The user downloads a challenge package containing waveform and ground truth,
-   or retrieves the same through an API.
-3. The user runs their own algorithm locally.
-4. The user scores locally with the Synsigra Python package against packaged
-   ground truth.
+The service does not execute customer algorithms and does not need generator
+source in the customer package. It is not a diagnostic product, patient-data
+store, clinical validation service, certification service, or generic
+synthetic cardiology data platform.
 
-Do not build clinical claims, patient-data storage, diagnosis workflows, or
-algorithm certification claims into the first SaaS.
-
-## 2. Layer Model
+## 2. Authoritative Layer Model
 
 Core C++ library:
 
-- authoritative signal generation;
-- scenario compilation;
-- waveform export;
-- ground-truth export;
-- scoring primitives where implemented;
-- challenge-package manifest assembly through `src/challenge_assembly.h`.
+- signal and ground-truth generation;
+- scenario compilation and deterministic identity;
+- WFDB, EDF+/BDF+, CSV, JSON and report rendering;
+- scoring primitives and challenge manifest assembly.
 
-CLI:
+`signal-synth` CLI:
 
-- machine-readable integration preflight through `signal-synth contract`;
-- local render/validate/fingerprint;
-- pack render/score;
-- SaaS-ready challenge package assembly;
-- smoke-testable contract for automation.
+- the only recommended SaaS worker boundary;
+- machine-readable preflight through `signal-synth contract`;
+- strict pack validation, analysis, challenge generation and stable errors;
+- no HTTP, database, tenancy, queue or object-storage responsibility.
 
-Pack metadata export:
+Pure-Python `synsigra` package:
 
-- `examples/catalog/curated_pack_metadata_v1.json` is the SaaS-ingestable
-  curated-pack metadata snapshot;
-- regenerate it with `scripts/export_curated_pack_metadata.py`;
-- it distinguishes declared targets, effective scoreable targets, and
-  reference-only ground-truth outputs before job creation.
-- current consumer baseline is curated catalog `2.6` and generator-free
-  verifier `0.8.0`; packs declare their own minimum verifier version;
-- schema-v5 wearable cases expose independent device streams and must not be
-  normalized to one implicit sample rate or timestamp domain by the service.
+- customer-facing and generator-free;
+- strict challenge/archive trust boundary;
+- strict `synsigra_submission_v1` input;
+- local scoring and evidence reports for every published scoreable target.
 
-Python package:
+SaaS:
 
-- user-facing local challenge loading;
-- strict `synsigra_submission_v1` loading with algorithm provenance supplied
-  once per submission;
-- pure-Python, generator-free local scoring for every currently scoreable
-  target;
-- report/artifact access.
+- authentication, organizations and quotas;
+- curated catalog/API/UI;
+- isolated render jobs and approved external-noise asset registry;
+- immutable artifact storage and download authorization;
+- audit metadata, but no regeneration or reinterpretation of core truth.
 
-SaaS API:
+## 3. Frozen Contract Tuple
 
-- scenario/pack catalog;
-- challenge package generation job;
-- artifact download;
-- API retrieval of generated waveform/ground truth;
-- audit metadata and reproducibility manifest;
-- no upload of proprietary user algorithm required in the first model.
+The SaaS migration must require this exact tuple. Do not accept an older value
+and do not add compatibility adapters:
 
-Web UI:
+| Contract | Required value |
+|---|---|
+| Generator | `0.9.0-dev` |
+| Installed CMake package | `0.9.0` (exact; no CMake version compatibility range) |
+| C++ facade | `1.4.0` |
+| Core integration | `synsigra_core_integration_v6` |
+| Pack schema | `2` |
+| Scenario schemas | `2` through `9` |
+| Challenge package | `synsigra_challenge_package_v3` |
+| Challenge manifest JSON schema | `1` |
+| Scoring manifest | `synsigra_scoring_manifest_v2` |
+| Verification protocol | `synsigra_verification_protocol_v1` |
+| Submission | `synsigra_submission_v1` |
+| Submission formats | `synsigra_submission_formats_v1` |
+| Authoring metadata | `synsigra_authoring_v18` |
+| Scenario templates | `synsigra_templates_v5` |
+| Curated catalog | `3.0` |
+| Python verifier | `0.9.0` |
 
-- browse scenarios and packs;
-- use `curated_pack_metadata_v1.json` for pack cards, target badges,
-  scoreability/reference-only labels, size estimates, release status, and
-  profile support;
-- configure safe parameter presets;
-- generate and download challenge packages;
-- view generated reports and audit metadata;
-- manage API keys and usage.
+The scoring manifest and submission schemas did not change. Pack schema v1,
+challenge package v2, integration v5, catalog 2.x and verifier 0.8 are removed
+baselines, not alternative inputs.
 
-## 3. First SaaS Increment
+## 4. Worker Contract
 
-Build a thin hosted orchestration layer around the existing offline-first
-library contracts:
-
-- backend job accepts a scenario-pack request;
-- backend invokes `signal-synth pack challenge <pack.json> --out <new-directory>`
-  in an isolated worker;
-- generated artifacts are stored as immutable package objects;
-- response returns package manifest, download URL, render identity, generator
-  version, and scenario fingerprints;
-- local Python scoring remains the recommended user validation path.
-
-Avoid implementing server-side user-algorithm execution in v1.
-
-## 3.1 Worker Contract
-
-The SaaS worker should use this command as the first integration surface:
+At image build and worker startup, execute:
 
 ```text
-signal-synth pack challenge <pack.json> --out <new-directory>
+signal-synth contract
 ```
 
-Before accepting work, the worker image shall run `signal-synth contract`,
-parse the JSON, and require the exact integration contract it implements.
-This detects an accidentally mismatched linked library, CLI binary, or image.
+Parse the one-line JSON strictly and compare every implemented contract value,
+not only the top-level integration ID. Refuse work if the binary, linked core,
+catalog or verifier tuple differs.
 
-Successful challenge stdout is one compact JSON document:
+Generate a curated pack with:
+
+```text
+signal-synth pack challenge <trusted-pack-path> --out <new-directory>
+```
+
+For approved external-noise packs:
+
+```text
+signal-synth pack challenge <trusted-pack-path> --out <new-directory> --noise-assets <approved-private-directory>
+```
+
+Success writes one compact JSON receipt to stdout:
 
 ```json
-{"schema_version":1,"contract":"synsigra_core_integration_v5","status":"challenge_rendered","output_directory":"<path>","package_id":"<pack-id>","scenario_count":4,"pack_fingerprint":"sha256:<64-hex>","package_fingerprint":"sha256:<64-hex>","generator":{"name":"signal_synth","version":"<version>","git_commit":"<commit>","build_identity":"<identity>"},"contracts":{"challenge_package":"synsigra_challenge_package_v2","scoring_manifest":"synsigra_scoring_manifest_v2"}}
+{"schema_version":1,"contract":"synsigra_core_integration_v6","status":"challenge_rendered","output_directory":"<path>","package_id":"<pack-id>","scenario_count":4,"pack_fingerprint":"sha256:<64-hex>","package_fingerprint":"sha256:<64-hex>","generator":{"name":"signal_synth","version":"0.9.0-dev","git_commit":"<commit>","build_identity":"<identity>"},"contracts":{"challenge_package":"synsigra_challenge_package_v3","scoring_manifest":"synsigra_scoring_manifest_v2","verification_protocol":"synsigra_verification_protocol_v1"}}
 ```
 
-Failure behavior follows the repository CLI contract: non-zero exit code,
-empty stdout, and `stderr` beginning with `error=<stable-code>`.
-The former line-oriented `key=value` success format is not supported.
+Failure has non-zero exit status, empty stdout, and stderr beginning with
+`error=<stable-code>`. The output directory must be new. Preserve the generated
+relative paths exactly when archiving.
 
-The output directory must not already exist. The CLI performs rollback of
-files/directories created during failed writes. SaaS orchestration may archive
-the directory after generation, but should preserve the manifest paths
-unchanged inside the archive.
+## 5. Worker Security Boundary
 
-Schema-v8 scenarios may declare external-noise assets by stable ID, source,
-license, SHA-256, channel layout, sample rate, and redistribution policy. Asset
-bytes are deliberately outside scenario and pack JSON. The worker supplies an
-operator-approved private asset directory with `--noise-assets <directory>`;
-each file is named `<asset-id>.csv`. Missing, undeclared, duplicate, or
-checksum-mismatched assets are hard failures. The service must block challenge
-release when any selected asset is `local_only`. Source asset bytes must never
-be copied into a challenge package; only the rendered waveform, exact clean
-reference, noise truth, and declared provenance may be released.
+The initial SaaS accepts a curated `pack_id`, not a customer-supplied pack path.
+Resolve that ID from the pinned catalog to a trusted image path. Pack scenario
+paths are authoring inputs and are not a filesystem sandbox API.
 
-Generated layout:
+Run each render in an isolated worker with:
+
+- no user-controlled filesystem path arguments;
+- bounded CPU, memory, wall time and output size;
+- a fresh output directory;
+- no network unless explicitly required by orchestration;
+- read-only core/catalog content;
+- only operator-approved noise assets mounted read-only;
+- cleanup on failure and immutable publication on success.
+
+External-noise source bytes never enter a challenge. The service resolves each
+declared asset ID from its private registry, verifies SHA-256 and license
+review, and blocks publication if core truth reports `local_only` or
+`release_allowed=false`.
+
+## 6. Challenge Package v3
+
+Representative layout:
 
 ```text
-<out>/
+<challenge>/
   manifest.json
   pack.json
   scoring_manifest.json
+  verification_protocol.json       # only when declared by the pack
   provenance.json
   ENGINEERING_CLAIM_BOUNDARY.txt
-  user-output-template/
-    submission.json
-    outputs/<case-id>/<target>.json
   summary.json
   summary.csv
   index.html
+  realism_population.json
+  user-output-template/
+    submission.json
+    formats.json
+    outputs/<case-id>/<target>.json
   cases/<case-id>/
     scenario.json
     case_summary.json
-    provenance.json
     waveform.csv
     annotations.json
-    rr_tachogram.csv
-    hrv_metrics.json
     ground_truth_metrics.json
-    measurement_truth.json       # when a measurement target is present
-    external_noise_truth.json    # schema-v8 external-noise case
-    external_noise_clean_ecg.csv # exact pre-external-noise ECG reference
-    wearable_ecg_samples.csv     # schema-v5 wearable case
-    wearable_ppg_samples.csv     # when wearable PPG is enabled
-    wearable_accelerometer_samples.csv # when wearable accelerometer is enabled
-    wearable_timestamp_truth.csv # complete received/dropped sample mapping
-    wearable_timebase_truth.json # stream clocks and packet schedule
-    wearable_alignment_truth.json # when wearable ECG and PPG are enabled
+    measurement_truth.json          # measurement targets
+    provenance.json
     warnings.json
     report.html
     README.txt
-    synsigra.hea
-    synsigra.dat
-    synsigra.atr
-    wfdb_metadata.json
-    synsigra.edf
-    synsigra.bdf
-    edf_bdf_metadata.json
+    synsigra.hea / synsigra.dat / synsigra.atr
+    synsigra.edf / synsigra.bdf
+    <declared wearable, optical, cardiorespiratory or noise truth artifacts>
 ```
 
-The SaaS must distribute `user-output-template/` unchanged. The UI may explain
-formats from each scoring entry's uniform `accepted_formats`,
-`recommended_format`, and `recommended_path`, but must not reconstruct paths
-or emit target-specific `accepted_*_formats` fields. Customer verification is:
+`manifest.json` declares `contract: synsigra_challenge_package_v3` and lists
+every package file except itself. Every entry has exactly `path`, `role`,
+`media_type`, `sha256`, and `size_bytes`. The old `required` flag was removed:
+a listed artifact exists and is integrity-bound; an absent optional artifact
+is simply not listed.
+
+Important singleton roles:
+
+- `pack_json`;
+- `scoring_manifest_json`;
+- `submission_manifest_json`;
+- `submission_formats_json`;
+- `verification_protocol_json` when present;
+- `realism_population_json`.
+
+Do not infer these from filenames. Challenge package v3 consumers reject
+unknown roles; new role names require a package-contract revision. The generic
+`other` role remains available for integrity-bound artifacts without dedicated
+consumer behavior.
+
+## 7. Verification Protocol
+
+Pack schema v2 may declare `verification_protocol_path`. Challenge assembly
+copies it to `verification_protocol.json` and assigns the dedicated role. The
+common v1 envelope provides:
+
+- protocol and pack identity;
+- context of use and engineering evidence boundary;
+- pre-specified threshold profile;
+- required targets;
+- objective acceptance rules;
+- stress matrix and truth policy;
+- optional domain-specific matrices and negative cases.
+
+Catalog 3.0 includes the same normalized protocol document and source hash, so
+the UI can explain a pack before generation. The challenge copy remains
+authoritative for a specific downloaded package. The SaaS must not synthesize,
+relax or silently override acceptance criteria.
+
+## 8. Customer Verification Workflow
+
+Distribute the generated `user-output-template/` unchanged and distribute the
+pure-Python `synsigra` 0.9.0 wheel separately. The canonical customer command
+is:
 
 ```text
-synsigra-verify <challenge> <submission-directory> <result-directory>
+synsigra-verify <challenge-or-archive> <submission-directory> <result-directory> --profile <profile>
 ```
 
-The customer point-event schemas are `point_events_json_v1` and
-`point_events_csv_v1`; interval schemas are `interval_events_json_v1` and
-`interval_events_csv_v1`; HRV uses `hrv_metrics_json_v1`. ECG delineation
-predictions contain event time, lead and kind only. Atrial/ventricular anchor
-identity and truth evaluability remain report-side metadata.
-Morphology and ECG/PPG alignment use `measurement_values_json_v1` or
-`measurement_values_csv_v1`; the package-internal `measurement_truth.json`
-must be copied unchanged and must never be reconstructed by the SaaS.
+The loader rejects duplicate JSON keys, unknown manifest fields/roles,
+non-canonical or case-colliding paths, ZIP duplicates and prefix conflicts,
+encrypted/symlink entries, unlisted files, missing files, symlink escapes,
+size mismatch and SHA-256 mismatch. Do not weaken these checks in SaaS-created
+archives.
 
-`manifest.json` lists all package and case files except itself. This avoids a
-self-referential hash. Every listed file has path, role, media type, SHA-256,
-byte size, and required flag. Per-case records include case ID, scenario ID,
-scenario path, scenario document fingerprint, render identity, and file paths.
+Stable customer output families:
 
-Lower-level native integrations may call `build_challenge_package_manifest(...)`
-from `src/challenge_assembly.h`, but the CLI is the recommended SaaS worker
-boundary for v1.
+- point events: `point_events_json_v1`, `point_events_csv_v1`;
+- intervals: `interval_events_json_v1`, `interval_events_csv_v1`;
+- HRV: `hrv_metrics_json_v1`;
+- measurements: `measurement_values_json_v1`,
+  `measurement_values_csv_v1`.
 
-## 4. Recommended Tech Shape
+Store raw per-target comparison JSON/CSV/HTML and the top-level verification
+summary when a customer chooses to upload reports. Do not require proprietary
+algorithm upload in v1.
 
-Backend:
+## 9. Curated Catalog Contract
 
-- HTTP API with explicit versioning, e.g. `/v1/packs`, `/v1/jobs`,
-  `/v1/artifacts`;
-- job queue for render work;
-- object storage for artifacts;
-- relational database for users, jobs, package metadata, API keys, and audit
-  events;
-- worker image contains the compiled Synsigra CLI and fixed generator version.
+Ingest `examples/catalog/curated_pack_metadata_v1.json` version 3.0 as an
+immutable release snapshot. It contains:
 
-Python SDK:
+- declared and effective targets;
+- scoreable versus reference-only behavior;
+- accepted customer formats and primary metrics;
+- case/rate/channel/size estimates;
+- release status and intended/not-recommended use;
+- exact generator/verifier compatibility;
+- output artifact roles;
+- normalized verification protocol when available.
 
-- `synsigra.Client` for authenticated package requests and downloads;
-- `synsigra.load_challenge()` for local directories and archives;
-- local scoring remains compatible with downloaded packages.
+Do not maintain a hand-written duplicate target or pack registry in SaaS code.
+Store the catalog version and source hash with each generation job.
 
-Security:
+## 10. Persistence and Clean Migration
 
-- API-key auth initially, organization scoping from day one;
-- package artifacts are immutable and scoped to organization/user;
-- no patient data claims and no PHI workflow.
+This is a private-beta breaking reset. Before loading the v6 baseline:
 
-Auditability:
+1. stop workers and API writes;
+2. delete development jobs, packages, artifact rows, result rows, cached
+   authoring metadata, cached catalog JSON, and old object-storage artifacts;
+3. remove migration/adapter code used only for integration v5, pack schema v1,
+   challenge v2, catalog 2.x or verifier 0.8;
+4. build a worker image from the exact core commit in this handoff;
+5. load only catalog 3.0 and verifier 0.9.0;
+6. create fresh database schema/state and fresh object-storage namespace;
+7. persist full startup preflight JSON, worker image digest, catalog hash,
+   request, receipt, manifest, package fingerprint and timestamps per job.
 
-- store request JSON, canonical scenario JSON, pack fingerprint, generator
-  version, git commit, CLI command, output manifest hash, and creation time;
-- every package should be reproducible from manifest plus generator version.
+Suggested immutable package record fields:
 
-## 5. Minimum API Objects
+- organization/user and job ID;
+- curated pack ID/version and catalog version/hash;
+- pack and package fingerprints;
+- core integration tuple and startup preflight JSON;
+- generator version, git commit and worker image digest;
+- normalized command arguments and approved noise asset identities;
+- manifest storage key/hash and archive storage key/hash;
+- creation/completion time and stable failure object.
 
-Scenario request:
+## 11. SaaS Acceptance Matrix
 
-- scenario JSON or pack ID;
-- optional seed overrides only where allowed;
-- requested export formats: WFDB and EDF+/BDF+ by default;
-- optional report format.
+Required before enabling customer access:
 
-Generation job:
+1. Startup rejects one deliberately wrong integration contract.
+2. Every catalog 3.0 pack can be analyzed; representative ECG, HRV, PPG,
+   wearable, noise, RR and QTc packs can be generated.
+3. Generated directories load and integrity-check with installed `synsigra`
+   0.9.0 before archival.
+4. Downloaded archives load and integrity-check after object-storage roundtrip.
+5. Perfect fixture submissions pass and deliberately biased/missing outputs
+   fail for event, interval, delineation, HRV and measurement families.
+6. RR/noise, QTc and HRV challenges expose the expected protocol role,
+   identity and pre-specified profile.
+7. Tampered bytes, extra archive payload, duplicate member and unsafe path are
+   rejected.
+8. Cross-organization artifact access is rejected and audited.
+9. Local-only external noise cannot be published; approved rendered-output
+   noise can be published without source bytes.
+10. A deleted/retried failed job leaves no downloadable partial package.
 
-- job ID;
-- status: queued, running, succeeded, failed;
-- scenario/pack fingerprint;
-- generator version;
-- artifact list;
-- error object with stable code and message.
+## 12. Explicit Non-Goals and Residual Work
 
-Challenge package:
+- no diagnosis, patient monitoring, clinical validation or regulatory
+  sufficiency claim;
+- no customer algorithm execution or PHI workflow;
+- no arbitrary uploaded pack execution in the initial service;
+- no backward compatibility with the reset development baseline;
+- no package signing yet: SHA-256 protects integrity after a trusted manifest
+  is obtained, but publisher authenticity still depends on authenticated HTTPS
+  delivery and trusted object metadata;
+- true streaming long-record export remains
+  [signal_synth#78](https://github.com/tamask1s/signal_synth/issues/78);
+- optional QTDB interoperability remains
+  [signal_synth#88](https://github.com/tamask1s/signal_synth/issues/88).
 
-- manifest;
-- waveform files;
-- ground-truth files;
-- reports;
-- standard export files;
-- local scoring instructions.
+## 13. Source References
 
-Suggested SaaS database fields for a generated package object:
-
-- package object ID;
-- organization/user ownership;
-- source pack ID or uploaded pack reference;
-- pack fingerprint;
-- package fingerprint from CLI stdout;
-- integration contract version and full preflight contract JSON;
-- generator version;
-- generator git commit or container image digest;
-- worker command and normalized arguments;
-- creation time and completion time;
-- immutable artifact storage URL/key;
-- manifest JSON and/or manifest storage key;
-- job status and stable error object on failure.
-
-## 6. Core Integration Status
-
-Available from the core:
-
-- challenge package manifest contract exists and is strict;
-- `signal-synth pack challenge` produces a complete package directory;
-- generated challenge directories are loadable by the Python package;
-- WFDB and EDF+/BDF+ exports have deterministic writer tests and native-reader
-  smoke tests;
-- CLI has JSON success, stable stderr, and exit-code smoke coverage;
-- C++ and CLI expose the same versioned integration contract;
-- generator version is recorded in the package manifest;
-- package-level `provenance.json` records generator git commit when available,
-  build identity, package contract, scoring contract and verifier version;
-- package-level and per-case `ENGINEERING_CLAIM_BOUNDARY.txt` files record the
-  deterministic engineering QA boundary.
-- schema-v5 challenge packages expose explicit `wearable_samples_csv`,
-  `wearable_timestamp_truth_csv`, `wearable_timebase_truth_json`, and
-  `wearable_alignment_truth_json` manifest roles;
-- `wearable_timebase_v2` replaces `wearable_stress_v1`, and the Python 0.8.0
-  package reads these artifacts without generator code;
-- schema-v9 adds controlled VLF modulation. `hrv_robustness_v2` replaces
-  `hrv_v1` and targets `r_peak`, `hrv`, and `signal_quality` together;
-- HRV ground truth and scoring use `synsigra_hrv_metrics_v2` and
-  `synsigra_hrv_score_v2`, including VLF power and LF/HF normalized units;
-- Python verification summaries contain `hrv_pipeline` diagnostics for
-  R-peak detection, RR reconstruction, HRV metric computation, and optional
-  signal-quality interval detection.
-- `r_peak_rr_noise_v1` adds a deterministic clean/analytic/calibrated-noise
-  detector matrix and the scoreable beat-level `rr_interval` target;
-- `ecg_qtc_verification_v1` adds formula-explicit `qtc` scoring over RR, QT,
-  and QTc measurements, with rate boundaries and difficult T/U morphology;
-- both new targets use the existing `measurement_values_json_v1` and
-  `measurement_values_csv_v1` customer formats. Formula, beat anchor, status,
-  and unit are identity fields and must not be normalized by the service;
-- profile results may include named measurement sections such as
-  `rr_interval`, `qt_interval`, and `qtc_interval`; the SaaS must preserve and
-  display these checks instead of reducing them to one opaque pass flag.
-
-Required in the SaaS service layer after this closure:
-
-- replace the key/value challenge stdout parser with strict JSON parsing;
-- reject unknown integration contracts and nested contract mismatches;
-- compare worker receipt identity with startup preflight identity;
-- index generator git commit or container image digest from package provenance
-  and worker metadata as searchable audit metadata;
-- store the package fingerprint and manifest hash as immutable object metadata;
-- decide archive format and object-storage key convention;
-- enforce organization/user authorization for package download;
-- ensure Python SDK can download and load the archived package shape chosen by
-  the SaaS layer.
-- maintain a private approved-noise-asset registry keyed by manifest asset ID
-  and SHA-256; record license review and redistribution policy outside customer
-  input;
-- expose only approved asset choices in authoring UI/API, mount their immutable
-  bytes into workers, and enforce `external_noise_release_allowed` before
-  publishing artifacts;
-- preserve `external_noise_truth_json` and `external_noise_clean_ecg_csv`
-  exactly as generated while excluding source asset bytes from archives.
-- require `synsigra_core_integration_v5`, C++ facade 1.3.0, authoring contract
-  `synsigra_authoring_v17`, scenario schema 9 support, curated catalog 2.6,
-  and the generator-free `synsigra` 0.8.0 verifier;
-- remove the obsolete `hrv_v1` catalog/database records instead of aliasing
-  them, ingest `hrv_robustness_v2`, and expose VLF plus pipeline-stage results.
-- ingest `r_peak_rr_noise_v1` and `ecg_qtc_verification_v1`, publish their
-  machine-readable expectation/claim-boundary metadata, and expose R-peak,
-  RR, delineation, QT, and QTc as separate result stages;
-- distribute each generated `measurement_truth.json` and user-output template
-  unchanged. Do not recompute RR/QTc truth or correction formulas in SaaS code.
-
-## 7. SaaS Consumer Migration
-
-1. Build the SaaS and worker against one pinned core commit.
-2. Validate `signal-synth contract` once at service/worker startup.
-3. Parse challenge stdout as JSON and validate all required fields and exact
-   contract versions.
-4. Persist the integration contract and receipt with the immutable job audit
-   record.
-5. Run a fresh-state end-to-end test that generates, downloads, verifies, and
-   locally scores a current challenge package.
-6. Preserve every wearable artifact and its manifest role unchanged; expose
-   each stream's own rate, timestamps, and packet gaps instead of constructing
-   a common SaaS-side time axis.
-7. For schema-v8 jobs, resolve every external asset from the operator-controlled
-   registry, verify the declared checksum, and reject release when the core
-   reports a local-only policy.
-8. Verify one perfect and one deliberately biased submission for each new pack
-   through the installed 0.8.0 verifier, retaining raw target reports and named
-   threshold checks with the job evidence.
-
-Do not add a compatibility parser for the old success format. If existing SaaS
-state contains only development data, reset it instead of introducing schema,
-job, or package migration code.
-
-## 8. Explicit Non-Goals For V1
-
-- no medical diagnostic workflow;
-- no patient records;
-- no clinical validation claims;
-- no user algorithm upload/execution;
-- no hardware output;
-- no generic ECG datastore positioning.
-
-## 9. References
-
+- `doc/synsigra_architecture_docs/increments/067_CORE_CONTRACT_HARDENING_AND_SAAS_HANDOFF.md`
 - `doc/synsigra_architecture_docs/increments/035_SAAS_CHALLENGE_PACKAGE_ASSEMBLY.md`
 - `doc/synsigra_architecture_docs/srs/001_OFFLINE_CHALLENGE_AND_PYTHON_SCORING_SRS.md`
 - `doc/synsigra_architecture_docs/srs/002_FORMATS_AND_IO_CONTRACTS_SRS.md`
-- `doc/synsigra_architecture_docs/18_TRACEABILITY_MATRIX.md`
-- [signal_synth#58](https://github.com/tamask1s/signal_synth/issues/58)
-- [signal_synth#73](https://github.com/tamask1s/signal_synth/issues/73)
+- `examples/catalog/curated_pack_metadata_v1.json`
+- `python/README.md`

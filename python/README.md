@@ -7,7 +7,7 @@ and does not execute customer detector code.
 ## Install
 
 ```bash
-python -m pip install synsigra-0.8.0-py3-none-any.whl
+python -m pip install synsigra-0.9.0-py3-none-any.whl
 synsigra-verify --help
 ```
 
@@ -84,7 +84,17 @@ import synsigra
 
 report = synsigra.verify_package("challenge.synsigra", "submission", "results")
 assert report.summary["success"]
+
+with synsigra.load_challenge("challenge.synsigra") as challenge:
+    protocol = challenge.verification_protocol()
+    assert protocol["contract"] == "synsigra_verification_protocol_v1"
 ```
+
+`verification_protocol()` is available only when the pack declares
+pre-specified acceptance criteria. Package singleton documents are resolved by
+manifest role, not by guessed filenames. Loading validates the strict manifest
+and archive layout; scoring additionally verifies every declared byte size and
+SHA-256 digest.
 
 Schema-v5 wearable challenges expose independent device streams and their
 auditable clock mapping without shipping generator code:

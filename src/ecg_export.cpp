@@ -1,4 +1,5 @@
 #include "ecg_export.h"
+#include "challenge_package.h"
 #include "ecg_beat_classification.h"
 #include "ecg_edf_bdf_export.h"
 #include "ecg_wfdb_export.h"
@@ -1194,7 +1195,7 @@ namespace signal_synth
 
     const char* signal_synth_generator_version()
     {
-        return "0.8.0-dev";
+        return "0.9.0-dev";
     }
 
     const char* signal_synth_generator_git_commit()
@@ -1209,7 +1210,7 @@ namespace signal_synth
 
     const char* signal_synth_package_contract_version()
     {
-        return "synsigra_challenge_package_v2";
+        return challenge_package_contract_version();
     }
 
     const char* signal_synth_scoring_manifest_contract_version()
@@ -1217,9 +1218,14 @@ namespace signal_synth
         return "synsigra_scoring_manifest_v2";
     }
 
+    const char* signal_synth_verification_protocol_contract_version()
+    {
+        return "synsigra_verification_protocol_v1";
+    }
+
     const char* signal_synth_verifier_version()
     {
-        return signal_synth_generator_version();
+        return "0.9.0";
     }
 
     const char* signal_synth_engineering_claim_boundary_text()

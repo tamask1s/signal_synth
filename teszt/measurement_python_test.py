@@ -48,7 +48,7 @@ def main():
     shutil.copyfile(alignment_source, os.path.join(scenarios, "alignment.json"))
     pack_path = os.path.join(source_dir, "pack.json")
     write_json(pack_path, {
-        "schema_version": 1, "pack_id": "measurement_python_test", "name": "Measurement Python Test", "version": "1", "description": "Measurement verifier parity fixture.",
+        "schema_version": 2, "pack_id": "measurement_python_test", "name": "Measurement Python Test", "version": "1", "description": "Measurement verifier parity fixture.",
         "targets": ["morphology_assertions", "ecg_ppg_alignment"],
         "scenarios": [
             {"id": "morphology", "path": "scenarios/morphology.json", "targets": ["morphology_assertions"]},

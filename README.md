@@ -181,7 +181,7 @@ External beta users install the generator-free wheel supplied with the
 release:
 
 ```bash
-python -m pip install synsigra-0.8.0-py3-none-any.whl
+python -m pip install synsigra-0.9.0-py3-none-any.whl
 ```
 
 Run local verification:
@@ -198,5 +198,10 @@ does not invoke the C++ generator. It writes `verification_summary.json`,
 under `verification/`. Exit code `0` means pass, `1` means verification
 failure, and `2` means invalid CLI usage. Built-in profiles are `smoke`,
 `regression`, `stress`, and `benchmark`.
+
+Protocol-enabled packs also carry `verification_protocol.json`, resolved by
+its manifest role. The Python loader rejects malformed manifests, ambiguous or
+unsafe archive paths, symlinks, unlisted files, and hash/size mismatches before
+scoring.
 
 See `python/README.md` and `doc/PYTHON_DISTRIBUTION.md` for packaging, smoke-test, and release guidance.

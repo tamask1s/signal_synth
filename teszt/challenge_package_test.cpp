@@ -39,7 +39,6 @@ namespace
         scenario.media_type = "application/json";
         scenario.sha256 = fake_sha();
         scenario.size_bytes = 1200;
-        scenario.required = true;
         manifest.files.push_back(scenario);
 
         signal_synth::challenge_package_file waveform;
@@ -48,7 +47,6 @@ namespace
         waveform.media_type = "text/csv";
         waveform.sha256 = fake_sha();
         waveform.size_bytes = 9000;
-        waveform.required = true;
         manifest.files.push_back(waveform);
 
         signal_synth::challenge_package_file annotations;
@@ -57,7 +55,6 @@ namespace
         annotations.media_type = "application/json";
         annotations.sha256 = fake_sha();
         annotations.size_bytes = 2400;
-        annotations.required = true;
         manifest.files.push_back(annotations);
 
         signal_synth::challenge_package_case item;
@@ -80,7 +77,7 @@ int main()
     signal_synth::challenge_package_manifest manifest = example_manifest();
     signal_synth::challenge_package_json_result result;
     ok &= check(signal_synth::write_challenge_package_json(manifest, result) && result.success, "write_valid_manifest");
-    ok &= check(result.canonical_json.find("\"package_id\":\"rpeak_challenge_demo\"") != std::string::npos && result.package_fingerprint.find("sha256:") == 0, "canonical_and_fingerprint");
+    ok &= check(result.canonical_json.find("\"contract\":\"synsigra_challenge_package_v3\"") != std::string::npos && result.canonical_json.find("\"package_id\":\"rpeak_challenge_demo\"") != std::string::npos && result.package_fingerprint.find("sha256:") == 0, "canonical_and_fingerprint");
     const std::string canonical_json = result.canonical_json;
 
     signal_synth::challenge_package_manifest parsed;
@@ -90,6 +87,8 @@ int main()
     ok &= check(parsed_result.canonical_json == result.canonical_json && parsed_result.package_fingerprint == result.package_fingerprint, "roundtrip_identity");
     ok &= check(signal_synth::challenge_file_role_from_name("waveform_csv", parsed.files[0].role) && parsed.files[0].role == signal_synth::challenge_file_waveform_csv, "role_parse");
     ok &= check(std::string(signal_synth::challenge_file_role_name(signal_synth::challenge_file_annotations_json)) == "annotations_json", "role_name");
+    ok &= check(std::string(signal_synth::challenge_file_role_name(signal_synth::challenge_file_verification_protocol_json)) == "verification_protocol_json", "protocol_role_name");
+    ok &= check(canonical_json.find("\"required\"") == std::string::npos, "required_flag_removed");
     signal_synth::challenge_file_role realism_role = signal_synth::challenge_file_other;
     ok &= check(signal_synth::challenge_file_role_from_name("realism_population_json", realism_role) && realism_role == signal_synth::challenge_file_realism_population_json, "realism_population_role");
     ok &= check(signal_synth::challenge_package_content_sha256("abc") == "sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad", "content_sha256");
@@ -112,6 +111,12 @@ int main()
     build_case.scenario_path = "cases/clean/scenario.json";
     build_case.document_fingerprint = fake_sha();
     build_case.render_identity = std::string(fake_sha()) + ":ecg-run-1";
+    signal_synth::challenge_package_input_file build_scenario;
+    build_scenario.path = "cases/clean/scenario.json";
+    build_scenario.role = signal_synth::challenge_file_scenario_json;
+    build_scenario.media_type = "application/json";
+    build_scenario.content = "{}";
+    build_case.files.push_back(build_scenario);
     signal_synth::challenge_package_input_file build_waveform;
     build_waveform.path = "cases/clean/waveform.csv";
     build_waveform.role = signal_synth::challenge_file_waveform_csv;
@@ -128,8 +133,8 @@ int main()
     build_cases.push_back(build_case);
     signal_synth::challenge_package_build_result build_result;
     ok &= check(signal_synth::build_challenge_package_manifest(build_options, build_cases, build_result) && build_result.success, "build_challenge_manifest");
-    ok &= check(build_result.manifest.files.size() == 3 && build_result.manifest.cases.size() == 1 && build_result.manifest.waveform_formats[0] == "csv", "built_manifest_shape");
-    ok &= check(build_result.manifest.files[1].sha256 == signal_synth::challenge_package_content_sha256(build_waveform.content), "built_manifest_real_sha");
+    ok &= check(build_result.manifest.files.size() == 4 && build_result.manifest.cases.size() == 1 && build_result.manifest.waveform_formats[0] == "csv", "built_manifest_shape");
+    ok &= check(build_result.manifest.files[2].sha256 == signal_synth::challenge_package_content_sha256(build_waveform.content), "built_manifest_real_sha");
 
     signal_synth::challenge_package_manifest no_ground_truth = manifest;
     no_ground_truth.ground_truth_included = false;
@@ -144,6 +149,14 @@ int main()
     duplicate_path.files[1].path = duplicate_path.files[0].path;
     ok &= check(!signal_synth::write_challenge_package_json(duplicate_path, result) && !result.messages.empty(), "reject_duplicate_file_path");
 
+    signal_synth::challenge_package_manifest case_colliding_path = manifest;
+    case_colliding_path.files[1].path = "cases/clean/SCENARIO.json";
+    ok &= check(!signal_synth::write_challenge_package_json(case_colliding_path, result) && !result.messages.empty(), "reject_case_colliding_file_path");
+
+    signal_synth::challenge_package_manifest prefix_conflict = manifest;
+    prefix_conflict.files[1].path = "cases/clean/scenario.json/payload";
+    ok &= check(!signal_synth::write_challenge_package_json(prefix_conflict, result) && !result.messages.empty(), "reject_file_directory_prefix_conflict");
+
     signal_synth::challenge_package_manifest missing_reference = manifest;
     missing_reference.cases[0].files.push_back("missing/file.json");
     ok &= check(!signal_synth::write_challenge_package_json(missing_reference, result) && !result.messages.empty(), "reject_missing_case_file_reference");
@@ -152,8 +165,20 @@ int main()
     bad_sha.files[0].sha256 = "sha256:BAD";
     ok &= check(!signal_synth::write_challenge_package_json(bad_sha, result) && !result.messages.empty(), "reject_bad_sha");
 
+    signal_synth::challenge_package_manifest bad_role = manifest;
+    bad_role.files[0].role = static_cast<signal_synth::challenge_file_role>(999);
+    ok &= check(!signal_synth::write_challenge_package_json(bad_role, result) && !result.messages.empty(), "reject_invalid_role_enum");
+
+    signal_synth::challenge_package_manifest bad_type = manifest;
+    bad_type.package_type = static_cast<signal_synth::challenge_package_type>(999);
+    ok &= check(!signal_synth::write_challenge_package_json(bad_type, result) && !result.messages.empty(), "reject_invalid_package_type_enum");
+
     const std::string unknown_field = canonical_json.substr(0, canonical_json.size() - 1) + ",\"unexpected\":1}";
     ok &= check(!signal_synth::parse_challenge_package_json(unknown_field, parsed, parsed_result) && !parsed_result.messages.empty(), "reject_unknown_field");
+
+    std::string unsupported_contract = canonical_json;
+    unsupported_contract.replace(unsupported_contract.find("synsigra_challenge_package_v3"), std::string("synsigra_challenge_package_v3").size(), "synsigra_challenge_package_v99");
+    ok &= check(!signal_synth::parse_challenge_package_json(unsupported_contract, parsed, parsed_result) && !parsed_result.messages.empty(), "reject_unsupported_contract");
 
     const std::string duplicate_key = "{\"schema_version\":1,\"schema_version\":1}";
     ok &= check(!signal_synth::parse_challenge_package_json(duplicate_key, parsed, parsed_result) && !parsed_result.messages.empty(), "reject_duplicate_key");

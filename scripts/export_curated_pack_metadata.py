@@ -12,13 +12,14 @@ import sys
 EXPORTER_VERSION = "synsigra_curated_pack_metadata_export_v1"
 METADATA_TYPE = "synsigra_curated_pack_catalog"
 DEFAULT_GENERATOR_COMPATIBILITY = {
-    "minimum_generator_version": "0.6.0-dev",
-    "pack_schema_version": 1,
+    "minimum_generator_version": "0.9.0-dev",
+    "pack_schema_version": 2,
     "scenario_schema_versions": [2, 3, 4, 5, 6, 7, 8, 9],
-    "challenge_package_contract": "synsigra_challenge_package_v2",
+    "challenge_package_contract": "synsigra_challenge_package_v3",
     "scoring_manifest_contract": "synsigra_scoring_manifest_v2",
     "submission_contract": "synsigra_submission_v1",
-    "local_verifier_min_version": "0.4.0",
+    "verification_protocol_contract": "synsigra_verification_protocol_v1",
+    "local_verifier_min_version": "0.9.0",
 }
 
 
@@ -370,7 +371,7 @@ def channel_families(entry, analysis):
     return families
 
 
-def output_artifacts(scoreable_targets, reference_targets, analysis):
+def output_artifacts(scoreable_targets, reference_targets, analysis, has_verification_protocol):
     artifacts = [
         {"role": "manifest_json", "required": True},
         {"role": "scoring_manifest_json", "required": True},
@@ -383,6 +384,9 @@ def output_artifacts(scoreable_targets, reference_targets, analysis):
         {"role": "edf_bdf", "required": True},
     ]
     roles = set(item["role"] for item in artifacts)
+    if has_verification_protocol:
+        artifacts.append({"role": "verification_protocol_json", "required": True})
+        roles.add("verification_protocol_json")
     for item in analysis.get("output_artifacts", []):
         if item["role"] not in roles:
             artifacts.append(dict(item))
@@ -449,6 +453,26 @@ def stable_relpath(path, source_root):
     return os.path.relpath(os.path.abspath(path), os.path.abspath(source_root)).replace(os.sep, "/")
 
 
+def verification_protocol_metadata(pack_path, pack, source_root):
+    relative_path = pack.get("verification_protocol_path", "")
+    if not relative_path:
+        return {"available": False, "artifact_role": "", "source_path": "", "source_content_sha256": "", "document": None}
+    protocol_path = os.path.join(os.path.dirname(pack_path), relative_path)
+    protocol = read_json(protocol_path)
+    required = set(["schema_version", "contract", "protocol_id", "pack_id", "context_of_use", "pre_specified_profile", "required_targets", "acceptance", "stress_matrix", "truth_policy", "evidence_boundary"])
+    if not isinstance(protocol, dict) or not required.issubset(set(protocol)):
+        raise RuntimeError("verification protocol has an incomplete envelope: %s" % protocol_path)
+    if protocol["schema_version"] != 1 or protocol["contract"] != "synsigra_verification_protocol_v1" or protocol["pack_id"] != pack["pack_id"]:
+        raise RuntimeError("verification protocol identity does not match pack: %s" % protocol_path)
+    return {
+        "available": True,
+        "artifact_role": "verification_protocol_json",
+        "source_path": stable_relpath(protocol_path, source_root),
+        "source_content_sha256": canonical_hash(protocol),
+        "document": protocol,
+    }
+
+
 def pack_metadata(catalog_path, source_root, entry, pack, analysis, validate_info):
     scoreable_targets, reference_targets = target_contracts(analysis)
     case_ids = [item["case_id"] for item in analysis["cases"]]
@@ -456,6 +480,7 @@ def pack_metadata(catalog_path, source_root, entry, pack, analysis, validate_inf
     channel_counts = [item["channel_count"] for item in analysis["cases"]]
     durations = [item["duration_seconds"] for item in analysis["cases"]]
     supported_threshold_profiles = supported_profiles(entry, scoreable_targets)
+    protocol = verification_protocol_metadata(abs_pack_path(catalog_path, entry), pack, source_root)
     metadata = {
         "schema_version": 1,
         "metadata_type": "synsigra_curated_pack_metadata",
@@ -484,6 +509,7 @@ def pack_metadata(catalog_path, source_root, entry, pack, analysis, validate_inf
             "source_content_sha256": canonical_hash(pack),
         },
         "generator_compatibility": dict(DEFAULT_GENERATOR_COMPATIBILITY),
+        "verification_protocol": protocol,
         "declared_targets": list(pack.get("targets", [])),
         "targets": effective_targets(analysis),
         "scoreable_targets": scoreable_targets,
@@ -514,7 +540,7 @@ def pack_metadata(catalog_path, source_root, entry, pack, analysis, validate_inf
             "size_class": size_class(analysis["summary"]["estimated_package_bytes"]),
             "peak_memory_bytes": analysis["summary"]["estimated_peak_memory_bytes"],
         },
-        "output_artifacts": output_artifacts(scoreable_targets, reference_targets, analysis),
+        "output_artifacts": output_artifacts(scoreable_targets, reference_targets, analysis, protocol["available"]),
         "ui": {
             "primary_badges": unique(list(entry.get("difficulty", [])) + list(entry.get("feature_tags", []))[:3]),
             "scoreable_before_job": bool(scoreable_targets),

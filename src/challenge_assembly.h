@@ -15,7 +15,6 @@ namespace signal_synth
         challenge_file_role role;
         std::string media_type;
         std::string content;
-        bool required;
     };
 
     struct challenge_package_case_input

@@ -48,6 +48,7 @@ int main()
     typed.name = "Typed Pack";
     typed.version = "1";
     typed.description = "Typed pack manifest";
+    typed.verification_protocol_path = "typed_pack_expectations.json";
     typed.targets.push_back("r_peak");
     signal_synth::ecg_pack_scenario scenario;
     scenario.id = "clean";
@@ -59,7 +60,17 @@ int main()
     signal_synth::ecg_pack_manifest roundtrip;
     signal_synth::ecg_pack_json_result roundtrip_result;
     ok &= check(signal_synth::write_ecg_pack_json(typed, typed_result) && typed_result.pack_fingerprint.find("sha256:") == 0, "typed_pack_write");
-    ok &= check(signal_synth::parse_ecg_pack_json(typed_result.canonical_json, roundtrip, roundtrip_result) && roundtrip.pack_id == typed.pack_id && roundtrip_result.pack_fingerprint == typed_result.pack_fingerprint, "typed_pack_roundtrip");
+    ok &= check(signal_synth::parse_ecg_pack_json(typed_result.canonical_json, roundtrip, roundtrip_result) && roundtrip.pack_id == typed.pack_id && roundtrip.verification_protocol_path == typed.verification_protocol_path && roundtrip_result.pack_fingerprint == typed_result.pack_fingerprint, "typed_pack_roundtrip");
+
+    signal_synth::ecg_pack_manifest bad_protocol_path = typed;
+    bad_protocol_path.verification_protocol_path = "../protocol.json";
+    signal_synth::ecg_pack_json_result bad_protocol_result;
+    ok &= check(!signal_synth::write_ecg_pack_json(bad_protocol_path, bad_protocol_result) && !bad_protocol_result.messages.empty(), "unsafe_protocol_path_rejected");
+
+    const std::string schema_v1 = "{\"schema_version\":1,\"pack_id\":\"old\",\"name\":\"Old\",\"version\":\"1\",\"description\":\"Old pack\",\"targets\":[\"r_peak\"],\"scenarios\":[{\"id\":\"clean\",\"path\":\"clean.json\",\"targets\":[\"r_peak\"]}]}";
+    signal_synth::ecg_pack_manifest old_pack;
+    signal_synth::ecg_pack_json_result old_pack_result;
+    ok &= check(!signal_synth::parse_ecg_pack_json(schema_v1, old_pack, old_pack_result), "schema_v1_rejected");
 
     signal_synth::ecg_pack_manifest duplicate = typed;
     duplicate.scenarios.push_back(scenario);

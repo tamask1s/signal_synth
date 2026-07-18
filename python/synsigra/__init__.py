@@ -5,7 +5,7 @@ only exported challenge package ground truth and user detection outputs, so a
 verification package can be used without shipping generator source code.
 """
 
-from .challenge import ChallengeCase, ChallengeIntegrityError, ChallengePackage, WaveformTable, load_challenge
+from .challenge import ChallengeCase, ChallengeFormatError, ChallengeIntegrityError, ChallengePackage, WaveformTable, load_challenge
 from .detections import DetectionDocument, DetectionEvent, load_detections
 from .delineation import DelineationDocument, DelineationEvent, load_delineations
 from .intervals import IntervalDocument, IntervalEvent, load_intervals
@@ -17,6 +17,7 @@ from .scoring import ScoreReport, compare_beat_classes, compare_ppg_onsets, comp
 
 __all__ = [
     "ChallengeCase",
+    "ChallengeFormatError",
     "ChallengeIntegrityError",
     "ChallengePackage",
     "DetectionDocument",

@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version":2,
   "pack_id": "cardiorespiratory_v1",
   "name": "PRV and Respiratory Rate Pack v1",
   "version": "1.0",

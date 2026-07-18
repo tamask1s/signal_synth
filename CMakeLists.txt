@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(signal_synth LANGUAGES CXX)
+project(signal_synth VERSION 0.9.0 LANGUAGES CXX)
 
 option(SIGNAL_SYNTH_BUILD_TESTS "Build signal_synth verification tests" ON)
 option(SIGNAL_SYNTH_BUILD_CLI "Build the signal-synth command-line tool" ON)
@@ -39,8 +39,8 @@ set(SIGNAL_SYNTH_PUBLIC_HEADERS
     src/wearable_timebase.h
     src/wearable_profiles.h
     src/ecg_pack.h
-    src/ecg_pack_score.h)
-list(APPEND SIGNAL_SYNTH_PUBLIC_HEADERS src/ppg_model.h)
+    src/ecg_pack_score.h
+    src/ppg_model.h)
 
 add_library(
     signal_synth
@@ -78,8 +78,8 @@ add_library(
     src/wearable_timebase.cpp
     src/wearable_profiles.cpp
     src/ecg_pack.cpp
-    src/ecg_pack_score.cpp)
-target_sources(signal_synth PRIVATE src/ppg_model.cpp)
+    src/ecg_pack_score.cpp
+    src/ppg_model.cpp)
 
 add_library(signal_synth::signal_synth ALIAS signal_synth)
 
@@ -136,7 +136,8 @@ if(SIGNAL_SYNTH_INSTALL)
     install(
         TARGETS signal_synth
         EXPORT signal_synth-targets
-        ARCHIVE DESTINATION lib)
+        ARCHIVE DESTINATION lib
+        INCLUDES DESTINATION include)
     if(SIGNAL_SYNTH_BUILD_CLI)
         install(TARGETS signal_synth_cli RUNTIME DESTINATION bin)
     endif()
@@ -153,7 +154,13 @@ if(SIGNAL_SYNTH_INSTALL)
         INSTALL_DESTINATION ${SIGNAL_SYNTH_INSTALL_CMAKEDIR}
         NO_SET_AND_CHECK_MACRO
         NO_CHECK_REQUIRED_COMPONENTS_MACRO)
+    write_basic_package_version_file(
+        ${CMAKE_CURRENT_BINARY_DIR}/signal_synth-config-version.cmake
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY ExactVersion)
     install(
-        FILES ${CMAKE_CURRENT_BINARY_DIR}/signal_synth-config.cmake
+        FILES
+            ${CMAKE_CURRENT_BINARY_DIR}/signal_synth-config.cmake
+            ${CMAKE_CURRENT_BINARY_DIR}/signal_synth-config-version.cmake
         DESTINATION ${SIGNAL_SYNTH_INSTALL_CMAKEDIR})
 endif()

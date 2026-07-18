@@ -11,7 +11,7 @@ from .challenge import ChallengePackage, load_challenge
 from .detections import load_detections
 from .delineation import delineation_scope_from_entry, delineation_truth_from_annotations, load_delineations, score_delineation_events
 from .intervals import IntervalEvent, load_intervals, score_interval_events
-from .measurements import load_measurement_truth, load_measurements, measurement_comparison_csv, measurement_comparison_html, score_measurements
+from .measurements import MEASUREMENT_TARGETS, load_measurement_truth, load_measurements, measurement_comparison_csv, measurement_comparison_html, score_measurements
 from .profiles import load_threshold_profile
 from .submission import SubmissionError, load_submission
 
@@ -26,6 +26,10 @@ HRV_METRICS = [
     "vlf_power_seconds2", "lf_power_seconds2", "hf_power_seconds2", "lf_hf_ratio",
     "lf_normalized_units", "hf_normalized_units", "total_power_seconds2",
 ]
+PPG_EVENT_TARGETS = frozenset(["ppg_systolic_peak", "ppg_pulse_onset"])
+EVENT_TARGETS = frozenset(["r_peak", "ecg_beat_classification"]) | PPG_EVENT_TARGETS
+INTERVAL_TARGETS = frozenset(["rhythm_episode", "signal_quality"])
+SUPPORTED_TARGETS = EVENT_TARGETS | INTERVAL_TARGETS | MEASUREMENT_TARGETS | frozenset(["hrv", "ecg_delineation"])
 
 
 class VerificationError(ValueError):
@@ -90,7 +94,7 @@ def verify_package(challenge, submission_dir, out_dir, cases=None, targets=None,
                 if not entry.get("supported", False):
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
-                if target not in ("r_peak", "ppg_systolic_peak", "ppg_pulse_onset", "ecg_beat_classification", "hrv", "rhythm_episode", "signal_quality", "ecg_delineation", "rr_interval", "qtc", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"):
+                if target not in SUPPORTED_TARGETS:
                     results.append(_unsupported_result(case, case_summary, entry, out_dir))
                     continue
                 result = _verify_case_target(package, case, case_summary, annotations, entry, submission, out_dir)
@@ -125,7 +129,7 @@ def _verify_case_target(package, case, case_summary, annotations, entry, submiss
         return _error_result(package, case, case_summary, entry, target_dir, "missing_output", "submission output file is missing for %s/%s: %s" % (case.id, target, submitted.relative_path))
     algorithm = dict(submission.algorithm)
     try:
-        if target in ("rr_interval", "qtc", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"):
+        if target in MEASUREMENT_TARGETS:
             predictions = load_measurements(detection_path, format_name=submitted.format)
             truth_path = entry.get("ground_truth_path", "")
             if not truth_path:
@@ -155,7 +159,7 @@ def _verify_case_target(package, case, case_summary, annotations, entry, submiss
             _write_text(os.path.join(target_dir, "comparison.csv"), report_csv)
             _write_text(os.path.join(target_dir, "comparison_report.html"), report_html)
             return _case_result_from_report(case, case_summary, target, relative_out, detection_path, input_identity, report_json)
-        if target in ("rhythm_episode", "signal_quality"):
+        if target in INTERVAL_TARGETS:
             intervals = load_intervals(detection_path, target=target, format_name=submitted.format)
             report_json = _score_interval_detection(package, case, case_summary, annotations, intervals, entry)
             report_json["algorithm"] = algorithm
@@ -290,7 +294,7 @@ def _score_event_detection(package, case, case_summary, annotations, detections,
     tolerance_seconds = float(entry.get("default_tolerance_seconds", _default_tolerance_seconds(target)))
     truth = _truth_events_for_target(target, annotations, case_summary)
     detection_events = []
-    ppg_target = target in ("ppg_systolic_peak", "ppg_pulse_onset")
+    ppg_target = target in PPG_EVENT_TARGETS
     for item in detections.events:
         if not _finite_non_negative(item.time_seconds):
             raise VerificationError("detection time must be finite and non-negative")
@@ -516,7 +520,7 @@ def _score_hrv_rr(truth_intervals, user_intervals):
 
 
 def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_opportunity_count=0):
-    if not truth and target in ("ppg_systolic_peak", "ppg_pulse_onset"):
+    if not truth and target in PPG_EVENT_TARGETS:
         raise VerificationError("scenario has no requested PPG event ground truth")
     sorted_detections = sorted(detections, key=lambda item: (item.time_seconds, item.index))
     candidates = []
@@ -684,7 +688,7 @@ def _ppg_pulse_timing_metrics(target, truth, detections, truth_matched, matched_
         "max_absolute_interval_error_seconds": 0.0, "ground_truth_mean_pulse_rate_bpm": 0.0,
         "detection_mean_pulse_rate_bpm": 0.0, "absolute_pulse_rate_error_bpm": 0.0,
     }
-    if target not in ("ppg_systolic_peak", "ppg_pulse_onset"):
+    if target not in PPG_EVENT_TARGETS:
         return result
     result["ground_truth_interval_count"] = max(0, len(truth) - 1)
     result["detection_interval_count"] = max(0, len(detections) - 1)
@@ -842,7 +846,7 @@ def _truth_events_for_target(target, annotations, case_summary):
                     label = "unscored"
                 events.append(_TruthEvent(beat.get("beat_index", array_index), beat["r_peak_seconds"], label, False))
         return events
-    if target in ("ppg_systolic_peak", "ppg_pulse_onset"):
+    if target in PPG_EVENT_TARGETS:
         expected_kind = "systolic_peak" if target == "ppg_systolic_peak" else "pulse_onset"
         for item in annotations.get("ppg_fiducials", []):
             if item.get("kind") == expected_kind and item.get("source") == "measurement" and _finite_non_negative(item.get("time_seconds")):
@@ -899,7 +903,7 @@ def _in_artifact_interval(target, time_seconds, annotations, case_summary):
 
 
 def _in_motion_artifact_interval(target, time_seconds, annotations, case_summary):
-    if target not in ("ppg_systolic_peak", "ppg_pulse_onset"):
+    if target not in PPG_EVENT_TARGETS:
         return False
     intervals = annotations.get("artifact_intervals")
     if intervals is None:
@@ -914,7 +918,7 @@ def _in_motion_artifact_interval(target, time_seconds, annotations, case_summary
 
 
 def _in_dropout_artifact_interval(target, time_seconds, annotations, case_summary):
-    if target not in ("ppg_systolic_peak", "ppg_pulse_onset"):
+    if target not in PPG_EVENT_TARGETS:
         return False
     intervals = annotations.get("artifact_intervals")
     if intervals is None:
@@ -931,7 +935,7 @@ def _artifact_affects_target(interval, target):
     channels = [str(item).lower() for item in interval.get("channels", [])]
     if not channels:
         return True
-    if target in ("ppg_systolic_peak", "ppg_pulse_onset"):
+    if target in PPG_EVENT_TARGETS:
         return any(item == "ppg_green" or "ppg" in item for item in channels)
     return any("ppg" not in item for item in channels)
 
@@ -986,7 +990,7 @@ def _case_result_from_report(case, case_summary, target, relative_out, submissio
         }
         result["metrics"] = list(report_json.get("metrics", []))
         result["rr"] = dict(report_json.get("rr", {}))
-    elif target in ("rhythm_episode", "signal_quality"):
+    elif target in INTERVAL_TARGETS:
         result["score_type"] = "interval_detection"
         result["exclusion_policy"] = "Half-open intervals are scored by label and channel; global and per-channel signal-quality modes are not mixed."
         result["summary"] = dict(report_json.get("overall", {}))
@@ -1002,7 +1006,7 @@ def _case_result_from_report(case, case_summary, target, relative_out, submissio
         result["by_kind"] = list(report_json.get("by_kind", []))
         result["by_lead"] = list(report_json.get("by_lead", []))
         result["_delineation_errors"] = [float(item["error_seconds"]) for item in report_json.get("matches", [])]
-    elif target in ("rr_interval", "qtc", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"):
+    elif target in MEASUREMENT_TARGETS:
         result["score_type"] = "measurement"
         result["exclusion_policy"] = "Measurement identity includes name, unit, scope, channel, formula, and beat/time anchor; explicit non-valid states are status-scored without numeric error."
         result["summary"] = dict(report_json.get("overall", {}))

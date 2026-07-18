@@ -1,69 +1,65 @@
 {
   "schema_version": 1,
+  "contract": "synsigra_challenge_package_v3",
   "package_id": "python_distribution_smoke",
   "name": "Python distribution smoke",
   "version": "1.0",
+  "description": "Generator-free Python distribution verification fixture.",
   "package_type": "scenario_pack",
   "ground_truth_included": true,
+  "waveform_formats": ["csv"],
   "generator_version": "fixture",
   "usage_restrictions": "engineering algorithm QA only",
   "not_for": "diagnosis, patient monitoring, clinical validation certificate, or standalone conformity assessment",
   "files": [
     {
       "path": "scoring_manifest.json",
-      "role": "metadata_json",
+      "role": "scoring_manifest_json",
       "media_type": "application/json",
-      "sha256": "sha256:16021ede3b440922be9b10de7fc3fe526d232f47f87289642cf93597818664a4",
-      "size_bytes": 1560,
-      "required": true
+      "sha256": "sha256:a51c9d6d8cbb1b8d92b03b245ffe8e9013020e34dc083272e907c981dc61e6d7",
+      "size_bytes": 1596
     },
     {
       "path": "cases/clean/scenario.json",
       "role": "scenario_json",
       "media_type": "application/json",
       "sha256": "sha256:79b4a12c14a773c894ed3278417b19305a897896844864b3ca0bb7a325343b45",
-      "size_bytes": 62,
-      "required": true
+      "size_bytes": 62
     },
     {
       "path": "cases/clean/case_summary.json",
       "role": "metadata_json",
       "media_type": "application/json",
       "sha256": "sha256:e38e25b8aa379b9b28157463db62497e7911edd00d968b2b235bc2b08c3bc1d4",
-      "size_bytes": 671,
-      "required": true
+      "size_bytes": 671
     },
     {
       "path": "cases/clean/annotations.json",
       "role": "annotations_json",
       "media_type": "application/json",
       "sha256": "sha256:b05b6c7f7e6d11312618ff5526d325b7b50c8fbaf836e247645a215e26624dcb",
-      "size_bytes": 372,
-      "required": true
+      "size_bytes": 372
     },
     {
       "path": "user-output-template/submission.json",
-      "role": "other",
+      "role": "submission_manifest_json",
       "media_type": "application/json",
       "sha256": "sha256:8388f70668f819300eb4ec5ac675cbcfc132075aa0870963055167b37f968d59",
-      "size_bytes": 416,
-      "required": true
+      "size_bytes": 416
     },
     {
       "path": "user-output-template/formats.json",
-      "role": "other",
+      "role": "submission_formats_json",
       "media_type": "application/json",
       "sha256": "sha256:827621f5c471b2b22caf7f7bb217e3a865dd215519128a5a2db655d2226a5736",
-      "size_bytes": 2084,
-      "required": true
+      "size_bytes": 2084
     },
     {
       "path": "user-output-template/outputs/clean/r_peak.json",
       "role": "other",
       "media_type": "application/json",
       "sha256": "sha256:a2de2e1c6daffdbdad2c5d2589ba8e2927dd384ec9cd86c844dfed803029015b",
-      "size_bytes": 33,
-      "required": true
+      "size_bytes": 33
     }
   ],
   "cases": [
@@ -71,7 +67,7 @@
       "id": "clean",
       "scenario_id": "distribution_smoke_clean",
       "scenario_path": "cases/clean/scenario.json",
-      "document_fingerprint": "sha256:fixture",
+      "document_fingerprint": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
       "render_identity": "fixture-render",
       "files": [
         "cases/clean/scenario.json",

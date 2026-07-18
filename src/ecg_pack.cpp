@@ -262,6 +262,11 @@ namespace
         return true;
     }
 
+    bool safe_json_filename(const std::string& value)
+    {
+        return safe_id(value) && value.size() > 5 && value.substr(value.size() - 5) == ".json";
+    }
+
     void validate_target_list(signal_synth::ecg_pack_json_result& result, const std::string& path, const std::vector<std::string>& targets)
     {
         if (targets.empty())
@@ -407,8 +412,10 @@ namespace
                << ",\"pack_id\":" << escape_json(manifest.pack_id)
                << ",\"name\":" << escape_json(manifest.name)
                << ",\"version\":" << escape_json(manifest.version)
-               << ",\"description\":" << escape_json(manifest.description)
-               << ",\"targets\":[";
+               << ",\"description\":" << escape_json(manifest.description);
+        if (!manifest.verification_protocol_path.empty())
+            output << ",\"verification_protocol_path\":" << escape_json(manifest.verification_protocol_path);
+        output << ",\"targets\":[";
         for (std::size_t i = 0; i < manifest.targets.size(); ++i)
             output << (i ? "," : "") << escape_json(manifest.targets[i]);
         output << "],\"scenarios\":[";
@@ -429,7 +436,7 @@ namespace
 
 namespace signal_synth
 {
-    ecg_pack_manifest::ecg_pack_manifest() : schema_version(1) {}
+    ecg_pack_manifest::ecg_pack_manifest() : schema_version(2) {}
 
     ecg_pack_json_result::ecg_pack_json_result() : success(false) {}
 
@@ -450,14 +457,16 @@ namespace signal_synth
     bool write_ecg_pack_json(const ecg_pack_manifest& manifest, ecg_pack_json_result& result)
     {
         ecg_pack_json_result fresh;
-        if (manifest.schema_version != 1)
-            add_message(fresh, ecg_pack_json_range, "$.schema_version", "only schema version 1 is supported");
+        if (manifest.schema_version != 2)
+            add_message(fresh, ecg_pack_json_range, "$.schema_version", "only schema version 2 is supported");
         if (!safe_id(manifest.pack_id))
             add_message(fresh, ecg_pack_json_range, "$.pack_id", "pack_id must be a safe identifier");
         if (manifest.name.empty() || manifest.name.size() > 256)
             add_message(fresh, ecg_pack_json_range, "$.name", "name must contain 1 to 256 characters");
         if (manifest.version.empty() || manifest.version.size() > 64)
             add_message(fresh, ecg_pack_json_range, "$.version", "version must contain 1 to 64 characters");
+        if (!manifest.verification_protocol_path.empty() && !safe_json_filename(manifest.verification_protocol_path))
+            add_message(fresh, ecg_pack_json_range, "$.verification_protocol_path", "verification_protocol_path must be a local safe JSON filename");
         validate_target_list(fresh, "$.targets", manifest.targets);
         if (manifest.scenarios.empty())
             add_message(fresh, ecg_pack_json_range, "$.scenarios", "at least one scenario is required");
@@ -503,13 +512,16 @@ namespace signal_synth
             result = fresh_result;
             return false;
         }
-        const char* top_fields[] = {"schema_version","pack_id","name","version","description","targets","scenarios"};
+        const char* top_fields[] = {"schema_version","pack_id","name","version","description","verification_protocol_path","targets","scenarios"};
         allowed_fields(root, top_fields, sizeof(top_fields) / sizeof(top_fields[0]), "$", fresh_result);
         const json_value* schema = required(root, "schema_version", json_value::number_kind, "$", fresh_result);
         const json_value* pack_id = required(root, "pack_id", json_value::string_kind, "$", fresh_result);
         const json_value* name = required(root, "name", json_value::string_kind, "$", fresh_result);
         const json_value* version = required(root, "version", json_value::string_kind, "$", fresh_result);
         const json_value* description = required(root, "description", json_value::string_kind, "$", fresh_result);
+        const json_value* verification_protocol = member(root, "verification_protocol_path");
+        if (verification_protocol && verification_protocol->type != json_value::string_kind)
+            add_message(fresh_result, ecg_pack_json_type, "$.verification_protocol_path", "field has the wrong JSON type");
         const json_value* targets = required(root, "targets", json_value::array_kind, "$", fresh_result);
         const json_value* scenarios = required(root, "scenarios", json_value::array_kind, "$", fresh_result);
         if (!fresh_result.messages.empty())
@@ -519,13 +531,15 @@ namespace signal_synth
         }
 
         ecg_pack_manifest manifest;
-        if (schema->number != 1.0)
-            add_message(fresh_result, ecg_pack_json_range, "$.schema_version", "only schema version 1 is supported");
-        manifest.schema_version = 1;
+        if (schema->number != 2.0)
+            add_message(fresh_result, ecg_pack_json_range, "$.schema_version", "only schema version 2 is supported");
+        manifest.schema_version = 2;
         manifest.pack_id = pack_id->string;
         manifest.name = name->string;
         manifest.version = version->string;
         manifest.description = description->string;
+        if (verification_protocol && verification_protocol->type == json_value::string_kind)
+            manifest.verification_protocol_path = verification_protocol->string;
         for (std::size_t i = 0; i < targets->array.size(); ++i)
         {
             if (targets->array[i].type != json_value::string_kind)

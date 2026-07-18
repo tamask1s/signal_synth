@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version":2,
   "pack_id": "advanced_rhythm_burden_v1",
   "name": "Advanced rhythm burden and critical-state stress",
   "description": "Multi-episode AF, PSVT, VT, VF and asystole engineering verification pack with interval and burden ground truth.",
