@@ -73,6 +73,12 @@ int main()
     signal_synth::ecg_export_result export_result;
     ok &= check(signal_synth::build_ecg_export_bundle(clean, export_bundle, export_result)
         && export_bundle.find("realism_metrics.json") && export_bundle.find("realism_metrics.csv") && export_bundle.find("realism_report.html"), "export_artifacts");
+    const signal_synth::ecg_text_artifact* realism_report = export_bundle.find("realism_report.html");
+    ok &= check(realism_report
+        && realism_report->content.find("Synthetic engineering QA evidence; not diagnosis, nor clinical evidence") != std::string::npos
+        && realism_report->content.find("background:#f3f4f6") != std::string::npos
+        && realism_report->content.find("No single realism score") == std::string::npos,
+        "realism_report_notice");
     ok &= check(signal_synth::challenge_file_role_for_export_artifact("realism_metrics.json") == signal_synth::challenge_file_realism_metrics_json
         && signal_synth::challenge_file_role_for_export_artifact("realism_report.html") == signal_synth::challenge_file_realism_report_html, "challenge_roles");
     return ok ? 0 : 1;

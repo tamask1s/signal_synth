@@ -900,8 +900,8 @@ namespace
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << "<!doctype html><html><head><meta charset=\"utf-8\"><title>" << html_text(manifest.name)
-               << "</title><style>body{font-family:Arial,sans-serif;margin:24px;line-height:1.45}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d1d5db;padding:6px 8px;text-align:left}th{background:#f3f4f6}code{font-family:monospace}</style></head><body>"
-               << "<h1>" << html_text(manifest.name) << "</h1><p>" << html_text(manifest.description)
+               << "</title><style>body{font-family:Arial,sans-serif;margin:24px;line-height:1.45}table{border-collapse:collapse;width:100%}th,td{border:1px solid #d1d5db;padding:6px 8px;text-align:left}th{background:#f3f4f6}code{font-family:monospace}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}</style></head><body>"
+               << "<h1>" << html_text(manifest.name) << "</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>" << html_text(manifest.description)
                << "</p><table><tr><th>Pack ID</th><td><code>" << html_text(manifest.pack_id)
                << "</code></td></tr><tr><th>Version</th><td>" << html_text(manifest.version)
                << "</td></tr><tr><th>Fingerprint</th><td><code>" << html_text(identity.pack_fingerprint)
@@ -916,7 +916,7 @@ namespace
                    << "</td><td>" << row.ppg_pulse_count << "</td><td><a href=\"" << html_text(row.id)
                    << "/report.html\">report</a></td></tr>";
         }
-        output << "</table><h2>Limitations</h2><p>This is an engineering QA pack, not a clinical validation dataset or diagnostic product.</p></body></html>";
+        output << "</table></body></html>";
         return output.str();
     }
 

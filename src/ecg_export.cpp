@@ -1104,12 +1104,9 @@ namespace
                << "body{font:14px Arial,sans-serif;color:#202124;max-width:1100px;margin:32px auto;padding:0 20px}"
                << "h1,h2{color:#111827}table{border-collapse:collapse;width:100%;margin:12px 0 24px}"
                << "th,td{border:1px solid #d1d5db;padding:7px;text-align:left}th{background:#f3f4f6}"
-               << ".notice{border-left:4px solid #b42318;padding:10px 14px;background:#fef3f2}svg{width:100%;height:auto;border:1px solid #d1d5db}"
+               << ".notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}svg{width:100%;height:auto;border:1px solid #d1d5db}"
                << "</style></head><body><h1>Synthetic Scenario Performance Report</h1>"
-               << "<p class=\"notice\">This report describes synthetic engineering test signals generated from the specified scenario. "
-               << "It is intended for research, development, software testing and algorithm QA. It is not a clinical validation certificate, "
-               << "not a diagnostic result, and not standalone evidence of medical-device conformity. See provenance.json and "
-               << "ENGINEERING_CLAIM_BOUNDARY.txt for generator identity and the auditable engineering QA claim boundary.</p>"
+               << "<p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p>"
                << "<h2>Identity</h2><table><tr><th>Scenario</th><td>" << html_text(render.document.scenario_id)
                << "</td></tr><tr><th>Document fingerprint</th><td>" << html_text(render.document_identity.document_fingerprint)
                << "</td></tr><tr><th>Generation fingerprint</th><td>" << render.document_identity.generation_fingerprint

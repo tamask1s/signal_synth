@@ -358,7 +358,7 @@ namespace signal_synth
     std::string realism_analysis_html(const realism_analysis_result& result)
     {
         std::ostringstream output; output.imbue(std::locale::classic()); output << std::setprecision(8)
-            << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Signal characterization</title></head><body><h1>Signal characterization</h1><p>No single realism score and no clinical-validation claim.</p><table><tr><th>Domain</th><th>Metric</th><th>Value</th><th>Unit</th></tr>";
+            << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Signal characterization</title><style>.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}</style></head><body><h1>Signal characterization</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><table><tr><th>Domain</th><th>Metric</th><th>Value</th><th>Unit</th></tr>";
         for (std::size_t i = 0; i < result.metrics.size(); ++i)
             output << "<tr><td>" << realism_metric_domain_name(result.metrics[i].domain) << "</td><td>" << html_text(result.metrics[i].name) << "</td><td>" << (result.metrics[i].evaluable ? number_text(result.metrics[i].value, 8u) : "not evaluable") << "</td><td>" << html_text(result.metrics[i].unit) << "</td></tr>";
         output << "</table><h2>Reference cohorts</h2>";
