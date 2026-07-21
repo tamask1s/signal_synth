@@ -164,7 +164,7 @@ def remove_artifact_r_peaks(challenge, submission_dir, manifest):
 
 
 def target_result(report, target):
-    return next(item for item in report.summary["targets"] if item["target"] == target)
+    return next(item for item in report.evidence["targets"] if item["target"] == target)
 
 
 def main():
@@ -206,9 +206,9 @@ def main():
     qtc_manifest = make_perfect_submission(qtc_challenge_dir, qtc_submission)
     rr_perfect = ss.verify_package(rr_challenge, rr_submission, os.path.join(work, "rr_perfect"))
     qtc_perfect = ss.verify_package(qtc_challenge, qtc_submission, os.path.join(work, "qtc_perfect"))
-    assert rr_perfect.summary["success"] and qtc_perfect.summary["success"]
-    assert rr_perfect.summary["verification"]["mode"] == "evidence" and rr_perfect.summary["verification"]["evidence_eligible"]
-    assert rr_perfect.summary["verification"]["protocol"]["sha256"].startswith("sha256:") and rr_perfect.summary["verification"]["matrix_complete"]
+    assert rr_perfect.evidence["success"] and qtc_perfect.evidence["success"]
+    assert rr_perfect.evidence["verification"]["mode"] == "evidence" and rr_perfect.evidence["verification"]["evidence_eligible"]
+    assert rr_perfect.evidence["verification"]["protocol"]["sha256"].startswith("sha256:") and rr_perfect.evidence["verification"]["matrix_complete"]
     assert target_result(rr_perfect, "rr_interval")["policy"]["passed"]
     assert target_result(qtc_perfect, "qtc")["policy"]["passed"]
 
@@ -217,27 +217,27 @@ def main():
     missing_output = rr_manifest["outputs"][0]
     os.remove(output_path(incomplete_submission, missing_output))
     incomplete = ss.verify_package(rr_challenge, incomplete_submission, os.path.join(work, "incomplete"))
-    assert not incomplete.summary["success"] and not incomplete.summary["verification"]["matrix_complete"]
-    assert not incomplete.summary["verification"]["evidence_eligible"] and incomplete.summary["status"] == "evidence_failed"
+    assert not incomplete.evidence["success"] and not incomplete.evidence["verification"]["matrix_complete"]
+    assert not incomplete.evidence["verification"]["evidence_eligible"] and incomplete.evidence["status"] == "evidence_failed"
 
     rpeak_bad_submission = os.path.join(work, "rpeak_bad_submission")
     shutil.copytree(rr_submission, rpeak_bad_submission)
     remove_artifact_r_peaks(rr_challenge, rpeak_bad_submission, rr_manifest)
     rpeak_bad = ss.verify_package(rr_challenge, rpeak_bad_submission, os.path.join(work, "rpeak_bad"))
     rpeak_result = target_result(rpeak_bad, "r_peak")
-    assert not rpeak_bad.summary["success"] and not rpeak_result["policy"]["passed"]
+    assert not rpeak_bad.evidence["success"] and not rpeak_result["policy"]["passed"]
     assert any(item["section"] == "artifact" and not item["passed"] for item in rpeak_result["policy"]["checks"] if item["applicable"])
 
     shift_measurement(rr_submission, rr_manifest, "rr_interval", "rr_interval", 0.040)
     rr_bad = ss.verify_package(rr_challenge, rr_submission, os.path.join(work, "rr_bad"))
     rr_result = target_result(rr_bad, "rr_interval")
-    assert not rr_bad.summary["success"] and not rr_result["policy"]["passed"]
+    assert not rr_bad.evidence["success"] and not rr_result["policy"]["passed"]
     assert any(item["section"] == "rr_interval" and not item["passed"] for item in rr_result["policy"]["checks"] if item["applicable"])
 
     shift_measurement(qtc_submission, qtc_manifest, "qtc", "qtc_interval", 0.040)
     qtc_bad = ss.verify_package(qtc_challenge, qtc_submission, os.path.join(work, "qtc_bad"))
     qtc_result = target_result(qtc_bad, "qtc")
-    assert not qtc_bad.summary["success"] and not qtc_result["policy"]["passed"]
+    assert not qtc_bad.evidence["success"] and not qtc_result["policy"]["passed"]
     assert any(item["section"] == "qtc_interval" and not item["passed"] for item in qtc_result["policy"]["checks"] if item["applicable"])
 
     try:
@@ -246,7 +246,7 @@ def main():
     except ss.VerificationError:
         pass
     diagnostic = ss.verify_package(rr_challenge, rpeak_bad_submission, os.path.join(work, "diagnostic"), mode="diagnostic", cases=["clean_70"], targets=["r_peak"], profile="smoke")
-    assert diagnostic.summary["verification"]["mode"] == "diagnostic" and not diagnostic.summary["verification"]["evidence_eligible"]
+    assert diagnostic.evidence["verification"]["mode"] == "diagnostic" and not diagnostic.evidence["verification"]["evidence_eligible"]
 
     rr_challenge.close()
     qtc_challenge.close()

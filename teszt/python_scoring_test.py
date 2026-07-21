@@ -6,9 +6,29 @@ import subprocess
 import sys
 import tempfile
 import zipfile
+from html.parser import HTMLParser
 
 import synsigra as ss
 from synsigra.delineation import DelineationScope, delineation_truth_from_annotations
+
+
+class LinkParser(HTMLParser):
+    def __init__(self):
+        HTMLParser.__init__(self)
+        self.hrefs = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "a":
+            href = dict(attrs).get("href")
+            if href:
+                self.hrefs.append(href)
+
+
+def html_links(path):
+    parser = LinkParser()
+    with open(path, "r") as handle:
+        parser.feed(handle.read())
+    return parser.hrefs
 
 
 def run(command):
@@ -24,6 +44,20 @@ def run(command):
 def read_json(path):
     with open(path, "r") as handle:
         return json.load(handle)
+
+
+def verification_evidence(root):
+    return read_json(os.path.join(root, "evidence.json"))
+
+
+def case_comparison(root, case_id, target):
+    matches = [
+        item["comparison"]
+        for item in verification_evidence(root)["results"]
+        if item["case_id"] == case_id and item["target"] == target
+    ]
+    assert len(matches) == 1
+    return matches[0]
 
 
 def write_json(path, data):
@@ -182,7 +216,7 @@ def main():
     provenance = read_json(os.path.join(challenge_dir, "provenance.json"))
     assert provenance["metadata_type"] == "synsigra_package_provenance"
     assert provenance["generator"]["version"] == "0.10.0-dev"
-    assert provenance["verifier"]["version"] == "0.10.0"
+    assert provenance["verifier"]["version"] == "0.11.0"
     assert provenance["verifier"]["package_contract_version"] == "synsigra_challenge_package_v3"
     assert "clinical validation" in provenance["claim_boundary"]["not_for"]
     assert os.path.exists(os.path.join(challenge_dir, "ENGINEERING_CLAIM_BOUNDARY.txt"))
@@ -322,72 +356,87 @@ def main():
 
     local_verify_dir = os.path.join(work_dir, "local_verify")
     local_report = ss.verify_package(archive_path, submission_dir, local_verify_dir, mode="diagnostic")
-    assert local_report.summary["success"]
-    assert local_report.summary["package"]["package_id"] == "python_scoring_challenge"
-    assert local_report.summary["case_target_count"] == 10
-    assert local_report.summary["passed_case_target_count"] == 10
-    assert local_report.summary["policy"]["profile_id"] == "regression"
-    assert local_report.summary["policy"]["passed"]
-    assert read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_r_peak", "comparison.json"))["comparison"]["metrics"]["total"]["f1_score"] == 1
-    rpeak_submission = read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_r_peak", "comparison.json"))["submission_output"]
+    assert local_report.evidence["success"]
+    assert local_report.evidence["package"]["package_id"] == "python_scoring_challenge"
+    assert local_report.evidence["case_target_count"] == 10
+    assert local_report.evidence["completed_case_target_count"] == 10
+    assert local_report.evidence["policy"]["profile_id"] == "regression"
+    assert local_report.evidence["policy"]["passed"]
+    assert case_comparison(local_verify_dir, "clean_ecg", "r_peak")["comparison"]["metrics"]["total"]["f1_score"] == 1
+    rpeak_submission = case_comparison(local_verify_dir, "clean_ecg", "r_peak")["submission_output"]
     assert rpeak_submission["format"] == "point_events_json_v1"
     assert rpeak_submission["algorithm"] == {"name": "python_test_algorithm", "version": "1"}
     assert rpeak_submission["target"] == "r_peak" and rpeak_submission["sha256"].startswith("sha256:")
-    assert read_json(os.path.join(local_verify_dir, "verification", "ppg_clean_ppg_systolic_peak", "comparison.json"))["comparison"]["metrics"]["total"]["f1_score"] == 1
-    local_onset = read_json(os.path.join(local_verify_dir, "verification", "ppg_clean_ppg_pulse_onset", "comparison.json"))["comparison"]
+    assert case_comparison(local_verify_dir, "ppg_clean", "ppg_systolic_peak")["comparison"]["metrics"]["total"]["f1_score"] == 1
+    local_onset = case_comparison(local_verify_dir, "ppg_clean", "ppg_pulse_onset")["comparison"]
     cpp_onset_dir = os.path.join(work_dir, "cpp_ppg_onset")
     run([cli, "compare", "ppg_pulse_onset", challenge.case("ppg_clean").scenario_path, ppg_onset_path, "--out", cpp_onset_dir])
     cpp_onset = read_json(os.path.join(cpp_onset_dir, "comparison.json"))["comparison"]
     for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
         assert local_onset[key] == cpp_onset[key]
-    stress_metrics = read_json(os.path.join(local_verify_dir, "verification", "ppg_stress", "comparison.json"))["comparison"]["metrics"]
+    stress_metrics = case_comparison(local_verify_dir, "ppg_stress", "ppg_systolic_peak")["comparison"]["metrics"]
     assert stress_metrics["low_perfusion"]["ground_truth_count"] > 0
     assert stress_metrics["weak"]["ground_truth_count"] > 0
     assert stress_metrics["missing_pulse"]["opportunity_count"] > 0
-    motion_metrics = read_json(os.path.join(local_verify_dir, "verification", "ppg_motion", "comparison.json"))["comparison"]["metrics"]
+    motion_metrics = case_comparison(local_verify_dir, "ppg_motion", "ppg_systolic_peak")["comparison"]["metrics"]
     assert motion_metrics["motion"]["ground_truth_count"] > 0
     assert motion_metrics["motion"]["true_positive_count"] == motion_metrics["motion"]["ground_truth_count"]
-    motion_submission = read_json(os.path.join(local_verify_dir, "verification", "ppg_motion", "comparison.json"))["submission_output"]
+    motion_submission = case_comparison(local_verify_dir, "ppg_motion", "ppg_systolic_peak")["submission_output"]
     assert motion_submission["format"] == "point_events_csv_v1"
     assert motion_submission["algorithm"] == {"name": "python_test_algorithm", "version": "1"}
     assert motion_submission["target"] == "ppg_systolic_peak" and motion_submission["sha256"].startswith("sha256:")
     cpp_stress_dir = os.path.join(work_dir, "cpp_ppg_stress")
     run([cli, "compare", "ppg_systolic_peak", challenge.case("ppg_stress").scenario_path, ppg_stress_path, "--out", cpp_stress_dir])
-    python_stress = read_json(os.path.join(local_verify_dir, "verification", "ppg_stress", "comparison.json"))["comparison"]
+    python_stress = case_comparison(local_verify_dir, "ppg_stress", "ppg_systolic_peak")["comparison"]
     cpp_stress = read_json(os.path.join(cpp_stress_dir, "comparison.json"))["comparison"]
     for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
         assert python_stress[key] == cpp_stress[key]
     cpp_motion_dir = os.path.join(work_dir, "cpp_ppg_motion")
     run([cli, "compare", "ppg_systolic_peak", challenge.case("ppg_motion").scenario_path, ppg_motion_path, "--out", cpp_motion_dir])
-    python_motion = read_json(os.path.join(local_verify_dir, "verification", "ppg_motion", "comparison.json"))["comparison"]
+    python_motion = case_comparison(local_verify_dir, "ppg_motion", "ppg_systolic_peak")["comparison"]
     cpp_motion = read_json(os.path.join(cpp_motion_dir, "comparison.json"))["comparison"]
     for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
         assert python_motion[key] == cpp_motion[key]
-    assert read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_ecg_beat_classification", "comparison.json"))["summary"]["micro_f1_score"] == 1
-    delineation_report = read_json(os.path.join(local_verify_dir, "verification", "clean_ecg_ecg_delineation", "comparison.json"))
+    assert case_comparison(local_verify_dir, "clean_ecg", "ecg_beat_classification")["summary"]["micro_f1_score"] == 1
+    delineation_report = case_comparison(local_verify_dir, "clean_ecg", "ecg_delineation")
     assert delineation_report["overall"]["f1_score"] == 1
     assert delineation_report["schema_version"] == 2
     assert any(item["anchor_type"] == "atrial_event" for item in delineation_report["truth"])
-    assert read_json(os.path.join(local_verify_dir, "verification", "hrv_mild", "comparison.json"))["overall"]["tolerance_pass_fraction"] == 1
-    local_rhythm_interval = read_json(os.path.join(local_verify_dir, "verification", "rhythm_episode", "comparison.json"))
-    local_quality_interval = read_json(os.path.join(local_verify_dir, "verification", "signal_quality", "comparison.json"))
+    assert case_comparison(local_verify_dir, "hrv_mild", "hrv")["overall"]["tolerance_pass_fraction"] == 1
+    local_rhythm_interval = case_comparison(local_verify_dir, "rhythm_episode", "rhythm_episode")
+    local_quality_interval = case_comparison(local_verify_dir, "signal_quality", "signal_quality")
     assert local_rhythm_interval["overall"]["time_f1_score"] == 1
     assert local_quality_interval["overall"]["time_f1_score"] == 1
     for local_interval, direct_report in ((local_rhythm_interval, rhythm_interval_report.json), (local_quality_interval, quality_interval_report.json)):
         for key in ("target", "options", "overall", "classes", "confusion_matrix", "matches", "false_positive_indices", "false_negative_indices"):
             assert local_interval[key] == direct_report[key]
-    assert next(item for item in local_report.summary["targets"] if item["target"] == "ecg_beat_classification")["confusion_matrix"]["labels"] == ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion", "unscored"]
-    assert local_report.summary["hrv_pipeline"]["available"] and local_report.summary["hrv_pipeline"]["complete"]
-    assert [item["stage"] for item in local_report.summary["hrv_pipeline"]["stages"]] == ["r_peak_detection", "rr_interval_reconstruction", "hrv_metric_computation", "signal_quality_interval_detection"]
-    assert all(item["score"] == 1 for item in local_report.summary["hrv_pipeline"]["stages"])
-    with open(os.path.join(local_verify_dir, "verification_report.html"), "r") as handle:
+    assert next(item for item in local_report.evidence["targets"] if item["target"] == "ecg_beat_classification")["confusion_matrix"]["labels"] == ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion", "unscored"]
+    assert local_report.evidence["hrv_pipeline"]["available"] and local_report.evidence["hrv_pipeline"]["complete"]
+    assert [item["stage"] for item in local_report.evidence["hrv_pipeline"]["stages"]] == ["r_peak_detection", "rr_interval_reconstruction", "hrv_metric_computation", "signal_quality_interval_detection"]
+    assert all(item["score"] == 1 for item in local_report.evidence["hrv_pipeline"]["stages"])
+    assert len([os.path.join(root, name) for root, _dirs, names in os.walk(local_verify_dir) for name in names]) == 12
+    with open(os.path.join(local_verify_dir, "index.html"), "r") as handle:
         html = handle.read()
-        assert "Synsigra Local Verification Report" in html and "HRV pipeline" in html
+        assert "Synsigra verification evidence" in html and "Pipeline trace" in html
+        assert "href=\"details/clean_ecg_r_peak.html\"" in html
+        assert html.count("Synthetic engineering QA evidence; not diagnosis, nor clinical evidence") == 1
+    html_paths = set(item["report_path"] for item in local_report.evidence["results"])
+    assert set(link for link in html_links(os.path.join(local_verify_dir, "index.html")) if link.endswith(".html")) == html_paths
+    for item in local_report.evidence["results"]:
+        detail_path = os.path.join(local_verify_dir, item["report_path"])
+        assert os.path.isfile(detail_path)
+        detail_html = open(detail_path, "r").read()
+        assert "href=\"../index.html\"" in detail_html
+        assert detail_html.count("Synthetic engineering QA evidence; not diagnosis, nor clinical evidence") == 1
+        for href in html_links(detail_path):
+            target = href.split("#", 1)[0]
+            if target:
+                assert os.path.isfile(os.path.normpath(os.path.join(os.path.dirname(detail_path), target)))
 
     cli_verify_dir = os.path.join(work_dir, "cli_verify")
     cli_output = run([sys.executable, "-m", "synsigra.cli", "verify", archive_path, submission_dir, cli_verify_dir, "--mode", "diagnostic"])
     assert "status=diagnostic_passed" in cli_output
-    assert read_json(os.path.join(cli_verify_dir, "verification_summary.json"))["success"]
+    assert read_json(os.path.join(cli_verify_dir, "evidence.json"))["success"]
 
     degraded_dir = os.path.join(work_dir, "degraded")
     shutil.copytree(submission_dir, degraded_dir)
@@ -415,29 +464,29 @@ def main():
 
     degraded_verify_dir = os.path.join(work_dir, "degraded_verify")
     degraded_report = ss.verify_package(challenge_dir, degraded_dir, degraded_verify_dir, mode="diagnostic", cases=["clean_ecg", "hrv_mild"], profile="regression")
-    assert not degraded_report.summary["success"]
-    assert degraded_report.summary["scoring_success"]
-    assert degraded_report.summary["policy"]["failed_check_count"] > 0
-    degraded_rpeak_summary = next(item for item in degraded_report.summary["targets"] if item["target"] == "r_peak")
+    assert not degraded_report.evidence["success"]
+    assert degraded_report.evidence["scoring_success"]
+    assert degraded_report.evidence["policy"]["failed_check_count"] > 0
+    degraded_rpeak_summary = next(item for item in degraded_report.evidence["targets"] if item["target"] == "r_peak")
     assert degraded_rpeak_summary["total"]["mean_absolute_error_seconds"] > 0
 
     cpp_rpeak_dir = os.path.join(work_dir, "cpp_degraded_rpeak")
     run([cli, "compare", "r_peak", challenge.case("clean_ecg").scenario_path, degraded_rpeak_path, "--out", cpp_rpeak_dir])
-    python_rpeak = read_json(os.path.join(degraded_verify_dir, "verification", "clean_ecg_r_peak", "comparison.json"))["comparison"]
+    python_rpeak = case_comparison(degraded_verify_dir, "clean_ecg", "r_peak")["comparison"]
     cpp_rpeak = read_json(os.path.join(cpp_rpeak_dir, "comparison.json"))["comparison"]
     for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
         assert python_rpeak[key] == cpp_rpeak[key]
 
     cpp_class_dir = os.path.join(work_dir, "cpp_degraded_class")
     run([cli, "compare", "ecg_beat_classification", challenge.case("clean_ecg").scenario_path, degraded_class_path, "--out", cpp_class_dir])
-    python_class = read_json(os.path.join(degraded_verify_dir, "verification", "clean_ecg_ecg_beat_classification", "comparison.json"))
+    python_class = case_comparison(degraded_verify_dir, "clean_ecg", "ecg_beat_classification")
     cpp_class = read_json(os.path.join(cpp_class_dir, "comparison.json"))
     for key in ("summary", "classes", "confusion_matrix", "matches", "unmatched_ground_truth", "unmatched_predictions"):
         assert python_class[key] == cpp_class[key]
 
     cpp_hrv_dir = os.path.join(work_dir, "cpp_degraded_hrv")
     run([cli, "measurement", "score", "hrv", challenge.case("hrv_mild").scenario_path, degraded_hrv_path, "--out", cpp_hrv_dir])
-    python_hrv = read_json(os.path.join(degraded_verify_dir, "verification", "hrv_mild", "comparison.json"))
+    python_hrv = case_comparison(degraded_verify_dir, "hrv_mild", "hrv")
     cpp_hrv = read_json(os.path.join(cpp_hrv_dir, "measurement_score.json"))
     assert python_hrv["contract"] == cpp_hrv["contract"] == "synsigra_measurement_score_v2"
     for key in ("ground_truth_count", "prediction_count", "matched_count", "numeric_pair_count", "tolerance_pass_count", "missing_count", "extra_count", "truth_match_fraction", "prediction_match_fraction", "tolerance_pass_fraction", "status_match_fraction"):

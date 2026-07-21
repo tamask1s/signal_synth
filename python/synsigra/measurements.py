@@ -151,6 +151,9 @@ def score_measurements(ground_truth, predictions, target, pairing_window_seconds
             "prediction_status": prediction["status"],
             "status_matches": truth["status"] == prediction["status"],
             "numeric_pair": truth["status"] == "valid" and prediction["status"] == "valid",
+            "absolute_tolerance": truth_item["absolute_tolerance"],
+            "relative_tolerance_percent": truth_item["relative_tolerance_percent"],
+            "reason": truth_item["reason"],
         }
         if "window_start_seconds" in truth:
             match["window_start_seconds"] = truth["window_start_seconds"]
@@ -164,7 +167,15 @@ def score_measurements(ground_truth, predictions, target, pairing_window_seconds
             tolerance = truth_item["absolute_tolerance"]
             if relative_error is not None:
                 tolerance = max(tolerance, abs(truth["value"]) * truth_item["relative_tolerance_percent"] / 100.0)
-            match.update({"signed_error": error, "absolute_error": absolute_error, "relative_error_percent": relative_error, "within_tolerance": absolute_error <= tolerance})
+            match.update({
+                "ground_truth_value": truth["value"],
+                "prediction_value": prediction["value"],
+                "signed_error": error,
+                "absolute_error": absolute_error,
+                "relative_error_percent": relative_error,
+                "effective_tolerance": tolerance,
+                "within_tolerance": absolute_error <= tolerance,
+            })
             if "expected_range" in truth_item:
                 expected = truth_item["expected_range"]
                 match["ground_truth_assertion_passed"] = expected["minimum"] <= truth["value"] <= expected["maximum"]
@@ -214,7 +225,7 @@ def measurement_comparison_html(report):
         if "window_start_seconds" in item:
             window = "[%s, %s)" % (_optional(item["window_start_seconds"]), _optional(item["window_end_seconds"]))
         rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (html.escape(item["name"]), html.escape(item["scope"]), html.escape(item.get("method_id", "")), html.escape(item.get("preprocessing_policy_id", "")), html.escape(window), metrics["ground_truth_count"], metrics["prediction_count"], metrics["numeric_pair_count"], _optional(metrics["tolerance_pass_fraction"]), metrics["missing_count"], metrics["extra_count"], _optional(metrics["error"]["mean_absolute"])))
-    return "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font:14px Arial,sans-serif;color:#202124;max-width:1400px;margin:32px auto;padding:0 20px}table{border-collapse:collapse;width:100%%}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}th{background:#f3f4f6}.notice{border-left:4px solid #b42318;padding:10px 14px;background:#fef3f2}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA only; not a clinical validation certificate.</p><p>Target: %s | Pairing window: %.6g s</p><table><tr><th>Measurement</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Truth</th><th>Predictions</th><th>Numeric pairs</th><th>Pass fraction</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>%s</table></body></html>" % (html.escape(report["target"]), report["options"]["pairing_window_seconds"], "".join(rows))
+    return "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font:14px Arial,sans-serif;color:#202124;max-width:1400px;margin:32px auto;padding:0 20px}table{border-collapse:collapse;width:100%%}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}th{background:#f3f4f6}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>Target: %s | Pairing window: %.6g s</p><table><tr><th>Measurement</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Truth</th><th>Predictions</th><th>Numeric pairs</th><th>Pass fraction</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>%s</table></body></html>" % (html.escape(report["target"]), report["options"]["pairing_window_seconds"], "".join(rows))
 
 
 def _metrics(context, name=None, channel=None, descriptor=None):

@@ -78,16 +78,21 @@ def main():
 
     verify_dir = os.path.join(work, "verify")
     report = ss.verify_package(challenge, submission_dir, verify_dir, mode="diagnostic", profile="regression")
-    assert report.summary["success"] and report.summary["scoring_version"] == "synsigra-python-local-v6"
-    assert report.summary["contract"] == "synsigra_local_verification_v2" and not report.summary["verification"]["evidence_eligible"]
-    assert set(item["target"] for item in report.summary["targets"]) == set(["morphology_assertions", "ecg_ppg_alignment"])
-    for item in report.summary["targets"]:
+    assert report.evidence["success"] and report.evidence["scoring_version"] == "synsigra-python-local-v7"
+    assert report.evidence["contract"] == "synsigra_local_verification_v3" and not report.evidence["verification"]["evidence_eligible"]
+    assert set(item["target"] for item in report.evidence["targets"]) == set(["morphology_assertions", "ecg_ppg_alignment"])
+    for item in report.evidence["targets"]:
         assert item["overall"]["tolerance_pass_fraction"] == 1.0
         assert item["overall"]["status_match_fraction"] == 1.0
         assert item["policy"]["passed"]
 
     morphology_output = os.path.join(submission_dir, "outputs", "morphology", "morphology_assertions.json")
-    python_case_report = read_json(os.path.join(verify_dir, "verification", "morphology", "comparison.json"))
+    evidence = read_json(os.path.join(verify_dir, "evidence.json"))
+    python_case_report = next(
+        item["comparison"] for item in evidence["results"]
+        if item["case_id"] == "morphology" and item["target"] == "morphology_assertions"
+    )
+    assert all("ground_truth_value" in item and "prediction_value" in item and "effective_tolerance" in item for item in python_case_report["matches"] if item["numeric_pair"])
     cpp_dir = os.path.join(work, "cpp")
     run([cli, "measurement", "score", "morphology_assertions", morphology_source, morphology_output, "--out", cpp_dir])
     cpp_report = read_json(os.path.join(cpp_dir, "measurement_score.json"))
@@ -98,8 +103,8 @@ def main():
 
     write_json(morphology_output, {"schema_version": 2, "contract": "synsigra_measurement_values_v2", "measurements": []})
     empty_report = ss.verify_package(challenge, submission_dir, os.path.join(work, "verify_empty"), mode="diagnostic", profile="regression")
-    morphology_target = [item for item in empty_report.summary["targets"] if item["target"] == "morphology_assertions"][0]
-    assert not empty_report.summary["success"] and not morphology_target["policy"]["passed"]
+    morphology_target = [item for item in empty_report.evidence["targets"] if item["target"] == "morphology_assertions"][0]
+    assert not empty_report.evidence["success"] and not morphology_target["policy"]["passed"]
     assert morphology_target["overall"]["truth_match_fraction"] == 0.0
     write_json(morphology_output, {"schema_version": 2, "contract": "synsigra_measurement_values_v2", "measurements": [dict(item["measurement"]) for item in truth_for_target(os.path.join(challenge_dir, "cases", "morphology", "measurement_truth.json"), "morphology_assertions")]})
 

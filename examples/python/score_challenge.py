@@ -6,9 +6,9 @@ import synsigra as ss
 def main(argv):
     if len(argv) == 4:
         report = ss.verify_package(argv[1], argv[2], argv[3])
-        print("status=%s" % report.summary["status"])
-        print("case_target_count=%s" % report.summary["case_target_count"])
-        return 0 if report.summary["success"] else 1
+        print("status=%s" % report.evidence["status"])
+        print("case_target_count=%s" % report.evidence["case_target_count"])
+        return 0 if report.evidence["success"] else 1
     if len(argv) != 5:
         print("usage: score_challenge.py <challenge-dir-or.synsigra> <detections-dir> <out-dir>", file=sys.stderr)
         print("   or: score_challenge.py <challenge-dir> <case-id> <detections.json|csv> <out-dir>", file=sys.stderr)

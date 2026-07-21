@@ -88,11 +88,11 @@ and do not add compatibility adapters:
 | Measurement values | `synsigra_measurement_values_v2` |
 | Measurement truth | `synsigra_measurement_truth_v2` |
 | Measurement score | `synsigra_measurement_score_v2` |
-| Local verification report | `synsigra_local_verification_v2` |
+| Local verification report | `synsigra_local_verification_v3` |
 | Authoring metadata | `synsigra_authoring_v18` |
 | Scenario templates | `synsigra_templates_v5` |
 | Curated catalog | `3.0` |
-| Python verifier | `0.10.0` |
+| Python verifier | `0.11.0` |
 
 The submission envelope remains v1 because its structure did not change. Core
 integration <=v6, scoring manifest <=v2, protocol v1, submission formats v1,
@@ -233,14 +233,14 @@ SHA-256 is the canonical protocol fingerprint.
 Default `evidence` mode requires protocol v2, scores its complete matrix, and
 uses only its embedded profile. Caller-selected profiles and case/target
 filters are forbidden. Explicit `diagnostic` mode may filter or override the
-profile, but JSON, CSV and HTML reports always mark it non-evidence. Persist
+profile, but `evidence.json` and every HTML view always mark it non-evidence. Persist
 mode, protocol identity/fingerprint, matrix completeness, evidence eligibility,
 policy checks and `evidence_passed` separately.
 
 ## 8. Customer Verification Workflow
 
 Distribute the generated `user-output-template/` unchanged and distribute the
-pure-Python `synsigra` 0.10.0 wheel separately. The canonical evidence command
+pure-Python `synsigra` 0.11.0 wheel separately. The canonical evidence command
 is:
 
 ```text
@@ -305,7 +305,7 @@ This is a private-beta breaking reset. Before loading the v7 baseline:
    HRV-specific output, pack schema v1, challenge <=v2, catalog 2.x or verifier
    <=0.9;
 4. build a worker image from the exact core commit in this handoff;
-5. load only catalog 3.0 and verifier 0.10.0;
+5. load only catalog 3.0 and verifier 0.11.0;
 6. create fresh database schema/state and fresh object-storage namespace;
 7. persist full startup preflight JSON, worker image digest, catalog hash,
    request, receipt, manifest, package fingerprint and timestamps per job.

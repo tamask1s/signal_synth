@@ -31,9 +31,9 @@ outputs. It does not discover or invoke `signal-synth`.
 - CPython 3.8 through 3.11;
 - pure Python wheel, with no runtime third-party dependencies;
 - exit `0` on pass, `1` on verification failure, `2` on CLI usage error;
-- stable top-level outputs: `verification_summary.json`,
-  `verification_summary.csv`, and `verification_report.html`;
-- per-case evidence below `verification/`.
+- one canonical machine-readable output: `evidence.json`;
+- one human entry point: `index.html`;
+- one linked evidence view per case-target below `details/`.
 
 Generator-backed convenience APIs remain separate and resolve the native CLI
 through explicit `cli_path`, `SYNSIGRA_CLI`, or `PATH`.

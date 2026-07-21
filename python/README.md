@@ -7,7 +7,7 @@ and does not execute customer detector code.
 ## Install
 
 ```bash
-python -m pip install synsigra-0.10.0-py3-none-any.whl
+python -m pip install synsigra-0.11.0-py3-none-any.whl
 synsigra-verify --help
 ```
 
@@ -69,8 +69,9 @@ measurement identity and matching.
 
 The verifier writes:
 
-- `verification_summary.json`, `.csv`, and `verification_report.html`;
-- `verification/<case-target>/comparison.json`, `.csv`, and HTML evidence.
+- `evidence.json`, the single canonical machine-readable evidence record;
+- `index.html`, the human-readable entry point;
+- `details/<case-target>.html`, linked detail views with navigation back to the index.
 
 ECG delineation reports expose truth-side atrial or ventricular anchors and
 `present`, `absent`, or `not_evaluable` status. Predictions for absent waves
@@ -89,7 +90,7 @@ filter or override the profile but is never evidence-eligible.
 import synsigra
 
 report = synsigra.verify_package("challenge.synsigra", "submission", "results")
-assert report.summary["success"]
+assert report.evidence["success"]
 
 with synsigra.load_challenge("challenge.synsigra") as challenge:
     protocol = challenge.verification_protocol()

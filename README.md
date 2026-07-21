@@ -181,7 +181,7 @@ External beta users install the generator-free wheel supplied with the
 release:
 
 ```bash
-python -m pip install synsigra-0.10.0-py3-none-any.whl
+python -m pip install synsigra-0.11.0-py3-none-any.whl
 ```
 
 Run local verification:
@@ -193,9 +193,9 @@ synsigra-verify package.zip submission/ verification-results/
 Each challenge supplies `user-output-template/`; the user records algorithm
 identity once in `submission.json` and fills the declared output files. The
 verifier reads package ground truth and the explicit submission locally. It
-does not invoke the C++ generator. It writes `verification_summary.json`,
-`verification_summary.csv`, `verification_report.html`, and per-case evidence
-under `verification/`. Exit code `0` means pass, `1` means verification
+does not invoke the C++ generator. It writes one canonical `evidence.json`, an
+audit-friendly `index.html`, and one linked detail HTML per case-target
+under `details/`. Exit code `0` means pass, `1` means verification
 failure, and `2` means invalid CLI usage. Evidence mode is the default and uses
 the immutable protocol carried by the package. Case/target filters and the
 `smoke`, `regression`, `stress`, or `benchmark` profiles are available only in

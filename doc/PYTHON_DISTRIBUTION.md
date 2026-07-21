@@ -30,7 +30,7 @@ python -m pip install .
 External beta users receive and install the generator-free wheel:
 
 ```bash
-python -m pip install synsigra-0.10.0-py3-none-any.whl
+python -m pip install synsigra-0.11.0-py3-none-any.whl
 ```
 
 Build local distribution artifacts:
@@ -89,11 +89,11 @@ input/scoring, or threshold-policy failure, and `2` on invalid CLI usage.
 
 Archive these stable top-level outputs:
 
-- `verification_summary.json` for machine processing;
-- `verification_summary.csv` for tabular CI artifacts;
-- `verification_report.html` for review.
+- `evidence.json` as the single canonical machine-readable evidence record;
+- `index.html` as the human-readable entry point;
+- `details/<case-target>.html` as linked case-target evidence views.
 
-Per-case evidence is stored below `verification/`.
+Case-target evidence views are stored below `details/`.
 
 The `synsigra-verify` command never discovers or executes a native binary.
 Generator-backed SDK convenience calls are separate and resolve `signal-synth`

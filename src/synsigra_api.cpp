@@ -226,7 +226,7 @@ namespace signal_synth
                << ",\"measurement_values\":\"synsigra_measurement_values_v2\""
                << ",\"measurement_truth\":\"synsigra_measurement_truth_v2\""
                << ",\"measurement_scoring\":\"synsigra_measurement_score_v2\""
-               << ",\"local_verification\":\"synsigra_local_verification_v2\""
+               << ",\"local_verification\":\"synsigra_local_verification_v3\""
                << ",\"scenario_authoring\":" << json_text(scenario_authoring_metadata_version())
                << ",\"scenario_templates\":" << json_text(scenario_template_catalog_version())
                << ",\"python_verifier\":" << json_text(signal_synth_verifier_version())

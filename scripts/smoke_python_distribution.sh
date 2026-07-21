@@ -42,40 +42,42 @@ with zipfile.ZipFile(destination, "w", zipfile.ZIP_DEFLATED) as archive:
 PY
 
 synsigra-verify "$TMPDIR/challenge.zip" "$FIXTURE/submissions/pass" "$TMPDIR/pass-results" --mode diagnostic --profile regression
-test -f "$TMPDIR/pass-results/verification_summary.json"
-test -f "$TMPDIR/pass-results/verification_summary.csv"
-test -f "$TMPDIR/pass-results/verification_report.html"
-python - "$TMPDIR/pass-results/verification_summary.json" <<'PY'
+test -f "$TMPDIR/pass-results/evidence.json"
+test -f "$TMPDIR/pass-results/index.html"
+test -f "$TMPDIR/pass-results/details/clean.html"
+test "$(find "$TMPDIR/pass-results" -type f | wc -l)" -eq 3
+python - "$TMPDIR/pass-results/evidence.json" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], "r") as stream:
-    summary = json.load(stream)
-assert summary["success"] is True
-assert summary["policy"]["passed"] is True
+    evidence = json.load(stream)
+assert evidence["success"] is True
+assert evidence["policy"]["passed"] is True
 PY
 
 if synsigra-verify "$TMPDIR/challenge.zip" "$FIXTURE/submissions/fail" "$TMPDIR/fail-results" --mode diagnostic --profile regression; then
     echo "Expected failing submission to return a non-zero exit code." >&2
     exit 1
 fi
-test -f "$TMPDIR/fail-results/verification_summary.json"
-python - "$TMPDIR/fail-results/verification_summary.json" <<'PY'
+test -f "$TMPDIR/fail-results/evidence.json"
+test -f "$TMPDIR/fail-results/index.html"
+python - "$TMPDIR/fail-results/evidence.json" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], "r") as stream:
-    summary = json.load(stream)
-assert summary["success"] is False
-assert summary["policy"]["passed"] is False
-assert summary["policy"]["failed_check_count"] > 0
+    evidence = json.load(stream)
+assert evidence["success"] is False
+assert evidence["policy"]["passed"] is False
+assert evidence["policy"]["failed_check_count"] > 0
 PY
 
 python - <<'PY'
 import importlib.metadata
 import synsigra
 assert "site-packages" in synsigra.__file__, synsigra.__file__
-assert importlib.metadata.version("synsigra") == "0.10.0"
+assert importlib.metadata.version("synsigra") == "0.11.0"
 assert callable(synsigra.load_measurements)
 assert callable(synsigra.score_measurements)
 PY

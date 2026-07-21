@@ -573,7 +573,7 @@ def _validate_verification_protocol(document, package_id):
     if document["pack_id"] != package_id:
         raise ChallengeFormatError("verification protocol pack_id does not match the challenge package")
     _string(document["context_of_use"], "verification_protocol.context_of_use")
-    if document["scoring_contract"] != "synsigra_local_verification_v2":
+    if document["scoring_contract"] != "synsigra_local_verification_v3":
         raise ChallengeFormatError("verification protocol scoring_contract is unsupported")
     matrix = document["required_case_targets"]
     if not isinstance(matrix, list) or not matrix:

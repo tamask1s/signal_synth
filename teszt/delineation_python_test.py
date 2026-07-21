@@ -130,9 +130,10 @@ for output in submission_manifest["outputs"]:
         json.dump({"schema_version": 1, "events": [event_json(item) for item in case_truth if item.status == "present"]}, handle, sort_keys=True, separators=(",", ":"))
 pack_result_dir = os.path.join(work_dir, "pack_result")
 pack_result = ss.verify_package(pack_challenge, pack_submission, pack_result_dir, mode="diagnostic")
-assert pack_result.summary["success"]
-assert pack_result.summary["case_target_count"] == 8
-mobitz_report = json.load(open(os.path.join(pack_result_dir, "verification", "mobitz_ii_nonconducted_p", "comparison.json"), "r"))
+assert pack_result.evidence["success"]
+assert pack_result.evidence["case_target_count"] == 8
+evidence = json.load(open(os.path.join(pack_result_dir, "evidence.json"), "r"))
+mobitz_report = next(item["comparison"] for item in evidence["results"] if item["case_id"] == "mobitz_ii_nonconducted_p" and item["target"] == "ecg_delineation")
 mobitz_annotations = pack_package.case("mobitz_ii_nonconducted_p").annotations()
 linked_atrials = set(int(item["linked_atrial_index"]) for item in mobitz_annotations["beats"] if int(item["linked_atrial_index"]) >= 0)
 assert any(item["anchor_type"] == "atrial_event" and item["kind"] == "p_peak" and item["status"] == "present" and int(item["anchor_index"]) not in linked_atrials for item in mobitz_report["truth"])

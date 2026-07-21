@@ -26,18 +26,18 @@ def main(argv=None):
         print("status=failed")
         print("error=%s" % str(error))
         return 1
-    summary = report.summary
-    print("status=%s" % summary["status"])
-    print("mode=%s" % summary["verification"]["mode"])
-    print("evidence_eligible=%s" % str(summary["verification"]["evidence_eligible"]).lower())
-    print("package_id=%s" % summary["package"].get("package_id", ""))
-    print("case_target_count=%s" % summary["case_target_count"])
-    print("passed_case_target_count=%s" % summary["passed_case_target_count"])
-    print("failed_case_target_count=%s" % summary["failed_case_target_count"])
-    print("threshold_profile=%s" % summary["policy"]["profile_id"])
-    print("failed_policy_check_count=%s" % summary["policy"]["failed_check_count"])
+    evidence = report.evidence
+    print("status=%s" % evidence["status"])
+    print("mode=%s" % evidence["verification"]["mode"])
+    print("evidence_eligible=%s" % str(evidence["verification"]["evidence_eligible"]).lower())
+    print("package_id=%s" % evidence["package"].get("package_id", ""))
+    print("case_target_count=%s" % evidence["case_target_count"])
+    print("completed_case_target_count=%s" % evidence["completed_case_target_count"])
+    print("incomplete_case_target_count=%s" % evidence["incomplete_case_target_count"])
+    print("threshold_profile=%s" % evidence["policy"]["profile_id"])
+    print("failed_policy_check_count=%s" % evidence["policy"]["failed_check_count"])
     print("output_directory=%s" % report.output_dir)
-    return 0 if summary.get("success", False) else 1
+    return 0 if evidence.get("success", False) else 1
 
 
 if __name__ == "__main__":

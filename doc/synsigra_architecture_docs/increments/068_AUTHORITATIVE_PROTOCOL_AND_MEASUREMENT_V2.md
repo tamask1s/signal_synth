@@ -97,7 +97,7 @@ The root contains exactly:
   "protocol_id": "...",
   "pack_id": "...",
   "context_of_use": "...",
-  "scoring_contract": "synsigra_local_verification_v2",
+  "scoring_contract": "synsigra_local_verification_v3",
   "required_case_targets": [
     {"case_id": "...", "targets": ["..."]}
   ],

@@ -3,6 +3,25 @@
 This file records public engineering-verification release notes for the
 `signal_synth` core generator and local verifier contracts.
 
+## Python verifier 0.11.0
+
+Status: active audit-reporting baseline.
+
+- Replaced the redundant JSON, CSV, and HTML result tree with one canonical
+  `evidence.json`, one `index.html` entry point, and one linked detail page per
+  case-target below `details/`.
+- Added a complete acceptance-criterion ledger with stable criterion IDs,
+  actual and required values, margins, verdicts, protocol provenance, coverage,
+  and direct links to target evidence.
+- Added target-specific evidence views, including ground truth, submitted
+  values, errors, effective tolerances, tolerance rationale, and aggregate
+  acceptance context for numeric measurements.
+- Made every generated result page self-contained, print-friendly, mutually
+  navigable, and marked with the single gray engineering-use notice.
+- Advanced the clean local-report contract to
+  `synsigra_local_verification_v3`; legacy result filenames and report-object
+  aliases are intentionally removed.
+
 ## 0.10.0-dev
 
 Status: active development baseline.

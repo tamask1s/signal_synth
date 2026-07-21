@@ -19,7 +19,7 @@ DEFAULT_GENERATOR_COMPATIBILITY = {
     "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
     "submission_contract": "synsigra_submission_v1",
     "verification_protocol_contract": "synsigra_verification_protocol_v2",
-    "local_verifier_min_version": "0.10.0",
+    "local_verifier_min_version": "0.11.0",
 }
 
 
@@ -462,7 +462,7 @@ def verification_protocol_metadata(pack_path, pack, source_root):
     required = set(["schema_version", "contract", "protocol_id", "pack_id", "context_of_use", "scoring_contract", "required_case_targets", "acceptance_profile", "stress_strata", "truth_policy", "evidence_boundary"])
     if not isinstance(protocol, dict) or set(protocol) != required:
         raise RuntimeError("verification protocol has an incomplete envelope: %s" % protocol_path)
-    if protocol["schema_version"] != 2 or protocol["contract"] != "synsigra_verification_protocol_v2" or protocol["pack_id"] != pack["pack_id"] or protocol["scoring_contract"] != "synsigra_local_verification_v2":
+    if protocol["schema_version"] != 2 or protocol["contract"] != "synsigra_verification_protocol_v2" or protocol["pack_id"] != pack["pack_id"] or protocol["scoring_contract"] != "synsigra_local_verification_v3":
         raise RuntimeError("verification protocol identity does not match pack: %s" % protocol_path)
     expected_matrix = [(item["id"], item["targets"]) for item in pack["scenarios"]]
     protocol_matrix = [(item.get("case_id"), item.get("targets")) for item in protocol["required_case_targets"]]
