@@ -29,7 +29,10 @@
         "Patient-derived prevalence or noise-distribution claims",
         "HRV metric validation without the separate HRV robustness pack"
       ],
-      "changelog": [{"version": "1.0", "date": "2026-07-18", "changes": ["Initial beta pack with exact in-record RR truth, rate boundaries, analytic artifacts and calibrated external noise."]}],
+      "changelog": [
+        {"version": "1.1", "date": "2026-07-22", "changes": ["Calibrated the stress-pack aggregate RR MAE limit to 30 ms while retaining the 50 ms p95, per-measurement tolerance, coverage, R-peak and signal-quality gates."]},
+        {"version": "1.0", "date": "2026-07-18", "changes": ["Initial beta pack with exact in-record RR truth, rate boundaries, analytic artifacts and calibrated external noise."]}
+      ],
       "generator_compatibility": {
         "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,

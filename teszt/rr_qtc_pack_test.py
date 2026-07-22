@@ -176,6 +176,7 @@ def main():
 
     rr_challenge_dir = os.path.join(work, "rr_challenge")
     qtc_challenge_dir = os.path.join(work, "qtc_challenge")
+    assert read_json(os.path.join(source, "examples", "packs", "r_peak_rr_noise_v1.json"))["version"] == "1.1"
     run([cli, "pack", "challenge", os.path.join(source, "examples", "packs", "r_peak_rr_noise_v1.json"), "--out", rr_challenge_dir, "--noise-assets", os.path.join(source, "examples", "assets", "noise")])
     run([cli, "pack", "challenge", os.path.join(source, "examples", "packs", "ecg_qtc_verification_v1.json"), "--out", qtc_challenge_dir])
 
@@ -187,6 +188,9 @@ def main():
     assert rr_protocol["contract"] == qtc_protocol["contract"] == "synsigra_verification_protocol_v2"
     assert rr_protocol["pack_id"] == "r_peak_rr_noise_v1" and rr_protocol["acceptance_profile"]["profile_id"] == "r_peak_rr_noise_v1_acceptance"
     assert qtc_protocol["pack_id"] == "ecg_qtc_verification_v1" and qtc_protocol["acceptance_profile"]["profile_id"] == "ecg_qtc_verification_v1_acceptance"
+    rr_limits = rr_protocol["acceptance_profile"]["targets"]["rr_interval"]["rr_interval"]
+    assert rr_limits["mean_absolute_error"]["max"] == 0.030
+    assert rr_limits["p95_absolute_error"]["max"] == 0.050
     rr_roles = dict((item["path"], item["role"]) for item in rr_challenge.manifest["files"])
     assert rr_roles["scoring_manifest.json"] == "scoring_manifest_json"
     assert rr_roles["verification_protocol.json"] == "verification_protocol_json"

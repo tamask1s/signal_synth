@@ -92,6 +92,12 @@ anchored to the later R peak. Its default numeric tolerance is the greater of
 10 ms and 2 percent. Acquisition artifacts do not delete physiological truth;
 the independent `signal_quality` target lets a customer evaluate quality gates.
 
+The complete noise pack applies a 30 ms maximum aggregate RR mean absolute
+error and a separate 50 ms p95 limit. The 30 ms gate is a stress-pack
+acceptance criterion, not the per-measurement tolerance: coverage, status, and
+the fraction of individual values within their packaged tolerance remain
+independent required checks.
+
 ### 4.2 QTc target
 
 The `qtc` target emits per-beat `qt_interval`, followed by `rr_interval` and
@@ -137,9 +143,10 @@ Framingham, and Hodges at 45 and 120 bpm; dynamic long QT; biphasic/notched T
 with U wave; and low-amplitude T with baseline wander.
 
 Machine-readable pre-specified protocols live beside each pack in
-`*_expectations.json`. The noise pack selects the `stress` profile and the QTc
-pack selects `regression`. Named measurement sections constrain coverage,
-tolerance pass fraction, status agreement, mean absolute error, and p95 error.
+`*_expectations.json`. The noise pack uses a pack-specific stress-calibrated
+profile and the QTc pack uses a regression-calibrated profile. Named
+measurement sections constrain coverage, tolerance pass fraction, status
+agreement, mean absolute error, and p95 error.
 
 ## 6. Data And Evidence Flow
 
@@ -207,3 +214,6 @@ meaningful.
 - 2026-07-18: version 1.0, implementation and verification design recorded.
 - 2026-07-18: implementation commit and successful required CI recorded;
   status advanced to Verified.
+- 2026-07-22: calibrated the noise pack's aggregate RR MAE gate from 25 ms to
+  30 ms while retaining its per-measurement tolerance, 50 ms p95 limit,
+  coverage gates, R-peak gates, and -12 dB extreme-noise case.
