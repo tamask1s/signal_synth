@@ -136,10 +136,14 @@ def annotate_policy(policy):
         target = check.get("target", "")
         section = check.get("section", "")
         metric = check.get("metric", "")
+        scope = check.get("stratum_id", "")
+        section_label = section_name(section)
+        if scope:
+            section_label = "%s / %s" % (scope.replace("_", " ").title(), section_label)
         check.update({
             "criterion_id": "AC-%03d" % index,
             "display_name": "%s — %s — %s" % (
-                target_name(target), section_name(section), metric_name(metric),
+                target_name(target), section_label, metric_name(metric),
             ),
             "description": metric_description(metric),
             "unit": metric_unit(section, metric),
@@ -304,7 +308,12 @@ def render_detail(summary, result, report):
     scenario = report.get("scenario", {}) if isinstance(report, dict) else {}
     algorithm = report.get("algorithm", result.get("submission_output", {}).get("algorithm", {})) if isinstance(report, dict) else {}
     submission_output = result.get("submission_output", {})
-    criteria = [item for item in summary.get("policy", {}).get("checks", []) if item.get("target") == target]
+    criteria = [
+        item for item in summary.get("policy", {}).get("checks", [])
+        if item.get("target") == target and (
+            not item.get("case_ids") or result.get("case_id") in item["case_ids"]
+        )
+    ]
     identity_rows = [
         ("Case", result.get("case_id", "")),
         ("Scenario", result.get("scenario_id", scenario.get("id", ""))),
@@ -339,7 +348,7 @@ def render_detail(summary, result, report):
         + _notice()
         + _section("Identity and traceability", _table(["Field", "Value"], ["<tr><th>%s</th><td class=\"mono\">%s</td></tr>" % (_h(key), _h(value)) for key, value in identity_rows], "kv"))
         + render_target_metrics(result, report)
-        + _section("Acceptance context", "<p class=\"section-note\">These are package-level aggregate criteria. This case contributes to the aggregate; no separate case-level pass is inferred.</p>" + criteria_html)
+        + _section("Acceptance context", "<p class=\"section-note\">Package-level criteria aggregate the complete pack. Named acceptance-stratum criteria aggregate only their listed cases; this case is shown only the criteria to which it contributes.</p>" + criteria_html)
         + _section("Machine-readable evidence", "<p>The complete raw comparison, submission identity, package identity and policy decisions are in <a href=\"../evidence.json\">evidence.json</a>.</p>")
         + "<footer class=\"footer\"><a href=\"../index.html\">← Back to verification overview</a></footer>"
     )

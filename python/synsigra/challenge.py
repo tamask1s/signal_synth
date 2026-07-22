@@ -564,7 +564,18 @@ def _validate_layout(root, manifest):
 
 def _validate_verification_protocol(document, package_id):
     required = set(["schema_version", "contract", "protocol_id", "pack_id", "context_of_use", "scoring_contract", "required_case_targets", "acceptance_profile", "stress_strata", "truth_policy", "evidence_boundary"])
-    _exact_fields(document, required, "verification_protocol")
+    if not isinstance(document, dict):
+        raise ChallengeFormatError("verification_protocol must be an object")
+    actual = set(document)
+    missing = sorted(required - actual)
+    unknown = sorted(actual - required - set(["acceptance_strata"]))
+    if missing or unknown:
+        details = []
+        if missing:
+            details.append("missing %s" % ", ".join(missing))
+        if unknown:
+            details.append("unknown %s" % ", ".join(unknown))
+        raise ChallengeFormatError("verification_protocol has invalid fields: %s" % "; ".join(details))
     if type(document["schema_version"]) is not int or document["schema_version"] != 2:
         raise ChallengeFormatError("verification protocol schema_version must be 2")
     if document["contract"] != "synsigra_verification_protocol_v2":
@@ -626,6 +637,38 @@ def _validate_verification_protocol(document, package_id):
     missing_cases = sorted(case_ids - covered_cases)
     if missing_cases:
         raise ChallengeFormatError("verification protocol stress_strata do not cover cases: %s" % ", ".join(missing_cases))
+    acceptance_strata = document.get("acceptance_strata", [])
+    if "acceptance_strata" in document and (not isinstance(acceptance_strata, list) or not acceptance_strata):
+        raise ChallengeFormatError("verification protocol acceptance_strata must be a non-empty array")
+    acceptance_ids = set()
+    covered_case_targets = set()
+    for index, item in enumerate(acceptance_strata):
+        path = "verification_protocol.acceptance_strata[%d]" % index
+        _exact_fields(item, set(["id", "case_ids", "acceptance_profile"]), path)
+        acceptance_id = _safe_id(item["id"], path + ".id")
+        if acceptance_id in acceptance_ids:
+            raise ChallengeFormatError("verification protocol contains duplicate acceptance stratum: %s" % acceptance_id)
+        acceptance_ids.add(acceptance_id)
+        if not isinstance(item["case_ids"], list) or not item["case_ids"]:
+            raise ChallengeFormatError("%s.case_ids must be a non-empty array" % path)
+        normalized = [_safe_id(value, "%s.case_ids[%d]" % (path, case_index)) for case_index, value in enumerate(item["case_ids"])]
+        if len(set(normalized)) != len(normalized):
+            raise ChallengeFormatError("%s.case_ids contains duplicates" % path)
+        unknown = sorted(set(normalized) - case_ids)
+        if unknown:
+            raise ChallengeFormatError("%s.case_ids contains unknown cases: %s" % (path, ", ".join(unknown)))
+        try:
+            stratum_profile = load_threshold_profile(item["acceptance_profile"])
+        except ThresholdProfileError as error:
+            raise ChallengeFormatError("%s.acceptance_profile is invalid: %s" % (path, error))
+        unknown_targets = sorted(set(stratum_profile["targets"]) - required_targets)
+        if unknown_targets:
+            raise ChallengeFormatError("%s.acceptance_profile contains targets absent from the protocol matrix: %s" % (path, ", ".join(unknown_targets)))
+        pairs = set((case_id, target) for case_id in normalized for target in stratum_profile["targets"])
+        overlap = sorted(pairs & covered_case_targets)
+        if overlap:
+            raise ChallengeFormatError("%s overlaps an earlier acceptance stratum for: %s" % (path, ", ".join("%s/%s" % pair for pair in overlap)))
+        covered_case_targets.update(pairs)
     if not isinstance(document["truth_policy"], dict) or not document["truth_policy"]:
         raise ChallengeFormatError("verification protocol truth_policy must be a non-empty object")
     _string(document["evidence_boundary"], "verification_protocol.evidence_boundary")

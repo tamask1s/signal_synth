@@ -30,6 +30,7 @@
         "HRV metric validation without the separate HRV robustness pack"
       ],
       "changelog": [
+        {"version": "1.2", "date": "2026-07-22", "changes": ["Restored the 25 ms RR MAE gate for standard cases and isolated a 30 ms gate to the -12 dB external_extreme acceptance stratum."]},
         {"version": "1.1", "date": "2026-07-22", "changes": ["Calibrated the stress-pack aggregate RR MAE limit to 30 ms while retaining the 50 ms p95, per-measurement tolerance, coverage, R-peak and signal-quality gates."]},
         {"version": "1.0", "date": "2026-07-18", "changes": ["Initial beta pack with exact in-record RR truth, rate boundaries, analytic artifacts and calibrated external noise."]}
       ],
@@ -40,7 +41,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.11.0"
+        "local_verifier_min_version": "0.12.0"
       }
     },
     {

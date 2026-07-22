@@ -460,7 +460,8 @@ def verification_protocol_metadata(pack_path, pack, source_root):
     protocol_path = os.path.join(os.path.dirname(pack_path), relative_path)
     protocol = read_json(protocol_path)
     required = set(["schema_version", "contract", "protocol_id", "pack_id", "context_of_use", "scoring_contract", "required_case_targets", "acceptance_profile", "stress_strata", "truth_policy", "evidence_boundary"])
-    if not isinstance(protocol, dict) or set(protocol) != required:
+    allowed = required | set(["acceptance_strata"])
+    if not isinstance(protocol, dict) or not required.issubset(set(protocol)) or not set(protocol).issubset(allowed):
         raise RuntimeError("verification protocol has an incomplete envelope: %s" % protocol_path)
     if protocol["schema_version"] != 2 or protocol["contract"] != "synsigra_verification_protocol_v2" or protocol["pack_id"] != pack["pack_id"] or protocol["scoring_contract"] != "synsigra_local_verification_v3":
         raise RuntimeError("verification protocol identity does not match pack: %s" % protocol_path)

@@ -216,7 +216,7 @@ def main():
     provenance = read_json(os.path.join(challenge_dir, "provenance.json"))
     assert provenance["metadata_type"] == "synsigra_package_provenance"
     assert provenance["generator"]["version"] == "0.10.0-dev"
-    assert provenance["verifier"]["version"] == "0.11.0"
+    assert provenance["verifier"]["version"] == "0.12.0"
     assert provenance["verifier"]["package_contract_version"] == "synsigra_challenge_package_v3"
     assert "clinical validation" in provenance["claim_boundary"]["not_for"]
     assert os.path.exists(os.path.join(challenge_dir, "ENGINEERING_CLAIM_BOUNDARY.txt"))

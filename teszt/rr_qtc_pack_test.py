@@ -126,10 +126,10 @@ def assert_qtc_truth(challenge):
             assert abs(item["qtc_interval"]["value"] - expected) < 1e-12
 
 
-def shift_measurement(submission_dir, manifest, target, name, offset):
+def shift_measurement(submission_dir, manifest, target, name, offset, case_ids=None):
     changed = 0
     for output in manifest["outputs"]:
-        if output["target"] != target:
+        if output["target"] != target or (case_ids is not None and output["case_id"] not in case_ids):
             continue
         path = output_path(submission_dir, output)
         document = read_json(path)
@@ -176,7 +176,7 @@ def main():
 
     rr_challenge_dir = os.path.join(work, "rr_challenge")
     qtc_challenge_dir = os.path.join(work, "qtc_challenge")
-    assert read_json(os.path.join(source, "examples", "packs", "r_peak_rr_noise_v1.json"))["version"] == "1.1"
+    assert read_json(os.path.join(source, "examples", "packs", "r_peak_rr_noise_v1.json"))["version"] == "1.2"
     run([cli, "pack", "challenge", os.path.join(source, "examples", "packs", "r_peak_rr_noise_v1.json"), "--out", rr_challenge_dir, "--noise-assets", os.path.join(source, "examples", "assets", "noise")])
     run([cli, "pack", "challenge", os.path.join(source, "examples", "packs", "ecg_qtc_verification_v1.json"), "--out", qtc_challenge_dir])
 
@@ -189,8 +189,14 @@ def main():
     assert rr_protocol["pack_id"] == "r_peak_rr_noise_v1" and rr_protocol["acceptance_profile"]["profile_id"] == "r_peak_rr_noise_v1_acceptance"
     assert qtc_protocol["pack_id"] == "ecg_qtc_verification_v1" and qtc_protocol["acceptance_profile"]["profile_id"] == "ecg_qtc_verification_v1_acceptance"
     rr_limits = rr_protocol["acceptance_profile"]["targets"]["rr_interval"]["rr_interval"]
-    assert rr_limits["mean_absolute_error"]["max"] == 0.030
+    assert "mean_absolute_error" not in rr_limits
     assert rr_limits["p95_absolute_error"]["max"] == 0.050
+    strata = dict((item["id"], item) for item in rr_protocol["acceptance_strata"])
+    standard = strata["rr_standard_cases"]["acceptance_profile"]["targets"]["rr_interval"]["rr_interval"]
+    extreme = strata["rr_external_extreme"]["acceptance_profile"]["targets"]["rr_interval"]["rr_interval"]
+    assert standard["mean_absolute_error"]["max"] == 0.025
+    assert strata["rr_external_extreme"]["case_ids"] == ["external_extreme"]
+    assert extreme["mean_absolute_error"]["max"] == 0.030
     rr_roles = dict((item["path"], item["role"]) for item in rr_challenge.manifest["files"])
     assert rr_roles["scoring_manifest.json"] == "scoring_manifest_json"
     assert rr_roles["verification_protocol.json"] == "verification_protocol_json"
@@ -215,6 +221,29 @@ def main():
     assert rr_perfect.evidence["verification"]["protocol"]["sha256"].startswith("sha256:") and rr_perfect.evidence["verification"]["matrix_complete"]
     assert target_result(rr_perfect, "rr_interval")["policy"]["passed"]
     assert target_result(qtc_perfect, "qtc")["policy"]["passed"]
+
+    extreme_ok_submission = os.path.join(work, "rr_extreme_ok_submission")
+    shutil.copytree(rr_submission, extreme_ok_submission)
+    shift_measurement(extreme_ok_submission, rr_manifest, "rr_interval", "rr_interval", 0.027, set(["external_extreme"]))
+    extreme_ok = ss.verify_package(rr_challenge, extreme_ok_submission, os.path.join(work, "rr_extreme_ok"))
+    assert extreme_ok.evidence["success"]
+    extreme_checks = [item for item in extreme_ok.evidence["policy"]["checks"] if item.get("stratum_id") == "rr_external_extreme"]
+    assert len(extreme_checks) == 1 and extreme_checks[0]["passed"] and abs(extreme_checks[0]["actual"] - 0.027) < 1e-12
+
+    extreme_bad_submission = os.path.join(work, "rr_extreme_bad_submission")
+    shutil.copytree(rr_submission, extreme_bad_submission)
+    shift_measurement(extreme_bad_submission, rr_manifest, "rr_interval", "rr_interval", 0.031, set(["external_extreme"]))
+    extreme_bad = ss.verify_package(rr_challenge, extreme_bad_submission, os.path.join(work, "rr_extreme_bad"))
+    extreme_bad_checks = [item for item in extreme_bad.evidence["policy"]["checks"] if item.get("stratum_id") == "rr_external_extreme"]
+    assert not extreme_bad.evidence["success"] and len(extreme_bad_checks) == 1 and not extreme_bad_checks[0]["passed"]
+
+    standard_bad_submission = os.path.join(work, "rr_standard_bad_submission")
+    shutil.copytree(rr_submission, standard_bad_submission)
+    standard_cases = set(strata["rr_standard_cases"]["case_ids"])
+    shift_measurement(standard_bad_submission, rr_manifest, "rr_interval", "rr_interval", 0.026, standard_cases)
+    standard_bad = ss.verify_package(rr_challenge, standard_bad_submission, os.path.join(work, "rr_standard_bad"))
+    standard_bad_checks = [item for item in standard_bad.evidence["policy"]["checks"] if item.get("stratum_id") == "rr_standard_cases"]
+    assert not standard_bad.evidence["success"] and len(standard_bad_checks) == 1 and not standard_bad_checks[0]["passed"]
 
     incomplete_submission = os.path.join(work, "incomplete_submission")
     shutil.copytree(rr_submission, incomplete_submission)

@@ -92,10 +92,11 @@ anchored to the later R peak. Its default numeric tolerance is the greater of
 10 ms and 2 percent. Acquisition artifacts do not delete physiological truth;
 the independent `signal_quality` target lets a customer evaluate quality gates.
 
-The complete noise pack applies a 30 ms maximum aggregate RR mean absolute
-error and a separate 50 ms p95 limit. The 30 ms gate is a stress-pack
-acceptance criterion, not the per-measurement tolerance: coverage, status, and
-the fraction of individual values within their packaged tolerance remain
+The complete noise pack applies a 25 ms maximum aggregate RR mean absolute
+error to the seven standard cases and an isolated 30 ms maximum to the
+`external_extreme` -12 dB case. A separate 50 ms p95 limit remains global.
+These aggregate gates are not the per-measurement tolerance: coverage, status,
+and the fraction of individual values within their packaged tolerance remain
 independent required checks.
 
 ### 4.2 QTc target
@@ -217,3 +218,5 @@ meaningful.
 - 2026-07-22: calibrated the noise pack's aggregate RR MAE gate from 25 ms to
   30 ms while retaining its per-measurement tolerance, 50 ms p95 limit,
   coverage gates, R-peak gates, and -12 dB extreme-noise case.
+- 2026-07-22: version 1.2 restored 25 ms for the seven standard cases and
+  scoped the 30 ms RR MAE gate exclusively to `external_extreme` (-12 dB).

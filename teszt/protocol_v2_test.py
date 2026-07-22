@@ -88,6 +88,22 @@ def main():
     rejected(malformed, valid["pack_id"])
 
     malformed = copy.deepcopy(valid)
+    malformed["acceptance_strata"][1]["id"] = malformed["acceptance_strata"][0]["id"]
+    rejected(malformed, valid["pack_id"])
+
+    malformed = copy.deepcopy(valid)
+    malformed["acceptance_strata"][0]["case_ids"].append("unknown_case")
+    rejected(malformed, valid["pack_id"])
+
+    malformed = copy.deepcopy(valid)
+    malformed["acceptance_strata"][1]["case_ids"] = ["clean_70"]
+    rejected(malformed, valid["pack_id"])
+
+    malformed = copy.deepcopy(valid)
+    malformed["acceptance_strata"][0]["acceptance_profile"]["targets"]["unknown_target"] = {"overall": {"truth_match_fraction": {"min": 0.1}}}
+    rejected(malformed, valid["pack_id"])
+
+    malformed = copy.deepcopy(valid)
     malformed["scoring_contract"] = "synsigra_local_verification_v1"
     rejected(malformed, valid["pack_id"])
 
@@ -95,6 +111,7 @@ def main():
     manifest = scoring_manifest(valid)
     configuration = _verification_configuration(package, manifest, "evidence", None, None, None)
     assert configuration["required_matrix"] and configuration["threshold_profile"]["profile_id"] == "r_peak_rr_noise_v1_acceptance"
+    assert [item["id"] for item in configuration["acceptance_strata"]] == ["rr_standard_cases", "rr_external_extreme"]
     malformed_manifest = copy.deepcopy(manifest)
     malformed_manifest["cases"][0]["scoring"].pop()
     try:

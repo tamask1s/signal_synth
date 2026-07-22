@@ -70,6 +70,7 @@ def verify_package(challenge, submission_dir, out_dir, cases=None, targets=None,
         _prepare_output_dir(out_dir, force)
         selected_cases = verification.pop("selected_cases")
         selected_targets = verification.pop("selected_targets")
+        acceptance_strata = verification.pop("acceptance_strata")
         required_matrix = verification["required_matrix"]
         results = []
         messages = []
@@ -100,7 +101,7 @@ def verify_package(challenge, submission_dir, out_dir, cases=None, targets=None,
         if mode == "diagnostic":
             messages.append("diagnostic mode is exploratory and is not eligible for package-protocol evidence")
 
-        evidence = _build_evidence_record(package, scoring_manifest, submission, integrity, results, messages, threshold_profile, verification)
+        evidence = _build_evidence_record(package, scoring_manifest, submission, integrity, results, messages, threshold_profile, acceptance_strata, verification)
         json_path, html_path = _write_verification_bundle(out_dir, evidence)
         return VerificationReport(out_dir, evidence, json_path, html_path)
     finally:
@@ -146,8 +147,17 @@ def _verification_configuration(package, scoring_manifest, mode, cases, targets,
         if selected_cases is not None or selected_targets is not None or profile is not None:
             raise VerificationError("evidence mode forbids case filters, target filters, and caller-selected threshold profiles")
         threshold_profile = load_threshold_profile(protocol["acceptance_profile"])
+        acceptance_strata = [
+            {
+                "id": item["id"],
+                "case_ids": list(item["case_ids"]),
+                "profile": load_threshold_profile(item["acceptance_profile"]),
+            }
+            for item in protocol.get("acceptance_strata", [])
+        ]
     else:
         threshold_profile = load_threshold_profile(profile if profile is not None else protocol["acceptance_profile"] if protocol is not None else "regression")
+        acceptance_strata = []
     return {
         "mode": mode,
         "protocol": protocol_identity,
@@ -155,6 +165,7 @@ def _verification_configuration(package, scoring_manifest, mode, cases, targets,
         "selected_cases": selected_cases,
         "selected_targets": selected_targets,
         "threshold_profile": threshold_profile,
+        "acceptance_strata": acceptance_strata,
     }
 
 
@@ -983,11 +994,12 @@ def _error_result(package, case, case_summary, entry, detail_path, status, messa
     }
 
 
-def _build_evidence_record(package, scoring_manifest, submission, integrity, results, messages, threshold_profile, verification):
+def _build_evidence_record(package, scoring_manifest, submission, integrity, results, messages, threshold_profile, acceptance_strata, verification):
     targets = _aggregate_targets(results)
     hrv_pipeline = _build_hrv_pipeline_diagnostics(targets)
     scoring_success = bool(results) and all(item.get("success", False) for item in results)
-    policy = annotate_policy(_evaluate_policy(targets, threshold_profile))
+    policy = _evaluate_policy(targets, threshold_profile)
+    policy = annotate_policy(_apply_acceptance_strata(targets, results, policy, acceptance_strata))
     success = scoring_success and policy["passed"]
     executed_matrix = set((item.get("case_id", ""), item.get("target", "")) for item in results)
     required_matrix = verification.pop("required_matrix")
@@ -1490,6 +1502,54 @@ def _evaluate_policy(targets, profile):
         "targets": target_results,
         "checks": checks,
     }
+
+
+def _apply_acceptance_strata(targets, results, policy, acceptance_strata):
+    if not acceptance_strata:
+        policy["acceptance_strata"] = []
+        return policy
+    target_by_name = dict((target["target"], target) for target in targets)
+    stratum_summaries = []
+    for stratum in acceptance_strata:
+        case_ids = set(stratum["case_ids"])
+        profile = stratum["profile"]
+        stratum_targets = [
+            target for target in _aggregate_targets([
+                result for result in results if result.get("case_id") in case_ids
+            ])
+            if target.get("target") in profile["targets"]
+        ]
+        stratum_policy = _evaluate_policy(stratum_targets, profile)
+        for check in stratum_policy["checks"]:
+            check["scope"] = "acceptance_stratum"
+            check["stratum_id"] = stratum["id"]
+            check["case_ids"] = list(stratum["case_ids"])
+            target_by_name[check["target"]]["policy"]["checks"].append(check)
+        stratum_summaries.append({
+            "stratum_id": stratum["id"],
+            "case_ids": list(stratum["case_ids"]),
+            "profile_id": profile["profile_id"],
+            "passed": stratum_policy["passed"],
+            "check_count": stratum_policy["check_count"],
+        })
+        policy["checks"].extend(stratum_policy["checks"])
+
+    target_results = []
+    for target in targets:
+        checks = target["policy"]["checks"]
+        passed = bool(checks) and all(check["passed"] for check in checks if check["applicable"])
+        target["policy"]["passed"] = passed
+        target_results.append({"target": target["target"], "passed": passed, "check_count": len(checks)})
+    applicable = [check for check in policy["checks"] if check["applicable"]]
+    policy.update({
+        "passed": bool(target_results) and all(target["passed"] for target in target_results),
+        "targets": target_results,
+        "check_count": len(policy["checks"]),
+        "applicable_check_count": len(applicable),
+        "failed_check_count": sum(1 for check in applicable if not check["passed"]),
+        "acceptance_strata": stratum_summaries,
+    })
+    return policy
 
 
 def _measurement_policy_metrics(metrics):
