@@ -6,6 +6,11 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 ROOT="$PWD"
 PYTHON="${PYTHON:-python3}"
 FIXTURE="$ROOT/python/tests/fixtures/distribution_smoke"
+EXPECTED_VERSION="$(awk '$1 == "version" && $2 == "=" { print $3; exit }' "$ROOT/setup.cfg")"
+[[ "$EXPECTED_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+    echo "Unable to read the expected verifier version from setup.cfg." >&2
+    exit 2
+}
 WHEELS=( "$ROOT"/dist/synsigra-*.whl )
 if [[ ${#WHEELS[@]} -ne 1 || ! -f "${WHEELS[0]}" ]]; then
     echo "Expected exactly one built Synsigra wheel under dist/." >&2
@@ -73,11 +78,12 @@ assert evidence["policy"]["passed"] is False
 assert evidence["policy"]["failed_check_count"] > 0
 PY
 
-python - <<'PY'
+python - "$EXPECTED_VERSION" <<'PY'
 import importlib.metadata
 import synsigra
+import sys
 assert "site-packages" in synsigra.__file__, synsigra.__file__
-assert importlib.metadata.version("synsigra") == "0.11.0"
+assert importlib.metadata.version("synsigra") == sys.argv[1]
 assert callable(synsigra.load_measurements)
 assert callable(synsigra.score_measurements)
 PY
