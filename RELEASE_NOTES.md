@@ -7,19 +7,21 @@ This file records public engineering-verification release notes for the
 
 Status: active beta pack baseline, 2026-07-23.
 
-- Upgraded `r_peak_stress_v1` to version 1.1 with a package-authoritative,
-  R-peak-only evidence protocol. Its submission template and required matrix
-  contain four R-peak event outputs and no signal-quality, RR or HRV output.
-- Added `r_peak_noise_frontier_v1`, a clean anchor plus four paired 60-second
-  all-lead cases at −7, −8, −9 and −10 dB target SNR.
+- Upgraded `r_peak_stress_v1` to version 1.2 with a package-authoritative
+  R-peak plus beat-to-beat RR evidence protocol. Its matrix contains both
+  targets for four cases, with no signal-quality or HRV requirement.
+- Upgraded `r_peak_noise_frontier_v1` to version 1.1: one clean anchor plus
+  eight paired 60-second all-lead cases at −3, −4, −5, −7, −8, −9, −10 and
+  −11 dB target SNR, with both R-peak and RR scoring.
 - Combined calibrated project-owned baseline, muscle and electrode-motion
   noise with monotonically increasing analytic baseline wander and powerline
   interference while holding the cardiac timebase, PVC cadence, intervals and
   source offsets fixed.
-- Added a separate acceptance stratum for every SNR tier. The clean aggregate
-  can no longer hide failure at one noise level, and the audit report exposes
-  the exact tier where sensitivity, PPV, F1 or timing stability falls.
-- Advanced the curated catalog to 3.1 with 19 non-duplicate packs. Verifier
+- Added a separate acceptance stratum for every SNR tier and revised the
+  protocol-specific R-peak F1 gates from 0.90 at −3 dB to 0.55 at −11 dB.
+  Standard RR MAE remains 25 ms; only the isolated −11 dB tier permits 30 ms.
+  The clean aggregate cannot hide failure at one noise level.
+- Advanced the curated catalog to 3.2 with 19 non-duplicate packs. Verifier
   0.14.0 remains sufficient because the scoring and evidence contracts are
   unchanged.
 

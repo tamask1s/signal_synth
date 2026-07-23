@@ -208,11 +208,11 @@ its manifest role. The Python loader rejects malformed manifests, ambiguous or
 unsafe archive paths, symlinks, unlisted files, and hash/size mismatches before
 scoring.
 
-For an algorithm whose declared scope is R-peak detection only, use
-`r_peak_stress_v1`: its complete evidence matrix requests only R-peak event
-files, so missing signal-quality or RR output cannot make the run incomplete.
-Use `r_peak_noise_frontier_v1` to compare detector robustness on paired
-60-second −7, −8, −9 and −10 dB target-SNR tiers. Each tier is gated
+For an R-peak detector that also reports its directly derived beat-to-beat RR
+intervals, use `r_peak_stress_v1`. Its complete evidence matrix requests
+R-peak and RR output, but no signal-quality or HRV output. Use
+`r_peak_noise_frontier_v1` to compare both outputs on paired 60-second −3,
+−4, −5, −7, −8, −9, −10 and −11 dB target-SNR tiers. Every tier is gated
 separately, so clean cases cannot hide a noisy-case collapse. See
 `doc/R_PEAK_EVIDENCE_PACKS.md`.
 

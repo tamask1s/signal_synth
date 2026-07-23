@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the paired, graded R-peak noise-frontier scenarios."""
+"""Generate the paired, graded R-peak and RR noise-frontier scenarios."""
 
 import argparse
 import hashlib
@@ -14,10 +14,14 @@ NOISE_ASSET = ROOT / "examples" / "assets" / "noise" / "synsigra_project_noise_v
 NOISE_SHA256 = "f19abdb3f3ff38a71e3d7fbad9543dcb218964c71cdd7fa2251a10e1f6bcd3cc"
 LEADS = ["I", "II", "III", "aVR", "aVL", "aVF", "V1", "V2", "V3", "V4", "V5", "V6"]
 TIERS = [
+    (-3, 0.08, 0.02),
+    (-4, 0.16, 0.04),
+    (-5, 0.25, 0.07),
     (-7, 0.35, 0.10),
     (-8, 0.50, 0.18),
     (-9, 0.65, 0.26),
     (-10, 0.80, 0.34),
+    (-11, 0.95, 0.42),
 ]
 
 
@@ -45,16 +49,16 @@ def scenario(snr_db, baseline_severity, powerline_severity):
     return {
         "schema_version": 8,
         "scenario_id": "rpeak_noise_frontier_{}_v8".format(tier),
-        "name": "R-peak noise frontier {} dB SNR".format(snr_db),
+        "name": "R-peak and RR noise frontier {} dB SNR".format(snr_db),
         "description": (
-            "Paired 60-second all-lead R-peak stress case at {} dB target SNR. "
+            "Paired 60-second all-lead R-peak and RR stress case at {} dB target SNR. "
             "Calibrated baseline, muscle and electrode-motion segments are "
             "combined with persistent analytic baseline wander and powerline "
             "interference; more-negative tiers are harder."
         ).format(snr_db),
         "author": "Synsigra",
         "tags": [
-            "r_peak", "noise_frontier", "external_noise", "calibrated_snr",
+            "r_peak", "rr_interval", "noise_frontier", "external_noise", "calibrated_snr",
             "baseline_wander", "powerline", "all_lead", "evidence",
         ],
         "duration_seconds": 60.0,

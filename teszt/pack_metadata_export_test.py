@@ -123,11 +123,11 @@ def assert_rpeak_metadata(item):
     assert item["schema_version"] == 1
     assert item["metadata_type"] == "synsigra_curated_pack_metadata"
     assert item["pack_id"] == "r_peak_stress_v1"
-    assert item["version"] == "1.1"
+    assert item["version"] == "1.2"
     assert item["release_status"] == "beta"
     assert item["release_date"] == "2026-07-23"
-    assert item["declared_targets"] == ["r_peak"]
-    assert item["targets"] == ["r_peak"]
+    assert item["declared_targets"] == ["r_peak", "rr_interval"]
+    assert item["targets"] == ["r_peak", "rr_interval"]
     assert item["catalog_scoring_mode"] == "local"
     assert item["scoring_mode"] == "local"
     assert item["case_count"] == 4
@@ -141,53 +141,71 @@ def assert_rpeak_metadata(item):
     assert item["supported_threshold_profiles"] == ["smoke", "regression", "stress", "benchmark"]
     assert item["local_verifier_smoke_tests"]
     assert item["threshold_profile_contract"]["policy_failure_exit_code"] == 1
-    assert item["submission_output_schemas"] == ["point_events_json_v1", "point_events_csv_v1"]
+    assert item["submission_output_schemas"] == [
+        "point_events_json_v1", "point_events_csv_v1",
+        "measurement_values_json_v2", "measurement_values_csv_v2",
+    ]
     assert item["recommended_for"] and item["not_recommended_for"] and item["changelog"]
     assert item["generator_compatibility"]["minimum_generator_version"] == "0.10.0-dev"
     assert item["generator_compatibility"]["scoring_manifest_contract"] == "synsigra_scoring_manifest_v3"
     scoreable = dict((target["target"], target) for target in item["scoreable_targets"])
     reference = dict((target["target"], target) for target in item["reference_only_targets"])
-    assert sorted(scoreable.keys()) == ["r_peak"]
+    assert sorted(scoreable.keys()) == ["r_peak", "rr_interval"]
     assert reference == {}
     assert scoreable["r_peak"]["score_type"] == "event_detection"
     assert scoreable["r_peak"]["accepted_formats"] == ["point_events_json_v1", "point_events_csv_v1"]
     assert scoreable["r_peak"]["default_tolerance_seconds"] == 0.05
     assert scoreable["r_peak"]["case_ids"] == item["case_ids"]
+    assert scoreable["rr_interval"]["score_type"] == "measurement"
+    assert scoreable["rr_interval"]["accepted_formats"] == [
+        "measurement_values_json_v2", "measurement_values_csv_v2",
+    ]
+    assert scoreable["rr_interval"]["case_ids"] == item["case_ids"]
     baseline = [case for case in item["cases"] if case["case_id"] == "baseline_powerline"][0]
-    assert baseline["scoreable_targets"] == ["r_peak"]
+    assert baseline["scoreable_targets"] == ["r_peak", "rr_interval"]
     assert baseline["reference_only_targets"] == []
     assert item["verification_protocol"]["available"]
     assert sorted(set(
         target
         for case in item["verification_protocol"]["document"]["required_case_targets"]
         for target in case["targets"]
-    )) == ["r_peak"]
+    )) == ["r_peak", "rr_interval"]
     assert item["ui"]["scoreable_before_job"]
     assert not item["ui"]["reference_only_before_job"]
 
 
 def assert_rpeak_frontier_metadata(item):
     assert item["pack_id"] == "r_peak_noise_frontier_v1"
-    assert item["version"] == "1.0"
+    assert item["version"] == "1.1"
     assert item["release_date"] == "2026-07-23"
-    assert item["declared_targets"] == item["targets"] == ["r_peak"]
+    assert item["declared_targets"] == item["targets"] == ["r_peak", "rr_interval"]
     assert item["case_ids"] == [
-        "clean_anchor", "mixed_snr_m7", "mixed_snr_m8",
-        "mixed_snr_m9", "mixed_snr_m10",
+        "clean_anchor", "mixed_snr_m3", "mixed_snr_m4", "mixed_snr_m5",
+        "mixed_snr_m7", "mixed_snr_m8", "mixed_snr_m9",
+        "mixed_snr_m10", "mixed_snr_m11",
     ]
-    assert item["case_count"] == 5
-    assert item["duration"]["total_seconds"] == 260
+    assert item["case_count"] == 9
+    assert item["duration"]["total_seconds"] == 500
     assert item["sampling_rates_hz"] == [500]
-    assert [case["duration_seconds"] for case in item["cases"]] == [20, 60, 60, 60, 60]
-    assert all(case["scoreable_targets"] == ["r_peak"] for case in item["cases"])
+    assert [case["duration_seconds"] for case in item["cases"]] == [
+        20, 60, 60, 60, 60, 60, 60, 60, 60,
+    ]
+    assert all(
+        case["scoreable_targets"] == ["r_peak", "rr_interval"]
+        for case in item["cases"]
+    )
     assert all(case["reference_only_targets"] == [] for case in item["cases"])
-    assert item["submission_output_schemas"] == ["point_events_json_v1", "point_events_csv_v1"]
+    assert item["submission_output_schemas"] == [
+        "point_events_json_v1", "point_events_csv_v1",
+        "measurement_values_json_v2", "measurement_values_csv_v2",
+    ]
     assert item["verification_protocol"]["available"]
     protocol = item["verification_protocol"]["document"]
     assert protocol["acceptance_profile"]["profile_id"] == "r_peak_noise_frontier_v1_acceptance"
     assert [entry["id"] for entry in protocol["acceptance_strata"]] == [
-        "clean_anchor", "mixed_snr_m7", "mixed_snr_m8",
-        "mixed_snr_m9", "mixed_snr_m10",
+        "clean_anchor", "mixed_snr_m3", "mixed_snr_m4", "mixed_snr_m5",
+        "mixed_snr_m7", "mixed_snr_m8", "mixed_snr_m9",
+        "mixed_snr_m10", "mixed_snr_m11",
     ]
 
 
@@ -329,10 +347,10 @@ def main():
         assert generated["schema_version"] == 1
         assert generated["metadata_type"] == "synsigra_curated_pack_catalog"
         assert generated["metadata_version"] == "synsigra_curated_pack_metadata_export_v1"
-        assert generated["release_set_id"] == "synsigra_curated_release_2026_07_23_rpeak_evidence"
+        assert generated["release_set_id"] == "synsigra_curated_release_2026_07_23_rpeak_rr_frontier"
         assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
-        assert generated["catalog_version"] == "3.1"
+        assert generated["catalog_version"] == "3.2"
         assert generated["pack_count"] == 19
         assert [item["pack_id"] for item in generated["packs"]] == RELEASE_PACK_IDS
         for pack_id in RELEASE_PACK_IDS:

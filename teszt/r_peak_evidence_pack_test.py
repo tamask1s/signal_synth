@@ -51,22 +51,35 @@ def perfect_submission(challenge_dir, submission_dir, algorithm_name):
     manifest = read_json(manifest_path)
     manifest["algorithm"] = {"name": algorithm_name, "version": "1"}
     assert manifest["outputs"]
-    assert set(item["target"] for item in manifest["outputs"]) == set(["r_peak"])
+    assert set(item["target"] for item in manifest["outputs"]) == set([
+        "r_peak", "rr_interval",
+    ])
     write_json(manifest_path, manifest)
     challenge = ss.load_challenge(challenge_dir)
     for output in manifest["outputs"]:
-        write_json(
-            output_path(submission_dir, output),
-            {
+        case = challenge.case(output["case_id"])
+        if output["target"] == "r_peak":
+            document = {
                 "schema_version": 1,
-                "events": scoreable_r_peaks(challenge.case(output["case_id"])),
-            },
-        )
+                "events": scoreable_r_peaks(case),
+            }
+        elif output["target"] == "rr_interval":
+            document = {
+                "schema_version": 2,
+                "contract": "synsigra_measurement_values_v2",
+                "measurements": [
+                    dict(item["measurement"])
+                    for item in case.measurement_truth("rr_interval")
+                ],
+            }
+        else:
+            raise AssertionError("unexpected target: {}".format(output["target"]))
+        write_json(output_path(submission_dir, output), document)
     challenge.close()
     return manifest
 
 
-def assert_rpeak_only_protocol(challenge, expected_cases):
+def assert_detector_protocol(challenge, expected_cases):
     protocol = challenge.verification_protocol()
     assert protocol["contract"] == "synsigra_verification_protocol_v2"
     assert [item["case_id"] for item in protocol["required_case_targets"]] == expected_cases
@@ -74,13 +87,13 @@ def assert_rpeak_only_protocol(challenge, expected_cases):
         target
         for item in protocol["required_case_targets"]
         for target in item["targets"]
-    ) == set(["r_peak"])
+    ) == set(["r_peak", "rr_interval"])
     scoring = challenge.scoring_manifest()
     assert set(
         item["target"]
         for case in scoring["cases"]
         for item in case["scoring"]
-    ) == set(["r_peak"])
+    ) == set(["r_peak", "rr_interval"])
 
 
 def main():
@@ -115,25 +128,59 @@ def main():
     frontier_challenge = ss.load_challenge(frontier_challenge_dir)
     evidence_cases = ["clean_70", "slow_45", "fast_120", "baseline_powerline"]
     frontier_cases = [
-        "clean_anchor", "mixed_snr_m7", "mixed_snr_m8",
-        "mixed_snr_m9", "mixed_snr_m10",
+        "clean_anchor", "mixed_snr_m3", "mixed_snr_m4", "mixed_snr_m5",
+        "mixed_snr_m7", "mixed_snr_m8", "mixed_snr_m9",
+        "mixed_snr_m10", "mixed_snr_m11",
     ]
-    assert_rpeak_only_protocol(evidence_challenge, evidence_cases)
-    assert_rpeak_only_protocol(frontier_challenge, frontier_cases)
+    assert_detector_protocol(evidence_challenge, evidence_cases)
+    assert_detector_protocol(frontier_challenge, frontier_cases)
+    frontier_protocol = frontier_challenge.verification_protocol()
+    strata_by_id = dict(
+        (item["id"], item) for item in frontier_protocol["acceptance_strata"]
+    )
+    expected_f1 = {
+        "clean_anchor": 0.98,
+        "mixed_snr_m3": 0.90,
+        "mixed_snr_m4": 0.85,
+        "mixed_snr_m5": 0.78,
+        "mixed_snr_m7": 0.70,
+        "mixed_snr_m8": 0.65,
+        "mixed_snr_m9": 0.62,
+        "mixed_snr_m10": 0.60,
+        "mixed_snr_m11": 0.55,
+    }
+    for case_id, f1_minimum in expected_f1.items():
+        targets = strata_by_id[case_id]["acceptance_profile"]["targets"]
+        score_bin = "total" if case_id == "clean_anchor" else "artifact"
+        assert targets["r_peak"][score_bin]["f1_score"]["min"] == f1_minimum
+        expected_rr_mae = 0.030 if case_id == "mixed_snr_m11" else 0.025
+        assert (
+            targets["rr_interval"]["rr_interval"]["mean_absolute_error"]["max"]
+            == expected_rr_mae
+        )
 
     expected_snr = {
+        "mixed_snr_m3": -3,
+        "mixed_snr_m4": -4,
+        "mixed_snr_m5": -5,
         "mixed_snr_m7": -7,
         "mixed_snr_m8": -8,
         "mixed_snr_m9": -9,
         "mixed_snr_m10": -10,
+        "mixed_snr_m11": -11,
     }
     expected_artifact_severity = {
+        "mixed_snr_m3": (0.08, 0.02),
+        "mixed_snr_m4": (0.16, 0.04),
+        "mixed_snr_m5": (0.25, 0.07),
         "mixed_snr_m7": (0.35, 0.10),
         "mixed_snr_m8": (0.50, 0.18),
         "mixed_snr_m9": (0.65, 0.26),
         "mixed_snr_m10": (0.80, 0.34),
+        "mixed_snr_m11": (0.95, 0.42),
     }
     paired_r_peak_times = None
+    paired_rr_truth = None
     mean_noise_ratios = []
     for case_id, snr_db in expected_snr.items():
         truth = read_json(os.path.join(
@@ -166,6 +213,15 @@ def main():
             paired_r_peak_times = r_peak_times
         else:
             assert r_peak_times == paired_r_peak_times
+        rr_truth = [
+            item["measurement"]
+            for item in frontier_challenge.case(case_id).measurement_truth("rr_interval")
+        ]
+        assert rr_truth and all(item["name"] == "rr_interval" for item in rr_truth)
+        if paired_rr_truth is None:
+            paired_rr_truth = rr_truth
+        else:
+            assert rr_truth == paired_rr_truth
         artifact_types = set(
             item["type"] for item in annotations.get("artifact_intervals", [])
         )
@@ -187,9 +243,9 @@ def main():
 
     evidence_submission = os.path.join(work, "detector_evidence_submission")
     evidence_manifest = perfect_submission(
-        evidence_challenge_dir, evidence_submission, "perfect-rpeak-only",
+        evidence_challenge_dir, evidence_submission, "perfect-rpeak-rr",
     )
-    assert len(evidence_manifest["outputs"]) == 4
+    assert len(evidence_manifest["outputs"]) == 8
     evidence_result = ss.verify_package(
         evidence_challenge,
         evidence_submission,
@@ -199,14 +255,16 @@ def main():
     assert evidence_result.evidence["verification"]["matrix_complete"]
     assert evidence_result.evidence["verification"]["evidence_eligible"]
     assert evidence_result.evidence["verification"]["evidence_passed"]
-    assert evidence_result.evidence["case_target_count"] == 4
-    assert set(item["target"] for item in evidence_result.evidence["results"]) == set(["r_peak"])
+    assert evidence_result.evidence["case_target_count"] == 8
+    assert set(item["target"] for item in evidence_result.evidence["results"]) == set([
+        "r_peak", "rr_interval",
+    ])
 
     frontier_submission = os.path.join(work, "frontier_submission")
     frontier_manifest = perfect_submission(
-        frontier_challenge_dir, frontier_submission, "perfect-frontier-rpeak",
+        frontier_challenge_dir, frontier_submission, "perfect-frontier-rpeak-rr",
     )
-    assert len(frontier_manifest["outputs"]) == 5
+    assert len(frontier_manifest["outputs"]) == 18
     frontier_result_dir = os.path.join(work, "frontier_result")
     frontier_result = ss.verify_package(
         frontier_challenge, frontier_submission, frontier_result_dir,
@@ -221,7 +279,7 @@ def main():
     weak_submission = os.path.join(work, "weak_frontier_submission")
     shutil.copytree(frontier_submission, weak_submission)
     for output in frontier_manifest["outputs"]:
-        if output["case_id"] == "clean_anchor":
+        if output["target"] != "r_peak" or output["case_id"] == "clean_anchor":
             continue
         path = output_path(weak_submission, output)
         document = read_json(path)
@@ -242,7 +300,9 @@ def main():
         if not item["passed"]
     ]
     assert failed_strata == [
-        "mixed_snr_m7", "mixed_snr_m8", "mixed_snr_m9", "mixed_snr_m10",
+        "mixed_snr_m3", "mixed_snr_m4", "mixed_snr_m5",
+        "mixed_snr_m7", "mixed_snr_m8", "mixed_snr_m9",
+        "mixed_snr_m10", "mixed_snr_m11",
     ]
     index_html = open(
         os.path.join(weak_result_dir, "index.html"), "r"

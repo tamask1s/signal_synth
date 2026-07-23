@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "3.1",
+  "version": "3.2",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -154,27 +154,34 @@
       "pack_id": "r_peak_stress_v1",
       "path": "../packs/r_peak_stress_v1.json",
       "modality": ["ECG"],
-      "targets": ["r_peak"],
+      "targets": ["r_peak", "rr_interval"],
       "difficulty": ["regression", "stress"],
       "recommended_profile": "stress",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
       "scoring_mode": "local",
-      "feature_tags": ["r_peak", "peak_detector_only", "evidence_protocol", "clean", "bradycardia", "tachycardia", "baseline_wander", "powerline"],
+      "feature_tags": ["r_peak", "rr_interval", "detector_rr", "evidence_protocol", "clean", "bradycardia", "tachycardia", "baseline_wander", "powerline"],
       "release_status": "beta",
       "release_date": "2026-07-23",
       "deprecation_message": "",
       "recommended_for": [
-        "Package-authoritative evidence for algorithms whose declared scope is R-peak detection only",
+        "Package-authoritative evidence for R-peak detectors that also report beat-to-beat RR intervals",
         "Clean, bradycardic, tachycardic, baseline-wander and powerline detector checks",
-        "CI regression gates using exact synthetic R-peak ground truth without signal-quality output"
+        "CI regression gates using exact synthetic R-peak and RR ground truth without signal-quality output"
       ],
       "not_recommended_for": [
         "Signal-quality classification or artifact-interval detection claims",
-        "RR, HRV, morphology or delineation claims",
+        "HRV, morphology or delineation claims",
         "PPG peak or onset testing",
         "Clinical validation or regulatory qualification"
       ],
       "changelog": [
+        {
+          "version": "1.2",
+          "date": "2026-07-23",
+          "changes": [
+            "Added observable beat-to-beat RR as a required, locally scored target while retaining the focused no-signal-quality evidence boundary."
+          ]
+        },
         {
           "version": "1.1",
           "date": "2026-07-23",
@@ -204,28 +211,36 @@
       "pack_id": "r_peak_noise_frontier_v1",
       "path": "../packs/r_peak_noise_frontier_v1.json",
       "modality": ["ECG"],
-      "targets": ["r_peak"],
+      "targets": ["r_peak", "rr_interval"],
       "difficulty": ["stress", "benchmark"],
       "recommended_profile": "benchmark",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
       "scoring_mode": "local",
-      "feature_tags": ["r_peak", "peak_detector_only", "evidence_protocol", "calibrated_snr", "noise_frontier", "baseline_wander", "powerline", "muscle_noise", "electrode_motion", "all_lead", "pvc"],
+      "feature_tags": ["r_peak", "rr_interval", "detector_rr", "evidence_protocol", "calibrated_snr", "noise_frontier", "baseline_wander", "powerline", "muscle_noise", "electrode_motion", "all_lead", "pvc"],
       "release_status": "beta",
       "release_date": "2026-07-23",
       "deprecation_message": "",
       "recommended_for": [
-        "Comparing R-peak detectors on a paired -7, -8, -9 and -10 dB target-SNR frontier",
+        "Comparing R-peak and beat-to-beat RR robustness on a paired -3 through -11 dB target-SNR frontier",
         "Long all-lead robustness testing with combined calibrated noise, baseline wander and powerline interference",
         "Finding the tier where sensitivity, precision or timing stability begins to collapse",
         "Per-case evidence that cannot be hidden by clean-case aggregate performance"
       ],
       "not_recommended_for": [
-        "Signal-quality interval detector validation",
+        "Signal-quality interval detector or HRV validation",
         "Clinical noise-prevalence or patient-performance claims",
         "Regulatory qualification or replacement of representative real-world validation",
         "Comparing algorithms configured for different lead sets without documenting that configuration"
       ],
       "changelog": [
+        {
+          "version": "1.1",
+          "date": "2026-07-23",
+          "changes": [
+            "Added RR scoring and paired -3, -4, -5 and -11 dB cases.",
+            "Revised the per-tier detector gates to a monotone protocol-specific F1 ladder from 0.90 at -3 dB to 0.55 at -11 dB; 25 ms RR MAE remains standard and only -11 dB permits 30 ms."
+          ]
+        },
         {
           "version": "1.0",
           "date": "2026-07-23",
