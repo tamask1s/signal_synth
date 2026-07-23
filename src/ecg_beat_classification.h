@@ -33,6 +33,7 @@ namespace signal_synth
         double time_seconds;
         ecg_beat_class beat_class;
         unsigned int original_index;
+        std::string exclusion_reason;
     };
 
     struct ecg_beat_classification_options
@@ -70,6 +71,7 @@ namespace signal_synth
         ecg_beat_class predicted_class;
         bool scored;
         bool correct;
+        std::string exclusion_reason;
     };
 
     struct ecg_beat_classification_unmatched
@@ -79,6 +81,7 @@ namespace signal_synth
         unsigned int index;
         double time_seconds;
         ecg_beat_class beat_class;
+        std::string exclusion_reason;
     };
 
     struct ecg_beat_classification_result
@@ -94,6 +97,7 @@ namespace signal_synth
         unsigned int matched_count;
         unsigned int correct_count;
         unsigned int unscored_match_count;
+        unsigned int excluded_ground_truth_count;
         double accuracy;
         double micro_precision;
         double micro_recall;

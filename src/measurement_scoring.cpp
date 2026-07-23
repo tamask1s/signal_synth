@@ -1,6 +1,7 @@
 #include "measurement_scoring.h"
 
 #include "ecg_scenario.h"
+#include "truth_scoreability.h"
 
 #include <algorithm>
 #include <cctype>
@@ -153,7 +154,13 @@ namespace
                 continue;
             if (previous)
             {
-                signal_synth::measurement_truth rr = make_truth("rr_interval", "s", signal_synth::measurement_valid, signal_synth::measurement_beat, beat.r_peak_time_seconds - previous->r_peak_time_seconds, 0.010, 2.0, "");
+                const signal_synth::truth_event_scoreability previous_scoreability = signal_synth::assess_ecg_qrs_scoreability(render, *previous);
+                const signal_synth::truth_event_scoreability current_scoreability = signal_synth::assess_ecg_qrs_scoreability(render, beat);
+                const bool scoreable = previous_scoreability.scoreable && current_scoreability.scoreable;
+                const std::string reason = !previous_scoreability.scoreable
+                    ? "previous_" + previous_scoreability.exclusion_reason
+                    : !current_scoreability.scoreable ? "current_" + current_scoreability.exclusion_reason : "";
+                signal_synth::measurement_truth rr = make_truth("rr_interval", "s", scoreable ? signal_synth::measurement_valid : signal_synth::measurement_not_evaluable, signal_synth::measurement_beat, beat.r_peak_time_seconds - previous->r_peak_time_seconds, 0.010, 2.0, reason.c_str());
                 set_beat_anchor(rr, beat);
                 output.push_back(rr);
             }
@@ -1195,7 +1202,7 @@ namespace signal_synth
             rows << "<tr><td>" << html_text(group.name) << "</td><td>" << measurement_scope_name(group.scope) << "</td><td>" << html_text(group.method_id) << "</td><td>" << html_text(group.preprocessing_policy_id) << "</td><td>" << html_text(window) << "</td><td>" << group.metrics.ground_truth_count << "</td><td>" << group.metrics.prediction_count << "</td><td>" << group.metrics.numeric_pair_count << "</td><td>" << csv_optional(group.metrics.numeric_pair_count > 0u, group.metrics.tolerance_pass_fraction) << "</td><td>" << group.metrics.missing_count << "</td><td>" << group.metrics.extra_count << "</td><td>" << csv_optional(group.metrics.numeric_pair_count > 0u, group.metrics.mean_absolute_error) << "</td></tr>";
         }
         std::ostringstream output;
-        output << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#20252b}table{border-collapse:collapse}th,td{border:1px solid #c9ced4;padding:6px 9px;text-align:right}th:first-child,td:first-child{text-align:left}.notice{color:#555}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA only; not a clinical validation certificate.</p><p>Scenario: " << html_text(render.document.scenario_id) << " | Target: " << html_text(result.target) << " | Pairing window: " << result.pairing_window_seconds << " s</p><table><tr><th>Measurement</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Truth</th><th>Predictions</th><th>Numeric pairs</th><th>Pass fraction</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>" << rows.str() << "</table></body></html>";
+        output << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#20252b}table{border-collapse:collapse}th,td{border:1px solid #c9ced4;padding:6px 9px;text-align:right}th:first-child,td:first-child{text-align:left}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>Scenario: " << html_text(render.document.scenario_id) << " | Target: " << html_text(result.target) << " | Pairing window: " << result.pairing_window_seconds << " s</p><table><tr><th>Measurement</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Truth</th><th>Predictions</th><th>Numeric pairs</th><th>Pass fraction</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>" << rows.str() << "</table></body></html>";
         return output.str();
     }
 }

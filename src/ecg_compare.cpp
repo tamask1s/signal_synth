@@ -1,6 +1,7 @@
 #include "ecg_compare.h"
 
 #include "ecg_export.h"
+#include "truth_scoreability.h"
 
 #include <algorithm>
 #include <cmath>
@@ -20,6 +21,8 @@ namespace
         bool in_dropout_artifact_interval;
         bool low_perfusion;
         bool weak_pulse;
+        bool scoreable;
+        std::string exclusion_reason;
     };
 
     struct detection_event
@@ -200,6 +203,9 @@ namespace
                     event.in_dropout_artifact_interval = false;
                     event.low_perfusion = false;
                     event.weak_pulse = false;
+                    const signal_synth::truth_event_scoreability scoreability = signal_synth::assess_ecg_qrs_scoreability(render, beat);
+                    event.scoreable = scoreability.scoreable;
+                    event.exclusion_reason = scoreability.exclusion_reason;
                     truth.push_back(event);
                 }
             }
@@ -227,6 +233,11 @@ namespace
                     const signal_synth::ppg_pulse_annotation* pulse = ppg_pulse_for_beat(render, annotation.ecg_beat_index);
                     event.low_perfusion = pulse && pulse->low_perfusion;
                     event.weak_pulse = pulse && pulse->state == signal_synth::ppg_pulse_weak;
+                    const signal_synth::truth_event_scoreability scoreability = signal_synth::assess_ppg_event_scoreability(render, event.time_seconds);
+                    event.scoreable = scoreability.scoreable && (!pulse || pulse->valid_for_peak_scoring);
+                    event.exclusion_reason = scoreability.exclusion_reason;
+                    if (!event.scoreable && event.exclusion_reason.empty())
+                        event.exclusion_reason = "pulse_not_valid_for_peak_scoring";
                     truth.push_back(event);
                 }
             }
@@ -288,6 +299,8 @@ namespace
                << ",\"true_positive_count\":" << metrics.true_positive_count
                << ",\"false_positive_count\":" << metrics.false_positive_count
                << ",\"false_negative_count\":" << metrics.false_negative_count
+               << ",\"excluded_ground_truth_count\":" << metrics.excluded_ground_truth_count
+               << ",\"excluded_detection_count\":" << metrics.excluded_detection_count
                << ",\"sensitivity\":" << metrics.sensitivity
                << ",\"positive_predictive_value\":" << metrics.positive_predictive_value
                << ",\"f1_score\":" << metrics.f1_score
@@ -317,7 +330,7 @@ namespace signal_synth
     }
 
     ecg_compare_bin_metrics::ecg_compare_bin_metrics()
-        : ground_truth_count(0), detection_count(0), true_positive_count(0), false_positive_count(0), false_negative_count(0), sensitivity(0.0), positive_predictive_value(0.0), f1_score(0.0), mean_absolute_error_seconds(0.0), median_absolute_error_seconds(0.0), rms_error_seconds(0.0), max_absolute_error_seconds(0.0)
+        : ground_truth_count(0), detection_count(0), true_positive_count(0), false_positive_count(0), false_negative_count(0), excluded_ground_truth_count(0), excluded_detection_count(0), sensitivity(0.0), positive_predictive_value(0.0), f1_score(0.0), mean_absolute_error_seconds(0.0), median_absolute_error_seconds(0.0), rms_error_seconds(0.0), max_absolute_error_seconds(0.0)
     {
     }
 
@@ -336,7 +349,17 @@ namespace signal_synth
     {
     }
 
-    ecg_compare_result::ecg_compare_result() : success(false), target_name(), tolerance_seconds(0.0), total(), clean(), artifact(), motion(), dropout(), low_perfusion(), weak(), pulse_timing(), missing_pulse_opportunity_count(0), detections_in_missing_pulse_windows(0), matches(), false_positives(), false_negatives(), messages()
+    ecg_compare_excluded_ground_truth::ecg_compare_excluded_ground_truth()
+        : index(0), time_seconds(0.0), reason()
+    {
+    }
+
+    ecg_compare_excluded_detection::ecg_compare_excluded_detection()
+        : index(0), time_seconds(0.0), ground_truth_index(0), ground_truth_time_seconds(0.0), reason()
+    {
+    }
+
+    ecg_compare_result::ecg_compare_result() : success(false), target_name(), tolerance_seconds(0.0), total(), clean(), artifact(), motion(), dropout(), low_perfusion(), weak(), pulse_timing(), missing_pulse_opportunity_count(0), detections_in_missing_pulse_windows(0), matches(), false_positives(), false_negatives(), excluded_ground_truth(), excluded_detections(), messages()
     {
     }
 
@@ -386,13 +409,27 @@ namespace signal_synth
             }
         }
 
-        std::vector<truth_event> truth;
+        std::vector<truth_event> all_truth;
         std::string message;
-        if (!collect_truth_events(render, options.target, truth, message))
+        if (!collect_truth_events(render, options.target, all_truth, message))
         {
             fresh.messages.push_back(message);
             result = fresh;
             return false;
+        }
+        std::vector<truth_event> truth;
+        for (std::size_t i = 0; i < all_truth.size(); ++i)
+        {
+            if (all_truth[i].scoreable)
+                truth.push_back(all_truth[i]);
+            else
+            {
+                ecg_compare_excluded_ground_truth event;
+                event.index = all_truth[i].index;
+                event.time_seconds = all_truth[i].time_seconds;
+                event.reason = all_truth[i].exclusion_reason;
+                fresh.excluded_ground_truth.push_back(event);
+            }
         }
 
         std::vector<detection_event> sorted_detections;
@@ -438,6 +475,7 @@ namespace signal_synth
 
         std::vector<bool> truth_matched(truth.size(), false);
         std::vector<bool> detection_matched(sorted_detections.size(), false);
+        std::vector<bool> detection_excluded(sorted_detections.size(), false);
         std::vector<double> matched_detection_times(truth.size(), 0.0);
         std::vector<double> total_errors, clean_errors, artifact_errors, motion_errors, dropout_errors, low_perfusion_errors, weak_errors;
         for (std::size_t i = 0; i < candidates.size(); ++i)
@@ -498,8 +536,39 @@ namespace signal_synth
             }
         }
 
+        for (std::size_t di = 0; di < sorted_detections.size(); ++di)
+        {
+            if (detection_matched[di])
+                continue;
+            const truth_event* nearest = 0;
+            double nearest_distance = std::numeric_limits<double>::max();
+            for (std::size_t ti = 0; ti < all_truth.size(); ++ti)
+            {
+                if (all_truth[ti].scoreable)
+                    continue;
+                const double distance = std::fabs(sorted_detections[di].time_seconds - all_truth[ti].time_seconds);
+                if (distance <= fresh.tolerance_seconds && (!nearest || distance < nearest_distance || (distance == nearest_distance && all_truth[ti].index < nearest->index)))
+                {
+                    nearest = &all_truth[ti];
+                    nearest_distance = distance;
+                }
+            }
+            if (!nearest)
+                continue;
+            detection_excluded[di] = true;
+            ecg_compare_excluded_detection event;
+            event.index = sorted_detections[di].original_index;
+            event.time_seconds = sorted_detections[di].time_seconds;
+            event.ground_truth_index = nearest->index;
+            event.ground_truth_time_seconds = nearest->time_seconds;
+            event.reason = nearest->exclusion_reason;
+            fresh.excluded_detections.push_back(event);
+        }
+
         fresh.total.ground_truth_count = static_cast<unsigned int>(truth.size());
-        fresh.total.detection_count = static_cast<unsigned int>(detections.size());
+        fresh.total.detection_count = static_cast<unsigned int>(detections.size() - fresh.excluded_detections.size());
+        fresh.total.excluded_ground_truth_count = static_cast<unsigned int>(fresh.excluded_ground_truth.size());
+        fresh.total.excluded_detection_count = static_cast<unsigned int>(fresh.excluded_detections.size());
         for (std::size_t i = 0; i < truth.size(); ++i)
         {
             if (truth[i].in_artifact_interval)
@@ -542,6 +611,8 @@ namespace signal_synth
         }
         for (std::size_t i = 0; i < sorted_detections.size(); ++i)
         {
+            if (detection_excluded[i])
+                continue;
             if (sorted_detections[i].in_artifact_interval)
                 ++fresh.artifact.detection_count;
             else
@@ -592,12 +663,16 @@ namespace signal_synth
         finalize_metrics(fresh.weak, weak_errors);
         if (options.target == ecg_compare_ppg_systolic_peak || options.target == ecg_compare_ppg_pulse_onset)
         {
+            std::vector<detection_event> scored_detections;
+            for (std::size_t i = 0; i < sorted_detections.size(); ++i)
+                if (!detection_excluded[i])
+                    scored_detections.push_back(sorted_detections[i]);
             fresh.pulse_timing.ground_truth_interval_count = truth.size() > 1u ? static_cast<unsigned int>(truth.size() - 1u) : 0u;
-            fresh.pulse_timing.detection_interval_count = sorted_detections.size() > 1u ? static_cast<unsigned int>(sorted_detections.size() - 1u) : 0u;
+            fresh.pulse_timing.detection_interval_count = scored_detections.size() > 1u ? static_cast<unsigned int>(scored_detections.size() - 1u) : 0u;
             if (truth.size() > 1u && truth.back().time_seconds > truth.front().time_seconds)
                 fresh.pulse_timing.ground_truth_mean_pulse_rate_bpm = 60.0 * (truth.size() - 1u) / (truth.back().time_seconds - truth.front().time_seconds);
-            if (sorted_detections.size() > 1u && sorted_detections.back().time_seconds > sorted_detections.front().time_seconds)
-                fresh.pulse_timing.detection_mean_pulse_rate_bpm = 60.0 * (sorted_detections.size() - 1u) / (sorted_detections.back().time_seconds - sorted_detections.front().time_seconds);
+            if (scored_detections.size() > 1u && scored_detections.back().time_seconds > scored_detections.front().time_seconds)
+                fresh.pulse_timing.detection_mean_pulse_rate_bpm = 60.0 * (scored_detections.size() - 1u) / (scored_detections.back().time_seconds - scored_detections.front().time_seconds);
             fresh.pulse_timing.absolute_pulse_rate_error_bpm = std::fabs(fresh.pulse_timing.detection_mean_pulse_rate_bpm - fresh.pulse_timing.ground_truth_mean_pulse_rate_bpm);
             double absolute_sum = 0.0, squared_sum = 0.0, maximum = 0.0;
             for (std::size_t i = 1; i < truth.size(); ++i)
@@ -629,7 +704,7 @@ namespace signal_synth
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << std::setprecision(std::numeric_limits<double>::max_digits10);
-        output << "{\"schema_version\":1,\"generator\":{\"name\":\"signal_synth\",\"product\":\"Synsigra Testbench\",\"version\":"
+        output << "{\"schema_version\":2,\"generator\":{\"name\":\"signal_synth\",\"product\":\"Synsigra Testbench\",\"version\":"
                << json_string(signal_synth_generator_version())
                << "},\"scenario\":{\"id\":" << json_string(render.document.scenario_id)
                << ",\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint)
@@ -703,6 +778,24 @@ namespace signal_synth
                    << ",\"low_perfusion\":" << boolean(event.low_perfusion)
                    << ",\"weak_pulse\":" << boolean(event.weak_pulse) << '}';
         }
+        output << "],\"excluded_ground_truth\":[";
+        for (std::size_t i = 0; i < result.excluded_ground_truth.size(); ++i)
+        {
+            const ecg_compare_excluded_ground_truth& event = result.excluded_ground_truth[i];
+            output << (i ? "," : "") << "{\"ground_truth_index\":" << event.index
+                   << ",\"time_seconds\":" << event.time_seconds
+                   << ",\"reason\":" << json_string(event.reason) << '}';
+        }
+        output << "],\"excluded_detections\":[";
+        for (std::size_t i = 0; i < result.excluded_detections.size(); ++i)
+        {
+            const ecg_compare_excluded_detection& event = result.excluded_detections[i];
+            output << (i ? "," : "") << "{\"detection_index\":" << event.index
+                   << ",\"time_seconds\":" << event.time_seconds
+                   << ",\"excluded_ground_truth_index\":" << event.ground_truth_index
+                   << ",\"excluded_ground_truth_time_seconds\":" << event.ground_truth_time_seconds
+                   << ",\"reason\":" << json_string(event.reason) << '}';
+        }
         output << "],\"notes\":[\"Synthetic engineering QA comparison; not a clinical validation certificate or diagnostic result.\"]}}";
         return output.str();
     }
@@ -755,15 +848,16 @@ namespace signal_synth
                << "body{font:14px Arial,sans-serif;color:#202124;max-width:1100px;margin:32px auto;padding:0 20px}"
                << "h1,h2{color:#111827}table{border-collapse:collapse;width:100%;margin:12px 0 24px}"
                << "th,td{border:1px solid #d1d5db;padding:7px;text-align:left}th{background:#f3f4f6}"
-               << ".notice{border-left:4px solid #b42318;padding:10px 14px;background:#fef3f2}</style></head><body>"
-               << "<h1>Algorithm Comparison Report</h1><p class=\"notice\">This report compares external algorithm event detections against synthetic ground truth. "
-               << "It is intended for software testing and algorithm QA, not diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment.</p>"
+               << ".notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}</style></head><body>"
+               << "<h1>Algorithm Comparison Report</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p>"
+               << "<p>External algorithm event detections compared with deterministic synthetic ground truth.</p>"
                << "<h2>Identity</h2><table><tr><th>Scenario</th><td>" << html_text(render.document.scenario_id)
                << "</td></tr><tr><th>Document fingerprint</th><td>" << html_text(render.document_identity.document_fingerprint)
                << "</td></tr><tr><th>Render identity</th><td>" << html_text(render.render_identity)
                << "</td></tr><tr><th>Target</th><td>" << html_text(result.target_name)
                << "</td></tr><tr><th>Tolerance</th><td>" << result.tolerance_seconds << " s</td></tr></table>"
-               << "<h2>Metrics</h2><table><tr><th>Bin</th><th>GT</th><th>Detections</th><th>TP</th><th>FP</th><th>FN</th><th>Sensitivity</th><th>PPV</th><th>F1</th><th>Mean abs error</th><th>RMS error</th></tr>";
+               << "<h2>Truth and exclusion policy</h2><p>Observable events are scored. Explicitly reasoned near-total-dropout and record-boundary truth is excluded. A nearby otherwise-unmatched prediction is reported and omitted from FP counts. Additive noise, external noise, clipping, saturation and partial-lead artifacts remain scored.</p>"
+               << "<h2>Metrics</h2><table><tr><th>Bin</th><th>GT</th><th>Detections</th><th>TP</th><th>FP</th><th>FN</th><th>Excluded truth</th><th>Excluded detections</th><th>Sensitivity</th><th>PPV</th><th>F1</th><th>Mean abs error</th><th>RMS error</th></tr>";
         const ecg_compare_bin_metrics* metrics[] = {&result.total, &result.clean, &result.artifact, &result.motion, &result.dropout, &result.low_perfusion, &result.weak};
         const char* names[] = {"total", "clean", "artifact", "motion", "dropout", "low perfusion", "weak pulse"};
         for (unsigned int i = 0; i < 7; ++i)
@@ -773,6 +867,8 @@ namespace signal_synth
                    << "</td><td>" << metrics[i]->true_positive_count
                    << "</td><td>" << metrics[i]->false_positive_count
                    << "</td><td>" << metrics[i]->false_negative_count
+                   << "</td><td>" << metrics[i]->excluded_ground_truth_count
+                   << "</td><td>" << metrics[i]->excluded_detection_count
                    << "</td><td>" << metrics[i]->sensitivity
                    << "</td><td>" << metrics[i]->positive_predictive_value
                    << "</td><td>" << metrics[i]->f1_score
@@ -793,6 +889,16 @@ namespace signal_synth
                    << (result.false_negatives[i].in_motion_artifact_interval ? "motion" : result.false_negatives[i].in_dropout_artifact_interval ? "dropout" : result.false_negatives[i].in_artifact_interval ? "artifact" : result.false_negatives[i].weak_pulse ? "weak pulse" : result.false_negatives[i].low_perfusion ? "low perfusion" : "clean") << "</td></tr>";
         if (result.false_positives.empty() && result.false_negatives.empty())
             output << "<tr><td colspan=\"4\">No unmatched events.</td></tr>";
+        output << "</table><h2>Explicit exclusions</h2><table><tr><th>Type</th><th>Index</th><th>Time</th><th>Related truth</th><th>Reason</th></tr>";
+        for (std::size_t i = 0; i < result.excluded_ground_truth.size(); ++i)
+            output << "<tr><td>ground truth</td><td>" << result.excluded_ground_truth[i].index << "</td><td>" << result.excluded_ground_truth[i].time_seconds
+                   << "</td><td>-</td><td>" << html_text(result.excluded_ground_truth[i].reason) << "</td></tr>";
+        for (std::size_t i = 0; i < result.excluded_detections.size(); ++i)
+            output << "<tr><td>detection</td><td>" << result.excluded_detections[i].index << "</td><td>" << result.excluded_detections[i].time_seconds
+                   << "</td><td>" << result.excluded_detections[i].ground_truth_index << " @ " << result.excluded_detections[i].ground_truth_time_seconds
+                   << " s</td><td>" << html_text(result.excluded_detections[i].reason) << "</td></tr>";
+        if (result.excluded_ground_truth.empty() && result.excluded_detections.empty())
+            output << "<tr><td colspan=\"5\">No explicit exclusions.</td></tr>";
         output << "</table><h2>Artifacts</h2><p>comparison.json, comparison.csv, comparison_report.html</p></body></html>";
         return output.str();
     }

@@ -190,7 +190,7 @@ def assert_delineation_metadata(item):
     assert target["accepted_formats"] == ["point_events_json_v1", "point_events_csv_v1"]
     assert target["default_tolerance_seconds"] == 0.04
     assert target["case_ids"] == item["case_ids"]
-    assert item["generator_compatibility"]["local_verifier_min_version"] == "0.11.0"
+    assert item["generator_compatibility"]["local_verifier_min_version"] == "0.13.0"
     assert item["reference_only_targets"] == []
 
 
@@ -204,7 +204,7 @@ def assert_ppg_optical_metadata(item):
     assert {"ppg_optical_latent_csv", "ppg_optical_truth_json", "measurement_truth_json"}.issubset(roles)
 
 
-def assert_measurement_metadata(item, target, verifier_version="0.11.0"):
+def assert_measurement_metadata(item, target, verifier_version="0.13.0"):
     contracts = dict((entry["target"], entry) for entry in item["scoreable_targets"])
     assert target in contracts
     assert contracts[target]["score_type"] == "measurement"
@@ -247,11 +247,11 @@ def assert_hybrid_noise_metadata(item):
 
 def assert_hrv_robustness_metadata(item):
     assert item["pack_id"] == "hrv_robustness_v2"
-    assert item["version"] == "2.0"
+    assert item["version"] == "2.1"
     assert item["case_count"] == 10
     assert item["generator_compatibility"]["scenario_schema_versions"] == [2, 9]
     assert item["generator_compatibility"]["minimum_generator_version"] == "0.10.0-dev"
-    assert item["generator_compatibility"]["local_verifier_min_version"] == "0.11.0"
+    assert item["generator_compatibility"]["local_verifier_min_version"] == "0.13.0"
     targets = dict((target["target"], target) for target in item["scoreable_targets"])
     assert sorted(targets) == ["hrv", "r_peak", "signal_quality"]
     assert targets["hrv"]["case_count"] == 10
@@ -269,7 +269,7 @@ def assert_rr_qtc_metadata(generated):
     assert sorted(rr_targets) == ["r_peak", "rr_interval", "signal_quality"]
     assert rr_targets["rr_interval"]["accepted_formats"] == ["measurement_values_json_v2", "measurement_values_csv_v2"]
     assert rr["generator_compatibility"]["minimum_generator_version"] == "0.10.0-dev"
-    assert rr["generator_compatibility"]["local_verifier_min_version"] == "0.12.0"
+    assert rr["generator_compatibility"]["local_verifier_min_version"] == "0.13.0"
     assert rr["verification_protocol"]["document"]["acceptance_profile"]["profile_id"] == "r_peak_rr_noise_v1_acceptance"
     qtc = pack(generated, "ecg_qtc_verification_v1")
     assert qtc["case_count"] == 12 and qtc["recommended_profile"] == "regression"
@@ -296,7 +296,7 @@ def main():
         assert generated["schema_version"] == 1
         assert generated["metadata_type"] == "synsigra_curated_pack_catalog"
         assert generated["metadata_version"] == "synsigra_curated_pack_metadata_export_v1"
-        assert generated["release_set_id"] == "synsigra_curated_release_2026_07_18"
+        assert generated["release_set_id"] == "synsigra_curated_release_2026_07_22"
         assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
         assert generated["catalog_version"] == "3.0"

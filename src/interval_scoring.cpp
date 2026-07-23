@@ -677,8 +677,8 @@ namespace signal_synth
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << std::setprecision(6)
-               << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Interval scoring</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#20252b}table{border-collapse:collapse;margin:16px 0}th,td{border:1px solid #c9ced4;padding:6px 9px;text-align:right}th:first-child,td:first-child{text-align:left}.note{color:#555;max-width:900px}</style></head><body>"
-               << "<h1>Interval scoring</h1><p>Scenario: " << html_text(render.document.scenario_id) << " | Target: " << html_text(result.target_name)
+               << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Interval scoring</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#20252b}table{border-collapse:collapse;margin:16px 0}th,td{border:1px solid #c9ced4;padding:6px 9px;text-align:right}th:first-child,td:first-child{text-align:left}.note{color:#555;max-width:900px}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}</style></head><body>"
+               << "<h1>Interval scoring</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>Scenario: " << html_text(render.document.scenario_id) << " | Target: " << html_text(result.target_name)
                << " | Channel mode: " << interval_channel_mode_name(result.channel_mode) << " | Minimum IoU: " << result.minimum_iou << "</p>"
                << "<table><tr><th>Class</th><th>Truth</th><th>Predicted</th><th>Matched</th><th>Time sensitivity</th><th>Time precision</th><th>Time F1</th><th>IoU</th><th>False alarms/hour</th><th>Onset MAE (s)</th><th>Offset MAE (s)</th></tr>";
         for (std::size_t row = 0; row <= result.classes.size(); ++row)
@@ -696,7 +696,7 @@ namespace signal_synth
         output << "</table><h2>Confusion matrix</h2><table><tr><th>Ground truth</th><th>Prediction</th><th>Count</th></tr>";
         for (std::size_t i = 0; i < result.confusion_matrix.size(); ++i)
             output << "<tr><td>" << html_text(result.confusion_matrix[i].ground_truth_label) << "</td><td>" << html_text(result.confusion_matrix[i].prediction_label) << "</td><td>" << result.confusion_matrix[i].count << "</td></tr>";
-        output << "</table><p class=\"note\">Intervals are half-open [start,end). Undefined zero-denominator metrics are reported as NA. This is synthetic engineering QA evidence, not a clinical validation claim.</p></body></html>";
+        output << "</table><p class=\"note\">Intervals are half-open [start,end). Undefined zero-denominator metrics are reported as NA.</p></body></html>";
         return output.str();
     }
 }

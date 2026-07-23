@@ -98,7 +98,9 @@ int main()
         && json.find("\"detection_input_id\":\"detections/noisy.json\"") != std::string::npos
         && json.find("\"motion\":") != std::string::npos && json.find("\"dropout\":") != std::string::npos, "json_contract");
     ok &= check(csv.find("row_type,target,bin") == 0 && csv.find("target_summary,r_peak,total") != std::string::npos, "csv_contract");
-    ok &= check(html.find("Algorithm QA Pack Score") != std::string::npos && html.find("not diagnosis") != std::string::npos, "html_contract");
+    const std::string notice = "Synthetic engineering QA evidence; not diagnosis, nor clinical evidence";
+    ok &= check(html.find("Algorithm QA Pack Score") != std::string::npos && html.find(notice) != std::string::npos
+        && html.find(notice) == html.rfind(notice) && html.find("background:#f3f4f6") != std::string::npos, "html_contract");
 
     std::vector<signal_synth::ecg_pack_score_case> empty;
     ok &= check(!signal_synth::build_ecg_pack_score_summary(manifest, "sha256:pack", empty, summary) && !summary.messages.empty(), "reject_empty_summary");

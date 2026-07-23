@@ -19,7 +19,7 @@ DEFAULT_GENERATOR_COMPATIBILITY = {
     "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
     "submission_contract": "synsigra_submission_v1",
     "verification_protocol_contract": "synsigra_verification_protocol_v2",
-    "local_verifier_min_version": "0.11.0",
+    "local_verifier_min_version": "0.13.0",
 }
 
 
@@ -582,7 +582,7 @@ def export_metadata(catalog_path, cli, pack_ids, source_root):
         "schema_version": 1,
         "metadata_type": METADATA_TYPE,
         "metadata_version": EXPORTER_VERSION,
-        "release_set_id": "synsigra_curated_release_2026_07_18",
+        "release_set_id": "synsigra_curated_release_2026_07_22",
         "release_set_status": "beta",
         "catalog_id": catalog.get("catalog_id", ""),
         "catalog_version": catalog.get("version", ""),

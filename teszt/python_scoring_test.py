@@ -216,7 +216,7 @@ def main():
     provenance = read_json(os.path.join(challenge_dir, "provenance.json"))
     assert provenance["metadata_type"] == "synsigra_package_provenance"
     assert provenance["generator"]["version"] == "0.10.0-dev"
-    assert provenance["verifier"]["version"] == "0.12.0"
+    assert provenance["verifier"]["version"] == "0.13.0"
     assert provenance["verifier"]["package_contract_version"] == "synsigra_challenge_package_v3"
     assert "clinical validation" in provenance["claim_boundary"]["not_for"]
     assert os.path.exists(os.path.join(challenge_dir, "ENGINEERING_CLAIM_BOUNDARY.txt"))
@@ -320,7 +320,7 @@ def main():
 
     rpeak_report = ss.compare_rpeaks(challenge.case("clean_ecg"), rpeak_detections_doc, cli_path=cli)
     assert rpeak_report.json["comparison"]["metrics"]["total"]["f1_score"] == 1
-    assert "not diagnosis" in rpeak_report.html and "clinical validation certification" in rpeak_report.html
+    assert rpeak_report.html.count("Synthetic engineering QA evidence; not diagnosis, nor clinical evidence") == 1
 
     direct_dir = os.path.join(work_dir, "direct_compare")
     run([cli, "compare", "r_peak", challenge.case("clean_ecg").scenario_path, rpeak_path, "--out", direct_dir])
@@ -372,7 +372,17 @@ def main():
     cpp_onset_dir = os.path.join(work_dir, "cpp_ppg_onset")
     run([cli, "compare", "ppg_pulse_onset", challenge.case("ppg_clean").scenario_path, ppg_onset_path, "--out", cpp_onset_dir])
     cpp_onset = read_json(os.path.join(cpp_onset_dir, "comparison.json"))["comparison"]
-    for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
+    for key in (
+        "target",
+        "tolerance_seconds",
+        "success",
+        "metrics",
+        "matches",
+        "false_positives",
+        "false_negatives",
+        "excluded_ground_truth",
+        "excluded_detections",
+    ):
         assert local_onset[key] == cpp_onset[key]
     stress_metrics = case_comparison(local_verify_dir, "ppg_stress", "ppg_systolic_peak")["comparison"]["metrics"]
     assert stress_metrics["low_perfusion"]["ground_truth_count"] > 0
@@ -389,13 +399,33 @@ def main():
     run([cli, "compare", "ppg_systolic_peak", challenge.case("ppg_stress").scenario_path, ppg_stress_path, "--out", cpp_stress_dir])
     python_stress = case_comparison(local_verify_dir, "ppg_stress", "ppg_systolic_peak")["comparison"]
     cpp_stress = read_json(os.path.join(cpp_stress_dir, "comparison.json"))["comparison"]
-    for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
+    for key in (
+        "target",
+        "tolerance_seconds",
+        "success",
+        "metrics",
+        "matches",
+        "false_positives",
+        "false_negatives",
+        "excluded_ground_truth",
+        "excluded_detections",
+    ):
         assert python_stress[key] == cpp_stress[key]
     cpp_motion_dir = os.path.join(work_dir, "cpp_ppg_motion")
     run([cli, "compare", "ppg_systolic_peak", challenge.case("ppg_motion").scenario_path, ppg_motion_path, "--out", cpp_motion_dir])
     python_motion = case_comparison(local_verify_dir, "ppg_motion", "ppg_systolic_peak")["comparison"]
     cpp_motion = read_json(os.path.join(cpp_motion_dir, "comparison.json"))["comparison"]
-    for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
+    for key in (
+        "target",
+        "tolerance_seconds",
+        "success",
+        "metrics",
+        "matches",
+        "false_positives",
+        "false_negatives",
+        "excluded_ground_truth",
+        "excluded_detections",
+    ):
         assert python_motion[key] == cpp_motion[key]
     assert case_comparison(local_verify_dir, "clean_ecg", "ecg_beat_classification")["summary"]["micro_f1_score"] == 1
     delineation_report = case_comparison(local_verify_dir, "clean_ecg", "ecg_delineation")
@@ -474,7 +504,17 @@ def main():
     run([cli, "compare", "r_peak", challenge.case("clean_ecg").scenario_path, degraded_rpeak_path, "--out", cpp_rpeak_dir])
     python_rpeak = case_comparison(degraded_verify_dir, "clean_ecg", "r_peak")["comparison"]
     cpp_rpeak = read_json(os.path.join(cpp_rpeak_dir, "comparison.json"))["comparison"]
-    for key in ("target", "tolerance_seconds", "success", "metrics", "matches", "false_positives", "false_negatives"):
+    for key in (
+        "target",
+        "tolerance_seconds",
+        "success",
+        "metrics",
+        "matches",
+        "false_positives",
+        "false_negatives",
+        "excluded_ground_truth",
+        "excluded_detections",
+    ):
         assert python_rpeak[key] == cpp_rpeak[key]
 
     cpp_class_dir = os.path.join(work_dir, "cpp_degraded_class")

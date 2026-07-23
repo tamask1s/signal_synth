@@ -21,6 +21,16 @@ def read_json(path):
         return json.load(handle)
 
 
+def case_comparison(root, case_id, target):
+    evidence = read_json(os.path.join(root, "evidence.json"))
+    matches = [
+        item["comparison"] for item in evidence["results"]
+        if item["case_id"] == case_id and item["target"] == target
+    ]
+    assert len(matches) == 1
+    return matches[0]
+
+
 def write_json(path, value):
     with open(path, "w") as handle:
         json.dump(value, handle, sort_keys=True, separators=(",", ":"))
@@ -71,6 +81,7 @@ def make_perfect_submission(challenge_dir, submission_dir):
 
 def assert_rr_truth(challenge):
     artifact_rr_count = 0
+    excluded_rr_count = 0
     for case in challenge.cases:
         annotations = case.annotations()
         beats = [item for item in annotations["beats"] if item.get("qrs_present", False)]
@@ -81,12 +92,19 @@ def assert_rr_truth(challenge):
             expected = beats[index + 1]["r_peak_seconds"] - beats[index]["r_peak_seconds"]
             assert measurement["name"] == "rr_interval" and measurement["unit"] == "s"
             assert int(measurement["beat_index"]) == int(beats[index + 1]["beat_index"])
-            assert abs(measurement["value"] - expected) < 1e-12
+            scoreable = beats[index].get("r_peak_scoreable", True) and beats[index + 1].get("r_peak_scoreable", True)
+            assert (measurement["status"] == "valid") is scoreable
+            if scoreable:
+                assert abs(measurement["value"] - expected) < 1e-12
+            else:
+                assert "value" not in measurement and item["reason"]
+                excluded_rr_count += 1
             for interval in annotations.get("artifact_intervals", []):
                 if interval["start_seconds"] <= measurement["time_seconds"] < interval["end_seconds"]:
                     artifact_rr_count += 1
                     break
     assert artifact_rr_count > 0
+    assert excluded_rr_count > 0
 
 
 def corrected_qtc(qt, rr, formula):
@@ -176,7 +194,7 @@ def main():
 
     rr_challenge_dir = os.path.join(work, "rr_challenge")
     qtc_challenge_dir = os.path.join(work, "qtc_challenge")
-    assert read_json(os.path.join(source, "examples", "packs", "r_peak_rr_noise_v1.json"))["version"] == "1.2"
+    assert read_json(os.path.join(source, "examples", "packs", "r_peak_rr_noise_v1.json"))["version"] == "1.3"
     run([cli, "pack", "challenge", os.path.join(source, "examples", "packs", "r_peak_rr_noise_v1.json"), "--out", rr_challenge_dir, "--noise-assets", os.path.join(source, "examples", "assets", "noise")])
     run([cli, "pack", "challenge", os.path.join(source, "examples", "packs", "ecg_qtc_verification_v1.json"), "--out", qtc_challenge_dir])
 
@@ -204,6 +222,14 @@ def main():
     assert rr_roles["user-output-template/formats.json"] == "submission_formats_json"
     assert_rr_truth(rr_challenge)
     assert_qtc_truth(qtc_challenge)
+    analytic_beats = rr_challenge.case("analytic_extreme").annotations()["beats"]
+    analytic_excluded = [item for item in analytic_beats if not item.get("r_peak_scoreable", True)]
+    assert len(analytic_excluded) == 3
+    assert set(item["r_peak_exclusion_reason"] for item in analytic_excluded) == set(["near_total_all_lead_ecg_dropout"])
+    external_beats = rr_challenge.case("external_extreme").annotations()["beats"]
+    boundary_excluded = [item for item in external_beats if not item.get("r_peak_scoreable", True)]
+    assert len(boundary_excluded) == 1 and boundary_excluded[0]["r_peak_exclusion_reason"] == "record_boundary_truncated_qrs"
+    assert all(item.get("r_peak_scoreable", True) for item in external_beats if 7.0 <= item["r_peak_seconds"] < 10.0)
     external_truth = read_json(os.path.join(rr_challenge_dir, "cases", "external_extreme", "external_noise_truth.json"))
     assert external_truth["release_allowed"] and len(external_truth["intervals"]) == 3
     for interval in external_truth["intervals"]:
@@ -217,6 +243,10 @@ def main():
     rr_perfect = ss.verify_package(rr_challenge, rr_submission, os.path.join(work, "rr_perfect"))
     qtc_perfect = ss.verify_package(qtc_challenge, qtc_submission, os.path.join(work, "qtc_perfect"))
     assert rr_perfect.evidence["success"] and qtc_perfect.evidence["success"]
+    analytic_report = case_comparison(os.path.join(work, "rr_perfect"), "analytic_extreme", "r_peak")["comparison"]
+    assert analytic_report["metrics"]["total"]["excluded_ground_truth_count"] == 3
+    assert analytic_report["metrics"]["total"]["excluded_detection_count"] == 3
+    assert len(analytic_report["excluded_ground_truth"]) == 3
     assert rr_perfect.evidence["verification"]["mode"] == "evidence" and rr_perfect.evidence["verification"]["evidence_eligible"]
     assert rr_perfect.evidence["verification"]["protocol"]["sha256"].startswith("sha256:") and rr_perfect.evidence["verification"]["matrix_complete"]
     assert target_result(rr_perfect, "rr_interval")["policy"]["passed"]

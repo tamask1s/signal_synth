@@ -130,6 +130,10 @@ int main()
     quality_predictions.target_name = "signal_quality";
     quality_predictions.intervals.push_back(interval(2.0, 5.0, "ecg_baseline_wander", "II", 0));
     ok &= check(signal_synth::score_interval_output_to_render(quality_render, quality_predictions, options, result) && result.channel_mode == signal_synth::interval_channel_per_channel && result.total.time_f1_score == 1.0, "quality_per_channel_adapter");
+    const std::string interval_html = signal_synth::interval_score_report_html(quality_render, result);
+    const std::string notice = "Synthetic engineering QA evidence; not diagnosis, nor clinical evidence";
+    ok &= check(interval_html.find(notice) != std::string::npos && interval_html.find(notice) == interval_html.rfind(notice)
+        && interval_html.find("background:#f3f4f6") != std::string::npos, "html_notice_contract");
     quality_predictions.intervals.push_back(interval(2.0, 5.0, "ecg_baseline_wander", "global", 1));
     ok &= check(!signal_synth::score_interval_output_to_render(quality_render, quality_predictions, options, result), "mixed_channel_mode_rejected");
     return ok ? 0 : 1;

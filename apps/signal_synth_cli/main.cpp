@@ -895,7 +895,7 @@ namespace
         return output.str();
     }
 
-    std::string pack_index_html(const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_json_result& identity, const std::vector<pack_render_row>& rows)
+    std::string pack_index_html(const signal_synth::ecg_pack_manifest& manifest, const signal_synth::ecg_pack_json_result& identity, const std::vector<pack_render_row>& rows, bool challenge_layout)
     {
         std::ostringstream output;
         output.imbue(std::locale::classic());
@@ -913,7 +913,7 @@ namespace
             output << "<tr><td>" << html_text(row.id) << "</td><td>" << html_text(row.scenario_id)
                    << "</td><td>" << row.sample_count << "</td><td>" << row.beat_count
                    << "</td><td>" << row.mean_heart_rate_bpm << "</td><td>" << row.artifact_count
-                   << "</td><td>" << row.ppg_pulse_count << "</td><td><a href=\"" << html_text(row.id)
+                   << "</td><td>" << row.ppg_pulse_count << "</td><td><a href=\"" << (challenge_layout ? "cases/" : "") << html_text(row.id)
                    << "/report.html\">report</a></td></tr>";
         }
         output << "</table></body></html>";
@@ -1839,7 +1839,7 @@ int main(int argc, char** argv)
             const std::string realism_population_json = signal_synth::realism_population_json(realism_population);
             const std::string summary_json = pack_summary_json(manifest, pack_result, rows);
             const std::string summary_csv = pack_summary_csv(rows);
-            const std::string index_html = pack_index_html(manifest, pack_result, rows);
+            const std::string index_html = pack_index_html(manifest, pack_result, rows, pack_challenge);
             const std::string scoring_json = scoring_manifest_json(manifest, pack_result, rows);
             if (pack_challenge)
             {

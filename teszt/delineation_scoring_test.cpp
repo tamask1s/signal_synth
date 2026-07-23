@@ -99,6 +99,10 @@ int main()
     ok &= check(result.leads.size() == 2u && result.kinds.size() == signal_synth::delineation_kind_count && result.kind_leads.size() == 36u, "complete_groups");
     const std::string report = signal_synth::delineation_score_result_json(render, clean_scope, result);
     ok &= check(report.find("\"schema_version\":2") != std::string::npos && report.find("\"anchor_type\":\"atrial_event\"") != std::string::npos && report.find("\"status\":\"present\"") != std::string::npos, "json_truth_contract");
+    const std::string delineation_html = signal_synth::delineation_score_report_html(render, result);
+    const std::string notice = "Synthetic engineering QA evidence; not diagnosis, nor clinical evidence";
+    ok &= check(delineation_html.find(notice) != std::string::npos && delineation_html.find(notice) == delineation_html.rfind(notice)
+        && delineation_html.find("background:#f3f4f6") != std::string::npos, "html_notice_contract");
 
     signal_synth::ecg_scenario_document edge_document;
     edge_document.scenario_id = "delineation_record_edge";

@@ -148,7 +148,10 @@ int main()
     ok &= check(json.find("\"comparison\"") != std::string::npos && json.find("not a clinical validation certificate") != std::string::npos, "json_report_contract");
     ok &= check(render.document_identity.generation_fingerprint > 9223372036854775807ULL && json.find(generation_fingerprint_field(render.document_identity.generation_fingerprint)) != std::string::npos, "json_fingerprint_is_decimal_string");
     ok &= check(csv.find("row_type,bin,ground_truth_index") == 0, "csv_report_contract");
-    ok &= check(html.find("Algorithm Comparison Report") != std::string::npos && html.find("not diagnosis") != std::string::npos, "html_report_contract");
+    const std::string notice = "Synthetic engineering QA evidence; not diagnosis, nor clinical evidence";
+    ok &= check(html.find("Algorithm Comparison Report") != std::string::npos && html.find(notice) != std::string::npos
+        && html.find(notice) == html.rfind(notice) && html.find("background:#f3f4f6") != std::string::npos
+        && html.find("background:#fef3f2") == std::string::npos, "html_report_contract");
 
     return ok ? 0 : 1;
 }

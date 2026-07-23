@@ -30,6 +30,7 @@
         "HRV metric validation without the separate HRV robustness pack"
       ],
       "changelog": [
+        {"version": "1.3", "date": "2026-07-22", "changes": ["Made event truth observability-aware: near-total all-lead dropout and physically truncated QRS events are explicitly excluded, while severe additive noise remains scored."]},
         {"version": "1.2", "date": "2026-07-22", "changes": ["Restored the 25 ms RR MAE gate for standard cases and isolated a 30 ms gate to the -12 dB external_extreme acceptance stratum."]},
         {"version": "1.1", "date": "2026-07-22", "changes": ["Calibrated the stress-pack aggregate RR MAE limit to 30 ms while retaining the 50 ms p95, per-measurement tolerance, coverage, R-peak and signal-quality gates."]},
         {"version": "1.0", "date": "2026-07-18", "changes": ["Initial beta pack with exact in-record RR truth, rate boundaries, analytic artifacts and calibrated external noise."]}
@@ -41,7 +42,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.12.0"
+        "local_verifier_min_version": "0.13.0"
       }
     },
     {
@@ -67,7 +68,10 @@
         "Human-reader variability or adjudication studies",
         "Regulatory acceptance without sponsor-specific clinical and risk evidence"
       ],
-      "changelog": [{"version": "1.0", "date": "2026-07-18", "changes": ["Initial beta pack with five correction formulae, exact beat-level timing truth and difficult repolarization cases."]}],
+      "changelog": [
+        {"version": "1.1", "date": "2026-07-22", "changes": ["Documented observable-event and record-boundary truth exclusions in the authoritative protocol."]},
+        {"version": "1.0", "date": "2026-07-18", "changes": ["Initial beta pack with five correction formulae, exact beat-level timing truth and difficult repolarization cases."]}
+      ],
       "generator_compatibility": {
         "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
@@ -75,7 +79,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.11.0"
+        "local_verifier_min_version": "0.13.0"
       }
     },
     {
@@ -109,7 +113,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.11.0"
+        "local_verifier_min_version": "0.13.0"
       }
     },
     {
@@ -143,7 +147,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.11.0"
+        "local_verifier_min_version": "0.13.0"
       }
     },
     {
@@ -187,7 +191,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.11.0"
+        "local_verifier_min_version": "0.13.0"
       }
     },
     {
@@ -217,6 +221,13 @@
       ],
       "changelog": [
         {
+          "version": "2.1",
+          "date": "2026-07-22",
+          "changes": [
+            "Aligned R-peak observability and NN exclusion language with the shared event-truth policy."
+          ]
+        },
+        {
           "version": "2.0",
           "date": "2026-07-18",
           "changes": [
@@ -231,7 +242,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.11.0"
+        "local_verifier_min_version": "0.13.0"
       }
     },
     {
@@ -295,6 +306,13 @@
         "PPG-only algorithm QA"
       ],
       "changelog": [
+        {
+          "version": "1.2",
+          "date": "2026-07-23",
+          "changes": [
+            "Excluded the physically truncated end-of-record QRS from R-peak and beat-classification denominators while retaining it as explicit audit truth."
+          ]
+        },
         {
           "version": "1.1",
           "date": "2026-07-17",
@@ -394,7 +412,7 @@
           ]
         }
       ],
-      "generator_compatibility": {"local_verifier_min_version": "0.11.0"}
+      "generator_compatibility": {"local_verifier_min_version": "0.13.0"}
     },
     {
       "pack_id": "ppg_alignment_v1",
@@ -437,7 +455,7 @@
           ]
         }
       ],
-      "generator_compatibility": {"local_verifier_min_version": "0.11.0"}
+      "generator_compatibility": {"local_verifier_min_version": "0.13.0"}
     },
     {
       "pack_id": "combined_worst_case_v1",
@@ -516,7 +534,7 @@
           ]
         }
       ],
-      "generator_compatibility": {"local_verifier_min_version": "0.11.0"}
+      "generator_compatibility": {"local_verifier_min_version": "0.13.0"}
     },
     {
       "pack_id": "ppg_benchmark_v1",
@@ -601,7 +619,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.11.0"
+        "local_verifier_min_version": "0.13.0"
       }
     },
     {
@@ -653,7 +671,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.11.0"
+        "local_verifier_min_version": "0.13.0"
       }
     },
     {
@@ -697,7 +715,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.11.0"
+        "local_verifier_min_version": "0.13.0"
       }
     },
     {
@@ -731,7 +749,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.11.0"
+        "local_verifier_min_version": "0.13.0"
       }
     }
   ]

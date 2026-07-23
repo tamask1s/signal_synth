@@ -78,7 +78,7 @@ def main():
 
     verify_dir = os.path.join(work, "verify")
     report = ss.verify_package(challenge, submission_dir, verify_dir, mode="diagnostic", profile="regression")
-    assert report.evidence["success"] and report.evidence["scoring_version"] == "synsigra-python-local-v7"
+    assert report.evidence["success"] and report.evidence["scoring_version"] == "synsigra-python-local-v8"
     assert report.evidence["contract"] == "synsigra_local_verification_v3" and not report.evidence["verification"]["evidence_eligible"]
     assert set(item["target"] for item in report.evidence["targets"]) == set(["morphology_assertions", "ecg_ppg_alignment"])
     for item in report.evidence["targets"]:

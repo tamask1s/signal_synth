@@ -1,6 +1,7 @@
 #include "ecg_beat_classification.h"
 
 #include "ecg_export.h"
+#include "truth_scoreability.h"
 
 #include <algorithm>
 #include <cmath>
@@ -160,14 +161,14 @@ namespace signal_synth
         }
     }
 
-    ecg_classified_beat_event::ecg_classified_beat_event() : time_seconds(0.0), beat_class(ecg_beat_unscored), original_index(0) {}
+    ecg_classified_beat_event::ecg_classified_beat_event() : time_seconds(0.0), beat_class(ecg_beat_unscored), original_index(0), exclusion_reason() {}
     ecg_beat_classification_options::ecg_beat_classification_options() : tolerance_seconds(0.075) {}
     ecg_beat_class_metrics::ecg_beat_class_metrics() : scored(false), ground_truth_count(0), prediction_count(0), true_positive_count(0), false_positive_count(0), false_negative_count(0), precision(0.0), recall(0.0), f1_score(0.0) {}
-    ecg_beat_classification_match::ecg_beat_classification_match() : ground_truth_index(0), prediction_index(0), ground_truth_time_seconds(0.0), prediction_time_seconds(0.0), error_seconds(0.0), actual_class(ecg_beat_unscored), predicted_class(ecg_beat_unscored), scored(false), correct(false) {}
-    ecg_beat_classification_unmatched::ecg_beat_classification_unmatched() : index(0), time_seconds(0.0), beat_class(ecg_beat_unscored) {}
+    ecg_beat_classification_match::ecg_beat_classification_match() : ground_truth_index(0), prediction_index(0), ground_truth_time_seconds(0.0), prediction_time_seconds(0.0), error_seconds(0.0), actual_class(ecg_beat_unscored), predicted_class(ecg_beat_unscored), scored(false), correct(false), exclusion_reason() {}
+    ecg_beat_classification_unmatched::ecg_beat_classification_unmatched() : index(0), time_seconds(0.0), beat_class(ecg_beat_unscored), exclusion_reason() {}
 
     ecg_beat_classification_result::ecg_beat_classification_result()
-        : success(false), tolerance_seconds(0.0), algorithm_name(), algorithm_version(), scored_ground_truth_count(0), scored_prediction_count(0), matched_count(0), correct_count(0), unscored_match_count(0), accuracy(0.0), micro_precision(0.0), micro_recall(0.0), micro_f1_score(0.0), mean_absolute_error_seconds(0.0), max_absolute_error_seconds(0.0), matches(), unmatched_ground_truth(), unmatched_predictions(), messages()
+        : success(false), tolerance_seconds(0.0), algorithm_name(), algorithm_version(), scored_ground_truth_count(0), scored_prediction_count(0), matched_count(0), correct_count(0), unscored_match_count(0), excluded_ground_truth_count(0), accuracy(0.0), micro_precision(0.0), micro_recall(0.0), micro_f1_score(0.0), mean_absolute_error_seconds(0.0), max_absolute_error_seconds(0.0), matches(), unmatched_ground_truth(), unmatched_predictions(), messages()
     {
         for (int actual = 0; actual < ecg_beat_class_count; ++actual)
             for (int predicted = 0; predicted < ecg_beat_class_count; ++predicted)
@@ -246,6 +247,13 @@ namespace signal_synth
                 event.time_seconds = beat.r_peak_time_seconds;
                 event.beat_class = ecg_beat_class_from_origin(beat.origin);
                 event.original_index = i;
+                const truth_event_scoreability scoreability = assess_ecg_qrs_scoreability(render, beat);
+                if (!scoreability.scoreable)
+                {
+                    event.beat_class = ecg_beat_unscored;
+                    event.exclusion_reason = scoreability.exclusion_reason;
+                    ++fresh.excluded_ground_truth_count;
+                }
                 ground_truth.push_back(event);
                 ++fresh.classes[event.beat_class].ground_truth_count;
                 if (scored_class(event.beat_class))
@@ -283,6 +291,7 @@ namespace signal_synth
                 match.predicted_class = prediction.beat_class;
                 match.scored = scored_class(truth.beat_class);
                 match.correct = match.scored && truth.beat_class == prediction.beat_class;
+                match.exclusion_reason = truth.exclusion_reason;
                 ++fresh.confusion[truth.beat_class][prediction.beat_class];
                 ++fresh.classes[prediction.beat_class].prediction_count;
                 ++fresh.matched_count;
@@ -317,6 +326,7 @@ namespace signal_synth
                 unmatched.index = ground_truth[truth].original_index;
                 unmatched.time_seconds = ground_truth[truth].time_seconds;
                 unmatched.beat_class = ground_truth[truth].beat_class;
+                unmatched.exclusion_reason = ground_truth[truth].exclusion_reason;
                 fresh.unmatched_ground_truth.push_back(unmatched);
                 if (scored_class(unmatched.beat_class))
                     ++fresh.classes[unmatched.beat_class].false_negative_count;
@@ -369,7 +379,7 @@ namespace signal_synth
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << std::setprecision(std::numeric_limits<double>::max_digits10);
-        output << "{\"schema_version\":1,\"score_type\":\"ecg_beat_classification_qa\",\"scenario_id\":" << json_text(render.document.scenario_id)
+        output << "{\"schema_version\":2,\"score_type\":\"ecg_beat_classification_qa\",\"scenario_id\":" << json_text(render.document.scenario_id)
                << ",\"document_fingerprint\":" << json_text(render.document_identity.document_fingerprint)
                << ",\"render_identity\":" << json_text(render.render_identity)
                << ",\"algorithm\":{\"name\":" << json_text(result.algorithm_name) << ",\"version\":" << json_text(result.algorithm_version)
@@ -379,6 +389,7 @@ namespace signal_synth
                << ",\"matched_count\":" << result.matched_count
                << ",\"correct_count\":" << result.correct_count
                << ",\"unscored_match_count\":" << result.unscored_match_count
+               << ",\"excluded_ground_truth_count\":" << result.excluded_ground_truth_count
                << ",\"accuracy\":" << result.accuracy
                << ",\"micro_precision\":" << result.micro_precision
                << ",\"micro_recall\":" << result.micro_recall
@@ -420,7 +431,8 @@ namespace signal_synth
                    << ",\"actual_class\":" << json_text(ecg_beat_class_name(match.actual_class))
                    << ",\"predicted_class\":" << json_text(ecg_beat_class_name(match.predicted_class))
                    << ",\"scored\":" << (match.scored ? "true" : "false")
-                   << ",\"correct\":" << (match.correct ? "true" : "false") << '}';
+                   << ",\"correct\":" << (match.correct ? "true" : "false")
+                   << ",\"exclusion_reason\":" << json_text(match.exclusion_reason) << '}';
         }
         output << "],\"unmatched_ground_truth\":[";
         for (std::size_t i = 0; i < result.unmatched_ground_truth.size(); ++i)
@@ -428,7 +440,8 @@ namespace signal_synth
             const ecg_beat_classification_unmatched& unmatched = result.unmatched_ground_truth[i];
             output << (i ? "," : "") << "{\"ground_truth_index\":" << unmatched.index
                    << ",\"time_seconds\":" << unmatched.time_seconds
-                   << ",\"actual_class\":" << json_text(ecg_beat_class_name(unmatched.beat_class)) << '}';
+                   << ",\"actual_class\":" << json_text(ecg_beat_class_name(unmatched.beat_class))
+                   << ",\"exclusion_reason\":" << json_text(unmatched.exclusion_reason) << '}';
         }
         output << "],\"unmatched_predictions\":[";
         for (std::size_t i = 0; i < result.unmatched_predictions.size(); ++i)
@@ -485,13 +498,15 @@ namespace signal_synth
         output.imbue(std::locale::classic());
         output << std::setprecision(6);
         output << "<!doctype html><html><head><meta charset=\"utf-8\"><title>ECG Beat Classification QA Report</title>"
-               << "<style>body{font-family:Arial,sans-serif;margin:24px;line-height:1.45}table{border-collapse:collapse;margin:12px 0;width:100%}th,td{border:1px solid #d1d5db;padding:6px 8px;text-align:right}th:first-child,td:first-child{text-align:left}th{background:#f3f4f6}</style></head><body>"
-               << "<h1>ECG Beat Classification QA Report</h1><p>Scenario <strong>" << html_text(render.document.scenario_id)
+               << "<style>body{font-family:Arial,sans-serif;margin:24px;line-height:1.45}table{border-collapse:collapse;margin:12px 0;width:100%}th,td{border:1px solid #d1d5db;padding:6px 8px;text-align:right}th:first-child,td:first-child{text-align:left}th{background:#f3f4f6}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}</style></head><body>"
+               << "<h1>ECG Beat Classification QA Report</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>Scenario <strong>" << html_text(render.document.scenario_id)
                << "</strong>; algorithm <strong>" << html_text(result.algorithm_name) << "</strong> " << html_text(result.algorithm_version)
                << ".</p><table><tr><th>Accuracy</th><td>" << result.accuracy
                << "</td></tr><tr><th>Micro F1</th><td>" << result.micro_f1_score
                << "</td></tr><tr><th>Correct / scored ground truth</th><td>" << result.correct_count << " / " << result.scored_ground_truth_count
+               << "</td></tr><tr><th>Explicitly excluded truth</th><td>" << result.excluded_ground_truth_count
                << "</td></tr><tr><th>Timing tolerance</th><td>" << result.tolerance_seconds << " s</td></tr></table>"
+               << "<p>Truth without complete in-record QRS support, or inside near-total all-lead dropout, is retained for traceability as unscored and omitted from accuracy, recall and F1 denominators.</p>"
                << "<h2>Per-class metrics</h2><table><tr><th>Class</th><th>GT</th><th>Pred</th><th>Precision</th><th>Recall</th><th>F1</th></tr>";
         for (int beat_class = 0; beat_class < ecg_beat_class_count; ++beat_class)
         {
@@ -511,7 +526,7 @@ namespace signal_synth
                 output << "<td>" << result.confusion[actual][predicted] << "</td>";
             output << "</tr>";
         }
-        output << "</table><p>This report is for synthetic engineering algorithm QA, not diagnosis or clinical classifier validation.</p></body></html>";
+        output << "</table></body></html>";
         return output.str();
     }
 }

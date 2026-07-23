@@ -61,8 +61,7 @@ def main():
             compatibility = entry["generator_compatibility"]
             assert compatibility.get("pack_schema_version", 2) == 2
             assert compatibility.get("challenge_package_contract", "synsigra_challenge_package_v3") == "synsigra_challenge_package_v3"
-            expected_verifier = "0.12.0" if pack_id == "r_peak_rr_noise_v1" else "0.11.0"
-            assert compatibility.get("local_verifier_min_version", "0.11.0") == expected_verifier
+            assert compatibility.get("local_verifier_min_version", "0.13.0") == "0.13.0"
         pack_path = os.path.normpath(os.path.join(os.path.dirname(catalog_path), entry["path"]))
         assert os.path.isfile(pack_path)
         assert run([cli, "pack", "validate", pack_path]).startswith("status=valid\n")

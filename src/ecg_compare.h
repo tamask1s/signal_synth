@@ -42,6 +42,8 @@ namespace signal_synth
         unsigned int true_positive_count;
         unsigned int false_positive_count;
         unsigned int false_negative_count;
+        unsigned int excluded_ground_truth_count;
+        unsigned int excluded_detection_count;
         double sensitivity;
         double positive_predictive_value;
         double f1_score;
@@ -96,6 +98,26 @@ namespace signal_synth
         double absolute_pulse_rate_error_bpm;
     };
 
+    struct ecg_compare_excluded_ground_truth
+    {
+        ecg_compare_excluded_ground_truth();
+
+        unsigned int index;
+        double time_seconds;
+        std::string reason;
+    };
+
+    struct ecg_compare_excluded_detection
+    {
+        ecg_compare_excluded_detection();
+
+        unsigned int index;
+        double time_seconds;
+        unsigned int ground_truth_index;
+        double ground_truth_time_seconds;
+        std::string reason;
+    };
+
     struct ecg_compare_result
     {
         ecg_compare_result();
@@ -116,6 +138,8 @@ namespace signal_synth
         std::vector<ecg_compare_match> matches;
         std::vector<ecg_compare_unmatched_event> false_positives;
         std::vector<ecg_compare_unmatched_event> false_negatives;
+        std::vector<ecg_compare_excluded_ground_truth> excluded_ground_truth;
+        std::vector<ecg_compare_excluded_detection> excluded_detections;
         std::vector<std::string> messages;
     };
 

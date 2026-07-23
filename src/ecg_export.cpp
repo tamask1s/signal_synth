@@ -4,6 +4,7 @@
 #include "ecg_edf_bdf_export.h"
 #include "ecg_wfdb_export.h"
 #include "realism_validation.h"
+#include "truth_scoreability.h"
 #include "wearable_profiles.h"
 
 #include <algorithm>
@@ -607,7 +608,7 @@ namespace
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << std::setprecision(std::numeric_limits<double>::max_digits10);
-        output << "{\"schema_version\":1,\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint)
+        output << "{\"schema_version\":2,\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint)
                << ",\"generation_fingerprint\":" << json_u64_string(render.document_identity.generation_fingerprint)
                << ",\"render_identity\":" << json_string(render.render_identity)
                << ",\"beats\":[";
@@ -616,6 +617,7 @@ namespace
             if (i)
                 output << ',';
             const signal_synth::clinical_beat_annotation& beat = render.record.beats()[i];
+            const signal_synth::truth_event_scoreability scoreability = signal_synth::assess_ecg_qrs_scoreability(render, beat);
             output << "{\"beat_index\":" << beat.beat_index
                    << ",\"linked_atrial_index\":" << beat.linked_atrial_index
                    << ",\"origin\":" << json_string(origin_name(beat.origin))
@@ -631,7 +633,11 @@ namespace
                    << ",\"p_present\":" << boolean(beat.p_present)
                    << ",\"qrs_present\":" << boolean(beat.qrs_present)
                    << ",\"t_present\":" << boolean(beat.t_present)
-                   << ",\"rr_was_clipped\":" << boolean(beat.rr_was_clipped) << '}';
+                   << ",\"rr_was_clipped\":" << boolean(beat.rr_was_clipped)
+                   << ",\"r_peak_scoreable\":" << boolean(scoreability.scoreable)
+                   << ",\"r_peak_exclusion_reason\":" << json_string(scoreability.exclusion_reason)
+                   << ",\"r_peak_retained_signal_fraction\":" << scoreability.retained_signal_fraction
+                   << ",\"complete_qrs_support\":" << boolean(scoreability.complete_support) << '}';
         }
         output << "],\"atrial_events\":[";
         for (unsigned int i = 0; i < render.record.atrial_event_count(); ++i)
@@ -725,6 +731,7 @@ namespace
                 if (i)
                     output << ',';
                 const signal_synth::ppg_annotation& annotation = render.ppg.annotations()[i];
+                const signal_synth::truth_event_scoreability scoreability = signal_synth::assess_ppg_event_scoreability(render, annotation.time_seconds);
                 const char* kind = annotation.kind == signal_synth::ppg_pulse_onset ? "pulse_onset"
                     : annotation.kind == signal_synth::ppg_systolic_peak ? "systolic_peak"
                     : annotation.kind == signal_synth::ppg_dicrotic_feature ? "dicrotic_feature" : "pulse_offset";
@@ -735,7 +742,10 @@ namespace
                        << ",\"source\":" << json_string(annotation.source == signal_synth::ppg_fiducial_construction ? "construction" : "measurement")
                        << ",\"sample_index\":" << annotation.sample_index
                        << ",\"time_seconds\":" << annotation.time_seconds
-                       << ",\"value_au\":" << annotation.value_au << '}';
+                       << ",\"value_au\":" << annotation.value_au
+                       << ",\"scoreable\":" << boolean(scoreability.scoreable)
+                       << ",\"exclusion_reason\":" << json_string(scoreability.exclusion_reason)
+                       << ",\"retained_signal_fraction\":" << scoreability.retained_signal_fraction << '}';
             }
             output << "],\"ppg_channel_fiducials\":[";
             bool first_channel_fiducial = true;
@@ -748,6 +758,7 @@ namespace
                         output << ',';
                     first_channel_fiducial = false;
                     const signal_synth::ppg_annotation& annotation = channel_annotations[i];
+                    const signal_synth::truth_event_scoreability scoreability = signal_synth::assess_ppg_event_scoreability(render, annotation.time_seconds);
                     const char* kind = annotation.kind == signal_synth::ppg_pulse_onset ? "pulse_onset"
                         : annotation.kind == signal_synth::ppg_systolic_peak ? "systolic_peak"
                         : annotation.kind == signal_synth::ppg_dicrotic_feature ? "dicrotic_feature" : "pulse_offset";
@@ -758,7 +769,10 @@ namespace
                            << ",\"source\":" << json_string(annotation.source == signal_synth::ppg_fiducial_construction ? "construction" : "measurement")
                            << ",\"sample_index\":" << annotation.sample_index
                            << ",\"time_seconds\":" << annotation.time_seconds
-                           << ",\"value_au\":" << annotation.value_au << '}';
+                           << ",\"value_au\":" << annotation.value_au
+                           << ",\"scoreable\":" << boolean(scoreability.scoreable)
+                           << ",\"exclusion_reason\":" << json_string(scoreability.exclusion_reason)
+                           << ",\"retained_signal_fraction\":" << scoreability.retained_signal_fraction << '}';
                 }
             }
             output << "],\"ppg_pulses\":[";
@@ -820,7 +834,11 @@ namespace
             write_artifact_channels(output, artifact, render.ppg);
             output << '}';
         }
-        output << "]}";
+        output << "],\"truth_policy\":{\"contract\":\"synsigra_observable_event_truth_v1\""
+               << ",\"minimum_retained_signal_fraction\":0.05"
+               << ",\"ecg_events\":\"Complete in-record QRS support is required. Events inside near-total all-lead ECG dropout are excluded with an explicit reason. Additive noise, external noise, clipping, saturation and partial-lead artifacts remain scoreable.\""
+               << ",\"ppg_events\":\"Generated in-record pulses are scoreable unless near-total PPG dropout makes the event unobservable. Intentionally missing and out-of-record pulses are not positive-event truth.\""
+               << ",\"excluded_predictions\":\"An otherwise unmatched prediction within the target pairing tolerance of excluded truth is reported and omitted from FP counts.\"}}";
         return output.str();
     }
 
@@ -1222,7 +1240,7 @@ namespace signal_synth
 
     const char* signal_synth_verifier_version()
     {
-        return "0.12.0";
+        return "0.13.0";
     }
 
     const char* signal_synth_engineering_claim_boundary_text()

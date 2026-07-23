@@ -144,6 +144,11 @@ int main()
     for (std::size_t i = 0; i < hrv.size(); ++i) hrv_perfect.measurements.push_back(hrv[i].measurement);
     ok &= check(signal_synth::score_measurement_output_to_render(render, "hrv", hrv_perfect, options, score) && score.total.tolerance_pass_count == score.total.numeric_pair_count, "generic_hrv_perfect");
     const std::string score_json = signal_synth::measurement_score_result_json(render, score);
-    ok &= check(score_json.find("\"contract\":\"synsigra_measurement_score_v2\"") != std::string::npos && score_json.find("\"by_measurement_context\"") != std::string::npos && !signal_synth::measurement_score_result_csv(score).empty() && signal_synth::measurement_score_report_html(render, score).find("Preprocessing") != std::string::npos, "reports");
+    const std::string score_html = signal_synth::measurement_score_report_html(render, score);
+    const std::string notice = "Synthetic engineering QA evidence; not diagnosis, nor clinical evidence";
+    ok &= check(score_json.find("\"contract\":\"synsigra_measurement_score_v2\"") != std::string::npos && score_json.find("\"by_measurement_context\"") != std::string::npos
+        && !signal_synth::measurement_score_result_csv(score).empty() && score_html.find("Preprocessing") != std::string::npos
+        && score_html.find(notice) != std::string::npos && score_html.find(notice) == score_html.rfind(notice)
+        && score_html.find("background:#f3f4f6") != std::string::npos, "reports");
     return ok ? 0 : 1;
 }

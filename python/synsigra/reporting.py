@@ -202,6 +202,7 @@ def render_index(summary):
     submission = summary.get("submission", {})
     algorithm = submission.get("algorithm", {})
     protocol = verification.get("protocol") or {}
+    truth_policy = protocol.get("truth_policy", {})
 
     if overall_success:
         verdict_title = "PASS — all acceptance criteria met"
@@ -294,6 +295,7 @@ def render_index(summary):
             _card("Evidence eligible", _yes_no(verification.get("evidence_eligible", False)).upper()),
         ])
         + _section("Run identity and provenance", _table(["Field", "Value"], ["<tr><th>%s</th><td class=\"mono\">%s</td></tr>" % (_h(key), _h(value)) for key, value in identity_rows], "kv"))
+        + (_section("Truth and exclusion policy", _policy_table(truth_policy)) if truth_policy else "")
         + _section("Acceptance criteria", "<p class=\"section-note\">%s %s Every applicable row is evaluated against the immutable profile shown above; raw numeric values remain in <a href=\"evidence.json\">evidence.json</a>.</p>" % (_h(mode_note), _h(summary.get("threshold_profile", {}).get("description", ""))) + _table(["ID", "Metric", "Required", "Actual", "Margin", "Verdict"], criteria_rows))
         + _section("Case-target traceability", "<p class=\"subtitle\">SCORED means that the case-target produced a valid comparison. Acceptance is decided by the aggregate criteria above.</p>" + _table(["Case", "Target", "Scoring", "Primary result", "Detail"], case_rows))
         + pipeline_html
@@ -348,6 +350,7 @@ def render_detail(summary, result, report):
         + _notice()
         + _section("Identity and traceability", _table(["Field", "Value"], ["<tr><th>%s</th><td class=\"mono\">%s</td></tr>" % (_h(key), _h(value)) for key, value in identity_rows], "kv"))
         + render_target_metrics(result, report)
+        + (_section("Truth and exclusion policy", "<p class=\"section-note\">%s</p>" % _h(result.get("exclusion_policy", ""))) if result.get("exclusion_policy") else "")
         + _section("Acceptance context", "<p class=\"section-note\">Package-level criteria aggregate the complete pack. Named acceptance-stratum criteria aggregate only their listed cases; this case is shown only the criteria to which it contributes.</p>" + criteria_html)
         + _section("Machine-readable evidence", "<p>The complete raw comparison, submission identity, package identity and policy decisions are in <a href=\"../evidence.json\">evidence.json</a>.</p>")
         + "<footer class=\"footer\"><a href=\"../index.html\">← Back to verification overview</a></footer>"
@@ -387,8 +390,19 @@ def _event_metrics(report):
         ("Pairing tolerance", format_seconds(comparison.get("tolerance_seconds"))),
         ("Matched-event mean absolute timing error", format_seconds(comparison.get("metrics", {}).get("total", {}).get("mean_absolute_error_seconds"))),
         ("Matched-event RMS timing error", format_seconds(comparison.get("metrics", {}).get("total", {}).get("rms_error_seconds"))),
+        ("Excluded truth events", comparison.get("metrics", {}).get("total", {}).get("excluded_ground_truth_count", 0)),
+        ("Excluded nearby predictions", comparison.get("metrics", {}).get("total", {}).get("excluded_detection_count", 0)),
     ]
-    return _section("Detection metrics", _table(["Signal stratum", "Truth", "Predicted", "TP", "FP", "FN", "Sensitivity", "PPV", "F1"], rows) + _table(["Timing measure", "Value"], ["<tr><th>%s</th><td>%s</td></tr>" % (_h(key), _h(value)) for key, value in timing_rows], "kv"))
+    excluded_rows = [
+        "<tr><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+            item.get("ground_truth_index", ""), _h(format_seconds(item.get("time_seconds"))), _h(item.get("reason", "")))
+        for item in comparison.get("excluded_ground_truth", [])
+    ]
+    excluded_html = ""
+    if excluded_rows:
+        excluded_html = "<details><summary>Excluded truth events (%d)</summary>%s</details>" % (
+            len(excluded_rows), _table(["Truth index", "Time", "Reason"], excluded_rows))
+    return _section("Detection metrics", _table(["Signal stratum", "Truth", "Predicted", "TP", "FP", "FN", "Sensitivity", "PPV", "F1"], rows) + _table(["Timing measure", "Value"], ["<tr><th>%s</th><td>%s</td></tr>" % (_h(key), _h(value)) for key, value in timing_rows], "kv") + excluded_html)
 
 
 def _classification_metrics(report):
@@ -397,6 +411,7 @@ def _classification_metrics(report):
         ("Accuracy", format_ratio(summary.get("accuracy"))),
         ("Micro F1", format_ratio(summary.get("micro_f1_score"))),
         ("Correct / scored truth", "%s / %s" % (summary.get("correct_count", 0), summary.get("scored_ground_truth_count", 0))),
+        ("Explicitly excluded truth", summary.get("excluded_ground_truth_count", 0)),
         ("Timing tolerance", format_seconds(report.get("tolerance_seconds"))),
     ]
     rows = []
@@ -510,6 +525,14 @@ def _notice():
 
 def _section(title, content):
     return "<section><h2>%s</h2>%s</section>" % (_h(title), content)
+
+
+def _policy_table(policy):
+    rows = [
+        "<tr><th>%s</th><td>%s</td></tr>" % (_h(str(key).replace("_", " ").title()), _h(value))
+        for key, value in sorted(policy.items())
+    ]
+    return _table(["Rule", "Policy"], rows, "kv")
 
 
 def _table(headers, rows, class_name=""):

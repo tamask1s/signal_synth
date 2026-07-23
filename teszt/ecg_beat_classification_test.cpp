@@ -129,6 +129,9 @@ int main()
     const std::string html = signal_synth::ecg_beat_classification_report_html(render, result);
     ok &= check(json.find("\"score_type\":\"ecg_beat_classification_qa\"") != std::string::npos && json.find("\"confusion_matrix\"") != std::string::npos, "classification_json_report");
     ok &= check(csv.find("row_type,class,scored") == 0 && csv.find("actual_class,predicted_class,count") != std::string::npos, "classification_csv_report");
-    ok &= check(html.find("ECG Beat Classification QA Report") != std::string::npos && html.find("not diagnosis") != std::string::npos, "classification_html_report");
+    const std::string notice = "Synthetic engineering QA evidence; not diagnosis, nor clinical evidence";
+    ok &= check(html.find("ECG Beat Classification QA Report") != std::string::npos && html.find(notice) != std::string::npos
+        && html.find(notice) == html.rfind(notice) && html.find("background:#f3f4f6") != std::string::npos,
+        "classification_html_report");
     return ok ? 0 : 1;
 }

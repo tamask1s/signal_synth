@@ -1,6 +1,8 @@
 #include "../src/ecg_export.h"
 #include "../src/ecg_scenario_json.h"
+#include "../src/measurement_scoring.h"
 #include "../src/signal_quality.h"
+#include "../src/truth_scoreability.h"
 
 #include <cmath>
 #include <fstream>
@@ -116,6 +118,59 @@ int main()
     ok &= check(same_vector(render.signal_quality.ecg_leads[signal_synth::clinical_lead_i], render.record.lead_data(signal_synth::clinical_lead_i), render.record.sample_count()), "unselected_ecg_channel_unchanged");
     ok &= check(any_difference(render.signal_quality.ecg_leads[signal_synth::clinical_lead_ii], render.record.lead_data(signal_synth::clinical_lead_ii), 1000, 2500), "selected_ecg_channel_modified");
     ok &= check(any_difference(render.signal_quality.ppg_channels[0], render.ppg.samples(), 1500, 2000), "ppg_artifact_modified");
+
+    signal_synth::ecg_scenario_document observability;
+    observability.schema_version = 2;
+    observability.scenario_id = "truth_observability";
+    observability.duration_seconds = 8.0;
+    observability.ppg.enabled = true;
+    signal_synth::signal_quality_artifact_config ecg_dropout;
+    ecg_dropout.type = signal_synth::signal_quality_ecg_dropout;
+    ecg_dropout.start_seconds = 2.0;
+    ecg_dropout.duration_seconds = 3.0;
+    ecg_dropout.severity = 1.0;
+    for (unsigned int lead = 0; lead < signal_synth::clinical_lead_count; ++lead) ecg_dropout.ecg_leads[lead] = true;
+    observability.signal_quality.artifacts.push_back(ecg_dropout);
+    signal_synth::signal_quality_artifact_config total_ppg_dropout;
+    total_ppg_dropout.type = signal_synth::signal_quality_ppg_dropout;
+    total_ppg_dropout.start_seconds = 2.0;
+    total_ppg_dropout.duration_seconds = 3.0;
+    total_ppg_dropout.severity = 1.0;
+    total_ppg_dropout.ppg = true;
+    observability.signal_quality.artifacts.push_back(total_ppg_dropout);
+    signal_synth::ecg_render_bundle observability_render;
+    ok &= check(signal_synth::render_ecg_document(observability, observability_render, render_result), "truth_observability_render");
+    unsigned int excluded_ecg = 0;
+    for (unsigned int i = 0; i < observability_render.record.beat_count(); ++i)
+    {
+        const signal_synth::truth_event_scoreability scoreability = signal_synth::assess_ecg_qrs_scoreability(observability_render, observability_render.record.beats()[i]);
+        if (!scoreability.scoreable && scoreability.exclusion_reason == "near_total_all_lead_ecg_dropout") ++excluded_ecg;
+    }
+    unsigned int excluded_ppg = 0;
+    for (unsigned int i = 0; i < observability_render.ppg.annotation_count(); ++i)
+    {
+        const signal_synth::truth_event_scoreability scoreability = signal_synth::assess_ppg_event_scoreability(observability_render, observability_render.ppg.annotations()[i].time_seconds);
+        if (!scoreability.scoreable && scoreability.exclusion_reason == "near_total_ppg_dropout") ++excluded_ppg;
+    }
+    ok &= check(excluded_ecg > 0u && excluded_ppg > 0u, "near_total_dropout_is_explicitly_unscoreable");
+    signal_synth::clinical_beat_annotation boundary = observability_render.record.beats()[observability_render.record.beat_count() - 1u];
+    boundary.qrs_offset_time_seconds = observability.duration_seconds + 0.010;
+    const signal_synth::truth_event_scoreability boundary_scoreability = signal_synth::assess_ecg_qrs_scoreability(observability_render, boundary);
+    ok &= check(!boundary_scoreability.scoreable && !boundary_scoreability.complete_support && boundary_scoreability.exclusion_reason == "record_boundary_truncated_qrs", "truncated_qrs_is_explicitly_unscoreable");
+    std::vector<signal_synth::measurement_truth> observable_rr;
+    std::vector<std::string> truth_messages;
+    ok &= check(signal_synth::measurement_ground_truth_from_render(observability_render, "rr_interval", observable_rr, truth_messages), "observable_rr_truth");
+    unsigned int not_evaluable_rr = 0;
+    for (std::size_t i = 0; i < observable_rr.size(); ++i)
+        if (observable_rr[i].measurement.status == signal_synth::measurement_not_evaluable) ++not_evaluable_rr;
+    ok &= check(not_evaluable_rr > 0u, "rr_touching_unscoreable_event_is_not_evaluable");
+    signal_synth::ecg_export_bundle observability_bundle;
+    ok &= check(signal_synth::build_ecg_export_bundle(observability_render, observability_bundle, export_result)
+        && observability_bundle.find("annotations.json")
+        && observability_bundle.find("annotations.json")->content.find("\"contract\":\"synsigra_observable_event_truth_v1\"") != std::string::npos
+        && observability_bundle.find("annotations.json")->content.find("\"r_peak_scoreable\":false") != std::string::npos
+        && observability_bundle.find("annotations.json")->content.find("\"scoreable\":false") != std::string::npos,
+        "observable_truth_annotation_contract");
 
     signal_synth::signal_quality_waveforms composed;
     signal_synth::signal_quality_config no_artifacts;

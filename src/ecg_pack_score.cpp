@@ -10,7 +10,7 @@
 
 namespace
 {
-    const char* scoring_version = "pack_score_v2";
+    const char* scoring_version = "pack_score_v3";
 
     std::string json_string(const std::string& value)
     {
@@ -80,6 +80,8 @@ namespace
         output.true_positive_count += input.true_positive_count;
         output.false_positive_count += input.false_positive_count;
         output.false_negative_count += input.false_negative_count;
+        output.excluded_ground_truth_count += input.excluded_ground_truth_count;
+        output.excluded_detection_count += input.excluded_detection_count;
     }
 
     void add_error(std::vector<double>& total_errors, std::vector<double>& clean_errors, std::vector<double>& artifact_errors, std::vector<double>& motion_errors, std::vector<double>& dropout_errors, std::vector<double>& low_perfusion_errors, const signal_synth::ecg_compare_match& match)
@@ -134,6 +136,8 @@ namespace
                << ",\"true_positive_count\":" << metrics.true_positive_count
                << ",\"false_positive_count\":" << metrics.false_positive_count
                << ",\"false_negative_count\":" << metrics.false_negative_count
+               << ",\"excluded_ground_truth_count\":" << metrics.excluded_ground_truth_count
+               << ",\"excluded_detection_count\":" << metrics.excluded_detection_count
                << ",\"sensitivity\":" << metrics.sensitivity
                << ",\"positive_predictive_value\":" << metrics.positive_predictive_value
                << ",\"f1_score\":" << metrics.f1_score
@@ -158,7 +162,7 @@ namespace
     {
         output << row_type << ',' << csv_cell(target) << ',' << csv_cell(bin) << ",,,,,,,,,"
                << metrics.ground_truth_count << ',' << metrics.detection_count << ',' << metrics.true_positive_count << ','
-               << metrics.false_positive_count << ',' << metrics.false_negative_count << ',' << metrics.sensitivity << ','
+               << metrics.false_positive_count << ',' << metrics.false_negative_count << ',' << metrics.excluded_ground_truth_count << ',' << metrics.excluded_detection_count << ',' << metrics.sensitivity << ','
                << metrics.positive_predictive_value << ',' << metrics.f1_score << ',' << metrics.mean_absolute_error_seconds << ','
                << metrics.median_absolute_error_seconds << ',' << metrics.rms_error_seconds << ',' << metrics.max_absolute_error_seconds << '\n';
     }
@@ -300,7 +304,7 @@ namespace signal_synth
     {
         std::ostringstream output;
         output.imbue(std::locale::classic());
-        output << "row_type,target,bin,case_id,scenario_id,scenario_path,document_fingerprint,render_identity,detection_input_id,detection_algorithm_name,detection_algorithm_version,ground_truth_count,detection_count,true_positive_count,false_positive_count,false_negative_count,sensitivity,positive_predictive_value,f1_score,mean_absolute_error_seconds,median_absolute_error_seconds,rms_error_seconds,max_absolute_error_seconds\n";
+        output << "row_type,target,bin,case_id,scenario_id,scenario_path,document_fingerprint,render_identity,detection_input_id,detection_algorithm_name,detection_algorithm_version,ground_truth_count,detection_count,true_positive_count,false_positive_count,false_negative_count,excluded_ground_truth_count,excluded_detection_count,sensitivity,positive_predictive_value,f1_score,mean_absolute_error_seconds,median_absolute_error_seconds,rms_error_seconds,max_absolute_error_seconds\n";
         for (std::size_t i = 0; i < summary.targets.size(); ++i)
         {
             write_metric_csv_row(output, "target_summary", summary.targets[i].target_name, "total", summary.targets[i].total);
@@ -317,7 +321,7 @@ namespace signal_synth
                    << ',' << csv_cell(item.scenario_path) << ',' << csv_cell(item.document_fingerprint) << ',' << csv_cell(item.render_identity)
                    << ',' << csv_cell(item.detection_input_id) << ',' << csv_cell(item.detection_algorithm_name) << ',' << csv_cell(item.detection_algorithm_version)
                    << ',' << item.comparison.total.ground_truth_count << ',' << item.comparison.total.detection_count << ',' << item.comparison.total.true_positive_count
-                   << ',' << item.comparison.total.false_positive_count << ',' << item.comparison.total.false_negative_count << ',' << item.comparison.total.sensitivity
+                   << ',' << item.comparison.total.false_positive_count << ',' << item.comparison.total.false_negative_count << ',' << item.comparison.total.excluded_ground_truth_count << ',' << item.comparison.total.excluded_detection_count << ',' << item.comparison.total.sensitivity
                    << ',' << item.comparison.total.positive_predictive_value << ',' << item.comparison.total.f1_score << ',' << item.comparison.total.mean_absolute_error_seconds
                    << ',' << item.comparison.total.median_absolute_error_seconds << ',' << item.comparison.total.rms_error_seconds << ',' << item.comparison.total.max_absolute_error_seconds << '\n';
         }
@@ -329,11 +333,11 @@ namespace signal_synth
         std::ostringstream output;
         output.imbue(std::locale::classic());
         output << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Algorithm QA Pack Score</title>"
-               << "<style>body{font-family:Arial,sans-serif;margin:24px;line-height:1.45}table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid #d1d5db;padding:6px 8px;text-align:left}th{background:#f3f4f6}code{font-family:monospace}</style></head><body>"
-               << "<h1>Algorithm QA Pack Score</h1><p>This report compares external algorithm event detections against synthetic ground truth. It is engineering QA evidence, not diagnosis or clinical validation certification.</p>"
+               << "<style>body{font-family:Arial,sans-serif;margin:24px;line-height:1.45}table{border-collapse:collapse;width:100%;margin:12px 0}th,td{border:1px solid #d1d5db;padding:6px 8px;text-align:left}th{background:#f3f4f6}code{font-family:monospace}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}</style></head><body>"
+               << "<h1>Algorithm QA Pack Score</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>External algorithm event detections compared with deterministic synthetic ground truth.</p>"
                << "<table><tr><th>Pack</th><td>" << html_text(summary.pack_id) << "</td></tr><tr><th>Version</th><td>" << html_text(summary.pack_version)
                << "</td></tr><tr><th>Fingerprint</th><td><code>" << html_text(summary.pack_fingerprint) << "</code></td></tr><tr><th>Cases</th><td>" << summary.cases.size() << "</td></tr></table>"
-               << "<h2>Target Summary</h2><table><tr><th>Target</th><th>Bin</th><th>GT</th><th>Detections</th><th>TP</th><th>FP</th><th>FN</th><th>Sensitivity</th><th>PPV</th><th>F1</th><th>MAE s</th></tr>";
+               << "<h2>Target Summary</h2><p>Observable events are scored. Explicitly reasoned near-total-dropout and record-boundary truth, plus nearby otherwise-unmatched predictions, are reported separately from FN/FP counts.</p><table><tr><th>Target</th><th>Bin</th><th>GT</th><th>Detections</th><th>TP</th><th>FP</th><th>FN</th><th>Excluded truth</th><th>Excluded detections</th><th>Sensitivity</th><th>PPV</th><th>F1</th><th>MAE s</th></tr>";
         for (std::size_t i = 0; i < summary.targets.size(); ++i)
         {
             const ecg_pack_score_target& target = summary.targets[i];
@@ -343,6 +347,7 @@ namespace signal_synth
                 output << "<tr><td>" << html_text(target.target_name) << "</td><td>" << bins[bin] << "</td><td>" << metrics[bin]->ground_truth_count
                        << "</td><td>" << metrics[bin]->detection_count << "</td><td>" << metrics[bin]->true_positive_count
                        << "</td><td>" << metrics[bin]->false_positive_count << "</td><td>" << metrics[bin]->false_negative_count
+                       << "</td><td>" << metrics[bin]->excluded_ground_truth_count << "</td><td>" << metrics[bin]->excluded_detection_count
                        << "</td><td>" << metrics[bin]->sensitivity << "</td><td>" << metrics[bin]->positive_predictive_value
                        << "</td><td>" << metrics[bin]->f1_score << "</td><td>" << metrics[bin]->mean_absolute_error_seconds << "</td></tr>";
         }

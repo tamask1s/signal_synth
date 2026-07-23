@@ -23,7 +23,7 @@ assert contract["contract"] == "synsigra_core_integration_v7"
 assert contract["external_noise"]["scenario_schema_version"] == 8
 assert contract["contracts"]["cpp_facade"] == "1.5.0"
 assert contract["contracts"]["pack_schema_version"] == 2
-assert contract["contracts"]["python_verifier"] == "0.12.0"
+assert contract["contracts"]["python_verifier"] == "0.13.0"
 assert contract["scenario"] == {"latest_schema_version": 9, "supported_schema_versions": [2, 3, 4, 5, 6, 7, 8, 9]}
 assert contract["hrv"]["metric_definition"] == "synsigra_hrv_metrics_v2"
 assert contract["hrv"]["scoring_contract"] == "synsigra_measurement_score_v2"
@@ -72,6 +72,12 @@ assert receipt["contracts"]["verification_protocol"] == contract["contracts"]["v
 with open(os.path.join(challenge_dir, "manifest.json"), "r") as manifest_file:
     manifest = json.load(manifest_file)
 assert manifest["package_id"] == receipt["package_id"]
+with open(os.path.join(challenge_dir, "index.html"), "r") as handle:
+    challenge_index = handle.read()
+for case_id in ("clean_70", "slow_45", "fast_120", "baseline_powerline"):
+    relative_report = "cases/%s/report.html" % case_id
+    assert ('href="%s"' % relative_report) in challenge_index
+    assert os.path.isfile(os.path.join(challenge_dir, *relative_report.split("/")))
 assert os.path.isfile(os.path.join(challenge_dir, "user-output-template", "submission.json"))
 with open(os.path.join(challenge_dir, "scoring_manifest.json"), "r") as handle:
     scoring_manifest = json.load(handle)

@@ -3,6 +3,27 @@
 This file records public engineering-verification release notes for the
 `signal_synth` core generator and local verifier contracts.
 
+## Python verifier 0.13.0
+
+Status: active observable-truth baseline.
+
+- Added one deterministic `synsigra_observable_event_truth_v1` policy across
+  every curated pack: R peaks require complete in-record QRS support and more
+  than 5% retained signal during all-lead dropout.
+- Kept additive/external noise, clipping, saturation and partial-lead
+  artifacts fully scoreable; no result-dependent amplitude heuristic or
+  post-hoc forgiveness is used.
+- Marked RR measurements touching excluded endpoints as `not_evaluable`, and
+  exposed excluded truth and nearby excluded detections separately from FN/FP
+  counts in JSON and human reports.
+- Applied the same exclusion semantics to native C++, Python verification and
+  beat classification, with explicit reasons retained for audit.
+- Fixed challenge-index links to case reports and standardized every generated
+  HTML scoring report on the single neutral-gray engineering-use notice.
+- Added `scripts/audit_curated_truth.py`; the release audit renders all 18
+  curated packs and checks event truth, boundary rules, measurement status,
+  HTML notices and internal links.
+
 ## Python verifier 0.11.0
 
 Status: active audit-reporting baseline.

@@ -15,7 +15,7 @@ from .reporting import NOTICE_TEXT, annotate_policy, render_detail, render_index
 from .submission import SubmissionError, load_submission
 
 
-SCORING_VERSION = "synsigra-python-local-v7"
+SCORING_VERSION = "synsigra-python-local-v8"
 LIMITATION_TEXT = NOTICE_TEXT
 BEAT_CLASSES = ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion", "unscored"]
 SCORED_BEAT_CLASSES = set(["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion"])
@@ -38,7 +38,7 @@ class VerificationReport(object):
 
 
 class _TruthEvent(object):
-    def __init__(self, index, time_seconds, label="", in_artifact_interval=False, in_motion_artifact_interval=False, in_dropout_artifact_interval=False, low_perfusion=False, weak_pulse=False, missing_pulse_window=False):
+    def __init__(self, index, time_seconds, label="", in_artifact_interval=False, in_motion_artifact_interval=False, in_dropout_artifact_interval=False, low_perfusion=False, weak_pulse=False, missing_pulse_window=False, scoreable=True, exclusion_reason=""):
         self.index = int(index)
         self.time_seconds = float(time_seconds)
         self.label = label
@@ -48,6 +48,8 @@ class _TruthEvent(object):
         self.low_perfusion = bool(low_perfusion)
         self.weak_pulse = bool(weak_pulse)
         self.missing_pulse_window = bool(missing_pulse_window)
+        self.scoreable = bool(scoreable)
+        self.exclusion_reason = str(exclusion_reason or "")
 
 
 def verify_package(challenge, submission_dir, out_dir, cases=None, targets=None, mode="evidence", profile=None, force=False):
@@ -140,6 +142,7 @@ def _verification_configuration(package, scoring_manifest, mode, cases, targets,
             "context_of_use": protocol["context_of_use"],
             "acceptance_profile_id": protocol["acceptance_profile"]["profile_id"],
             "evidence_boundary": protocol["evidence_boundary"],
+            "truth_policy": dict(protocol["truth_policy"]),
         })
     if mode == "evidence":
         if protocol is None:
@@ -402,6 +405,7 @@ def _score_event_detection(package, case, case_summary, annotations, detections,
         "package": _package_identity(package),
         "scenario": _scenario_identity(case, case_summary, annotations),
         "comparison": result,
+        "truth_policy": dict(annotations.get("truth_policy", {})),
         "notes": [LIMITATION_TEXT],
     }
 
@@ -436,6 +440,8 @@ def _score_beat_classification(package, case, case_summary, annotations, detecti
 def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_opportunity_count=0):
     if not truth and target in PPG_EVENT_TARGETS:
         raise VerificationError("scenario has no requested PPG event ground truth")
+    excluded_truth = [item for item in truth if not item.scoreable]
+    truth = [item for item in truth if item.scoreable]
     sorted_detections = sorted(detections, key=lambda item: (item.time_seconds, item.index))
     candidates = []
     for truth_index, truth_event in enumerate(truth):
@@ -446,6 +452,7 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
     candidates.sort()
     truth_matched = [False] * len(truth)
     detection_matched = [False] * len(sorted_detections)
+    detection_excluded = [False] * len(sorted_detections)
     matched_detection_times = [0.0] * len(truth)
     total = _empty_event_metrics()
     clean = _empty_event_metrics()
@@ -507,6 +514,26 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
             weak["true_positive_count"] += 1
             weak_errors.append(abs(error_seconds))
 
+    excluded_detections = []
+    for detection_index, detection_event in enumerate(sorted_detections):
+        if detection_matched[detection_index]:
+            continue
+        candidates = [
+            item for item in excluded_truth
+            if abs(detection_event.time_seconds - item.time_seconds) <= tolerance_seconds
+        ]
+        if not candidates:
+            continue
+        nearest = min(candidates, key=lambda item: (abs(detection_event.time_seconds - item.time_seconds), item.index))
+        detection_excluded[detection_index] = True
+        excluded_detections.append({
+            "detection_index": detection_event.index,
+            "time_seconds": detection_event.time_seconds,
+            "excluded_ground_truth_index": nearest.index,
+            "excluded_ground_truth_time_seconds": nearest.time_seconds,
+            "reason": nearest.exclusion_reason,
+        })
+
     for index, truth_event in enumerate(truth):
         _bin_metrics(truth_event.in_artifact_interval, clean, artifact)["ground_truth_count"] += 1
         if truth_event.in_motion_artifact_interval:
@@ -537,6 +564,8 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
             if truth_event.in_dropout_artifact_interval:
                 dropout["false_negative_count"] += 1
     for index, detection_event in enumerate(sorted_detections):
+        if detection_excluded[index]:
+            continue
         _bin_metrics(detection_event.in_artifact_interval, clean, artifact)["detection_count"] += 1
         if detection_event.in_motion_artifact_interval:
             motion["detection_count"] += 1
@@ -567,7 +596,9 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
             if detection_event.in_dropout_artifact_interval:
                 dropout["false_positive_count"] += 1
     total["ground_truth_count"] = len(truth)
-    total["detection_count"] = len(detections)
+    total["detection_count"] = len(detections) - len(excluded_detections)
+    total["excluded_ground_truth_count"] = len(excluded_truth)
+    total["excluded_detection_count"] = len(excluded_detections)
     _finalize_event_metrics(total, total_errors)
     _finalize_event_metrics(clean, clean_errors)
     _finalize_event_metrics(artifact, artifact_errors)
@@ -575,7 +606,8 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
     _finalize_event_metrics(dropout, dropout_errors)
     _finalize_event_metrics(low_perfusion, low_perfusion_errors)
     _finalize_event_metrics(weak, weak_errors)
-    pulse_timing = _ppg_pulse_timing_metrics(target, truth, sorted_detections, truth_matched, matched_detection_times)
+    scored_detections = [item for index, item in enumerate(sorted_detections) if not detection_excluded[index]]
+    pulse_timing = _ppg_pulse_timing_metrics(target, truth, scored_detections, truth_matched, matched_detection_times)
     return {
         "target": target,
         "tolerance_seconds": tolerance_seconds,
@@ -592,6 +624,11 @@ def _compare_events(target, truth, detections, tolerance_seconds, missing_pulse_
         "matches": matches,
         "false_positives": false_positives,
         "false_negatives": false_negatives,
+        "excluded_ground_truth": [
+            {"ground_truth_index": item.index, "time_seconds": item.time_seconds, "reason": item.exclusion_reason}
+            for item in excluded_truth
+        ],
+        "excluded_detections": excluded_detections,
     }
 
 
@@ -691,12 +728,13 @@ def _score_classification_events(truth, predictions, tolerance_seconds):
             "predicted_class": predicted,
             "scored": scored,
             "correct": correct,
+            "exclusion_reason": truth_event.exclusion_reason,
         })
 
     for index, truth_event in enumerate(truth):
         if truth_used[index]:
             continue
-        unmatched_ground_truth.append({"ground_truth_index": truth_event.index, "time_seconds": truth_event.time_seconds, "actual_class": truth_event.label})
+        unmatched_ground_truth.append({"ground_truth_index": truth_event.index, "time_seconds": truth_event.time_seconds, "actual_class": truth_event.label, "exclusion_reason": truth_event.exclusion_reason})
         if truth_event.label in SCORED_BEAT_CLASSES:
             classes[truth_event.label]["false_negative_count"] += 1
     for index, prediction in enumerate(predictions):
@@ -723,6 +761,7 @@ def _score_classification_events(truth, predictions, tolerance_seconds):
         "matched_count": matched_count,
         "correct_count": correct_count,
         "unscored_match_count": unscored_match_count,
+        "excluded_ground_truth_count": sum(1 for item in truth if not item.scoreable),
         "accuracy": _ratio(correct_count, scored_ground_truth_count),
         "micro_precision": micro_precision,
         "micro_recall": micro_recall,
@@ -750,7 +789,10 @@ def _truth_events_for_target(target, annotations, case_summary):
             if beat.get("qrs_present", False) and _finite_non_negative(beat.get("r_peak_seconds")):
                 time_seconds = float(beat["r_peak_seconds"])
                 index = beat.get("beat_index", array_index)
-                events.append(_TruthEvent(index, time_seconds, "", _in_artifact_interval(target, time_seconds, annotations, case_summary)))
+                events.append(_TruthEvent(
+                    index, time_seconds, "", _in_artifact_interval(target, time_seconds, annotations, case_summary),
+                    scoreable=beat.get("r_peak_scoreable", True),
+                    exclusion_reason=beat.get("r_peak_exclusion_reason", "")))
         return events
     if target == "ecg_beat_classification":
         for array_index, beat in enumerate(annotations.get("beats", [])):
@@ -758,7 +800,12 @@ def _truth_events_for_target(target, annotations, case_summary):
                 label = beat.get("beat_class", "unscored")
                 if label not in BEAT_CLASSES:
                     label = "unscored"
-                events.append(_TruthEvent(beat.get("beat_index", array_index), beat["r_peak_seconds"], label, False))
+                scoreable = bool(beat.get("r_peak_scoreable", True))
+                if not scoreable:
+                    label = "unscored"
+                events.append(_TruthEvent(
+                    beat.get("beat_index", array_index), beat["r_peak_seconds"], label, False,
+                    scoreable=scoreable, exclusion_reason=beat.get("r_peak_exclusion_reason", "")))
         return events
     if target in PPG_EVENT_TARGETS:
         expected_kind = "systolic_peak" if target == "ppg_systolic_peak" else "pulse_onset"
@@ -766,12 +813,15 @@ def _truth_events_for_target(target, annotations, case_summary):
             if item.get("kind") == expected_kind and item.get("source") == "measurement" and _finite_non_negative(item.get("time_seconds")):
                 time_seconds = float(item["time_seconds"])
                 pulse = _ppg_pulse_for_beat(annotations, item.get("ecg_beat_index"))
+                scoreable = bool(item.get("scoreable", True)) and bool(
+                    pulse is None or pulse.get("valid_for_peak_scoring", True))
                 events.append(_TruthEvent(
                     len(events), time_seconds, "", _in_artifact_interval(target, time_seconds, annotations, case_summary),
                     _in_motion_artifact_interval(target, time_seconds, annotations, case_summary),
                     _in_dropout_artifact_interval(target, time_seconds, annotations, case_summary),
                     bool(pulse and pulse.get("low_perfusion", False)),
-                    bool(pulse and _ppg_pulse_state(pulse) == "weak")))
+                    bool(pulse and _ppg_pulse_state(pulse) == "weak"),
+                    scoreable=scoreable, exclusion_reason=item.get("exclusion_reason", "")))
         return events
     raise VerificationError("unsupported target: %s" % target)
 
@@ -890,7 +940,7 @@ def _case_result_from_report(case, case_summary, target, relative_out, submissio
     }
     if target == "ecg_beat_classification":
         result["score_type"] = "classification"
-        result["exclusion_policy"] = "Ground-truth beats labelled unscored are excluded from accuracy, recall, and F1 denominators."
+        result["exclusion_policy"] = "Ground-truth beats explicitly marked unscoreable, or labelled unscored, are paired for traceability but excluded from accuracy, recall, and F1 denominators."
         result["summary"] = dict(report_json.get("summary", {}))
         result["classes"] = list(report_json.get("classes", []))
         result["confusion_matrix"] = dict(report_json.get("confusion_matrix", {}))
@@ -920,7 +970,7 @@ def _case_result_from_report(case, case_summary, target, relative_out, submissio
         result["_measurement_errors"] = [_measurement_error_record(item) for item in report_json.get("matches", []) if item.get("numeric_pair", False)]
     else:
         result["score_type"] = "event_detection"
-        result["exclusion_policy"] = "All events are scored in total; clean and artifact bins partition events by target-affecting half-open artifact intervals [start,end)."
+        result["exclusion_policy"] = "Observable events are scored; explicitly reasoned near-total-dropout and truncated-boundary truth is excluded. A nearby otherwise-unmatched prediction is reported and omitted from FP counts. All other artifact and severe-noise events remain scored."
         result["metrics"] = dict(report_json.get("comparison", {}).get("metrics", {}))
         errors = dict((name, []) for name in ("total", "clean", "artifact", "motion", "dropout", "low_perfusion"))
         for match in report_json.get("comparison", {}).get("matches", []):
@@ -1020,7 +1070,7 @@ def _build_evidence_record(package, scoring_manifest, submission, integrity, res
             for key in (
                 "case_id", "scenario_id", "target", "score_type", "status",
                 "success", "message", "report_path", "submission_output",
-                "submission_output_sha256",
+                "submission_output_sha256", "exclusion_policy",
             )
             if key in result
         }
@@ -1174,7 +1224,7 @@ def _aggregate_event_result(aggregate, result):
     metrics = result.get("metrics", {})
     for name in ("total", "clean", "artifact", "motion", "dropout", "low_perfusion"):
         source = metrics.get(name, {})
-        for key in ("ground_truth_count", "detection_count", "true_positive_count", "false_positive_count", "false_negative_count"):
+        for key in ("ground_truth_count", "detection_count", "true_positive_count", "false_positive_count", "false_negative_count", "excluded_ground_truth_count", "excluded_detection_count"):
             aggregate[name][key] += int(source.get(key, 0))
         aggregate["event_errors_" + name].extend(result.get("_absolute_errors", {}).get(name, []))
 
@@ -1597,6 +1647,8 @@ def _empty_event_metrics():
         "true_positive_count": 0,
         "false_positive_count": 0,
         "false_negative_count": 0,
+        "excluded_ground_truth_count": 0,
+        "excluded_detection_count": 0,
         "sensitivity": 0.0,
         "positive_predictive_value": 0.0,
         "f1_score": 0.0,
