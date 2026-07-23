@@ -42,7 +42,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.13.0"
+        "local_verifier_min_version": "0.14.0"
       }
     },
     {
@@ -79,7 +79,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.13.0"
+        "local_verifier_min_version": "0.14.0"
       }
     },
     {
@@ -113,7 +113,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.13.0"
+        "local_verifier_min_version": "0.14.0"
       }
     },
     {
@@ -147,7 +147,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.13.0"
+        "local_verifier_min_version": "0.14.0"
       }
     },
     {
@@ -191,7 +191,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.13.0"
+        "local_verifier_min_version": "0.14.0"
       }
     },
     {
@@ -242,7 +242,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.13.0"
+        "local_verifier_min_version": "0.14.0"
       }
     },
     {
@@ -412,7 +412,7 @@
           ]
         }
       ],
-      "generator_compatibility": {"local_verifier_min_version": "0.13.0"}
+      "generator_compatibility": {"local_verifier_min_version": "0.14.0"}
     },
     {
       "pack_id": "ppg_alignment_v1",
@@ -455,7 +455,7 @@
           ]
         }
       ],
-      "generator_compatibility": {"local_verifier_min_version": "0.13.0"}
+      "generator_compatibility": {"local_verifier_min_version": "0.14.0"}
     },
     {
       "pack_id": "combined_worst_case_v1",
@@ -534,7 +534,7 @@
           ]
         }
       ],
-      "generator_compatibility": {"local_verifier_min_version": "0.13.0"}
+      "generator_compatibility": {"local_verifier_min_version": "0.14.0"}
     },
     {
       "pack_id": "ppg_benchmark_v1",
@@ -619,7 +619,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.13.0"
+        "local_verifier_min_version": "0.14.0"
       }
     },
     {
@@ -671,7 +671,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.13.0"
+        "local_verifier_min_version": "0.14.0"
       }
     },
     {
@@ -715,7 +715,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.13.0"
+        "local_verifier_min_version": "0.14.0"
       }
     },
     {
@@ -749,7 +749,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.13.0"
+        "local_verifier_min_version": "0.14.0"
       }
     }
   ]

@@ -808,6 +808,7 @@ namespace
         {
             signal_synth::measurement_score_context_group group;
             group.name = contexts[i].name;
+            group.unit = contexts[i].unit;
             group.scope = contexts[i].scope;
             group.channel = contexts[i].channel;
             group.formula = contexts[i].formula;
@@ -926,7 +927,7 @@ namespace signal_synth
     measurement_score_metrics::measurement_score_metrics()
         : ground_truth_count(0), valid_truth_count(0), undefined_truth_count(0), absent_truth_count(0), not_evaluable_truth_count(0), prediction_count(0), matched_count(0), numeric_pair_count(0), tolerance_pass_count(0), status_match_count(0), status_mismatch_count(0), missing_count(0), extra_count(0), assertion_comparable_count(0), assertion_agreement_count(0), tolerance_pass_fraction(0.0), status_match_fraction(0.0), assertion_agreement_fraction(0.0), truth_match_fraction(0.0), prediction_match_fraction(0.0), bias(0.0), mean_absolute_error(0.0), root_mean_square_error(0.0), median_absolute_error(0.0), p95_absolute_error(0.0), maximum_absolute_error(0.0) {}
     measurement_score_context_group::measurement_score_context_group()
-        : name(), scope(measurement_record), channel(), formula(), method_id(), preprocessing_policy_id(), window_start_seconds(0.0), has_window_start_seconds(false), window_end_seconds(0.0), has_window_end_seconds(false), metrics() {}
+        : name(), unit(), scope(measurement_record), channel(), formula(), method_id(), preprocessing_policy_id(), window_start_seconds(0.0), has_window_start_seconds(false), window_end_seconds(0.0), has_window_end_seconds(false), metrics() {}
     measurement_score_match::measurement_score_match()
         : ground_truth_index(0), prediction_index(0), ground_truth_status(measurement_undefined), prediction_status(measurement_undefined), status_matches(false), numeric_pair(false), signed_error(0.0), absolute_error(0.0), relative_error_percent(0.0), has_relative_error(false), within_tolerance(false), has_assertion_result(false), ground_truth_assertion_passed(false), prediction_assertion_passed(false) {}
     measurement_score_result::measurement_score_result()
@@ -1138,7 +1139,7 @@ namespace signal_synth
         for (std::size_t i = 0; i < result.contexts.size(); ++i)
         {
             const measurement_score_context_group& group = result.contexts[i];
-            output << (i ? "," : "") << "{\"name\":" << json_string(group.name) << ",\"scope\":" << json_string(measurement_scope_name(group.scope)) << ",\"channel\":" << json_string(group.channel.empty() ? "global" : group.channel)
+            output << (i ? "," : "") << "{\"name\":" << json_string(group.name) << ",\"unit\":" << json_string(group.unit) << ",\"scope\":" << json_string(measurement_scope_name(group.scope)) << ",\"channel\":" << json_string(group.channel.empty() ? "global" : group.channel)
                    << ",\"formula\":" << json_string(group.formula) << ",\"method_id\":" << json_string(group.method_id) << ",\"preprocessing_policy_id\":" << json_string(group.preprocessing_policy_id);
             if (group.has_window_start_seconds) output << ",\"window_start_seconds\":" << group.window_start_seconds;
             if (group.has_window_end_seconds) output << ",\"window_end_seconds\":" << group.window_end_seconds;
@@ -1148,19 +1149,27 @@ namespace signal_synth
         for (std::size_t i = 0; i < result.matches.size(); ++i)
         {
             const measurement_score_match& match = result.matches[i];
-            const measurement_value& truth = result.ground_truth[match.ground_truth_index].measurement;
+            const measurement_truth& truth_item = result.ground_truth[match.ground_truth_index];
+            const measurement_value& truth = truth_item.measurement;
             output << (i ? "," : "") << "{\"ground_truth_index\":" << match.ground_truth_index << ",\"prediction_index\":" << match.prediction_index
                    << ",\"name\":" << json_string(truth.name) << ",\"unit\":" << json_string(truth.unit) << ",\"scope\":" << json_string(measurement_scope_name(truth.scope)) << ",\"channel\":" << json_string(truth.channel.empty() ? "global" : truth.channel)
                    << ",\"formula\":" << json_string(truth.formula) << ",\"method_id\":" << json_string(truth.method_id) << ",\"preprocessing_policy_id\":" << json_string(truth.preprocessing_policy_id)
                    << ",\"ground_truth_status\":" << json_string(measurement_status_name(match.ground_truth_status)) << ",\"prediction_status\":" << json_string(measurement_status_name(match.prediction_status))
-                   << ",\"status_matches\":" << boolean(match.status_matches) << ",\"numeric_pair\":" << boolean(match.numeric_pair);
+                   << ",\"status_matches\":" << boolean(match.status_matches) << ",\"numeric_pair\":" << boolean(match.numeric_pair)
+                   << ",\"absolute_tolerance\":" << truth_item.absolute_tolerance
+                   << ",\"relative_tolerance_percent\":" << truth_item.relative_tolerance_percent
+                   << ",\"reason\":" << json_string(truth_item.reason);
             if (truth.has_window_start_seconds) output << ",\"window_start_seconds\":" << truth.window_start_seconds;
             if (truth.has_window_end_seconds) output << ",\"window_end_seconds\":" << truth.window_end_seconds;
             if (match.numeric_pair)
             {
+                double effective_tolerance = truth_item.absolute_tolerance;
+                if (match.has_relative_error)
+                    effective_tolerance = std::max(effective_tolerance, std::fabs(truth.value) * truth_item.relative_tolerance_percent / 100.0);
                 output << ",\"signed_error\":" << match.signed_error << ",\"absolute_error\":" << match.absolute_error << ",\"relative_error_percent\":";
                 write_optional(output, match.has_relative_error, match.relative_error_percent);
-                output << ",\"within_tolerance\":" << boolean(match.within_tolerance);
+                output << ",\"effective_tolerance\":" << effective_tolerance
+                       << ",\"within_tolerance\":" << boolean(match.within_tolerance);
             }
             if (match.has_assertion_result)
                 output << ",\"ground_truth_assertion_passed\":" << boolean(match.ground_truth_assertion_passed) << ",\"prediction_assertion_passed\":" << boolean(match.prediction_assertion_passed);
@@ -1199,10 +1208,10 @@ namespace signal_synth
             const measurement_score_context_group& group = result.contexts[i];
             std::string window;
             if (group.has_window_start_seconds) window = "[" + csv_optional(true, group.window_start_seconds) + ", " + csv_optional(true, group.window_end_seconds) + ")";
-            rows << "<tr><td>" << html_text(group.name) << "</td><td>" << measurement_scope_name(group.scope) << "</td><td>" << html_text(group.method_id) << "</td><td>" << html_text(group.preprocessing_policy_id) << "</td><td>" << html_text(window) << "</td><td>" << group.metrics.ground_truth_count << "</td><td>" << group.metrics.prediction_count << "</td><td>" << group.metrics.numeric_pair_count << "</td><td>" << csv_optional(group.metrics.numeric_pair_count > 0u, group.metrics.tolerance_pass_fraction) << "</td><td>" << group.metrics.missing_count << "</td><td>" << group.metrics.extra_count << "</td><td>" << csv_optional(group.metrics.numeric_pair_count > 0u, group.metrics.mean_absolute_error) << "</td></tr>";
+            rows << "<tr><td>" << html_text(group.name) << "</td><td>" << html_text(group.unit) << "</td><td>" << measurement_scope_name(group.scope) << "</td><td>" << html_text(group.method_id) << "</td><td>" << html_text(group.preprocessing_policy_id) << "</td><td>" << html_text(window) << "</td><td>" << group.metrics.ground_truth_count << "</td><td>" << group.metrics.prediction_count << "</td><td>" << group.metrics.numeric_pair_count << "</td><td>" << csv_optional(group.metrics.numeric_pair_count > 0u, group.metrics.tolerance_pass_fraction) << "</td><td>" << group.metrics.missing_count << "</td><td>" << group.metrics.extra_count << "</td><td>" << csv_optional(group.metrics.numeric_pair_count > 0u, group.metrics.mean_absolute_error) << "</td></tr>";
         }
         std::ostringstream output;
-        output << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#20252b}table{border-collapse:collapse}th,td{border:1px solid #c9ced4;padding:6px 9px;text-align:right}th:first-child,td:first-child{text-align:left}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>Scenario: " << html_text(render.document.scenario_id) << " | Target: " << html_text(result.target) << " | Pairing window: " << result.pairing_window_seconds << " s</p><table><tr><th>Measurement</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Truth</th><th>Predictions</th><th>Numeric pairs</th><th>Pass fraction</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>" << rows.str() << "</table></body></html>";
+        output << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#20252b}table{border-collapse:collapse}th,td{border:1px solid #c9ced4;padding:6px 9px;text-align:right}th:first-child,td:first-child{text-align:left}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}.help{color:#5f6b7a}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>Scenario: " << html_text(render.document.scenario_id) << " | Target: " << html_text(result.target) << " | Pairing window: " << result.pairing_window_seconds << " s</p><p class=\"help\">Reference values come from the package. Submitted measurements are paired by identity and temporal anchor. Numeric pairs pass when their absolute error is within the larger packaged absolute-or-relative tolerance.</p><table><tr><th>Measurement</th><th>Unit</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Reference</th><th>Submitted</th><th>Numeric pairs</th><th>Within tolerance</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>" << rows.str() << "</table></body></html>";
         return output.str();
     }
 }

@@ -45,7 +45,7 @@ METRIC_NAMES = {
     "p95_absolute_error": "95th-percentile absolute error",
     "p95_absolute_error_seconds": "95th-percentile timing error",
     "positive_predictive_value": "Positive predictive value",
-    "prediction_match_fraction": "Predictions matched to truth",
+    "prediction_match_fraction": "Submitted measurements matched to reference",
     "precision": "Precision",
     "recall": "Recall",
     "rms_error_seconds": "Root-mean-square timing error",
@@ -57,7 +57,7 @@ METRIC_NAMES = {
     "time_precision": "Time-weighted precision",
     "time_sensitivity": "Time-weighted sensitivity",
     "tolerance_pass_fraction": "Measurements within tolerance",
-    "truth_match_fraction": "Truth measurements matched",
+    "truth_match_fraction": "Reference values covered",
     "within_tolerance_fraction": "Events within timing tolerance",
 }
 
@@ -65,21 +65,37 @@ METRIC_NAMES = {
 METRIC_DESCRIPTIONS = {
     "accuracy": "Share of scored labels classified correctly.",
     "assertion_agreement_fraction": "Share of comparable assertions for which truth and algorithm agree.",
+    "event_precision": "Share of submitted intervals that pair with a reference interval.",
+    "event_sensitivity": "Share of reference intervals paired with a submitted interval.",
     "f1_score": "Harmonic mean of sensitivity and positive predictive value.",
-    "mean_absolute_error": "Average absolute difference between matched measured and truth values.",
+    "false_alarms_per_hour": "Unmatched submitted intervals normalized to one hour of signal.",
+    "maximum_absolute_error": "Largest absolute difference among matched numeric values.",
+    "max_absolute_error_seconds": "Largest absolute timing difference among matched events.",
+    "mean_absolute_error": "Average absolute difference between matched submitted and reference values.",
     "mean_absolute_error_seconds": "Average absolute timing difference for matched events.",
     "mean_absolute_offset_error_seconds": "Average absolute end-boundary timing difference for matched intervals.",
     "mean_absolute_onset_error_seconds": "Average absolute start-boundary timing difference for matched intervals.",
+    "median_absolute_error_seconds": "Median absolute timing difference for matched events.",
     "micro_f1_score": "F1 score after pooling all scored classes.",
-    "p95_absolute_error": "Absolute error below which 95% of matched values fall.",
+    "micro_precision": "Share of pooled scored class predictions that are correct.",
+    "micro_recall": "Share of pooled scored reference classes recovered correctly.",
+    "p95_absolute_error": "95th percentile of |submitted − reference| across matched numeric values.",
+    "p95_absolute_error_seconds": "Absolute timing error below which 95% of matched events fall.",
     "positive_predictive_value": "Share of algorithm detections that match truth.",
-    "prediction_match_fraction": "Share of submitted measurements paired with a truth measurement.",
+    "prediction_match_fraction": "Share of submitted measurements paired with a packaged reference value.",
+    "precision": "Share of submitted labels or events that match the reference.",
+    "recall": "Share of reference labels or events recovered by the submission.",
+    "rms_error_seconds": "Square root of the mean squared timing error; larger errors receive more weight.",
+    "root_mean_square_error": "Square root of the mean squared numeric error; larger errors receive more weight.",
     "sensitivity": "Share of truth events detected by the algorithm.",
-    "status_match_fraction": "Share of matched measurements with identical validity status.",
+    "status_match_fraction": "Share of matched measurements with the same valid, undefined, absent, or not-evaluable status.",
     "temporal_iou": "Duration overlap divided by the union of truth and predicted intervals.",
     "time_f1_score": "F1 score computed from time-weighted interval overlap.",
-    "tolerance_pass_fraction": "Share of numeric pairs whose absolute error is within the packaged tolerance.",
-    "truth_match_fraction": "Share of truth measurements paired with a submitted measurement.",
+    "time_precision": "Share of submitted interval duration overlapping the reference.",
+    "time_sensitivity": "Share of reference interval duration covered by the submission.",
+    "tolerance_pass_fraction": "Share of matched numeric pairs within the packaged absolute-or-relative tolerance.",
+    "truth_match_fraction": "Share of packaged reference values paired with a submitted measurement.",
+    "within_tolerance_fraction": "Share of paired events whose timing error is within the packaged tolerance.",
 }
 
 
@@ -123,8 +139,8 @@ ERROR_METRICS = frozenset([
 
 
 STYLE = """
-:root{color-scheme:light;--ink:#172033;--muted:#5f6b7a;--line:#d8dee8;--soft:#f6f8fb;--pass:#176b45;--pass-bg:#eaf7f0;--fail:#a12828;--fail-bg:#fff0f0;--accent:#3157b7}
-*{box-sizing:border-box}body{font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);max-width:1240px;margin:0 auto;padding:28px 32px 64px;background:#fff}a{color:var(--accent);text-underline-offset:2px}nav{margin-bottom:20px}.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 4px}h1{font-size:30px;line-height:1.15;margin:0 0 8px}h2{font-size:20px;margin:34px 0 10px}h3{font-size:16px;margin:22px 0 8px}.subtitle,.muted{color:var(--muted)}.notice{border-left:4px solid #6b7280;background:#f3f4f6;color:#374151;padding:10px 14px;margin:20px 0 24px}.verdict{border:1px solid var(--line);border-left-width:7px;border-radius:8px;padding:18px 20px;margin:18px 0}.verdict.pass{border-left-color:var(--pass);background:var(--pass-bg)}.verdict.fail{border-left-color:var(--fail);background:var(--fail-bg)}.verdict h2{margin:0 0 4px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin:14px 0 24px}.card{border:1px solid var(--line);border-radius:7px;padding:12px;background:var(--soft)}.card strong{display:block;font-size:20px}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:7px;margin:10px 0 22px}table{border-collapse:collapse;width:100%;min-width:660px}th,td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}th{background:#eef2f7;font-size:12px;letter-spacing:.02em}tr:last-child td{border-bottom:0}.kv th{width:220px}.badge{display:inline-block;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;letter-spacing:.04em}.badge.pass{color:var(--pass);background:var(--pass-bg)}.badge.fail{color:var(--fail);background:var(--fail-bg)}.badge.neutral{color:#4b5563;background:#eceff3}.raw{display:block;color:var(--muted);font-size:11px}.mono{font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:anywhere}.criterion{min-width:210px}.section-note{border:1px solid var(--line);background:var(--soft);padding:10px 12px;border-radius:6px}.footer{border-top:1px solid var(--line);margin-top:36px;padding-top:16px;color:var(--muted)}details{border:1px solid var(--line);border-radius:7px;padding:10px 12px;margin:12px 0}summary{font-weight:700;cursor:pointer}.nowrap{white-space:nowrap}
+:root{color-scheme:light;--ink:#172033;--muted:#5f6b7a;--line:#d8dee8;--soft:#f6f8fb;--pass:#176b45;--pass-bg:#eaf7f0;--warn:#8a5a00;--warn-bg:#fff7df;--fail:#a12828;--fail-bg:#fff0f0;--accent:#3157b7}
+*{box-sizing:border-box}body{font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);max-width:1240px;margin:0 auto;padding:28px 32px 64px;background:#fff}a{color:var(--accent);text-underline-offset:2px}nav{margin-bottom:20px}.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 4px}h1{font-size:30px;line-height:1.15;margin:0 0 8px}h2{font-size:20px;margin:34px 0 10px}h3{font-size:16px;margin:22px 0 8px}.subtitle,.muted{color:var(--muted)}.notice{border-left:4px solid #6b7280;background:#f3f4f6;color:#374151;padding:10px 14px;margin:20px 0 24px}.verdict{border:1px solid var(--line);border-left-width:7px;border-radius:8px;padding:18px 20px;margin:18px 0}.verdict.pass{border-left-color:var(--pass);background:var(--pass-bg)}.verdict.fail{border-left-color:var(--fail);background:var(--fail-bg)}.verdict h2{margin:0 0 4px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin:14px 0 24px}.card{border:1px solid var(--line);border-radius:7px;padding:12px;background:var(--soft)}.card strong{display:block;font-size:20px}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:7px;margin:10px 0 22px}table{border-collapse:collapse;width:100%;min-width:660px}th,td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}th{background:#eef2f7;font-size:12px;letter-spacing:.02em}tr:last-child td{border-bottom:0}.kv th{width:260px}.badge{display:inline-block;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;letter-spacing:.04em}.badge.pass{color:var(--pass);background:var(--pass-bg)}.badge.warning{color:var(--warn);background:var(--warn-bg)}.badge.fail{color:var(--fail);background:var(--fail-bg)}.badge.neutral{color:#4b5563;background:#eceff3}.raw{display:block;color:var(--muted);font-size:11px}.mono{font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:anywhere}.criterion{min-width:210px}.section-note{border:1px solid var(--line);background:var(--soft);padding:10px 12px;border-radius:6px}.criterion-breakdown td{background:#fbfcfe;padding:0 12px 8px}.criterion-breakdown details{margin:0}.compact{font-size:12px}.compact th,.compact td{padding:6px 8px}.info{position:relative;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:4px;border:1px solid #8792a2;border-radius:50%;color:#526071;font-size:10px;font-weight:800;cursor:help;vertical-align:middle}.info:after{content:attr(data-tip);display:none;position:absolute;z-index:20;left:50%;top:22px;transform:translateX(-50%);width:280px;padding:8px 10px;border-radius:6px;background:#172033;color:#fff;font-size:12px;font-weight:400;line-height:1.4;letter-spacing:0;box-shadow:0 6px 20px rgba(23,32,51,.2)}.info:hover:after,.info:focus:after{display:block}.footer{border-top:1px solid var(--line);margin-top:36px;padding-top:16px;color:var(--muted)}details{border:1px solid var(--line);border-radius:7px;padding:10px 12px;margin:12px 0}summary{font-weight:700;cursor:pointer}.nowrap{white-space:nowrap}
 @media(max-width:720px){body{padding:20px 14px}h1{font-size:25px}.kv th{width:auto}.cards{grid-template-columns:1fr 1fr}}
 @media print{body{max-width:none;padding:0;font-size:10pt}nav,.no-print{display:none}.table-wrap{overflow:visible;border:0}table{min-width:0}tr{break-inside:avoid}.notice,.verdict,.card{print-color-adjust:exact;-webkit-print-color-adjust:exact}a{color:inherit;text-decoration:none}}
 """
@@ -247,6 +263,7 @@ def render_index(summary):
                 _actual_value(check), _margin_value(check),
                 _badge(verdict, "neutral" if not applicable_check else "pass" if check.get("passed", False) else "fail"),
             )
+            + _criterion_breakdown_row(check)
         )
 
     case_rows = []
@@ -254,11 +271,18 @@ def render_index(summary):
         scored = bool(item.get("success", False))
         detail_path = item.get("report_path", "")
         detail = "<a href=\"%s\">Open detail report</a>" % _h(detail_path) if detail_path else "—"
+        primary = _case_primary_details(policy, item)
+        primary_checks = _primary_case_checks(policy, item, primary)
+        required = _case_required(primary_checks)
+        diagnostic = _case_diagnostic_badge(scored, primary_checks, item.get("case_id", ""))
+        criterion_links = _case_criterion_links(policy, item)
         case_rows.append(
-            "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+            "<tr><td>%s</td><td>%s</td><td>%s</td><td><strong>%s</strong><span class=\"raw\">%s</span></td>"
+            "<td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
                 _h(item.get("case_id", "")), _h(target_name(item.get("target", ""))),
                 _badge("SCORED" if scored else "ERROR", "pass" if scored else "fail"),
-                _h(primary_score(item)), detail,
+                _h(primary["value"]), _h(primary["label"]), required,
+                diagnostic, criterion_links, detail,
             )
         )
 
@@ -296,8 +320,17 @@ def render_index(summary):
         ])
         + _section("Run identity and provenance", _table(["Field", "Value"], ["<tr><th>%s</th><td class=\"mono\">%s</td></tr>" % (_h(key), _h(value)) for key, value in identity_rows], "kv"))
         + (_section("Truth and exclusion policy", _policy_table(truth_policy)) if truth_policy else "")
-        + _section("Acceptance criteria", "<p class=\"section-note\">%s %s Every applicable row is evaluated against the immutable profile shown above; raw numeric values remain in <a href=\"evidence.json\">evidence.json</a>.</p>" % (_h(mode_note), _h(summary.get("threshold_profile", {}).get("description", ""))) + _table(["ID", "Metric", "Required", "Actual", "Margin", "Verdict"], criteria_rows))
-        + _section("Case-target traceability", "<p class=\"subtitle\">SCORED means that the case-target produced a valid comparison. Acceptance is decided by the aggregate criteria above.</p>" + _table(["Case", "Target", "Scoring", "Primary result", "Detail"], case_rows))
+        + _section("Acceptance criteria", "<p class=\"section-note\">%s %s Aggregate values are calculated by pooling the contributing case evidence, not by averaging the displayed case percentages. Expand a row to inspect its cases, counts and diagnostic comparison with the same gate. Raw numeric values remain in <a href=\"evidence.json\">evidence.json</a>.</p>" % (_h(mode_note), _h(summary.get("threshold_profile", {}).get("description", ""))) + _table(["ID", "Metric", "Required", "Actual", "Margin", "Official verdict"], criteria_rows))
+        + _section("Case-target traceability", "<p class=\"section-note\">SCORED means the comparison completed. The case diagnostic compares that case with the applicable aggregate gate for orientation; it is not a separate acceptance verdict. Amber means the case is below the reference gate, while only the aggregate acceptance rows determine PASS or FAIL.</p>" + _table([
+            "Case",
+            "Target",
+            ("Scoring", "Whether the submitted output was parsed and compared successfully."),
+            ("Primary result", "The most representative case-level metric for this scoring type."),
+            ("Required", "The applicable aggregate gate for the same primary metric, where one exists."),
+            ("Case diagnostic", "Informative comparison with the aggregate gate; this does not change the official pack verdict."),
+            ("Criteria", "Acceptance criteria to which this case-target contributes or supplies context."),
+            "Detail",
+        ], case_rows))
         + pipeline_html
         + _section("Evidence files", "<p><a href=\"evidence.json\">evidence.json</a> is the single canonical machine-readable record. The detail pages contain human-readable views of the same case-target evidence.</p>")
         + "<footer class=\"footer\">Pack fingerprint: <span class=\"mono\">%s</span></footer>" % _h(package.get("pack_fingerprint", ""))
@@ -335,12 +368,24 @@ def render_detail(summary, result, report):
     for check in criteria:
         applicable = check.get("applicable", False)
         verdict = "NOT APPLICABLE" if not applicable else "PASS" if check.get("passed", False) else "FAIL"
-        criteria_rows.append("<tr><td><a href=\"../index.html#criterion-%s\">%s</a></td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+        contribution = _case_contribution(check, result.get("case_id", ""))
+        case_actual = _contribution_actual(check, contribution)
+        case_diagnostic = _contribution_badge(contribution)
+        criteria_rows.append("<tr><td><a href=\"../index.html#criterion-%s\">%s</a></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
             _h(check.get("criterion_id", "")), _h(check.get("criterion_id", "")),
             _h(check.get("display_name", "")), _required_value(check),
+            case_actual, case_diagnostic, _actual_value(check),
             _badge(verdict, "neutral" if not applicable else "pass" if check.get("passed", False) else "fail"),
         ))
-    criteria_html = _table(["ID", "Aggregate criterion", "Required", "Verdict"], criteria_rows) if criteria_rows else "<p>No acceptance criteria are defined for this target.</p>"
+    criteria_html = _table([
+        "ID",
+        "Aggregate criterion",
+        "Required",
+        ("This case", "The case-level value feeding the pooled aggregate, when this case has data for the criterion."),
+        ("Case diagnostic", "Informative comparison of this case with the aggregate threshold."),
+        "Aggregate",
+        "Official verdict",
+    ], criteria_rows) if criteria_rows else "<p>No acceptance criteria are defined for this target.</p>"
     body = (
         "<nav><a href=\"../index.html\">← Back to verification overview</a></nav>"
         "<header><p class=\"eyebrow\">Case-target detail</p><h1>%s</h1>"
@@ -351,7 +396,7 @@ def render_detail(summary, result, report):
         + _section("Identity and traceability", _table(["Field", "Value"], ["<tr><th>%s</th><td class=\"mono\">%s</td></tr>" % (_h(key), _h(value)) for key, value in identity_rows], "kv"))
         + render_target_metrics(result, report)
         + (_section("Truth and exclusion policy", "<p class=\"section-note\">%s</p>" % _h(result.get("exclusion_policy", ""))) if result.get("exclusion_policy") else "")
-        + _section("Acceptance context", "<p class=\"section-note\">Package-level criteria aggregate the complete pack. Named acceptance-stratum criteria aggregate only their listed cases; this case is shown only the criteria to which it contributes.</p>" + criteria_html)
+        + _section("Acceptance context", "<p class=\"section-note\">Package-level criteria pool the complete pack. Named acceptance-stratum criteria pool only their listed cases. “This case” is diagnostic context; the aggregate value and official verdict remain authoritative. Criterion IDs link back to the overview and its full case breakdown.</p>" + criteria_html)
         + _section("Machine-readable evidence", "<p>The complete raw comparison, submission identity, package identity and policy decisions are in <a href=\"../evidence.json\">evidence.json</a>.</p>")
         + "<footer class=\"footer\"><a href=\"../index.html\">← Back to verification overview</a></footer>"
     )
@@ -387,11 +432,11 @@ def _event_metrics(report):
             _h(format_ratio(metrics.get("sensitivity"))), _h(format_ratio(metrics.get("positive_predictive_value"))), _h(format_ratio(metrics.get("f1_score"))),
         ))
     timing_rows = [
-        ("Pairing tolerance", format_seconds(comparison.get("tolerance_seconds"))),
-        ("Matched-event mean absolute timing error", format_seconds(comparison.get("metrics", {}).get("total", {}).get("mean_absolute_error_seconds"))),
-        ("Matched-event RMS timing error", format_seconds(comparison.get("metrics", {}).get("total", {}).get("rms_error_seconds"))),
-        ("Excluded truth events", comparison.get("metrics", {}).get("total", {}).get("excluded_ground_truth_count", 0)),
-        ("Excluded nearby predictions", comparison.get("metrics", {}).get("total", {}).get("excluded_detection_count", 0)),
+        ("Pairing tolerance", format_seconds(comparison.get("tolerance_seconds")), "Maximum time separation used to pair a submitted detection with one observable reference event."),
+        ("Matched-event mean absolute timing error", format_seconds(comparison.get("metrics", {}).get("total", {}).get("mean_absolute_error_seconds")), METRIC_DESCRIPTIONS["mean_absolute_error_seconds"]),
+        ("Matched-event RMS timing error", format_seconds(comparison.get("metrics", {}).get("total", {}).get("rms_error_seconds")), METRIC_DESCRIPTIONS["rms_error_seconds"]),
+        ("Excluded reference events", comparison.get("metrics", {}).get("total", {}).get("excluded_ground_truth_count", 0), "Explicitly reasoned, physically unobservable reference events omitted from FN counts."),
+        ("Excluded nearby submitted detections", comparison.get("metrics", {}).get("total", {}).get("excluded_detection_count", 0), "Otherwise-unmatched detections near excluded reference events, reported but omitted from FP counts."),
     ]
     excluded_rows = [
         "<tr><td>%s</td><td>%s</td><td>%s</td></tr>" % (
@@ -402,17 +447,33 @@ def _event_metrics(report):
     if excluded_rows:
         excluded_html = "<details><summary>Excluded truth events (%d)</summary>%s</details>" % (
             len(excluded_rows), _table(["Truth index", "Time", "Reason"], excluded_rows))
-    return _section("Detection metrics", _table(["Signal stratum", "Truth", "Predicted", "TP", "FP", "FN", "Sensitivity", "PPV", "F1"], rows) + _table(["Timing measure", "Value"], ["<tr><th>%s</th><td>%s</td></tr>" % (_h(key), _h(value)) for key, value in timing_rows], "kv") + excluded_html)
+    return _section(
+        "Detection metrics",
+        "<p class=\"section-note\">TP is a paired reference/detection, FP is an unmatched submitted detection, and FN is an unmatched observable reference event. Strata such as Artifact are pooled independently for the aggregate acceptance checks.</p>"
+        + _table([
+            "Signal stratum",
+            ("Reference", "Observable packaged reference events in this stratum."),
+            ("Submitted", "Algorithm detections counted in this stratum."),
+            ("TP", "Submitted detections paired with reference events."),
+            ("FP", "Unmatched submitted detections."),
+            ("FN", "Unmatched observable reference events."),
+            ("Sensitivity", METRIC_DESCRIPTIONS["sensitivity"]),
+            ("PPV", METRIC_DESCRIPTIONS["positive_predictive_value"]),
+            ("F1", METRIC_DESCRIPTIONS["f1_score"]),
+        ], rows)
+        + _metric_summary_table(timing_rows)
+        + excluded_html,
+    )
 
 
 def _classification_metrics(report):
     summary = report.get("summary", {})
     summary_rows = [
-        ("Accuracy", format_ratio(summary.get("accuracy"))),
-        ("Micro F1", format_ratio(summary.get("micro_f1_score"))),
-        ("Correct / scored truth", "%s / %s" % (summary.get("correct_count", 0), summary.get("scored_ground_truth_count", 0))),
-        ("Explicitly excluded truth", summary.get("excluded_ground_truth_count", 0)),
-        ("Timing tolerance", format_seconds(report.get("tolerance_seconds"))),
+        ("Accuracy", format_ratio(summary.get("accuracy")), METRIC_DESCRIPTIONS["accuracy"]),
+        ("Micro F1", format_ratio(summary.get("micro_f1_score")), METRIC_DESCRIPTIONS["micro_f1_score"]),
+        ("Correct / scored reference", "%s / %s" % (summary.get("correct_count", 0), summary.get("scored_ground_truth_count", 0)), "Correct class labels divided by all scoreable packaged class labels."),
+        ("Explicitly excluded reference", summary.get("excluded_ground_truth_count", 0), "Reference beats marked unscoreable by the packaged truth policy."),
+        ("Timing tolerance", format_seconds(report.get("tolerance_seconds")), "Maximum time difference used to pair submitted and reference beat labels."),
     ]
     rows = []
     for item in report.get("classes", []):
@@ -421,21 +482,28 @@ def _classification_metrics(report):
             item.get("ground_truth_count", 0), item.get("prediction_count", 0),
             _h(format_ratio(item.get("precision"))), _h(format_ratio(item.get("recall"))), _h(format_ratio(item.get("f1_score"))),
         ))
-    return _section("Classification summary", _table(["Measure", "Value"], ["<tr><th>%s</th><td>%s</td></tr>" % (_h(key), _h(value)) for key, value in summary_rows], "kv") + "<h3>Per-class metrics</h3>" + _table(["Class", "Truth", "Predicted", "Precision", "Recall", "F1"], rows))
+    return _section("Classification summary", _metric_summary_table(summary_rows) + "<h3>Per-class metrics</h3>" + _table([
+        "Class",
+        "Reference",
+        "Submitted",
+        ("Precision", METRIC_DESCRIPTIONS["precision"]),
+        ("Recall", METRIC_DESCRIPTIONS["recall"]),
+        ("F1", METRIC_DESCRIPTIONS["f1_score"]),
+    ], rows))
 
 
 def _interval_metrics(report):
     overall = report.get("overall", {})
     summary_rows = [
-        ("Truth intervals", overall.get("ground_truth_count", 0)),
-        ("Predicted intervals", overall.get("prediction_count", 0)),
-        ("Matched intervals", overall.get("matched_count", 0)),
-        ("Time sensitivity", format_ratio(overall.get("time_sensitivity"))),
-        ("Time precision", format_ratio(overall.get("time_precision"))),
-        ("Time F1", format_ratio(overall.get("time_f1_score"))),
-        ("Temporal IoU", format_ratio(overall.get("temporal_iou"))),
-        ("Mean onset error", format_seconds(overall.get("mean_absolute_onset_error_seconds"))),
-        ("Mean offset error", format_seconds(overall.get("mean_absolute_offset_error_seconds"))),
+        ("Reference intervals", overall.get("ground_truth_count", 0), "Packaged intervals for the requested label/channel mode."),
+        ("Submitted intervals", overall.get("prediction_count", 0), "Intervals supplied by the algorithm."),
+        ("Matched intervals", overall.get("matched_count", 0), "Reference/submitted intervals paired under the packaged overlap rule."),
+        ("Time sensitivity", format_ratio(overall.get("time_sensitivity")), METRIC_DESCRIPTIONS["time_sensitivity"]),
+        ("Time precision", format_ratio(overall.get("time_precision")), METRIC_DESCRIPTIONS["time_precision"]),
+        ("Time F1", format_ratio(overall.get("time_f1_score")), METRIC_DESCRIPTIONS["time_f1_score"]),
+        ("Temporal IoU", format_ratio(overall.get("temporal_iou")), METRIC_DESCRIPTIONS["temporal_iou"]),
+        ("Mean onset error", format_seconds(overall.get("mean_absolute_onset_error_seconds")), METRIC_DESCRIPTIONS["mean_absolute_onset_error_seconds"]),
+        ("Mean offset error", format_seconds(overall.get("mean_absolute_offset_error_seconds")), METRIC_DESCRIPTIONS["mean_absolute_offset_error_seconds"]),
     ]
     rows = []
     for item in report.get("classes", []):
@@ -444,21 +512,21 @@ def _interval_metrics(report):
             _h(item.get("label", "")), metrics.get("ground_truth_count", 0), metrics.get("prediction_count", 0), metrics.get("matched_count", 0),
             _h(format_ratio(metrics.get("time_f1_score"))), _h(format_ratio(metrics.get("temporal_iou"))),
         ))
-    extra = "<h3>Per-label metrics</h3>" + _table(["Label", "Truth", "Predicted", "Matched", "Time F1", "IoU"], rows) if rows else ""
-    return _section("Interval-detection metrics", _table(["Measure", "Value"], ["<tr><th>%s</th><td>%s</td></tr>" % (_h(key), _h(value)) for key, value in summary_rows], "kv") + extra)
+    extra = "<h3>Per-label metrics</h3>" + _table(["Label", "Reference", "Submitted", "Matched", "Time F1", "IoU"], rows) if rows else ""
+    return _section("Interval-detection metrics", _metric_summary_table(summary_rows) + extra)
 
 
 def _delineation_metrics(report):
     overall = report.get("overall", {})
     summary_rows = [
-        ("Truth events", overall.get("ground_truth_count", 0)),
-        ("Predicted events", overall.get("prediction_count", 0)),
-        ("Sensitivity", format_ratio(overall.get("sensitivity"))),
-        ("Positive predictive value", format_ratio(overall.get("positive_predictive_value"))),
-        ("F1", format_ratio(overall.get("f1_score"))),
-        ("Within tolerance", format_ratio(overall.get("within_tolerance_fraction"))),
-        ("Mean absolute timing error", format_seconds(overall.get("mean_absolute_error_seconds"))),
-        ("P95 absolute timing error", format_seconds(overall.get("p95_absolute_error_seconds"))),
+        ("Reference events", overall.get("ground_truth_count", 0), "Packaged ECG wave-boundary reference events selected by the delineation scope."),
+        ("Submitted events", overall.get("prediction_count", 0), "Wave-boundary events supplied by the algorithm."),
+        ("Sensitivity", format_ratio(overall.get("sensitivity")), METRIC_DESCRIPTIONS["sensitivity"]),
+        ("Positive predictive value", format_ratio(overall.get("positive_predictive_value")), METRIC_DESCRIPTIONS["positive_predictive_value"]),
+        ("F1", format_ratio(overall.get("f1_score")), METRIC_DESCRIPTIONS["f1_score"]),
+        ("Within tolerance", format_ratio(overall.get("within_tolerance_fraction")), METRIC_DESCRIPTIONS["within_tolerance_fraction"]),
+        ("Mean absolute timing error", format_seconds(overall.get("mean_absolute_error_seconds")), METRIC_DESCRIPTIONS["mean_absolute_error_seconds"]),
+        ("P95 absolute timing error", format_seconds(overall.get("p95_absolute_error_seconds")), METRIC_DESCRIPTIONS["p95_absolute_error_seconds"]),
     ]
     rows = []
     for item in report.get("by_kind", []):
@@ -467,37 +535,50 @@ def _delineation_metrics(report):
             _h(item.get("kind", item.get("name", ""))), metrics.get("ground_truth_count", 0), metrics.get("prediction_count", 0),
             _h(format_ratio(metrics.get("f1_score"))), _h(format_seconds(metrics.get("mean_absolute_error_seconds"))),
         ))
-    extra = "<h3>Per-wave metrics</h3>" + _table(["Wave", "Truth", "Predicted", "F1", "Mean error"], rows) if rows else ""
-    return _section("Delineation metrics", _table(["Measure", "Value"], ["<tr><th>%s</th><td>%s</td></tr>" % (_h(key), _h(value)) for key, value in summary_rows], "kv") + extra)
+    extra = "<h3>Per-wave metrics</h3>" + _table(["Wave", "Reference", "Submitted", "F1", "Mean error"], rows) if rows else ""
+    return _section("Delineation metrics", _metric_summary_table(summary_rows) + extra)
 
 
 def _measurement_metrics(report):
     overall = report.get("overall", {})
+    tolerance_rules = report.get("tolerance_rules", [])
+    numeric_units = sorted(set(
+        item.get("unit", "")
+        for item in report.get("matches", [])
+        if item.get("numeric_pair", False)
+    ))
+    pooled_mae = _measurement_error_value(overall.get("error", {}).get("mean_absolute"), numeric_units)
+    pooled_p95 = _measurement_error_value(overall.get("error", {}).get("p95_absolute"), numeric_units)
     summary_rows = [
-        ("Truth values", overall.get("ground_truth_count", 0)),
-        ("Submitted values", overall.get("prediction_count", 0)),
-        ("Matched values", overall.get("matched_count", 0)),
-        ("Truth matched", format_ratio(overall.get("truth_match_fraction"))),
-        ("Predictions matched", format_ratio(overall.get("prediction_match_fraction"))),
-        ("Within tolerance", format_ratio(overall.get("tolerance_pass_fraction"))),
-        ("Status agreement", format_ratio(overall.get("status_match_fraction"))),
-        ("Mean absolute error", format_plain(overall.get("error", {}).get("mean_absolute"))),
-        ("P95 absolute error", format_plain(overall.get("error", {}).get("p95_absolute"))),
+        ("Reference values", overall.get("ground_truth_count", 0), "All packaged reference measurements, including explicit non-valid states."),
+        ("Submitted measurements", overall.get("prediction_count", 0), "Measurements supplied by the algorithm for this case and target."),
+        ("Matched measurements", overall.get("matched_count", 0), "Submitted measurements paired with a reference by identity and temporal anchor."),
+        ("Reference values covered", format_ratio(overall.get("truth_match_fraction")), METRIC_DESCRIPTIONS["truth_match_fraction"]),
+        ("Submitted measurements matched to reference", format_ratio(overall.get("prediction_match_fraction")), METRIC_DESCRIPTIONS["prediction_match_fraction"]),
+        ("Measurements within tolerance", format_ratio(overall.get("tolerance_pass_fraction")), METRIC_DESCRIPTIONS["tolerance_pass_fraction"]),
+        ("Status agreement", format_ratio(overall.get("status_match_fraction")), METRIC_DESCRIPTIONS["status_match_fraction"]),
+        ("Mean absolute error", pooled_mae, METRIC_DESCRIPTIONS["mean_absolute_error"] + " A pooled value is omitted when contexts use different units."),
+        ("P95 absolute error", pooled_p95, METRIC_DESCRIPTIONS["p95_absolute_error"] + " A pooled value is omitted when contexts use different units."),
     ]
     context_rows = []
     for item in report.get("by_measurement_context", []):
         metrics = item.get("metrics", {})
-        context_rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+        unit = item.get("unit", "")
+        context_rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
             _h(MEASUREMENT_NAMES.get(item.get("name", ""), item.get("name", ""))), _h(item.get("scope", "")),
+            _h(unit or "unitless"),
             metrics.get("ground_truth_count", 0), metrics.get("prediction_count", 0), metrics.get("matched_count", 0),
-            _h(format_ratio(metrics.get("tolerance_pass_fraction"))), _h(format_plain(metrics.get("error", {}).get("mean_absolute"))),
+            _h(format_ratio(metrics.get("tolerance_pass_fraction"))),
+            _h(format_measurement_value(metrics.get("error", {}).get("mean_absolute"), unit)),
+            _h(format_measurement_value(metrics.get("error", {}).get("p95_absolute"), unit)),
+            _h(_context_tolerance_text(item, tolerance_rules)),
         ))
     match_rows = []
     for item in report.get("matches", []):
         numeric = item.get("numeric_pair", False)
         passed = item.get("within_tolerance", False) if numeric else item.get("status_matches", False)
-        truth = format_measurement_value(item.get("ground_truth_value"), item.get("unit", "")) if numeric else item.get("ground_truth_status", "")
-        predicted = format_measurement_value(item.get("prediction_value"), item.get("unit", "")) if numeric else item.get("prediction_status", "")
+        reference = format_measurement_value(item.get("ground_truth_value"), item.get("unit", "")) if numeric else item.get("ground_truth_status", "")
+        submitted = format_measurement_value(item.get("prediction_value"), item.get("unit", "")) if numeric else item.get("prediction_status", "")
         error = format_measurement_value(item.get("absolute_error"), item.get("unit", "")) if numeric else "—"
         tolerance = format_measurement_value(item.get("effective_tolerance"), item.get("unit", "")) if numeric else "status equality"
         window = ""
@@ -505,14 +586,34 @@ def _measurement_metrics(report):
             window = "[%s, %s) s" % (format_plain(item.get("window_start_seconds")), format_plain(item.get("window_end_seconds")))
         match_rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
             _h(MEASUREMENT_NAMES.get(item.get("name", ""), item.get("name", ""))), _h(item.get("scope", "")), _h(window),
-            _h(truth), _h(predicted), _h(error), _h(tolerance), _h(item.get("reason", "")), _badge("PASS" if passed else "FAIL", "pass" if passed else "fail"),
+            _h(reference), _h(submitted), _h(error), _h(tolerance), _h(item.get("reason", "")), _badge("PASS" if passed else "FAIL", "pass" if passed else "fail"),
         ))
     match_html = ""
     if match_rows:
-        match_html = "<details><summary>Matched truth vs algorithm values (%d)</summary>%s</details>" % (
-            len(match_rows), _table(["Metric", "Scope", "Window", "Truth", "Algorithm", "Absolute error", "Tolerance", "Tolerance rationale", "Verdict"], match_rows),
+        match_html = "<details><summary>Matched reference vs submitted measurements (%d)</summary>%s</details>" % (
+            len(match_rows), _table([
+                "Metric", "Scope", "Window", "Reference", "Submitted",
+                ("Absolute error", "Absolute value of submitted minus reference."),
+                ("Effective tolerance", "Larger of the packaged absolute and relative tolerances for this reference value."),
+                "Tolerance rationale", "Verdict",
+            ], match_rows),
         )
-    return _section("Measurement metrics", _table(["Measure", "Value"], ["<tr><th>%s</th><td>%s</td></tr>" % (_h(key), _h(value)) for key, value in summary_rows], "kv") + "<h3>Measurement contexts</h3>" + _table(["Metric", "Scope", "Truth", "Submitted", "Matched", "Within tolerance", "MAE"], context_rows) + match_html)
+    return (
+        _measurement_tolerance_section(report)
+        + _section(
+            "Measurement metrics",
+            _metric_summary_table(summary_rows)
+            + "<h3>Measurement contexts</h3>"
+            + _table([
+                "Metric", "Scope", "Unit", "Reference", "Submitted", "Matched",
+                ("Within tolerance", METRIC_DESCRIPTIONS["tolerance_pass_fraction"]),
+                ("MAE", METRIC_DESCRIPTIONS["mean_absolute_error"]),
+                ("P95 absolute error", METRIC_DESCRIPTIONS["p95_absolute_error"]),
+                ("Tolerance rule", "Packaged absolute-or-relative rule used for each numeric pair."),
+            ], context_rows)
+            + match_html,
+        )
+    )
 
 
 def _page(title, body):
@@ -535,9 +636,280 @@ def _policy_table(policy):
     return _table(["Rule", "Policy"], rows, "kv")
 
 
+def _metric_summary_table(rows):
+    return _table(
+        ["Measure", "Value"],
+        [
+            "<tr><th>%s%s</th><td>%s</td></tr>" % (
+                _h(label),
+                "<span class=\"raw\">%s</span>" % _h(description) if description else "",
+                _h(value),
+            )
+            for label, value, description in rows
+        ],
+        "kv",
+    )
+
+
+def _criterion_breakdown_row(check):
+    contributions = list(check.get("case_contributions", []))
+    contributions.sort(key=lambda item: (
+        0 if item.get("contributes") and item.get("diagnostic_passed") is False
+        else 1 if item.get("contributes") else 2,
+        item.get("case_id", ""),
+    ))
+    rows = []
+    for item in contributions:
+        path = item.get("report_path", "")
+        case = (
+            "<a href=\"%s\">%s</a>" % (_h(path), _h(item.get("case_id", "")))
+            if path else _h(item.get("case_id", ""))
+        )
+        rows.append(
+            "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+                case,
+                _contribution_actual(check, item),
+                _h(_count_summary(item.get("counts", {}))),
+                _contribution_badge(item),
+            )
+        )
+    body = (
+        "<p class=\"muted\">The aggregate above is recomputed from pooled counts or errors across contributing cases; it is not the arithmetic mean of case percentages. Case badges are diagnostic only.</p>"
+        + (_table([
+            "Case",
+            ("Case value", "The metric calculated from this case alone."),
+            ("Evidence counts", "The raw counts from this case that feed the aggregate."),
+            ("Diagnostic", "Comparison of this case value with the same aggregate threshold."),
+        ], rows, "compact") if rows else "<p>No case-target result is in scope.</p>")
+    )
+    return (
+        "<tr class=\"criterion-breakdown\"><td colspan=\"6\"><details><summary>"
+        "Case contribution breakdown (%d contributing of %d in scope)</summary>%s"
+        "</details></td></tr>"
+    ) % (check.get("contributing_case_count", 0), len(contributions), body)
+
+
+def _case_contribution(check, case_id):
+    return next(
+        (
+            item for item in check.get("case_contributions", [])
+            if item.get("case_id") == case_id
+        ),
+        None,
+    )
+
+
+def _contribution_actual(check, contribution):
+    if not contribution or not contribution.get("contributes", False):
+        return "<span class=\"muted\">No data for this bin</span>"
+    return _h(format_check_value(check, contribution.get("actual")))
+
+
+def _contribution_badge(contribution):
+    if not contribution:
+        return _badge("OUT OF SCOPE", "neutral")
+    if contribution.get("scoring_status") != "scored":
+        return _badge("ERROR", "fail")
+    if not contribution.get("contributes", False):
+        return _badge("NO DATA", "neutral")
+    if contribution.get("diagnostic_passed", False):
+        return _badge("MEETS GATE", "pass")
+    return _badge("BELOW GATE", "warning")
+
+
+def _count_summary(counts):
+    labels = {
+        "ground_truth_count": "Reference",
+        "detection_count": "Submitted",
+        "prediction_count": "Submitted",
+        "scored_ground_truth_count": "Scored reference",
+        "scored_prediction_count": "Scored submitted",
+        "matched_count": "Matched",
+        "paired_count": "Paired",
+        "correct_count": "Correct",
+        "true_positive_count": "TP",
+        "false_positive_count": "FP",
+        "false_negative_count": "FN",
+        "within_tolerance_count": "Within tolerance",
+        "tolerance_pass_count": "Within tolerance",
+        "numeric_pair_count": "Numeric pairs",
+        "status_match_count": "Status matches",
+        "status_mismatch_count": "Status mismatches",
+        "false_alarm_count": "False alarms",
+        "missed_count": "Missed",
+        "missing_count": "Missing",
+        "extra_count": "Extra",
+        "excluded_ground_truth_count": "Excluded reference",
+        "excluded_detection_count": "Excluded submitted",
+    }
+    return " · ".join(
+        "%s %s" % (labels.get(name, name.replace("_", " ").title()), value)
+        for name, value in counts.items()
+    ) or "No count data"
+
+
+def _case_primary_details(policy, item):
+    primary = primary_score_details(item)
+    if _primary_case_checks(policy, item, primary):
+        return primary
+    for check in policy.get("checks", []):
+        if check.get("target") != item.get("target"):
+            continue
+        contribution = _case_contribution(check, item.get("case_id", ""))
+        if not contribution or not contribution.get("contributes", False):
+            continue
+        return {
+            "section": check.get("section", ""),
+            "metric": check.get("metric", ""),
+            "label": check.get("display_name", metric_name(check.get("metric", ""))),
+            "value": format_check_value(check, contribution.get("actual")),
+        }
+    return primary
+
+
+def _primary_case_checks(policy, item, primary):
+    return [
+        check for check in policy.get("checks", [])
+        if check.get("target") == item.get("target")
+        and check.get("section") == primary.get("section")
+        and check.get("metric") == primary.get("metric")
+        and _case_contribution(check, item.get("case_id", "")) is not None
+    ]
+
+
+def _case_required(checks):
+    if not checks:
+        return "<span class=\"muted\">No direct primary gate</span>"
+    return "<br>".join(
+        "<a href=\"#criterion-%s\">%s</a> %s" % (
+            _h(check.get("criterion_id", "")),
+            _h(check.get("criterion_id", "")),
+            _required_value(check),
+        )
+        for check in checks
+    )
+
+
+def _case_diagnostic_badge(scored, checks, case_id):
+    if not scored:
+        return _badge("ERROR", "fail")
+    if not checks:
+        return _badge("CONTEXT ONLY", "neutral")
+    contributions = [
+        _case_contribution(check, case_id) for check in checks
+    ]
+    contributions = [
+        item for item in contributions if item and item.get("contributes", False)
+    ]
+    if not contributions:
+        return _badge("NO DATA", "neutral")
+    if any(item.get("diagnostic_passed") is False for item in contributions):
+        return _badge("BELOW GATE", "warning")
+    return _badge("MEETS GATE", "pass")
+
+
+def _case_criterion_links(policy, item):
+    links = [
+        "<a href=\"#criterion-%s\">%s</a>" % (
+            _h(check.get("criterion_id", "")), _h(check.get("criterion_id", "")),
+        )
+        for check in policy.get("checks", [])
+        if _case_contribution(check, item.get("case_id", "")) is not None
+        and check.get("target") == item.get("target")
+    ]
+    return " ".join(links) if links else "—"
+
+
+def _measurement_error_value(value, units):
+    if value is None:
+        return "—"
+    if len(units) == 1:
+        return format_measurement_value(value, units[0])
+    if len(units) > 1:
+        return "Not pooled (mixed units)"
+    return format_plain(value)
+
+
+def _measurement_tolerance_section(report):
+    rules = report.get("tolerance_rules", [])
+    pairing = format_seconds(report.get("options", {}).get("pairing_window_seconds"))
+    intro = (
+        "<p class=\"section-note\">Pairing window: %s. This window identifies corresponding reference and submitted rows; it is separate from the numeric pass tolerance below. For each numeric pair, the effective tolerance is the larger of the packaged absolute tolerance and the relative percentage of the absolute reference value.</p>"
+        % _h(pairing)
+    )
+    if not rules:
+        return _section(
+            "Measurement tolerance rules",
+            intro + "<p class=\"muted\">No numeric tolerance rule is available for this case-target.</p>",
+        )
+    rows = []
+    for rule in rules:
+        rows.append(
+            "<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+                _h(MEASUREMENT_NAMES.get(rule.get("name", ""), rule.get("name", ""))),
+                _h(rule.get("scope", "")),
+                _h(rule.get("unit", "") or "unitless"),
+                _h(_tolerance_rule_text(rule)),
+                _h(rule.get("error_model", "").replace("_", " ")),
+                rule.get("reference_value_count", 0),
+            )
+        )
+    return _section(
+        "Measurement tolerance rules",
+        intro + _table([
+            "Metric", "Scope", "Unit",
+            ("Pass tolerance", "A numeric pair passes when its absolute error is no larger than this effective rule."),
+            ("Error model", "Linear difference, or shortest circular difference for angular measurements."),
+            "Reference values",
+        ], rows),
+    )
+
+
+def _tolerance_rule_text(rule):
+    absolute = float(rule.get("absolute_tolerance", 0.0))
+    relative = float(rule.get("relative_tolerance_percent", 0.0))
+    absolute_text = "±%s absolute" % format_measurement_value(absolute, rule.get("unit", ""))
+    relative_text = "±%.6g%% of |reference|" % relative
+    if absolute > 0.0 and relative > 0.0:
+        return "larger of %s or %s" % (absolute_text, relative_text)
+    if relative > 0.0:
+        return relative_text
+    return absolute_text
+
+
+def _context_tolerance_text(context, rules):
+    names = (
+        "name", "unit", "scope", "channel", "formula", "method_id",
+        "preprocessing_policy_id",
+    )
+    matches = [
+        rule for rule in rules
+        if all((rule.get(name, "") or "") == (context.get(name, "") or "") for name in names)
+    ]
+    values = []
+    for rule in matches:
+        text = _tolerance_rule_text(rule)
+        if text not in values:
+            values.append(text)
+    return "; ".join(values) if values else "See packaged reference rule"
+
+
+def _table_header(value):
+    if isinstance(value, (tuple, list)) and len(value) == 2:
+        return "<th>%s%s</th>" % (_h(value[0]), _info(value[1]))
+    return "<th>%s</th>" % _h(value)
+
+
+def _info(text):
+    escaped = _h(text)
+    return "<span class=\"info\" tabindex=\"0\" aria-label=\"Information: %s\" data-tip=\"%s\" title=\"%s\">i</span>" % (
+        escaped, escaped, escaped,
+    )
+
+
 def _table(headers, rows, class_name=""):
     return "<div class=\"table-wrap\"><table class=\"%s\"><thead><tr>%s</tr></thead><tbody>%s</tbody></table></div>" % (
-        _h(class_name), "".join("<th>%s</th>" % _h(item) for item in headers), "".join(rows),
+        _h(class_name), "".join(_table_header(item) for item in headers), "".join(rows),
     )
 
 
@@ -628,24 +1000,41 @@ def format_measurement_value(value, unit):
     return "%.6g" % numeric
 
 
-def primary_score(item):
+def primary_score_details(item):
     report = item.get("comparison", {})
     score_type = item.get("score_type", "")
     if score_type == "event_detection":
         value = report.get("comparison", {}).get("metrics", {}).get("total", {}).get("f1_score")
+        section, metric = "total", "f1_score"
     elif score_type == "classification":
         value = report.get("summary", {}).get("micro_f1_score")
+        section, metric = "summary", "micro_f1_score"
     elif score_type == "interval_detection":
         value = report.get("overall", {}).get("time_f1_score")
+        section, metric = "overall", "time_f1_score"
     elif score_type == "ecg_delineation":
         value = report.get("overall", {}).get("f1_score")
+        section, metric = "overall", "f1_score"
     elif score_type == "measurement":
         value = report.get("overall", {}).get("tolerance_pass_fraction")
+        section, metric = "overall", "tolerance_pass_fraction"
     else:
         value = None
+        section, metric = "", ""
     if value is not None:
-        return format_ratio(value)
-    return item.get("message", "—") or "—"
+        display_value = format_ratio(value)
+    else:
+        display_value = item.get("message", "—") or "—"
+    return {
+        "section": section,
+        "metric": metric,
+        "label": metric_name(metric) if metric else "No primary metric",
+        "value": display_value,
+    }
+
+
+def primary_score(item):
+    return primary_score_details(item)["value"]
 
 
 def _with_unit(value, unit):

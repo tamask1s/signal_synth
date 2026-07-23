@@ -79,6 +79,7 @@ namespace signal_synth
         measurement_score_context_group();
 
         std::string name;
+        std::string unit;
         measurement_scope scope;
         std::string channel;
         std::string formula;

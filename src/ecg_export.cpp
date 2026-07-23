@@ -1240,7 +1240,7 @@ namespace signal_synth
 
     const char* signal_synth_verifier_version()
     {
-        return "0.13.0";
+        return "0.14.0";
     }
 
     const char* signal_synth_engineering_claim_boundary_text()

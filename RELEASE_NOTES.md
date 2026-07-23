@@ -3,9 +3,27 @@
 This file records public engineering-verification release notes for the
 `signal_synth` core generator and local verifier contracts.
 
+## Python verifier 0.14.0
+
+Status: active customer-reporting baseline.
+
+- Added an expandable per-case contribution ledger to every aggregate
+  acceptance criterion, including raw counts, case values, diagnostic gate
+  comparisons and direct detail links.
+- Added required thresholds and clearly non-authoritative case diagnostics to
+  the overview, plus reverse criterion links and case-vs-aggregate values on
+  every detail page.
+- Exposed packaged measurement tolerance rules as human-readable absolute,
+  relative and effective tolerances, distinct from the pairing window.
+- Replaced measurement-facing prediction/truth terminology with reference and
+  submitted-measurement language while preserving canonical machine fields.
+- Added units and plain-language definitions for P95, status agreement,
+  coverage, F1 and the other target-specific metrics; mixed-unit measurement
+  errors are no longer displayed as a misleading pooled value.
+
 ## Python verifier 0.13.0
 
-Status: active observable-truth baseline.
+Status: superseded by 0.14.0; retained as the observable-truth milestone.
 
 - Added one deterministic `synsigra_observable_event_truth_v1` policy across
   every curated pack: R peaks require complete in-record QRS support and more
@@ -26,7 +44,7 @@ Status: active observable-truth baseline.
 
 ## Python verifier 0.11.0
 
-Status: active audit-reporting baseline.
+Status: superseded; retained as the initial audit-reporting milestone.
 
 - Replaced the redundant JSON, CSV, and HTML result tree with one canonical
   `evidence.json`, one `index.html` entry point, and one linked detail page per

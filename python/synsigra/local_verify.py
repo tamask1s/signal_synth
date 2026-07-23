@@ -15,7 +15,7 @@ from .reporting import NOTICE_TEXT, annotate_policy, render_detail, render_index
 from .submission import SubmissionError, load_submission
 
 
-SCORING_VERSION = "synsigra-python-local-v8"
+SCORING_VERSION = "synsigra-python-local-v9"
 LIMITATION_TEXT = NOTICE_TEXT
 BEAT_CLASSES = ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion", "unscored"]
 SCORED_BEAT_CLASSES = set(["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion"])
@@ -1050,6 +1050,7 @@ def _build_evidence_record(package, scoring_manifest, submission, integrity, res
     scoring_success = bool(results) and all(item.get("success", False) for item in results)
     policy = _evaluate_policy(targets, threshold_profile)
     policy = annotate_policy(_apply_acceptance_strata(targets, results, policy, acceptance_strata))
+    _annotate_policy_contributions(policy, results)
     success = scoring_success and policy["passed"]
     executed_matrix = set((item.get("case_id", ""), item.get("target", "")) for item in results)
     required_matrix = verification.pop("required_matrix")
@@ -1074,6 +1075,14 @@ def _build_evidence_record(package, scoring_manifest, submission, integrity, res
             )
             if key in result
         }
+        evidence_result["criterion_ids"] = [
+            check["criterion_id"]
+            for check in policy.get("checks", [])
+            if any(
+                contribution.get("case_id") == result.get("case_id")
+                for contribution in check.get("case_contributions", [])
+            )
+        ]
         evidence_result["comparison"] = result.get("_report", {})
         evidence_results.append(evidence_result)
     return {
@@ -1391,7 +1400,7 @@ def _aggregate_measurement_result(aggregate, result):
     for item in result.get("by_measurement_context", []):
         key = _measurement_context_key(item)
         if key not in aggregate["by_measurement_context"]:
-            aggregate["by_measurement_context"][key] = {"descriptor": dict((name, item[name]) for name in ("name", "scope", "channel", "formula", "method_id", "preprocessing_policy_id") if name in item), "metrics": _empty_measurement_metrics()}
+            aggregate["by_measurement_context"][key] = {"descriptor": dict((name, item[name]) for name in ("name", "unit", "scope", "channel", "formula", "method_id", "preprocessing_policy_id") if name in item), "metrics": _empty_measurement_metrics()}
             if "window_start_seconds" in item:
                 aggregate["by_measurement_context"][key]["descriptor"]["window_start_seconds"] = item["window_start_seconds"]
                 aggregate["by_measurement_context"][key]["descriptor"]["window_end_seconds"] = item["window_end_seconds"]
@@ -1451,11 +1460,11 @@ def _finalize_measurement_aggregate(aggregate):
 
 
 def _measurement_context_key(item):
-    return tuple(item.get(name) for name in ("name", "scope", "channel", "formula", "method_id", "preprocessing_policy_id", "window_start_seconds", "window_end_seconds"))
+    return tuple(item.get(name) for name in ("name", "unit", "scope", "channel", "formula", "method_id", "preprocessing_policy_id", "window_start_seconds", "window_end_seconds"))
 
 
 def _measurement_error_record(item):
-    output = dict((name, item.get(name)) for name in ("name", "scope", "channel", "formula", "method_id", "preprocessing_policy_id", "window_start_seconds", "window_end_seconds"))
+    output = dict((name, item.get(name)) for name in ("name", "unit", "scope", "channel", "formula", "method_id", "preprocessing_policy_id", "window_start_seconds", "window_end_seconds"))
     output["error"] = float(item["signed_error"])
     return output
 
@@ -1600,6 +1609,119 @@ def _apply_acceptance_strata(targets, results, policy, acceptance_strata):
         "acceptance_strata": stratum_summaries,
     })
     return policy
+
+
+def _annotate_policy_contributions(policy, results):
+    for check in policy.get("checks", []):
+        scoped_cases = set(check.get("case_ids", []))
+        contributions = []
+        for result in results:
+            if result.get("target") != check.get("target"):
+                continue
+            if scoped_cases and result.get("case_id") not in scoped_cases:
+                continue
+            metrics = _case_metrics_for_check(result, check)
+            applicable = _case_metrics_applicable(result.get("score_type", ""), check.get("section", ""), metrics)
+            value = metrics.get(check.get("metric")) if metrics is not None else None
+            actual_present = (
+                applicable and not isinstance(value, bool) and
+                isinstance(value, (int, float)) and math.isfinite(float(value))
+            )
+            actual = float(value) if actual_present else None
+            diagnostic_passed = None
+            if actual_present:
+                diagnostic_passed = (
+                    actual >= float(check["threshold"])
+                    if check.get("operator") == "min"
+                    else actual <= float(check["threshold"])
+                )
+            contributions.append({
+                "case_id": result.get("case_id", ""),
+                "report_path": result.get("report_path", ""),
+                "scoring_status": result.get("status", ""),
+                "score_type": result.get("score_type", ""),
+                "contributes": actual_present,
+                "actual": actual,
+                "diagnostic_passed": diagnostic_passed,
+                "counts": _case_metric_counts(result.get("score_type", ""), metrics),
+            })
+        check["case_contributions"] = contributions
+        check["contributing_case_count"] = sum(
+            1 for item in contributions if item["contributes"]
+        )
+
+
+def _case_metrics_for_check(result, check):
+    if not result.get("success", False):
+        return None
+    score_type = result.get("score_type", "")
+    section = check.get("section", "")
+    if score_type == "event_detection":
+        return result.get("metrics", {}).get(section)
+    if score_type == "classification":
+        if section == "summary":
+            return result.get("summary", {})
+        if section.startswith("class/"):
+            class_name = section.split("/", 1)[1]
+            return next(
+                (item for item in result.get("classes", []) if item.get("class") == class_name),
+                None,
+            )
+    if score_type in ("interval_detection", "ecg_delineation"):
+        return result.get("summary", {}) if section == "overall" else None
+    if score_type == "measurement":
+        if section == "overall":
+            return _measurement_policy_metrics(result.get("summary", {}))
+        item = next(
+            (row for row in result.get("by_measurement", []) if row.get("name") == section),
+            None,
+        )
+        return _measurement_policy_metrics(item.get("metrics", {})) if item else None
+    return None
+
+
+def _case_metrics_applicable(score_type, section, metrics):
+    if metrics is None:
+        return False
+    if score_type == "event_detection":
+        return int(metrics.get("ground_truth_count", 0)) > 0 or int(metrics.get("detection_count", 0)) > 0
+    if score_type == "classification":
+        if section == "summary":
+            return int(metrics.get("scored_ground_truth_count", 0)) > 0
+        return bool(metrics.get("scored", False)) and int(metrics.get("ground_truth_count", 0)) > 0
+    return int(metrics.get("ground_truth_count", 0)) > 0 or int(metrics.get("prediction_count", 0)) > 0
+
+
+def _case_metric_counts(score_type, metrics):
+    if metrics is None:
+        return {}
+    if score_type == "event_detection":
+        names = (
+            "ground_truth_count", "detection_count", "true_positive_count",
+            "false_positive_count", "false_negative_count",
+            "excluded_ground_truth_count", "excluded_detection_count",
+        )
+    elif score_type == "classification":
+        names = (
+            "scored_ground_truth_count", "scored_prediction_count",
+            "ground_truth_count", "prediction_count", "matched_count",
+            "correct_count", "true_positive_count", "false_positive_count",
+            "false_negative_count",
+        )
+    elif score_type in ("interval_detection", "ecg_delineation"):
+        names = (
+            "ground_truth_count", "prediction_count", "matched_count",
+            "paired_count", "within_tolerance_count", "false_alarm_count",
+            "missed_count", "false_positive_count", "false_negative_count",
+        )
+    else:
+        names = (
+            "ground_truth_count", "prediction_count", "matched_count",
+            "numeric_pair_count", "tolerance_pass_count",
+            "status_match_count", "status_mismatch_count",
+            "missing_count", "extra_count",
+        )
+    return dict((name, int(metrics[name])) for name in names if name in metrics)
 
 
 def _measurement_policy_metrics(metrics):

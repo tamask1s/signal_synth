@@ -216,7 +216,7 @@ def main():
     provenance = read_json(os.path.join(challenge_dir, "provenance.json"))
     assert provenance["metadata_type"] == "synsigra_package_provenance"
     assert provenance["generator"]["version"] == "0.10.0-dev"
-    assert provenance["verifier"]["version"] == "0.13.0"
+    assert provenance["verifier"]["version"] == "0.14.0"
     assert provenance["verifier"]["package_contract_version"] == "synsigra_challenge_package_v3"
     assert "clinical validation" in provenance["claim_boundary"]["not_for"]
     assert os.path.exists(os.path.join(challenge_dir, "ENGINEERING_CLAIM_BOUNDARY.txt"))
@@ -444,10 +444,15 @@ def main():
     assert local_report.evidence["hrv_pipeline"]["available"] and local_report.evidence["hrv_pipeline"]["complete"]
     assert [item["stage"] for item in local_report.evidence["hrv_pipeline"]["stages"]] == ["r_peak_detection", "rr_interval_reconstruction", "hrv_metric_computation", "signal_quality_interval_detection"]
     assert all(item["score"] == 1 for item in local_report.evidence["hrv_pipeline"]["stages"])
+    assert local_report.evidence["policy"]["checks"]
+    assert all("case_contributions" in item for item in local_report.evidence["policy"]["checks"])
+    assert all("criterion_ids" in item for item in local_report.evidence["results"])
     assert len([os.path.join(root, name) for root, _dirs, names in os.walk(local_verify_dir) for name in names]) == 12
     with open(os.path.join(local_verify_dir, "index.html"), "r") as handle:
         html = handle.read()
         assert "Synsigra verification evidence" in html and "Pipeline trace" in html
+        assert "Case contribution breakdown" in html and "Case diagnostic" in html
+        assert "data-tip=" in html
         assert "href=\"details/clean_ecg_r_peak.html\"" in html
         assert html.count("Synthetic engineering QA evidence; not diagnosis, nor clinical evidence") == 1
     html_paths = set(item["report_path"] for item in local_report.evidence["results"])
@@ -458,6 +463,8 @@ def main():
         detail_html = open(detail_path, "r").read()
         assert "href=\"../index.html\"" in detail_html
         assert detail_html.count("Synthetic engineering QA evidence; not diagnosis, nor clinical evidence") == 1
+        if item["target"] == "hrv":
+            assert "Not pooled (mixed units)" in detail_html
         for href in html_links(detail_path):
             target = href.split("#", 1)[0]
             if target:

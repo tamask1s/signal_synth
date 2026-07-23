@@ -78,7 +78,7 @@ def main():
 
     verify_dir = os.path.join(work, "verify")
     report = ss.verify_package(challenge, submission_dir, verify_dir, mode="diagnostic", profile="regression")
-    assert report.evidence["success"] and report.evidence["scoring_version"] == "synsigra-python-local-v8"
+    assert report.evidence["success"] and report.evidence["scoring_version"] == "synsigra-python-local-v9"
     assert report.evidence["contract"] == "synsigra_local_verification_v3" and not report.evidence["verification"]["evidence_eligible"]
     assert set(item["target"] for item in report.evidence["targets"]) == set(["morphology_assertions", "ecg_ppg_alignment"])
     for item in report.evidence["targets"]:
@@ -92,10 +92,19 @@ def main():
         item["comparison"] for item in evidence["results"]
         if item["case_id"] == "morphology" and item["target"] == "morphology_assertions"
     )
+    assert python_case_report["tolerance_rules"]
+    assert all(item["unit"] for item in python_case_report["by_measurement_context"])
     assert all("ground_truth_value" in item and "prediction_value" in item and "effective_tolerance" in item for item in python_case_report["matches"] if item["numeric_pair"])
     cpp_dir = os.path.join(work, "cpp")
     run([cli, "measurement", "score", "morphology_assertions", morphology_source, morphology_output, "--out", cpp_dir])
     cpp_report = read_json(os.path.join(cpp_dir, "measurement_score.json"))
+    assert all(item["unit"] for item in cpp_report["by_measurement_context"])
+    assert all(
+        "absolute_tolerance" in item and
+        "relative_tolerance_percent" in item and
+        "effective_tolerance" in item
+        for item in cpp_report["matches"] if item["numeric_pair"]
+    )
     for name in ("ground_truth_count", "prediction_count", "matched_count", "numeric_pair_count", "tolerance_pass_count", "status_match_count", "missing_count", "extra_count", "truth_match_fraction", "prediction_match_fraction", "tolerance_pass_fraction", "status_match_fraction"):
         assert python_case_report["overall"][name] == cpp_report["overall"][name], name
     for name in ("bias", "mean_absolute", "root_mean_square", "median_absolute", "p95_absolute", "maximum_absolute"):

@@ -194,6 +194,7 @@ def score_measurements(ground_truth, predictions, target, pairing_window_seconds
         "score_type": "measurement_qa",
         "target": target,
         "options": {"pairing_window_seconds": pairing_window},
+        "tolerance_rules": _tolerance_rules(ground_truth),
         "overall": _metrics(context),
         "by_measurement": [{"name": name, "metrics": _metrics(context, name=name)} for name in names],
         "by_channel": [{"channel": channel or "global", "metrics": _metrics(context, channel=channel)} for channel in channels],
@@ -224,8 +225,36 @@ def measurement_comparison_html(report):
         window = ""
         if "window_start_seconds" in item:
             window = "[%s, %s)" % (_optional(item["window_start_seconds"]), _optional(item["window_end_seconds"]))
-        rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (html.escape(item["name"]), html.escape(item["scope"]), html.escape(item.get("method_id", "")), html.escape(item.get("preprocessing_policy_id", "")), html.escape(window), metrics["ground_truth_count"], metrics["prediction_count"], metrics["numeric_pair_count"], _optional(metrics["tolerance_pass_fraction"]), metrics["missing_count"], metrics["extra_count"], _optional(metrics["error"]["mean_absolute"])))
-    return "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font:14px Arial,sans-serif;color:#202124;max-width:1400px;margin:32px auto;padding:0 20px}table{border-collapse:collapse;width:100%%}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}th{background:#f3f4f6}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>Target: %s | Pairing window: %.6g s</p><table><tr><th>Measurement</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Truth</th><th>Predictions</th><th>Numeric pairs</th><th>Pass fraction</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>%s</table></body></html>" % (html.escape(report["target"]), report["options"]["pairing_window_seconds"], "".join(rows))
+        unit = item.get("unit", "")
+        rows.append("<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+            html.escape(item["name"]), html.escape(unit or "unitless"), html.escape(item["scope"]),
+            html.escape(item.get("method_id", "")), html.escape(item.get("preprocessing_policy_id", "")),
+            html.escape(window), metrics["ground_truth_count"], metrics["prediction_count"],
+            metrics["numeric_pair_count"], _optional(metrics["tolerance_pass_fraction"]),
+            html.escape(_context_tolerance_rule(item, report.get("tolerance_rules", []))),
+            metrics["missing_count"], metrics["extra_count"],
+            html.escape(_measurement_with_unit(metrics["error"]["mean_absolute"], unit)),
+        ))
+    return "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font:14px Arial,sans-serif;color:#202124;max-width:1400px;margin:32px auto;padding:0 20px}table{border-collapse:collapse;width:100%%}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}th{background:#f3f4f6}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}.help{color:#5f6b7a}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>Target: %s | Pairing window: %.6g s</p><p class=\"help\">The pairing window identifies corresponding rows. Each numeric pair passes when |submitted − reference| is within the larger packaged absolute-or-relative tolerance shown below.</p><table><tr><th>Measurement</th><th>Unit</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Reference</th><th>Submitted</th><th>Numeric pairs</th><th>Within tolerance</th><th>Tolerance rule</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>%s</table></body></html>" % (html.escape(report["target"]), report["options"]["pairing_window_seconds"], "".join(rows))
+
+
+def _context_tolerance_rule(context, rules):
+    fields = ("name", "unit", "scope", "channel", "formula", "method_id", "preprocessing_policy_id")
+    matches = [item for item in rules if all((item.get(name, "") or "") == (context.get(name, "") or "") for name in fields)]
+    values = []
+    for item in matches:
+        absolute = "±%s absolute" % _measurement_with_unit(item["absolute_tolerance"], item.get("unit", ""))
+        relative = "±%.6g%% of |reference|" % item["relative_tolerance_percent"]
+        value = "larger of %s or %s" % (absolute, relative) if item["absolute_tolerance"] > 0.0 and item["relative_tolerance_percent"] > 0.0 else relative if item["relative_tolerance_percent"] > 0.0 else absolute
+        if value not in values:
+            values.append(value)
+    return "; ".join(values) if values else "not applicable"
+
+
+def _measurement_with_unit(value, unit):
+    if value is None:
+        return "—"
+    return "%.6g%s" % (float(value), (" " + unit) if unit else "")
 
 
 def _metrics(context, name=None, channel=None, descriptor=None):
@@ -333,11 +362,51 @@ def _descriptor(item):
 
 
 def _context_result(descriptor, metrics):
-    name, _unit, scope, channel, formula, method_id, preprocessing_policy_id, window_start, window_end = descriptor
-    output = {"name": name, "scope": scope, "channel": channel or "global", "formula": formula, "method_id": method_id, "preprocessing_policy_id": preprocessing_policy_id, "metrics": metrics}
+    name, unit, scope, channel, formula, method_id, preprocessing_policy_id, window_start, window_end = descriptor
+    output = {"name": name, "unit": unit, "scope": scope, "channel": channel or "global", "formula": formula, "method_id": method_id, "preprocessing_policy_id": preprocessing_policy_id, "metrics": metrics}
     if window_start is not None:
         output["window_start_seconds"] = window_start
         output["window_end_seconds"] = window_end
+    return output
+
+
+def _tolerance_rules(ground_truth):
+    grouped = {}
+    for item in ground_truth:
+        measurement = item["measurement"]
+        key = (
+            measurement["name"],
+            measurement["unit"],
+            measurement["scope"],
+            measurement.get("channel", "") or "global",
+            measurement.get("formula", ""),
+            measurement.get("method_id", ""),
+            measurement.get("preprocessing_policy_id", ""),
+            float(item["absolute_tolerance"]),
+            float(item["relative_tolerance_percent"]),
+            item["error_model"],
+        )
+        grouped[key] = grouped.get(key, 0) + 1
+    output = []
+    for key in sorted(grouped):
+        (
+            name, unit, scope, channel, formula, method_id,
+            preprocessing_policy_id, absolute_tolerance,
+            relative_tolerance_percent, error_model,
+        ) = key
+        output.append({
+            "name": name,
+            "unit": unit,
+            "scope": scope,
+            "channel": channel,
+            "formula": formula,
+            "method_id": method_id,
+            "preprocessing_policy_id": preprocessing_policy_id,
+            "absolute_tolerance": absolute_tolerance,
+            "relative_tolerance_percent": relative_tolerance_percent,
+            "error_model": error_model,
+            "reference_value_count": grouped[key],
+        })
     return output
 
 

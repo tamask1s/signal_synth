@@ -240,7 +240,8 @@ def main():
     qtc_submission = os.path.join(work, "qtc_submission")
     rr_manifest = make_perfect_submission(rr_challenge_dir, rr_submission)
     qtc_manifest = make_perfect_submission(qtc_challenge_dir, qtc_submission)
-    rr_perfect = ss.verify_package(rr_challenge, rr_submission, os.path.join(work, "rr_perfect"))
+    rr_perfect_dir = os.path.join(work, "rr_perfect")
+    rr_perfect = ss.verify_package(rr_challenge, rr_submission, rr_perfect_dir)
     qtc_perfect = ss.verify_package(qtc_challenge, qtc_submission, os.path.join(work, "qtc_perfect"))
     assert rr_perfect.evidence["success"] and qtc_perfect.evidence["success"]
     analytic_report = case_comparison(os.path.join(work, "rr_perfect"), "analytic_extreme", "r_peak")["comparison"]
@@ -251,6 +252,40 @@ def main():
     assert rr_perfect.evidence["verification"]["protocol"]["sha256"].startswith("sha256:") and rr_perfect.evidence["verification"]["matrix_complete"]
     assert target_result(rr_perfect, "rr_interval")["policy"]["passed"]
     assert target_result(qtc_perfect, "qtc")["policy"]["passed"]
+    artifact_f1 = next(
+        item for item in rr_perfect.evidence["policy"]["checks"]
+        if item["target"] == "r_peak" and item["section"] == "artifact" and
+        item["metric"] == "f1_score"
+    )
+    contributing = [
+        item for item in artifact_f1["case_contributions"]
+        if item["contributes"]
+    ]
+    assert artifact_f1["contributing_case_count"] == len(contributing) == 5
+    assert all(set(["true_positive_count", "false_positive_count", "false_negative_count"]).issubset(item["counts"]) for item in contributing)
+    assert all(item["diagnostic_passed"] for item in contributing)
+    external_rr_result = next(
+        item for item in rr_perfect.evidence["results"]
+        if item["case_id"] == "external_extreme" and item["target"] == "rr_interval"
+    )
+    assert external_rr_result["criterion_ids"]
+    rules = external_rr_result["comparison"]["tolerance_rules"]
+    assert len(rules) == 1 and rules[0]["unit"] == "s"
+    assert rules[0]["absolute_tolerance"] == 0.010
+    assert rules[0]["relative_tolerance_percent"] == 2.0
+    assert external_rr_result["comparison"]["by_measurement_context"][0]["unit"] == "s"
+    overview_html = open(os.path.join(rr_perfect_dir, "index.html"), "r").read()
+    external_detail_html = open(
+        os.path.join(rr_perfect_dir, external_rr_result["report_path"]), "r"
+    ).read()
+    assert "Case contribution breakdown" in overview_html
+    assert "Evidence counts" in overview_html and "Case diagnostic" in overview_html
+    assert "Submitted measurements matched to reference" in overview_html
+    assert "Predictions matched" not in overview_html and "Truth matched" not in overview_html
+    assert "Measurement tolerance rules" in external_detail_html
+    assert "larger of ±10.000 ms (0.01 s) absolute or ±2% of |reference|" in external_detail_html
+    assert "95th percentile of |submitted − reference|" in external_detail_html
+    assert "../index.html#criterion-" in external_detail_html
 
     extreme_ok_submission = os.path.join(work, "rr_extreme_ok_submission")
     shutil.copytree(rr_submission, extreme_ok_submission)
@@ -290,6 +325,7 @@ def main():
     rpeak_result = target_result(rpeak_bad, "r_peak")
     assert not rpeak_bad.evidence["success"] and not rpeak_result["policy"]["passed"]
     assert any(item["section"] == "artifact" and not item["passed"] for item in rpeak_result["policy"]["checks"] if item["applicable"])
+    assert "BELOW GATE" in open(os.path.join(work, "rpeak_bad", "index.html"), "r").read()
 
     shift_measurement(rr_submission, rr_manifest, "rr_interval", "rr_interval", 0.040)
     rr_bad = ss.verify_package(rr_challenge, rr_submission, os.path.join(work, "rr_bad"))
