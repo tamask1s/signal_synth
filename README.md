@@ -130,6 +130,8 @@ Discover the SaaS-safe form contract, scenario templates, and pack estimates:
 /tmp/signal_synth-build/signal-synth authoring schema
 /tmp/signal_synth-build/signal-synth authoring templates
 /tmp/signal_synth-build/signal-synth pack analyze examples/packs/ecg_rhythm_v1.json
+/tmp/signal_synth-build/signal-synth pack challenge examples/packs/r_peak_stress_v1.json --out /tmp/r_peak_detector_evidence
+/tmp/signal_synth-build/signal-synth pack challenge examples/packs/r_peak_noise_frontier_v1.json --out /tmp/r_peak_noise_frontier --noise-assets examples/assets/noise
 /tmp/signal_synth-build/signal-synth pack challenge examples/packs/r_peak_rr_noise_v1.json --out /tmp/r_peak_rr_noise --noise-assets examples/assets/noise
 /tmp/signal_synth-build/signal-synth pack challenge examples/packs/ecg_qtc_verification_v1.json --out /tmp/ecg_qtc
 ```
@@ -205,5 +207,13 @@ Protocol-enabled packs also carry `verification_protocol.json`, resolved by
 its manifest role. The Python loader rejects malformed manifests, ambiguous or
 unsafe archive paths, symlinks, unlisted files, and hash/size mismatches before
 scoring.
+
+For an algorithm whose declared scope is R-peak detection only, use
+`r_peak_stress_v1`: its complete evidence matrix requests only R-peak event
+files, so missing signal-quality or RR output cannot make the run incomplete.
+Use `r_peak_noise_frontier_v1` to compare detector robustness on paired
+60-second −7, −8, −9 and −10 dB target-SNR tiers. Each tier is gated
+separately, so clean cases cannot hide a noisy-case collapse. See
+`doc/R_PEAK_EVIDENCE_PACKS.md`.
 
 See `python/README.md` and `doc/PYTHON_DISTRIBUTION.md` for packaging, smoke-test, and release guidance.

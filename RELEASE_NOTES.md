@@ -3,6 +3,26 @@
 This file records public engineering-verification release notes for the
 `signal_synth` core generator and local verifier contracts.
 
+## Curated R-peak evidence release
+
+Status: active beta pack baseline, 2026-07-23.
+
+- Upgraded `r_peak_stress_v1` to version 1.1 with a package-authoritative,
+  R-peak-only evidence protocol. Its submission template and required matrix
+  contain four R-peak event outputs and no signal-quality, RR or HRV output.
+- Added `r_peak_noise_frontier_v1`, a clean anchor plus four paired 60-second
+  all-lead cases at −7, −8, −9 and −10 dB target SNR.
+- Combined calibrated project-owned baseline, muscle and electrode-motion
+  noise with monotonically increasing analytic baseline wander and powerline
+  interference while holding the cardiac timebase, PVC cadence, intervals and
+  source offsets fixed.
+- Added a separate acceptance stratum for every SNR tier. The clean aggregate
+  can no longer hide failure at one noise level, and the audit report exposes
+  the exact tier where sensitivity, PPV, F1 or timing stability falls.
+- Advanced the curated catalog to 3.1 with 19 non-duplicate packs. Verifier
+  0.14.0 remains sufficient because the scoring and evidence contracts are
+  unchanged.
+
 ## Python verifier 0.14.0
 
 Status: active customer-reporting baseline.

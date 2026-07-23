@@ -582,7 +582,7 @@ def export_metadata(catalog_path, cli, pack_ids, source_root):
         "schema_version": 1,
         "metadata_type": METADATA_TYPE,
         "metadata_version": EXPORTER_VERSION,
-        "release_set_id": "synsigra_curated_release_2026_07_23",
+        "release_set_id": "synsigra_curated_release_2026_07_23_rpeak_evidence",
         "release_set_status": "beta",
         "catalog_id": catalog.get("catalog_id", ""),
         "catalog_version": catalog.get("version", ""),

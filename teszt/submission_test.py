@@ -40,7 +40,8 @@ try:
     manifest["algorithm"] = {"name": "strict-test", "version": "1"}
     write_json(manifest_path, manifest)
     submission = load_submission(submission_dir, package, scoring_manifest)
-    assert len(submission.outputs) == 5
+    assert len(submission.outputs) == 4
+    assert set(item.target for item in submission.outputs) == set(["r_peak"])
     assert submission.algorithm == {"name": "strict-test", "version": "1"}
 
     changed = json.loads(json.dumps(manifest))

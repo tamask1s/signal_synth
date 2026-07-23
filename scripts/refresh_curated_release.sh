@@ -54,7 +54,7 @@ grep -Eq 'Total Tests: [1-9][0-9]*' "$log" || {
   exit 1
 }
 if [ "$mode" = --quick ]; then
-  tests='TEST-(FACADE|ECG-EXPORT|CLI|INTEGRATION-CONTRACT|VERIFICATION-CATALOG|PACK-METADATA-EXPORT|PYTHON-SCORING|RR-QTC-PACK|PROTOCOL-V2)-001'
+  tests='TEST-(FACADE|ECG-EXPORT|CLI|INTEGRATION-CONTRACT|VERIFICATION-CATALOG|PACK-METADATA-EXPORT|PYTHON-SCORING|RR-QTC-PACK|RPEAK-EVIDENCE-PACK|PROTOCOL-V2)-001'
   (cd "$build_dir" && ctest -R "$tests" --output-on-failure -j"$jobs") >>"$log" 2>&1 || failed $?
   test_scope=targeted
 else

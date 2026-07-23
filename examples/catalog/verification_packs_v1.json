@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "3.0",
+  "version": "3.1",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -155,27 +155,33 @@
       "path": "../packs/r_peak_stress_v1.json",
       "modality": ["ECG"],
       "targets": ["r_peak"],
-      "difficulty": ["smoke", "stress"],
+      "difficulty": ["regression", "stress"],
       "recommended_profile": "stress",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
       "scoring_mode": "local",
-      "feature_tags": ["clean", "bradycardia", "tachycardia", "artifact"],
+      "feature_tags": ["r_peak", "peak_detector_only", "evidence_protocol", "clean", "bradycardia", "tachycardia", "baseline_wander", "powerline"],
       "release_status": "beta",
-      "release_date": "2026-07-06",
+      "release_date": "2026-07-23",
       "deprecation_message": "",
       "recommended_for": [
-        "R-peak detector smoke tests",
-        "R-peak detector rate-stress checks",
-        "R-peak detector baseline-wander and powerline robustness checks",
-        "CI regression gates using exact synthetic R-peak ground truth"
+        "Package-authoritative evidence for algorithms whose declared scope is R-peak detection only",
+        "Clean, bradycardic, tachycardic, baseline-wander and powerline detector checks",
+        "CI regression gates using exact synthetic R-peak ground truth without signal-quality output"
       ],
       "not_recommended_for": [
-        "HRV metric validation",
+        "Signal-quality classification or artifact-interval detection claims",
+        "RR, HRV, morphology or delineation claims",
         "PPG peak or onset testing",
-        "ECG morphology diagnosis claims",
-        "clinical validation certification"
+        "Clinical validation or regulatory qualification"
       ],
       "changelog": [
+        {
+          "version": "1.1",
+          "date": "2026-07-23",
+          "changes": [
+            "Added a package-authoritative, R-peak-only evidence protocol and removed the accidental signal-quality submission requirement."
+          ]
+        },
         {
           "version": "1.0",
           "date": "2026-07-06",
@@ -187,7 +193,51 @@
       "generator_compatibility": {
         "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
-        "scenario_schema_versions": [2, 3, 4],
+        "scenario_schema_versions": [2],
+        "challenge_package_contract": "synsigra_challenge_package_v3",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
+        "submission_contract": "synsigra_submission_v1",
+        "local_verifier_min_version": "0.14.0"
+      }
+    },
+    {
+      "pack_id": "r_peak_noise_frontier_v1",
+      "path": "../packs/r_peak_noise_frontier_v1.json",
+      "modality": ["ECG"],
+      "targets": ["r_peak"],
+      "difficulty": ["stress", "benchmark"],
+      "recommended_profile": "benchmark",
+      "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
+      "scoring_mode": "local",
+      "feature_tags": ["r_peak", "peak_detector_only", "evidence_protocol", "calibrated_snr", "noise_frontier", "baseline_wander", "powerline", "muscle_noise", "electrode_motion", "all_lead", "pvc"],
+      "release_status": "beta",
+      "release_date": "2026-07-23",
+      "deprecation_message": "",
+      "recommended_for": [
+        "Comparing R-peak detectors on a paired -7, -8, -9 and -10 dB target-SNR frontier",
+        "Long all-lead robustness testing with combined calibrated noise, baseline wander and powerline interference",
+        "Finding the tier where sensitivity, precision or timing stability begins to collapse",
+        "Per-case evidence that cannot be hidden by clean-case aggregate performance"
+      ],
+      "not_recommended_for": [
+        "Signal-quality interval detector validation",
+        "Clinical noise-prevalence or patient-performance claims",
+        "Regulatory qualification or replacement of representative real-world validation",
+        "Comparing algorithms configured for different lead sets without documenting that configuration"
+      ],
+      "changelog": [
+        {
+          "version": "1.0",
+          "date": "2026-07-23",
+          "changes": [
+            "Initial paired 60-second calibrated-noise ladder with a clean anchor, persistent mixed artifacts and pre-specified per-tier gates."
+          ]
+        }
+      ],
+      "generator_compatibility": {
+        "minimum_generator_version": "0.10.0-dev",
+        "pack_schema_version": 2,
+        "scenario_schema_versions": [2, 8],
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
