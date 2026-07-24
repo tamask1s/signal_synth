@@ -33,6 +33,8 @@ RELEASE_PACK_IDS = [
     "ecg_qtc_verification_v1",
     "ecg_extended_morphology_v1",
     "advanced_rhythm_burden_v1",
+    "r_peak_rr_simple_stress_v1",
+    "r_peak_rr_snr_ladder_v1",
     "r_peak_stress_v1",
     "r_peak_noise_frontier_v1",
     "hrv_robustness_v2",
@@ -56,7 +58,7 @@ def assert_release_pack_metadata(item):
     assert item["metadata_type"] == "synsigra_curated_pack_metadata"
     assert isinstance(item["version"], str) and item["version"]
     assert item["release_status"] == "beta"
-    expected_date = "2026-07-23" if item["pack_id"] in ("r_peak_stress_v1", "r_peak_noise_frontier_v1") else "2026-07-18" if item["pack_id"] in ("hrv_robustness_v2", "r_peak_rr_noise_v1", "ecg_qtc_verification_v1") else "2026-07-17" if item["pack_id"] in ("ecg_delineation_v2", "wearable_timebase_v2", "ppg_optical_v2", "cardiorespiratory_v1", "advanced_rhythm_burden_v1", "ecg_extended_morphology_v1", "ecg_hybrid_noise_v1") else "2026-07-06"
+    expected_date = "2026-07-24" if item["pack_id"] in ("r_peak_rr_simple_stress_v1", "r_peak_rr_snr_ladder_v1") else "2026-07-23" if item["pack_id"] in ("r_peak_stress_v1", "r_peak_noise_frontier_v1") else "2026-07-18" if item["pack_id"] in ("hrv_robustness_v2", "r_peak_rr_noise_v1", "ecg_qtc_verification_v1") else "2026-07-17" if item["pack_id"] in ("ecg_delineation_v2", "wearable_timebase_v2", "ppg_optical_v2", "cardiorespiratory_v1", "advanced_rhythm_burden_v1", "ecg_extended_morphology_v1", "ecg_hybrid_noise_v1") else "2026-07-06"
     assert item["release_date"] == expected_date
     assert item["recommended_for"] and item["not_recommended_for"] and item["changelog"]
     assert item["source"]["pack_fingerprint"].startswith("sha256:")
@@ -78,7 +80,7 @@ def assert_release_pack_metadata(item):
     assert len(artifact_roles) == len(set(artifact_roles))
     assert "provenance_json" in artifact_roles
     assert "engineering_claim_boundary_txt" in artifact_roles
-    protocol_expected = item["pack_id"] in ("hrv_robustness_v2", "r_peak_rr_noise_v1", "ecg_qtc_verification_v1", "r_peak_stress_v1", "r_peak_noise_frontier_v1")
+    protocol_expected = bool(item["verification_protocol"]["available"])
     assert item["verification_protocol"]["available"] is protocol_expected
     assert ("verification_protocol_json" in artifact_roles) is protocol_expected
     if protocol_expected:
@@ -87,7 +89,12 @@ def assert_release_pack_metadata(item):
         assert protocol["source_content_sha256"].startswith("sha256:")
         assert protocol["document"]["contract"] == "synsigra_verification_protocol_v2"
         assert protocol["document"]["pack_id"] == item["pack_id"]
-        assert protocol["document"]["acceptance_profile"]["profile_id"].endswith("_acceptance")
+        document = protocol["document"]
+        if document.get("verdict_scope", "aggregate") == "per_case":
+            assert "acceptance_profile" not in document
+            assert document["acceptance_strata"]
+        else:
+            assert document["acceptance_profile"]["profile_id"].endswith("_acceptance")
     assert item["declared_targets"]
     assert item["targets"]
     assert item["scoring_mode"] in ("local", "mixed", "reference_only")
@@ -207,6 +214,24 @@ def assert_rpeak_frontier_metadata(item):
         "mixed_snr_m7", "mixed_snr_m8", "mixed_snr_m9",
         "mixed_snr_m10", "mixed_snr_m11",
     ]
+
+
+def assert_simple_rpeak_metadata(generated):
+    stress = pack(generated, "r_peak_rr_simple_stress_v1")
+    assert stress["version"] == "1.0"
+    assert stress["case_ids"] == ["clean_70", "slow_45", "fast_120", "baseline_powerline"]
+    assert stress["duration"]["total_seconds"] == 100
+    ladder = pack(generated, "r_peak_rr_snr_ladder_v1")
+    assert ladder["version"] == "1.0"
+    assert ladder["case_ids"] == ["clean"] + ["snr_m%d" % level for level in range(1, 12)]
+    assert ladder["duration"]["total_seconds"] == 720
+    assert ladder["sampling_rates_hz"] == [500]
+    for item in (stress, ladder):
+        assert item["declared_targets"] == item["targets"] == ["r_peak", "rr_interval"]
+        assert item["verification_protocol"]["document"]["verdict_scope"] == "per_case"
+        assert "acceptance_profile" not in item["verification_protocol"]["document"]
+        assert len(item["verification_protocol"]["document"]["acceptance_strata"]) == item["case_count"]
+        assert all(case["scoreable_targets"] == ["r_peak", "rr_interval"] for case in item["cases"])
 
 
 def assert_ppg_benchmark_metadata(item):
@@ -339,6 +364,11 @@ def main():
             os.path.join(source_dir, "scripts", "generate_r_peak_noise_frontier.py"),
             "--check",
         ])
+        run([
+            sys.executable,
+            os.path.join(source_dir, "scripts", "generate_simple_r_peak_packs.py"),
+            "--check",
+        ])
         output_path = os.path.join(work_dir, "curated_pack_metadata_v1.json")
         run([sys.executable, script, "--cli", cli, "--catalog", catalog, "--source-root", source_dir, "--out", output_path])
         generated = read_json(output_path)
@@ -347,16 +377,17 @@ def main():
         assert generated["schema_version"] == 1
         assert generated["metadata_type"] == "synsigra_curated_pack_catalog"
         assert generated["metadata_version"] == "synsigra_curated_pack_metadata_export_v1"
-        assert generated["release_set_id"] == "synsigra_curated_release_2026_07_23_rpeak_rr_frontier"
+        assert generated["release_set_id"] == "synsigra_curated_release_2026_07_24_simple_rpeak_cases"
         assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
-        assert generated["catalog_version"] == "3.2"
-        assert generated["pack_count"] == 19
+        assert generated["catalog_version"] == "3.3"
+        assert generated["pack_count"] == 21
         assert [item["pack_id"] for item in generated["packs"]] == RELEASE_PACK_IDS
         for pack_id in RELEASE_PACK_IDS:
             assert_release_pack_metadata(pack(generated, pack_id))
         assert_rpeak_metadata(pack(generated, "r_peak_stress_v1"))
         assert_rpeak_frontier_metadata(pack(generated, "r_peak_noise_frontier_v1"))
+        assert_simple_rpeak_metadata(generated)
         assert_ppg_benchmark_metadata(pack(generated, "ppg_benchmark_v1"))
         assert_delineation_metadata(pack(generated, "ecg_delineation_v2"))
         assert_ppg_optical_metadata(pack(generated, "ppg_optical_v2"))

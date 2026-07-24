@@ -126,6 +126,7 @@ def _verification_configuration(package, scoring_manifest, mode, cases, targets,
         pass
     required_matrix = _scoring_matrix(scoring_manifest)
     if protocol is not None:
+        verdict_scope = protocol.get("verdict_scope", "aggregate")
         protocol_matrix = _protocol_matrix(protocol)
         if protocol_matrix != required_matrix:
             missing = sorted(required_matrix - protocol_matrix)
@@ -140,7 +141,12 @@ def _verification_configuration(package, scoring_manifest, mode, cases, targets,
         protocol_identity.update({
             "scoring_contract": protocol["scoring_contract"],
             "context_of_use": protocol["context_of_use"],
-            "acceptance_profile_id": protocol["acceptance_profile"]["profile_id"],
+            "acceptance_profile_id": (
+                protocol["acceptance_profile"]["profile_id"]
+                if verdict_scope == "aggregate"
+                else "per_case_profiles"
+            ),
+            "verdict_scope": verdict_scope,
             "evidence_boundary": protocol["evidence_boundary"],
             "truth_policy": dict(protocol["truth_policy"]),
         })
@@ -149,7 +155,15 @@ def _verification_configuration(package, scoring_manifest, mode, cases, targets,
             raise VerificationError("evidence mode requires a packaged synsigra_verification_protocol_v2 artifact")
         if selected_cases is not None or selected_targets is not None or profile is not None:
             raise VerificationError("evidence mode forbids case filters, target filters, and caller-selected threshold profiles")
-        threshold_profile = load_threshold_profile(protocol["acceptance_profile"])
+        if protocol.get("verdict_scope", "aggregate") == "per_case":
+            threshold_profile = {
+                "schema_version": 1,
+                "profile_id": "per_case_profiles",
+                "description": "Each case has its own official acceptance profile; no cases are pooled for a verdict.",
+                "targets": {},
+            }
+        else:
+            threshold_profile = load_threshold_profile(protocol["acceptance_profile"])
         acceptance_strata = [
             {
                 "id": item["id"],
@@ -159,7 +173,12 @@ def _verification_configuration(package, scoring_manifest, mode, cases, targets,
             for item in protocol.get("acceptance_strata", [])
         ]
     else:
-        threshold_profile = load_threshold_profile(profile if profile is not None else protocol["acceptance_profile"] if protocol is not None else "regression")
+        default_profile = (
+            protocol["acceptance_profile"]
+            if protocol is not None and protocol.get("verdict_scope", "aggregate") == "aggregate"
+            else "regression"
+        )
+        threshold_profile = load_threshold_profile(profile if profile is not None else default_profile)
         acceptance_strata = []
     return {
         "mode": mode,

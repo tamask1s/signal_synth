@@ -112,6 +112,50 @@ def main():
     configuration = _verification_configuration(package, manifest, "evidence", None, None, None)
     assert configuration["required_matrix"] and configuration["threshold_profile"]["profile_id"] == "r_peak_rr_noise_v1_acceptance"
     assert [item["id"] for item in configuration["acceptance_strata"]] == ["rr_standard_cases", "rr_external_extreme"]
+
+    per_case = copy.deepcopy(valid)
+    per_case["verdict_scope"] = "per_case"
+    del per_case["acceptance_profile"]
+    per_case["acceptance_strata"] = []
+    for required_case in per_case["required_case_targets"]:
+        case_id = required_case["case_id"]
+        per_case["acceptance_strata"].append({
+            "id": case_id,
+            "case_ids": [case_id],
+            "acceptance_profile": {
+                "schema_version": 1,
+                "profile_id": "case_%s" % case_id,
+                "description": "Independent case verdict.",
+                "targets": {
+                    target: copy.deepcopy(valid["acceptance_profile"]["targets"][target])
+                    for target in required_case["targets"]
+                },
+            },
+        })
+    _validate_verification_protocol(per_case, per_case["pack_id"])
+    configuration = _verification_configuration(
+        Package(per_case), scoring_manifest(per_case), "evidence", None, None, None
+    )
+    assert configuration["threshold_profile"]["profile_id"] == "per_case_profiles"
+    assert configuration["protocol"]["verdict_scope"] == "per_case"
+
+    malformed = copy.deepcopy(per_case)
+    malformed["acceptance_profile"] = copy.deepcopy(valid["acceptance_profile"])
+    rejected(malformed, malformed["pack_id"])
+
+    malformed = copy.deepcopy(per_case)
+    malformed["acceptance_strata"][0]["case_ids"].append(
+        malformed["acceptance_strata"][1]["case_ids"][0]
+    )
+    rejected(malformed, malformed["pack_id"])
+
+    malformed = copy.deepcopy(per_case)
+    del malformed["acceptance_strata"][-1]
+    rejected(malformed, malformed["pack_id"])
+
+    malformed = copy.deepcopy(per_case)
+    del malformed["acceptance_strata"][0]["acceptance_profile"]["targets"]["rr_interval"]
+    rejected(malformed, malformed["pack_id"])
     malformed_manifest = copy.deepcopy(manifest)
     malformed_manifest["cases"][0]["scoring"].pop()
     try:

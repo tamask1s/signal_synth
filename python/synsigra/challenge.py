@@ -563,12 +563,13 @@ def _validate_layout(root, manifest):
 
 
 def _validate_verification_protocol(document, package_id):
-    required = set(["schema_version", "contract", "protocol_id", "pack_id", "context_of_use", "scoring_contract", "required_case_targets", "acceptance_profile", "stress_strata", "truth_policy", "evidence_boundary"])
+    required = set(["schema_version", "contract", "protocol_id", "pack_id", "context_of_use", "scoring_contract", "required_case_targets", "stress_strata", "truth_policy", "evidence_boundary"])
+    optional = set(["acceptance_profile", "acceptance_strata", "verdict_scope"])
     if not isinstance(document, dict):
         raise ChallengeFormatError("verification_protocol must be an object")
     actual = set(document)
     missing = sorted(required - actual)
-    unknown = sorted(actual - required - set(["acceptance_strata"]))
+    unknown = sorted(actual - required - optional)
     if missing or unknown:
         details = []
         if missing:
@@ -586,11 +587,19 @@ def _validate_verification_protocol(document, package_id):
     _string(document["context_of_use"], "verification_protocol.context_of_use")
     if document["scoring_contract"] != "synsigra_local_verification_v3":
         raise ChallengeFormatError("verification protocol scoring_contract is unsupported")
+    verdict_scope = document.get("verdict_scope", "aggregate")
+    if verdict_scope not in ("aggregate", "per_case"):
+        raise ChallengeFormatError("verification protocol verdict_scope must be aggregate or per_case")
+    if verdict_scope == "aggregate" and "acceptance_profile" not in document:
+        raise ChallengeFormatError("aggregate verification protocol requires acceptance_profile")
+    if verdict_scope == "per_case" and "acceptance_profile" in document:
+        raise ChallengeFormatError("per_case verification protocol must not define a pooled acceptance_profile")
     matrix = document["required_case_targets"]
     if not isinstance(matrix, list) or not matrix:
         raise ChallengeFormatError("verification protocol required_case_targets must be a non-empty array")
     case_ids = set()
     required_targets = set()
+    case_targets = {}
     for index, item in enumerate(matrix):
         path = "verification_protocol.required_case_targets[%d]" % index
         _exact_fields(item, set(["case_id", "targets"]), path)
@@ -606,13 +615,15 @@ def _validate_verification_protocol(document, package_id):
         if len(set(targets)) != len(targets):
             raise ChallengeFormatError("%s.targets contains duplicates" % path)
         required_targets.update(targets)
-    try:
-        acceptance = load_threshold_profile(document["acceptance_profile"])
-    except ThresholdProfileError as error:
-        raise ChallengeFormatError("verification protocol acceptance_profile is invalid: %s" % error)
-    missing_acceptance = sorted(required_targets - set(acceptance["targets"]))
-    if missing_acceptance:
-        raise ChallengeFormatError("verification protocol acceptance_profile has no direct target section for: %s" % ", ".join(missing_acceptance))
+        case_targets[case_id] = set(targets)
+    if verdict_scope == "aggregate":
+        try:
+            acceptance = load_threshold_profile(document["acceptance_profile"])
+        except ThresholdProfileError as error:
+            raise ChallengeFormatError("verification protocol acceptance_profile is invalid: %s" % error)
+        missing_acceptance = sorted(required_targets - set(acceptance["targets"]))
+        if missing_acceptance:
+            raise ChallengeFormatError("verification protocol acceptance_profile has no direct target section for: %s" % ", ".join(missing_acceptance))
     strata = document["stress_strata"]
     if not isinstance(strata, list) or not strata:
         raise ChallengeFormatError("verification protocol stress_strata must be a non-empty array")
@@ -640,6 +651,8 @@ def _validate_verification_protocol(document, package_id):
     acceptance_strata = document.get("acceptance_strata", [])
     if "acceptance_strata" in document and (not isinstance(acceptance_strata, list) or not acceptance_strata):
         raise ChallengeFormatError("verification protocol acceptance_strata must be a non-empty array")
+    if verdict_scope == "per_case" and not acceptance_strata:
+        raise ChallengeFormatError("per_case verification protocol requires one acceptance stratum per case")
     acceptance_ids = set()
     covered_case_targets = set()
     for index, item in enumerate(acceptance_strata):
@@ -664,11 +677,31 @@ def _validate_verification_protocol(document, package_id):
         unknown_targets = sorted(set(stratum_profile["targets"]) - required_targets)
         if unknown_targets:
             raise ChallengeFormatError("%s.acceptance_profile contains targets absent from the protocol matrix: %s" % (path, ", ".join(unknown_targets)))
+        if verdict_scope == "per_case":
+            if len(normalized) != 1:
+                raise ChallengeFormatError("%s must contain exactly one case in per_case mode" % path)
+            expected_targets = case_targets[normalized[0]]
+            actual_targets = set(stratum_profile["targets"])
+            if actual_targets != expected_targets:
+                raise ChallengeFormatError("%s acceptance_profile targets must exactly match case %s (expected=%s, actual=%s)" % (
+                    path, normalized[0], sorted(expected_targets), sorted(actual_targets),
+                ))
         pairs = set((case_id, target) for case_id in normalized for target in stratum_profile["targets"])
         overlap = sorted(pairs & covered_case_targets)
         if overlap:
             raise ChallengeFormatError("%s overlaps an earlier acceptance stratum for: %s" % (path, ", ".join("%s/%s" % pair for pair in overlap)))
         covered_case_targets.update(pairs)
+    if verdict_scope == "per_case":
+        required_pairs = set(
+            (case_id, target)
+            for case_id, targets in case_targets.items()
+            for target in targets
+        )
+        missing_pairs = sorted(required_pairs - covered_case_targets)
+        if missing_pairs:
+            raise ChallengeFormatError("per_case acceptance strata do not cover: %s" % ", ".join(
+                "%s/%s" % pair for pair in missing_pairs
+            ))
     if not isinstance(document["truth_policy"], dict) or not document["truth_policy"]:
         raise ChallengeFormatError("verification protocol truth_policy must be a non-empty object")
     _string(document["evidence_boundary"], "verification_protocol.evidence_boundary")

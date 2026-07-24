@@ -459,12 +459,19 @@ def verification_protocol_metadata(pack_path, pack, source_root):
         return {"available": False, "artifact_role": "", "source_path": "", "source_content_sha256": "", "document": None}
     protocol_path = os.path.join(os.path.dirname(pack_path), relative_path)
     protocol = read_json(protocol_path)
-    required = set(["schema_version", "contract", "protocol_id", "pack_id", "context_of_use", "scoring_contract", "required_case_targets", "acceptance_profile", "stress_strata", "truth_policy", "evidence_boundary"])
-    allowed = required | set(["acceptance_strata"])
+    required = set(["schema_version", "contract", "protocol_id", "pack_id", "context_of_use", "scoring_contract", "required_case_targets", "stress_strata", "truth_policy", "evidence_boundary"])
+    allowed = required | set(["acceptance_profile", "acceptance_strata", "verdict_scope"])
     if not isinstance(protocol, dict) or not required.issubset(set(protocol)) or not set(protocol).issubset(allowed):
         raise RuntimeError("verification protocol has an incomplete envelope: %s" % protocol_path)
     if protocol["schema_version"] != 2 or protocol["contract"] != "synsigra_verification_protocol_v2" or protocol["pack_id"] != pack["pack_id"] or protocol["scoring_contract"] != "synsigra_local_verification_v3":
         raise RuntimeError("verification protocol identity does not match pack: %s" % protocol_path)
+    verdict_scope = protocol.get("verdict_scope", "aggregate")
+    if verdict_scope == "aggregate" and "acceptance_profile" not in protocol:
+        raise RuntimeError("aggregate verification protocol has no acceptance profile: %s" % protocol_path)
+    if verdict_scope == "per_case" and ("acceptance_profile" in protocol or not protocol.get("acceptance_strata")):
+        raise RuntimeError("per-case verification protocol envelope is invalid: %s" % protocol_path)
+    if verdict_scope not in ("aggregate", "per_case"):
+        raise RuntimeError("verification protocol verdict scope is unsupported: %s" % protocol_path)
     expected_matrix = [(item["id"], item["targets"]) for item in pack["scenarios"]]
     protocol_matrix = [(item.get("case_id"), item.get("targets")) for item in protocol["required_case_targets"]]
     if protocol_matrix != expected_matrix:
@@ -582,7 +589,7 @@ def export_metadata(catalog_path, cli, pack_ids, source_root):
         "schema_version": 1,
         "metadata_type": METADATA_TYPE,
         "metadata_version": EXPORTER_VERSION,
-        "release_set_id": "synsigra_curated_release_2026_07_23_rpeak_rr_frontier",
+        "release_set_id": "synsigra_curated_release_2026_07_24_simple_rpeak_cases",
         "release_set_status": "beta",
         "catalog_id": catalog.get("catalog_id", ""),
         "catalog_version": catalog.get("version", ""),

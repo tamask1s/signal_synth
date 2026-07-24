@@ -140,7 +140,7 @@ ERROR_METRICS = frozenset([
 
 STYLE = """
 :root{color-scheme:light;--ink:#172033;--muted:#5f6b7a;--line:#d8dee8;--soft:#f6f8fb;--pass:#176b45;--pass-bg:#eaf7f0;--warn:#8a5a00;--warn-bg:#fff7df;--fail:#a12828;--fail-bg:#fff0f0;--accent:#3157b7}
-*{box-sizing:border-box}body{font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);max-width:1240px;margin:0 auto;padding:28px 32px 64px;background:#fff}a{color:var(--accent);text-underline-offset:2px}nav{margin-bottom:20px}.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 4px}h1{font-size:30px;line-height:1.15;margin:0 0 8px}h2{font-size:20px;margin:34px 0 10px}h3{font-size:16px;margin:22px 0 8px}.subtitle,.muted{color:var(--muted)}.notice{border-left:4px solid #6b7280;background:#f3f4f6;color:#374151;padding:10px 14px;margin:20px 0 24px}.verdict{border:1px solid var(--line);border-left-width:7px;border-radius:8px;padding:18px 20px;margin:18px 0}.verdict.pass{border-left-color:var(--pass);background:var(--pass-bg)}.verdict.fail{border-left-color:var(--fail);background:var(--fail-bg)}.verdict h2{margin:0 0 4px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin:14px 0 24px}.card{border:1px solid var(--line);border-radius:7px;padding:12px;background:var(--soft)}.card strong{display:block;font-size:20px}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:7px;margin:10px 0 22px}table{border-collapse:collapse;width:100%;min-width:660px}th,td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}th{background:#eef2f7;font-size:12px;letter-spacing:.02em}tr:last-child td{border-bottom:0}.kv th{width:260px}.badge{display:inline-block;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;letter-spacing:.04em}.badge.pass{color:var(--pass);background:var(--pass-bg)}.badge.warning{color:var(--warn);background:var(--warn-bg)}.badge.fail{color:var(--fail);background:var(--fail-bg)}.badge.neutral{color:#4b5563;background:#eceff3}.raw{display:block;color:var(--muted);font-size:11px}.mono{font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:anywhere}.criterion{min-width:210px}.section-note{border:1px solid var(--line);background:var(--soft);padding:10px 12px;border-radius:6px}.criterion-breakdown td{background:#fbfcfe;padding:0 12px 8px}.criterion-breakdown details{margin:0}.compact{font-size:12px}.compact th,.compact td{padding:6px 8px}.info{position:relative;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:4px;border:1px solid #8792a2;border-radius:50%;color:#526071;font-size:10px;font-weight:800;cursor:help;vertical-align:middle}.info:after{content:attr(data-tip);display:none;position:absolute;z-index:20;left:50%;top:22px;transform:translateX(-50%);width:280px;padding:8px 10px;border-radius:6px;background:#172033;color:#fff;font-size:12px;font-weight:400;line-height:1.4;letter-spacing:0;box-shadow:0 6px 20px rgba(23,32,51,.2)}.info:hover:after,.info:focus:after{display:block}.footer{border-top:1px solid var(--line);margin-top:36px;padding-top:16px;color:var(--muted)}details{border:1px solid var(--line);border-radius:7px;padding:10px 12px;margin:12px 0}summary{font-weight:700;cursor:pointer}.nowrap{white-space:nowrap}
+*{box-sizing:border-box}body{font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);max-width:1240px;margin:0 auto;padding:28px 32px 64px;background:#fff}a{color:var(--accent);text-underline-offset:2px}nav{margin-bottom:20px}.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 4px}h1{font-size:30px;line-height:1.15;margin:0 0 8px}h2{font-size:20px;margin:34px 0 10px}h3{font-size:16px;margin:22px 0 8px}.subtitle,.muted{color:var(--muted)}.notice{border-left:4px solid #6b7280;background:#f3f4f6;color:#374151;padding:10px 14px;margin:20px 0 24px}.verdict{border:1px solid var(--line);border-left-width:7px;border-radius:8px;padding:18px 20px;margin:18px 0}.verdict.pass{border-left-color:var(--pass);background:var(--pass-bg)}.verdict.fail{border-left-color:var(--fail);background:var(--fail-bg)}.verdict h2{margin:0 0 4px}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:10px;margin:14px 0 24px}.card{border:1px solid var(--line);border-radius:7px;padding:12px;background:var(--soft)}.card strong{display:block;font-size:20px}.table-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:7px;margin:10px 0 22px}table{border-collapse:collapse;width:100%;min-width:660px}th,td{border-bottom:1px solid var(--line);padding:9px 10px;text-align:left;vertical-align:top}th{background:#eef2f7;font-size:12px;letter-spacing:.02em}tr:last-child td{border-bottom:0}.kv th{width:260px}.badge{display:inline-block;border-radius:999px;padding:2px 8px;font-size:11px;font-weight:800;letter-spacing:.04em}.badge.pass{color:var(--pass);background:var(--pass-bg)}.badge.warning{color:var(--warn);background:var(--warn-bg)}.badge.fail{color:var(--fail);background:var(--fail-bg)}.badge.neutral{color:#4b5563;background:#eceff3}.raw{display:block;color:var(--muted);font-size:11px}.mono{font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:anywhere}.criterion{min-width:210px}.section-note{border:1px solid var(--line);background:var(--soft);padding:10px 12px;border-radius:6px}.criterion-breakdown td{background:#fbfcfe;padding:0 12px 8px}.criterion-breakdown details{margin:0}.compact{font-size:12px}.compact th,.compact td{padding:6px 8px}.metric-stack>div+div{border-top:1px solid var(--line);margin-top:5px;padding-top:5px}.info{position:relative;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:4px;border:1px solid #8792a2;border-radius:50%;color:#526071;font-size:10px;font-weight:800;cursor:help;vertical-align:middle}.info:after{content:attr(data-tip);display:none;position:absolute;z-index:20;left:50%;top:22px;transform:translateX(-50%);width:280px;padding:8px 10px;border-radius:6px;background:#172033;color:#fff;font-size:12px;font-weight:400;line-height:1.4;letter-spacing:0;box-shadow:0 6px 20px rgba(23,32,51,.2)}.info:hover:after,.info:focus:after{display:block}.footer{border-top:1px solid var(--line);margin-top:36px;padding-top:16px;color:var(--muted)}details{border:1px solid var(--line);border-radius:7px;padding:10px 12px;margin:12px 0}summary{font-weight:700;cursor:pointer}.nowrap{white-space:nowrap}
 @media(max-width:720px){body{padding:20px 14px}h1{font-size:25px}.kv th{width:auto}.cards{grid-template-columns:1fr 1fr}}
 @media print{body{max-width:none;padding:0;font-size:10pt}nav,.no-print{display:none}.table-wrap{overflow:visible;border:0}table{min-width:0}tr{break-inside:avoid}.notice,.verdict,.card{print-color-adjust:exact;-webkit-print-color-adjust:exact}a{color:inherit;text-decoration:none}}
 """
@@ -206,6 +206,98 @@ def metric_unit(section, metric):
     return "value"
 
 
+def _case_gate(policy, stratum_id, target, section, metric):
+    return next((
+        check for check in policy.get("checks", [])
+        if check.get("stratum_id") == stratum_id
+        and check.get("target") == target
+        and check.get("section") == section
+        and check.get("metric") == metric
+    ), None)
+
+
+def _gate_cell(check, label=""):
+    if check is None:
+        return "<span class=\"muted\">—</span>"
+    actual = _actual_value(check)
+    required = _required_value(check)
+    caption = ("%s · " % _h(label)) if label else ""
+    return "<strong>%s</strong><span class=\"raw\">%sRequired %s</span>" % (actual, caption, required)
+
+
+def _gate_group(items):
+    return "<div class=\"metric-stack\">%s</div>" % "".join(
+        "<div>%s</div>" % _gate_cell(check, label)
+        for label, check in items
+    )
+
+
+def _case_display_name(case_id):
+    marker = "snr_m"
+    if marker in case_id:
+        level = case_id.split(marker, 1)[1].split("_", 1)[0]
+        if level.isdigit():
+            return "−%s dB" % level
+    if "clean" in case_id:
+        return "Clean"
+    return case_id.replace("_", " ").title()
+
+
+def _per_case_verdicts(summary):
+    policy = summary.get("policy", {})
+    strata = policy.get("acceptance_strata", [])
+    results = summary.get("results", [])
+    rows = []
+    for stratum in strata:
+        case_ids = stratum.get("case_ids", [])
+        case_id = case_ids[0] if case_ids else ""
+        case_results = [item for item in results if item.get("case_id") == case_id]
+        completed = bool(case_results) and all(item.get("success", False) for item in case_results)
+        passed = completed and bool(stratum.get("passed", False))
+        details = " · ".join(
+            "<a href=\"%s\">%s</a>" % (_h(item.get("report_path", "")), _h(target_name(item.get("target", ""))))
+            for item in case_results if item.get("report_path")
+        ) or "—"
+        cells = [
+            _gate_cell(_case_gate(policy, stratum.get("stratum_id"), "r_peak", "total", "f1_score")),
+            _gate_cell(_case_gate(policy, stratum.get("stratum_id"), "r_peak", "total", "sensitivity")),
+            _gate_cell(_case_gate(policy, stratum.get("stratum_id"), "r_peak", "total", "positive_predictive_value")),
+            _gate_cell(_case_gate(policy, stratum.get("stratum_id"), "r_peak", "total", "mean_absolute_error_seconds")),
+            _gate_group([
+                ("Reference", _case_gate(policy, stratum.get("stratum_id"), "rr_interval", "overall", "truth_match_fraction")),
+                ("Submitted", _case_gate(policy, stratum.get("stratum_id"), "rr_interval", "overall", "prediction_match_fraction")),
+            ]),
+            _gate_group([
+                ("Status", _case_gate(policy, stratum.get("stratum_id"), "rr_interval", "overall", "status_match_fraction")),
+                ("Tolerance", _case_gate(policy, stratum.get("stratum_id"), "rr_interval", "overall", "tolerance_pass_fraction")),
+            ]),
+            _gate_group([
+                ("MAE", _case_gate(policy, stratum.get("stratum_id"), "rr_interval", "rr_interval", "mean_absolute_error")),
+                ("P95", _case_gate(policy, stratum.get("stratum_id"), "rr_interval", "rr_interval", "p95_absolute_error")),
+            ]),
+        ]
+        rows.append(
+            "<tr><td><strong>%s</strong><span class=\"raw\">%s</span></td>%s<td>%s</td><td>%s</td></tr>" % (
+                _h(_case_display_name(case_id)), _h(case_id),
+                "".join("<td>%s</td>" % cell for cell in cells),
+                _badge("PASS" if passed else "INCOMPLETE" if not completed else "FAIL", "pass" if passed else "fail"),
+                details,
+            )
+        )
+    return _table([
+        "Case / SNR",
+        ("R-peak F1", "Harmonic mean of sensitivity and positive predictive value."),
+        ("Sensitivity", "Share of reference R peaks detected."),
+        ("PPV", "Share of submitted R peaks matched to reference."),
+        ("R-peak timing MAE", "Mean absolute timing error of matched R peaks."),
+        ("RR matching", "Reference coverage and share of submitted measurements matched."),
+        ("RR agreement", "Status agreement and share of numeric pairs within tolerance."),
+        ("RR error", "Mean and 95th-percentile absolute RR error."),
+        "Case verdict",
+        "Details",
+    ], rows)
+
+
 def render_index(summary):
     policy = summary.get("policy", {})
     applicable = [item for item in policy.get("checks", []) if item.get("applicable", False)]
@@ -218,14 +310,23 @@ def render_index(summary):
     submission = summary.get("submission", {})
     algorithm = submission.get("algorithm", {})
     protocol = verification.get("protocol") or {}
+    per_case = protocol.get("verdict_scope") == "per_case"
     truth_policy = protocol.get("truth_policy", {})
+    case_verdicts = policy.get("acceptance_strata", []) if per_case else []
+    passed_cases = sum(1 for item in case_verdicts if item.get("passed", False))
 
-    if overall_success:
+    if overall_success and per_case:
+        verdict_title = "PASS — every case met its acceptance criteria"
+        verdict_text = "%d of %d independent cases passed. No case pooling or cross-case averaging was used." % (passed_cases, len(case_verdicts))
+    elif overall_success:
         verdict_title = "PASS — all acceptance criteria met"
         verdict_text = "%d of %d applicable criteria passed and every selected case-target was scored." % (passed, len(applicable))
     elif not scoring_success:
         verdict_title = "INCOMPLETE — scoring could not be completed"
         verdict_text = "%d case-target result(s) contain missing, unsupported, or invalid algorithm output." % summary.get("incomplete_case_target_count", 0)
+    elif per_case:
+        verdict_title = "FAIL — %d of %d cases did not pass" % (len(case_verdicts) - passed_cases, len(case_verdicts))
+        verdict_text = "Each case was judged independently; a stronger case cannot hide a failed case."
     else:
         verdict_title = "FAIL — %d acceptance %s not met" % (failed, "criterion" if failed == 1 else "criteria")
         verdict_text = "%d of %d applicable criteria passed. Failed rows remain part of the evidence record." % (passed, len(applicable))
@@ -240,7 +341,7 @@ def render_index(summary):
         ("Verifier", summary.get("scoring_version", "")),
         ("Verification mode", verification.get("mode", "")),
         ("Evidence eligible", _yes_no(verification.get("evidence_eligible", False))),
-        ("Acceptance profile", policy.get("profile_id", "")),
+        ("Acceptance profile", "Independent per-case profiles (no pooling)" if per_case else policy.get("profile_id", "")),
         ("Protocol", protocol.get("protocol_id", "")),
         ("Protocol SHA-256", protocol.get("sha256", "")),
         ("Generated at (UTC)", summary.get("generated_at_utc", "")),
@@ -267,24 +368,25 @@ def render_index(summary):
         )
 
     case_rows = []
-    for item in summary.get("results", []):
-        scored = bool(item.get("success", False))
-        detail_path = item.get("report_path", "")
-        detail = "<a href=\"%s\">Open detail report</a>" % _h(detail_path) if detail_path else "—"
-        primary = _case_primary_details(policy, item)
-        primary_checks = _primary_case_checks(policy, item, primary)
-        required = _case_required(primary_checks)
-        diagnostic = _case_diagnostic_badge(scored, primary_checks, item.get("case_id", ""))
-        criterion_links = _case_criterion_links(policy, item)
-        case_rows.append(
-            "<tr><td>%s</td><td>%s</td><td>%s</td><td><strong>%s</strong><span class=\"raw\">%s</span></td>"
-            "<td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
-                _h(item.get("case_id", "")), _h(target_name(item.get("target", ""))),
-                _badge("SCORED" if scored else "ERROR", "pass" if scored else "fail"),
-                _h(primary["value"]), _h(primary["label"]), required,
-                diagnostic, criterion_links, detail,
+    if not per_case:
+        for item in summary.get("results", []):
+            scored = bool(item.get("success", False))
+            detail_path = item.get("report_path", "")
+            detail = "<a href=\"%s\">Open detail report</a>" % _h(detail_path) if detail_path else "—"
+            primary = _case_primary_details(policy, item)
+            primary_checks = _primary_case_checks(policy, item, primary)
+            required = _case_required(primary_checks)
+            diagnostic = _case_diagnostic_badge(scored, primary_checks, item.get("case_id", ""))
+            criterion_links = _case_criterion_links(policy, item)
+            case_rows.append(
+                "<tr><td>%s</td><td>%s</td><td>%s</td><td><strong>%s</strong><span class=\"raw\">%s</span></td>"
+                "<td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+                    _h(item.get("case_id", "")), _h(target_name(item.get("target", ""))),
+                    _badge("SCORED" if scored else "ERROR", "pass" if scored else "fail"),
+                    _h(primary["value"]), _h(primary["label"]), required,
+                    diagnostic, criterion_links, detail,
+                )
             )
-        )
 
     pipeline = summary.get("hrv_pipeline", {})
     pipeline_html = ""
@@ -300,6 +402,37 @@ def render_index(summary):
         pipeline_html = _section("Pipeline trace", "<p class=\"subtitle\">Availability and aggregate score at each HRV processing stage.</p>" + _table(["Stage", "Target", "Availability", "Score"], pipeline_rows))
 
     mode_note = "This run used the complete package-authoritative evidence matrix and its embedded acceptance profile." if verification.get("mode") == "evidence" else "This is a diagnostic run. Filters or a caller-selected profile may apply, so it is not package-protocol evidence."
+    if per_case:
+        acceptance_html = (
+            _section(
+                "Per-case verdicts",
+                "<p class=\"section-note\">Each row is an official, independent verdict over one complete signal. "
+                "Cases are not split into acceptance bins, pooled, averaged, or allowed to compensate for one another.</p>"
+                + _per_case_verdicts(summary),
+            )
+            + _section(
+                "Audit detail",
+                "<details><summary>Show all %d metric-level criteria</summary>"
+                "<p class=\"section-note\">These rows are the individual gates behind the case verdicts. "
+                "Raw numeric values remain in <a href=\"evidence.json\">evidence.json</a>.</p>%s</details>" % (
+                    len(criteria_rows),
+                    _table(["ID", "Metric", "Required", "Actual", "Margin", "Official verdict"], criteria_rows),
+                ),
+            )
+        )
+        traceability_html = ""
+    else:
+        acceptance_html = _section("Acceptance criteria", "<p class=\"section-note\">%s %s Aggregate values are calculated by pooling the contributing case evidence, not by averaging the displayed case percentages. Expand a row to inspect its cases, counts and diagnostic comparison with the same gate. Raw numeric values remain in <a href=\"evidence.json\">evidence.json</a>.</p>" % (_h(mode_note), _h(summary.get("threshold_profile", {}).get("description", ""))) + _table(["ID", "Metric", "Required", "Actual", "Margin", "Official verdict"], criteria_rows))
+        traceability_html = _section("Case-target traceability", "<p class=\"section-note\">SCORED means the comparison completed. The case diagnostic compares that case with the applicable aggregate gate for orientation; it is not a separate acceptance verdict. Amber means the case is below the reference gate, while only the aggregate acceptance rows determine PASS or FAIL.</p>" + _table([
+            "Case",
+            "Target",
+            ("Scoring", "Whether the submitted output was parsed and compared successfully."),
+            ("Primary result", "The most representative case-level metric for this scoring type."),
+            ("Required", "The applicable aggregate gate for the same primary metric, where one exists."),
+            ("Case diagnostic", "Informative comparison with the aggregate gate; this does not change the official pack verdict."),
+            ("Criteria", "Acceptance criteria to which this case-target contributes or supplies context."),
+            "Detail",
+        ], case_rows))
     body = (
         "<nav>Verification evidence / overview</nav>"
         "<header><p class=\"eyebrow\">Synsigra verification evidence</p><h1>%s</h1>"
@@ -314,23 +447,14 @@ def render_index(summary):
         )
         + "<div class=\"cards\">%s</div>" % "".join([
             _card("Case-targets completed", "%s / %s" % (summary.get("completed_case_target_count", 0), summary.get("case_target_count", 0))),
-            _card("Criteria passed", "%s / %s" % (passed, len(applicable))),
+            _card("Cases passed" if per_case else "Criteria passed", "%s / %s" % ((passed_cases, len(case_verdicts)) if per_case else (passed, len(applicable)))),
             _card("Package integrity", "PASS" if summary.get("integrity", {}).get("ok", False) else "FAIL"),
             _card("Evidence eligible", _yes_no(verification.get("evidence_eligible", False)).upper()),
         ])
         + _section("Run identity and provenance", _table(["Field", "Value"], ["<tr><th>%s</th><td class=\"mono\">%s</td></tr>" % (_h(key), _h(value)) for key, value in identity_rows], "kv"))
         + (_section("Truth and exclusion policy", _policy_table(truth_policy)) if truth_policy else "")
-        + _section("Acceptance criteria", "<p class=\"section-note\">%s %s Aggregate values are calculated by pooling the contributing case evidence, not by averaging the displayed case percentages. Expand a row to inspect its cases, counts and diagnostic comparison with the same gate. Raw numeric values remain in <a href=\"evidence.json\">evidence.json</a>.</p>" % (_h(mode_note), _h(summary.get("threshold_profile", {}).get("description", ""))) + _table(["ID", "Metric", "Required", "Actual", "Margin", "Official verdict"], criteria_rows))
-        + _section("Case-target traceability", "<p class=\"section-note\">SCORED means the comparison completed. The case diagnostic compares that case with the applicable aggregate gate for orientation; it is not a separate acceptance verdict. Amber means the case is below the reference gate, while only the aggregate acceptance rows determine PASS or FAIL.</p>" + _table([
-            "Case",
-            "Target",
-            ("Scoring", "Whether the submitted output was parsed and compared successfully."),
-            ("Primary result", "The most representative case-level metric for this scoring type."),
-            ("Required", "The applicable aggregate gate for the same primary metric, where one exists."),
-            ("Case diagnostic", "Informative comparison with the aggregate gate; this does not change the official pack verdict."),
-            ("Criteria", "Acceptance criteria to which this case-target contributes or supplies context."),
-            "Detail",
-        ], case_rows))
+        + acceptance_html
+        + traceability_html
         + pipeline_html
         + _section("Evidence files", "<p><a href=\"evidence.json\">evidence.json</a> is the single canonical machine-readable record. The detail pages contain human-readable views of the same case-target evidence.</p>")
         + "<footer class=\"footer\">Pack fingerprint: <span class=\"mono\">%s</span></footer>" % _h(package.get("pack_fingerprint", ""))
@@ -343,6 +467,7 @@ def render_detail(summary, result, report):
     scenario = report.get("scenario", {}) if isinstance(report, dict) else {}
     algorithm = report.get("algorithm", result.get("submission_output", {}).get("algorithm", {})) if isinstance(report, dict) else {}
     submission_output = result.get("submission_output", {})
+    per_case = (summary.get("verification", {}).get("protocol") or {}).get("verdict_scope") == "per_case"
     criteria = [
         item for item in summary.get("policy", {}).get("checks", [])
         if item.get("target") == target and (
@@ -368,24 +493,39 @@ def render_detail(summary, result, report):
     for check in criteria:
         applicable = check.get("applicable", False)
         verdict = "NOT APPLICABLE" if not applicable else "PASS" if check.get("passed", False) else "FAIL"
-        contribution = _case_contribution(check, result.get("case_id", ""))
-        case_actual = _contribution_actual(check, contribution)
-        case_diagnostic = _contribution_badge(contribution)
-        criteria_rows.append("<tr><td><a href=\"../index.html#criterion-%s\">%s</a></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
-            _h(check.get("criterion_id", "")), _h(check.get("criterion_id", "")),
-            _h(check.get("display_name", "")), _required_value(check),
-            case_actual, case_diagnostic, _actual_value(check),
-            _badge(verdict, "neutral" if not applicable else "pass" if check.get("passed", False) else "fail"),
-        ))
-    criteria_html = _table([
-        "ID",
-        "Aggregate criterion",
-        "Required",
-        ("This case", "The case-level value feeding the pooled aggregate, when this case has data for the criterion."),
-        ("Case diagnostic", "Informative comparison of this case with the aggregate threshold."),
-        "Aggregate",
-        "Official verdict",
-    ], criteria_rows) if criteria_rows else "<p>No acceptance criteria are defined for this target.</p>"
+        if per_case:
+            criteria_rows.append("<tr><td><a href=\"../index.html#criterion-%s\">%s</a></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+                _h(check.get("criterion_id", "")), _h(check.get("criterion_id", "")),
+                _h(check.get("display_name", "")), _required_value(check),
+                _actual_value(check), _margin_value(check),
+                _badge(verdict, "neutral" if not applicable else "pass" if check.get("passed", False) else "fail"),
+            ))
+        else:
+            contribution = _case_contribution(check, result.get("case_id", ""))
+            case_actual = _contribution_actual(check, contribution)
+            case_diagnostic = _contribution_badge(contribution)
+            criteria_rows.append("<tr><td><a href=\"../index.html#criterion-%s\">%s</a></td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>" % (
+                _h(check.get("criterion_id", "")), _h(check.get("criterion_id", "")),
+                _h(check.get("display_name", "")), _required_value(check),
+                case_actual, case_diagnostic, _actual_value(check),
+                _badge(verdict, "neutral" if not applicable else "pass" if check.get("passed", False) else "fail"),
+            ))
+    if per_case:
+        criteria_html = _table([
+            "ID", "Official case criterion", "Required", "Actual", "Margin", "Verdict",
+        ], criteria_rows) if criteria_rows else "<p>No acceptance criteria are defined for this target.</p>"
+        acceptance_note = "These are the official criteria for this complete case. No other case contributes to these values or this verdict."
+    else:
+        criteria_html = _table([
+            "ID",
+            "Aggregate criterion",
+            "Required",
+            ("This case", "The case-level value feeding the pooled aggregate, when this case has data for the criterion."),
+            ("Case diagnostic", "Informative comparison of this case with the aggregate threshold."),
+            "Aggregate",
+            "Official verdict",
+        ], criteria_rows) if criteria_rows else "<p>No acceptance criteria are defined for this target.</p>"
+        acceptance_note = "Package-level criteria pool the complete pack. Named acceptance-stratum criteria pool only their listed cases. “This case” is diagnostic context; the aggregate value and official verdict remain authoritative. Criterion IDs link back to the overview and its full case breakdown."
     body = (
         "<nav><a href=\"../index.html\">← Back to verification overview</a></nav>"
         "<header><p class=\"eyebrow\">Case-target detail</p><h1>%s</h1>"
@@ -396,7 +536,7 @@ def render_detail(summary, result, report):
         + _section("Identity and traceability", _table(["Field", "Value"], ["<tr><th>%s</th><td class=\"mono\">%s</td></tr>" % (_h(key), _h(value)) for key, value in identity_rows], "kv"))
         + render_target_metrics(result, report)
         + (_section("Truth and exclusion policy", "<p class=\"section-note\">%s</p>" % _h(result.get("exclusion_policy", ""))) if result.get("exclusion_policy") else "")
-        + _section("Acceptance context", "<p class=\"section-note\">Package-level criteria pool the complete pack. Named acceptance-stratum criteria pool only their listed cases. “This case” is diagnostic context; the aggregate value and official verdict remain authoritative. Criterion IDs link back to the overview and its full case breakdown.</p>" + criteria_html)
+        + _section("Acceptance context", "<p class=\"section-note\">%s</p>%s" % (_h(acceptance_note), criteria_html))
         + _section("Machine-readable evidence", "<p>The complete raw comparison, submission identity, package identity and policy decisions are in <a href=\"../evidence.json\">evidence.json</a>.</p>")
         + "<footer class=\"footer\"><a href=\"../index.html\">← Back to verification overview</a></footer>"
     )
@@ -652,6 +792,8 @@ def _metric_summary_table(rows):
 
 
 def _criterion_breakdown_row(check):
+    if check.get("scope") == "acceptance_stratum" and len(check.get("case_ids", [])) == 1:
+        return ""
     contributions = list(check.get("case_contributions", []))
     contributions.sort(key=lambda item: (
         0 if item.get("contributes") and item.get("diagnostic_passed") is False

@@ -130,6 +130,8 @@ Discover the SaaS-safe form contract, scenario templates, and pack estimates:
 /tmp/signal_synth-build/signal-synth authoring schema
 /tmp/signal_synth-build/signal-synth authoring templates
 /tmp/signal_synth-build/signal-synth pack analyze examples/packs/ecg_rhythm_v1.json
+/tmp/signal_synth-build/signal-synth pack challenge examples/packs/r_peak_rr_simple_stress_v1.json --out /tmp/r_peak_rr_simple_stress
+/tmp/signal_synth-build/signal-synth pack challenge examples/packs/r_peak_rr_snr_ladder_v1.json --out /tmp/r_peak_rr_snr_ladder --noise-assets examples/assets/noise
 /tmp/signal_synth-build/signal-synth pack challenge examples/packs/r_peak_stress_v1.json --out /tmp/r_peak_detector_evidence
 /tmp/signal_synth-build/signal-synth pack challenge examples/packs/r_peak_noise_frontier_v1.json --out /tmp/r_peak_noise_frontier --noise-assets examples/assets/noise
 /tmp/signal_synth-build/signal-synth pack challenge examples/packs/r_peak_rr_noise_v1.json --out /tmp/r_peak_rr_noise --noise-assets examples/assets/noise

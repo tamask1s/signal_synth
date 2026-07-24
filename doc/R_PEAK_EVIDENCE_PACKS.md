@@ -12,9 +12,62 @@ delineation or diagnosis.
 
 ## Which pack to choose
 
-### `r_peak_stress_v1` — first evidence run
+For new evaluations, start with the two simple packs. Their official decision
+unit is one complete case. They never pool cases, split one signal into
+acceptance bins, average percentages, or let a strong case compensate for a
+failed case.
 
-Use this four-case pack first. It covers:
+### `r_peak_rr_simple_stress_v1` — simple first run
+
+This is the shortest human-readable detector pack:
+
+| Case | What changes | Official output |
+|---|---|---|
+| `clean_70` | Clean 70 bpm control | One R-peak + RR verdict |
+| `slow_45` | Clean 45 bpm bradycardia | One R-peak + RR verdict |
+| `fast_120` | Clean 120 bpm tachycardia | One R-peak + RR verdict |
+| `baseline_powerline` | Baseline wander and powerline interference | One R-peak + RR verdict |
+
+The report opens with these four verdicts. Metric-level gates and the two
+case-target detail pages remain available as audit detail.
+
+### `r_peak_rr_snr_ladder_v1` — simple robustness curve
+
+This pack contains 12 paired 60-second signals: one clean control and every
+integer target SNR from −1 through −11 dB. Every case uses the same
+variable-rate cardiac truth and periodic PVC cadence. In noisy cases,
+project-owned baseline, muscle, and electrode-motion noise covers the complete
+0–60 second record without clean gaps; the source type changes every three
+seconds.
+
+| SNR | R-peak F1 min | PPV / sensitivity min | RR MAE max |
+|---:|---:|---:|---:|
+| Clean | 0.98 | 0.98 | 25 ms |
+| −1 dB | 0.95 | 0.92 | 25 ms |
+| −2 dB | 0.93 | 0.90 | 25 ms |
+| −3 dB | 0.90 | 0.85 | 25 ms |
+| −4 dB | 0.85 | 0.80 | 25 ms |
+| −5 dB | 0.78 | 0.73 | 25 ms |
+| −6 dB | 0.74 | 0.69 | 25 ms |
+| −7 dB | 0.70 | 0.65 | 25 ms |
+| −8 dB | 0.65 | 0.60 | 25 ms |
+| −9 dB | 0.62 | 0.58 | 25 ms |
+| −10 dB | 0.60 | 0.55 | 25 ms |
+| −11 dB | 0.55 | 0.50 | 30 ms |
+
+The main report is one row per case, with R-peak F1, sensitivity, PPV, timing
+MAE, RR coverage, RR MAE, thresholds, and the case verdict. The 30 ms RR
+allowance remains isolated to −11 dB.
+
+## Detailed legacy packs
+
+The older packs remain available when their additional aggregation and
+artifact-bin diagnostics are useful. They are not the recommended starting
+point for a human review.
+
+### `r_peak_stress_v1` — legacy aggregate stress report
+
+This older four-case pack covers:
 
 - a clean 70 bpm control;
 - 45 bpm bradycardic and 120 bpm tachycardic rate controls;
@@ -34,7 +87,7 @@ Evidence eligibility and policy success are different:
 
 A failed gate therefore remains a valid, auditable evidence result.
 
-### `r_peak_noise_frontier_v1` — find the robustness boundary
+### `r_peak_noise_frontier_v1` — detailed composite robustness boundary
 
 Use this 500-second pack after the first evidence run. It has one clean anchor
 and eight paired 60-second composite-noise cases:
@@ -95,7 +148,7 @@ depend strongly on noise construction and event-matching tolerance:
 
 ## Claim boundary
 
-Both packs provide deterministic synthetic engineering evidence for R-peak
+All four packs provide deterministic synthetic engineering evidence for R-peak
 event detection and observable beat-to-beat RR measurement. They do not
 validate signal-quality classification, HRV, patient-noise prevalence,
 diagnostic performance, clinical safety or regulatory conformity.

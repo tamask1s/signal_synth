@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "3.2",
+  "version": "3.3",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -144,6 +144,78 @@
         "minimum_generator_version": "0.10.0-dev",
         "pack_schema_version": 2,
         "scenario_schema_versions": [2],
+        "challenge_package_contract": "synsigra_challenge_package_v3",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
+        "submission_contract": "synsigra_submission_v1",
+        "local_verifier_min_version": "0.14.0"
+      }
+    },
+    {
+      "pack_id": "r_peak_rr_simple_stress_v1",
+      "path": "../packs/r_peak_rr_simple_stress_v1.json",
+      "modality": ["ECG"],
+      "targets": ["r_peak", "rr_interval"],
+      "difficulty": ["regression", "stress"],
+      "recommended_profile": "stress",
+      "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
+      "scoring_mode": "local",
+      "feature_tags": ["r_peak", "rr_interval", "per_case_verdict", "no_pooling", "clean", "bradycardia", "tachycardia", "baseline_wander", "powerline"],
+      "release_status": "beta",
+      "release_date": "2026-07-24",
+      "deprecation_message": "",
+      "recommended_for": [
+        "A first, human-readable R-peak and beat-to-beat RR evidence run",
+        "Independent clean, slow-rate, fast-rate, and acquisition-artifact verdicts",
+        "Reports where a strong case must never compensate for a failed case"
+      ],
+      "not_recommended_for": [
+        "Signal-quality classification, HRV, morphology, or delineation claims",
+        "Finding a detector's fine-grained SNR failure boundary",
+        "Clinical validation or regulatory qualification"
+      ],
+      "changelog": [
+        {"version": "1.0", "date": "2026-07-24", "changes": ["Initial simple four-case R-peak and RR pack with one official verdict per complete signal and no pooled acceptance."]}
+      ],
+      "generator_compatibility": {
+        "minimum_generator_version": "0.10.0-dev",
+        "pack_schema_version": 2,
+        "scenario_schema_versions": [2],
+        "challenge_package_contract": "synsigra_challenge_package_v3",
+        "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
+        "submission_contract": "synsigra_submission_v1",
+        "local_verifier_min_version": "0.14.0"
+      }
+    },
+    {
+      "pack_id": "r_peak_rr_snr_ladder_v1",
+      "path": "../packs/r_peak_rr_snr_ladder_v1.json",
+      "modality": ["ECG"],
+      "targets": ["r_peak", "rr_interval"],
+      "difficulty": ["stress", "benchmark"],
+      "recommended_profile": "benchmark",
+      "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
+      "scoring_mode": "local",
+      "feature_tags": ["r_peak", "rr_interval", "per_case_verdict", "no_pooling", "continuous_noise", "calibrated_snr", "snr_ladder", "variable_rate", "pvc", "all_lead"],
+      "release_status": "beta",
+      "release_date": "2026-07-24",
+      "deprecation_message": "",
+      "recommended_for": [
+        "A plain clean-to-minus-11 dB detector robustness curve with every integer SNR represented",
+        "Independent per-case R-peak and beat-to-beat RR verdicts without bins or pooling",
+        "Comparing where classical and learned detectors begin to degrade"
+      ],
+      "not_recommended_for": [
+        "Signal-quality interval detector or HRV validation",
+        "Clinical noise-prevalence or patient-performance claims",
+        "Regulatory qualification or replacement of representative real-world validation"
+      ],
+      "changelog": [
+        {"version": "1.0", "date": "2026-07-24", "changes": ["Initial clean plus -1 through -11 dB continuous-noise ladder with identical variable-rate/PVC truth and one official verdict per complete case."]}
+      ],
+      "generator_compatibility": {
+        "minimum_generator_version": "0.10.0-dev",
+        "pack_schema_version": 2,
+        "scenario_schema_versions": [8],
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
