@@ -147,6 +147,10 @@ def main():
     simple_challenge = ss.load_challenge(simple_challenge_dir)
     ladder_challenge = ss.load_challenge(ladder_challenge_dir)
     evidence_cases = ["clean_70", "slow_45", "fast_120", "baseline_powerline"]
+    simple_cases = evidence_cases + [
+        "moderate_noise", "variable_rate", "mobitz_ii_pauses",
+        "combined_stress",
+    ]
     frontier_cases = [
         "clean_anchor", "mixed_snr_m3", "mixed_snr_m4", "mixed_snr_m5",
         "mixed_snr_m7", "mixed_snr_m8", "mixed_snr_m9",
@@ -154,8 +158,10 @@ def main():
     ]
     assert_detector_protocol(evidence_challenge, evidence_cases)
     assert_detector_protocol(frontier_challenge, frontier_cases)
-    ladder_cases = ["clean"] + ["snr_m{}".format(level) for level in range(1, 12)]
-    assert_detector_protocol(simple_challenge, evidence_cases)
+    ladder_cases = [
+        "clean", "snr_m0p2", "snr_m0p5",
+    ] + ["snr_m{}".format(level) for level in range(1, 12)]
+    assert_detector_protocol(simple_challenge, simple_cases)
     assert_detector_protocol(ladder_challenge, ladder_cases)
     for challenge in (simple_challenge, ladder_challenge):
         protocol = challenge.verification_protocol()
@@ -164,6 +170,15 @@ def main():
         assert [item["case_ids"] for item in protocol["acceptance_strata"]] == [
             [case_id] for case_id in challenge.case_ids()
         ]
+        assert "interval" in protocol["truth_policy"]["rr_association"].lower()
+        assert "unique interval coverage" in protocol["truth_policy"]["rr_association"].lower()
+        assert "not an ansi/aami ec57 rr requirement" in protocol["truth_policy"]["rr_statistics_boundary"].lower()
+    for item in ladder_challenge.verification_protocol()["acceptance_strata"]:
+        rr_limits = item["acceptance_profile"]["targets"]["rr_interval"]["rr_interval"]
+        assert set(rr_limits) == set(["median_absolute_error"])
+        assert "p95_absolute_error" not in rr_limits
+        assert "mean_absolute_error" not in rr_limits
+        assert "tolerance_pass_fraction" not in item["acceptance_profile"]["targets"]["rr_interval"]["overall"]
     frontier_protocol = frontier_challenge.verification_protocol()
     strata_by_id = dict(
         (item["id"], item) for item in frontier_protocol["acceptance_strata"]
@@ -272,8 +287,13 @@ def main():
     assert mean_noise_ratios == sorted(mean_noise_ratios)
 
     ladder_r_peak_times = None
-    for level in range(1, 12):
-        ladder_case_id = "snr_m{}".format(level)
+    ladder_noise_cases = [
+        ("snr_m0p2", -0.2),
+        ("snr_m0p5", -0.5),
+    ] + [
+        ("snr_m{}".format(level), -level) for level in range(1, 12)
+    ]
+    for ladder_case_id, expected_ladder_snr in ladder_noise_cases:
         truth = read_json(os.path.join(
             ladder_challenge_dir, "cases", ladder_case_id,
             "external_noise_truth.json",
@@ -283,7 +303,7 @@ def main():
         assert truth["intervals"][-1]["end_seconds"] == 60
         assert all(item["taper_seconds"] == 0 for item in truth["intervals"])
         assert all(
-            channel["target_snr_db"] == -level
+            channel["target_snr_db"] == expected_ladder_snr
             for interval in truth["intervals"]
             for channel in interval["channels"]
         )
@@ -302,6 +322,20 @@ def main():
         if beat.get("qrs_present", False)
     ]
     assert clean_ladder_r_peaks == ladder_r_peak_times
+    pause_annotations = simple_challenge.case("mobitz_ii_pauses").annotations()
+    nonconducted = [
+        item for item in pause_annotations["atrial_events"]
+        if not item.get("conducted", True)
+    ]
+    assert nonconducted
+    assert all(item.get("linked_ventricular_index") == -1 for item in nonconducted)
+    assert all(beat.get("qrs_present", False) for beat in pause_annotations["beats"])
+    pause_truth = [
+        item["measurement"]
+        for item in simple_challenge.case("mobitz_ii_pauses").measurement_truth("rr_interval")
+    ]
+    assert pause_truth
+    assert max(item["value"] for item in pause_truth if item["status"] == "valid") > 1.2
 
     evidence_submission = os.path.join(work, "detector_evidence_submission")
     evidence_manifest = perfect_submission(
@@ -339,9 +373,10 @@ def main():
     assert all(item["passed"] for item in strata)
 
     simple_submission = os.path.join(work, "simple_submission")
-    perfect_submission(
+    simple_manifest = perfect_submission(
         simple_challenge_dir, simple_submission, "perfect-simple-rpeak-rr",
     )
+    assert len(simple_manifest["outputs"]) == 16
     simple_result = ss.verify_package(
         simple_challenge,
         simple_submission,
@@ -349,12 +384,13 @@ def main():
     )
     assert simple_result.evidence["success"]
     assert simple_result.evidence["policy"]["profile_id"] == "per_case_profiles"
-    assert len(simple_result.evidence["policy"]["acceptance_strata"]) == 4
+    assert len(simple_result.evidence["policy"]["acceptance_strata"]) == 8
 
     ladder_submission = os.path.join(work, "ladder_submission")
     ladder_manifest = perfect_submission(
         ladder_challenge_dir, ladder_submission, "perfect-ladder-rpeak-rr",
     )
+    assert len(ladder_manifest["outputs"]) == 28
     ladder_result_dir = os.path.join(work, "ladder_result")
     ladder_result = ss.verify_package(
         ladder_challenge, ladder_submission, ladder_result_dir,
@@ -370,6 +406,13 @@ def main():
     assert "No case pooling or cross-case averaging was used." in ladder_html
     assert "Aggregate values are calculated" not in ladder_html
     assert "Case contribution breakdown" not in ladder_html
+    assert "Rpk F1" in ladder_html
+    assert "RR median" in ladder_html
+    assert "RR P95" not in ladder_html
+    assert "Details" in ladder_html
+    assert 'class="info"' in ladder_html
+    assert "Information" in ladder_html
+    assert "No result" not in ladder_html
     assert all(case_id in ladder_html for case_id in ladder_cases)
 
     weak_ladder_submission = os.path.join(work, "weak_ladder_submission")

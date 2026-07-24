@@ -216,7 +216,7 @@ def main():
     provenance = read_json(os.path.join(challenge_dir, "provenance.json"))
     assert provenance["metadata_type"] == "synsigra_package_provenance"
     assert provenance["generator"]["version"] == "0.10.0-dev"
-    assert provenance["verifier"]["version"] == "0.14.0"
+    assert provenance["verifier"]["version"] == "0.15.0"
     assert provenance["verifier"]["package_contract_version"] == "synsigra_challenge_package_v3"
     assert "clinical validation" in provenance["claim_boundary"]["not_for"]
     assert os.path.exists(os.path.join(challenge_dir, "ENGINEERING_CLAIM_BOUNDARY.txt"))
@@ -451,7 +451,9 @@ def main():
     with open(os.path.join(local_verify_dir, "index.html"), "r") as handle:
         html = handle.read()
         assert "Synsigra verification evidence" in html and "Pipeline trace" in html
-        assert "Case contribution breakdown" in html and "Case diagnostic" in html
+        assert "Per-case results" in html and "Case view" in html
+        assert "diagnostic comparisons" in html
+        assert 'class="per-case-wide"' in html
         assert "data-tip=" in html
         assert "href=\"details/clean_ecg_r_peak.html\"" in html
         assert html.count("Synthetic engineering QA evidence; not diagnosis, nor clinical evidence") == 1

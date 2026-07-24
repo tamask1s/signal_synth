@@ -13,6 +13,7 @@ MEASUREMENT_SCOPES = set(["record", "lead", "beat", "beat_lead", "paired_signal"
 MEASUREMENT_UNITS = set(["s", "s2", "mV", "mV/s", "deg", "count", "ratio", "nu", "%", "bpm", "a.u.", "bool"])
 QT_FORMULAS = set(["fixed", "bazett", "fridericia", "framingham", "hodges"])
 MEASUREMENT_TARGETS = frozenset(["rr_interval", "qtc", "hrv", "morphology_assertions", "ecg_ppg_alignment", "ppg_optical", "prv", "respiratory_rate", "rhythm_burden"])
+RR_MINIMUM_OVERLAP_FRACTION = 0.5
 
 
 class MeasurementError(ValueError):
@@ -97,7 +98,14 @@ def load_measurement_truth(path, target):
 
 
 def score_measurements(ground_truth, predictions, target, pairing_window_seconds=0.2):
-    """Score measurement records using the C++ measurement_score_v2 policy."""
+    """Score measurement records using the measurement_score_v2 policy.
+
+    Valid beat-level RR intervals use their R-peak endpoint and duration as an
+    interval.  Associations cover a strict majority of the shorter interval,
+    so one false-positive peak can split one reference RR and one missed peak
+    can merge two reference RRs without shifting every later comparison.
+    Other measurements retain the strict one-to-one identity/anchor policy.
+    """
     if target not in MEASUREMENT_TARGETS:
         raise MeasurementError("unsupported measurement target: %s" % target)
     predictions = [_validate_measurement(dict(item), index) for index, item in enumerate(predictions)]
@@ -106,10 +114,19 @@ def score_measurements(ground_truth, predictions, target, pairing_window_seconds
     if pairing_window <= 0.0:
         raise MeasurementError("pairing_window_seconds must be positive")
     candidates = []
+    overlap_pairs = []
     for truth_index, truth_item in enumerate(ground_truth):
         truth = truth_item["measurement"]
         for prediction_index, prediction in enumerate(predictions):
             if _descriptor(truth) != _descriptor(prediction):
+                continue
+            truth_interval = _rr_interval(truth) if target == "rr_interval" else None
+            prediction_interval = _rr_interval(prediction) if target == "rr_interval" else None
+            if truth_interval is not None and prediction_interval is not None:
+                overlap = max(0.0, min(truth_interval[1], prediction_interval[1]) - max(truth_interval[0], prediction_interval[0]))
+                shorter = min(truth_interval[1] - truth_interval[0], prediction_interval[1] - prediction_interval[0])
+                if shorter > 0.0 and overlap / shorter > RR_MINIMUM_OVERLAP_FRACTION:
+                    overlap_pairs.append((truth_index, prediction_index))
                 continue
             exact_beat = "beat_index" in truth and "beat_index" in prediction and truth["beat_index"] == prediction["beat_index"]
             if "beat_index" in truth and "beat_index" in prediction and not exact_beat:
@@ -129,58 +146,22 @@ def score_measurements(ground_truth, predictions, target, pairing_window_seconds
     truth_used = [False] * len(ground_truth)
     prediction_used = [False] * len(predictions)
     matches = []
+    for truth_index, prediction_index in overlap_pairs:
+        truth_used[truth_index] = True
+        prediction_used[prediction_index] = True
+        matches.append(_measurement_match(
+            ground_truth, predictions, truth_index, prediction_index,
+            "rr_peak_anchored_interval_overlap",
+        ))
     for _exact_order, _distance, truth_index, prediction_index in candidates:
         if truth_used[truth_index] or prediction_used[prediction_index]:
             continue
         truth_used[truth_index] = True
         prediction_used[prediction_index] = True
-        truth_item = ground_truth[truth_index]
-        truth = truth_item["measurement"]
-        prediction = predictions[prediction_index]
-        match = {
-            "ground_truth_index": truth_index,
-            "prediction_index": prediction_index,
-            "name": truth["name"],
-            "unit": truth["unit"],
-            "scope": truth["scope"],
-            "channel": truth.get("channel", "") or "global",
-            "formula": truth.get("formula", ""),
-            "method_id": truth.get("method_id", ""),
-            "preprocessing_policy_id": truth.get("preprocessing_policy_id", ""),
-            "ground_truth_status": truth["status"],
-            "prediction_status": prediction["status"],
-            "status_matches": truth["status"] == prediction["status"],
-            "numeric_pair": truth["status"] == "valid" and prediction["status"] == "valid",
-            "absolute_tolerance": truth_item["absolute_tolerance"],
-            "relative_tolerance_percent": truth_item["relative_tolerance_percent"],
-            "reason": truth_item["reason"],
-        }
-        if "window_start_seconds" in truth:
-            match["window_start_seconds"] = truth["window_start_seconds"]
-            match["window_end_seconds"] = truth["window_end_seconds"]
-        if match["numeric_pair"]:
-            error = prediction["value"] - truth["value"]
-            if truth_item["error_model"] == "circular_degrees":
-                error = (error + 180.0) % 360.0 - 180.0
-            absolute_error = abs(error)
-            relative_error = 100.0 * absolute_error / abs(truth["value"]) if abs(truth["value"]) > 1e-15 else None
-            tolerance = truth_item["absolute_tolerance"]
-            if relative_error is not None:
-                tolerance = max(tolerance, abs(truth["value"]) * truth_item["relative_tolerance_percent"] / 100.0)
-            match.update({
-                "ground_truth_value": truth["value"],
-                "prediction_value": prediction["value"],
-                "signed_error": error,
-                "absolute_error": absolute_error,
-                "relative_error_percent": relative_error,
-                "effective_tolerance": tolerance,
-                "within_tolerance": absolute_error <= tolerance,
-            })
-            if "expected_range" in truth_item:
-                expected = truth_item["expected_range"]
-                match["ground_truth_assertion_passed"] = expected["minimum"] <= truth["value"] <= expected["maximum"]
-                match["prediction_assertion_passed"] = expected["minimum"] <= prediction["value"] <= expected["maximum"]
-        matches.append(match)
+        matches.append(_measurement_match(
+            ground_truth, predictions, truth_index, prediction_index,
+            "identity_and_temporal_anchor",
+        ))
     missing = [index for index, used in enumerate(truth_used) if not used]
     extra = [index for index, used in enumerate(prediction_used) if not used]
     context = {"ground_truth": ground_truth, "predictions": predictions, "matches": matches, "missing": missing, "extra": extra}
@@ -188,12 +169,23 @@ def score_measurements(ground_truth, predictions, target, pairing_window_seconds
     channels = sorted(set([item["measurement"].get("channel", "") for item in ground_truth] + [item.get("channel", "") for item in predictions]))
     pairs = sorted(set([(item["measurement"]["name"], item["measurement"].get("channel", "")) for item in ground_truth] + [(item["name"], item.get("channel", "")) for item in predictions]))
     descriptors = sorted(set([_descriptor(item["measurement"]) for item in ground_truth] + [_descriptor(item) for item in predictions]))
+    options = {"pairing_window_seconds": pairing_window}
+    messages = []
+    if target == "rr_interval":
+        options.update({
+            "rr_pairing_method": "peak_anchored_interval_overlap",
+            "rr_minimum_shorter_interval_overlap_fraction": RR_MINIMUM_OVERLAP_FRACTION,
+        })
+        messages.append(
+            "Valid RR intervals are associated by R-peak-anchored interval overlap; "
+            "coverage counts unique intervals while split/merge associations remain local."
+        )
     return {
         "schema_version": 2,
         "contract": "synsigra_measurement_score_v2",
         "score_type": "measurement_qa",
         "target": target,
-        "options": {"pairing_window_seconds": pairing_window},
+        "options": options,
         "tolerance_rules": _tolerance_rules(ground_truth),
         "overall": _metrics(context),
         "by_measurement": [{"name": name, "metrics": _metrics(context, name=name)} for name in names],
@@ -203,18 +195,83 @@ def score_measurements(ground_truth, predictions, target, pairing_window_seconds
         "matches": matches,
         "missing_ground_truth_indices": missing,
         "extra_prediction_indices": extra,
-        "messages": [],
+        "messages": messages,
     }
+
+
+def _measurement_match(ground_truth, predictions, truth_index, prediction_index, pairing_method):
+    truth_item = ground_truth[truth_index]
+    truth = truth_item["measurement"]
+    prediction = predictions[prediction_index]
+    match = {
+        "ground_truth_index": truth_index,
+        "prediction_index": prediction_index,
+        "pairing_method": pairing_method,
+        "name": truth["name"],
+        "unit": truth["unit"],
+        "scope": truth["scope"],
+        "channel": truth.get("channel", "") or "global",
+        "formula": truth.get("formula", ""),
+        "method_id": truth.get("method_id", ""),
+        "preprocessing_policy_id": truth.get("preprocessing_policy_id", ""),
+        "ground_truth_status": truth["status"],
+        "prediction_status": prediction["status"],
+        "status_matches": truth["status"] == prediction["status"],
+        "numeric_pair": truth["status"] == "valid" and prediction["status"] == "valid",
+        "absolute_tolerance": truth_item["absolute_tolerance"],
+        "relative_tolerance_percent": truth_item["relative_tolerance_percent"],
+        "reason": truth_item["reason"],
+    }
+    if "window_start_seconds" in truth:
+        match["window_start_seconds"] = truth["window_start_seconds"]
+        match["window_end_seconds"] = truth["window_end_seconds"]
+    if match["numeric_pair"]:
+        error = prediction["value"] - truth["value"]
+        if truth_item["error_model"] == "circular_degrees":
+            error = (error + 180.0) % 360.0 - 180.0
+        absolute_error = abs(error)
+        relative_error = 100.0 * absolute_error / abs(truth["value"]) if abs(truth["value"]) > 1e-15 else None
+        tolerance = truth_item["absolute_tolerance"]
+        if relative_error is not None:
+            tolerance = max(tolerance, abs(truth["value"]) * truth_item["relative_tolerance_percent"] / 100.0)
+        match.update({
+            "ground_truth_value": truth["value"],
+            "prediction_value": prediction["value"],
+            "signed_error": error,
+            "absolute_error": absolute_error,
+            "relative_error_percent": relative_error,
+            "effective_tolerance": tolerance,
+            "within_tolerance": absolute_error <= tolerance,
+        })
+        if "expected_range" in truth_item:
+            expected = truth_item["expected_range"]
+            match["ground_truth_assertion_passed"] = expected["minimum"] <= truth["value"] <= expected["maximum"]
+            match["prediction_assertion_passed"] = expected["minimum"] <= prediction["value"] <= expected["maximum"]
+    return match
+
+
+def _rr_interval(item):
+    if (
+        item.get("name") != "rr_interval"
+        or item.get("unit") != "s"
+        or item.get("scope") not in ("beat", "beat_lead", "paired_signal")
+        or item.get("status") != "valid"
+        or "time_seconds" not in item
+        or "value" not in item
+        or item["value"] <= 0.0
+    ):
+        return None
+    return item["time_seconds"] - item["value"], item["time_seconds"]
 
 
 def measurement_comparison_csv(report):
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["row_type", "name", "scope", "channel", "formula", "method_id", "preprocessing_policy_id", "window_start_seconds", "window_end_seconds", "ground_truth_count", "prediction_count", "matched_count", "truth_match_fraction", "prediction_match_fraction", "numeric_pair_count", "tolerance_pass_count", "tolerance_pass_fraction", "status_mismatch_count", "missing_count", "extra_count", "bias", "mean_absolute_error", "root_mean_square_error", "p95_absolute_error"])
+    writer.writerow(["row_type", "name", "scope", "channel", "formula", "method_id", "preprocessing_policy_id", "window_start_seconds", "window_end_seconds", "ground_truth_count", "prediction_count", "association_count", "covered_truth_count", "matched_prediction_count", "truth_match_fraction", "prediction_match_fraction", "numeric_pair_count", "tolerance_pass_count", "tolerance_pass_fraction", "status_mismatch_count", "missing_count", "extra_count", "bias", "mean_absolute_error", "median_absolute_error", "root_mean_square_error", "p95_absolute_error"])
     rows = [("overall", {}, report["overall"])] + [("measurement_context", item, item["metrics"]) for item in report["by_measurement_context"]]
     for row_type, item, metrics in rows:
         error = metrics["error"]
-        writer.writerow([row_type, item.get("name", ""), item.get("scope", ""), item.get("channel", ""), item.get("formula", ""), item.get("method_id", ""), item.get("preprocessing_policy_id", ""), item.get("window_start_seconds", ""), item.get("window_end_seconds", ""), metrics["ground_truth_count"], metrics["prediction_count"], metrics["matched_count"], _optional(metrics["truth_match_fraction"]), _optional(metrics["prediction_match_fraction"]), metrics["numeric_pair_count"], metrics["tolerance_pass_count"], _optional(metrics["tolerance_pass_fraction"]), metrics["status_mismatch_count"], metrics["missing_count"], metrics["extra_count"], _optional(error["bias"]), _optional(error["mean_absolute"]), _optional(error["root_mean_square"]), _optional(error["p95_absolute"])])
+        writer.writerow([row_type, item.get("name", ""), item.get("scope", ""), item.get("channel", ""), item.get("formula", ""), item.get("method_id", ""), item.get("preprocessing_policy_id", ""), item.get("window_start_seconds", ""), item.get("window_end_seconds", ""), metrics["ground_truth_count"], metrics["prediction_count"], metrics["matched_count"], metrics["covered_truth_count"], metrics["matched_prediction_count"], _optional(metrics["truth_match_fraction"]), _optional(metrics["prediction_match_fraction"]), metrics["numeric_pair_count"], metrics["tolerance_pass_count"], _optional(metrics["tolerance_pass_fraction"]), metrics["status_mismatch_count"], metrics["missing_count"], metrics["extra_count"], _optional(error["bias"]), _optional(error["mean_absolute"]), _optional(error["median_absolute"]), _optional(error["root_mean_square"]), _optional(error["p95_absolute"])])
     return output.getvalue()
 
 
@@ -235,7 +292,10 @@ def measurement_comparison_html(report):
             metrics["missing_count"], metrics["extra_count"],
             html.escape(_measurement_with_unit(metrics["error"]["mean_absolute"], unit)),
         ))
-    return "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font:14px Arial,sans-serif;color:#202124;max-width:1400px;margin:32px auto;padding:0 20px}table{border-collapse:collapse;width:100%%}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}th{background:#f3f4f6}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}.help{color:#5f6b7a}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>Target: %s | Pairing window: %.6g s</p><p class=\"help\">The pairing window identifies corresponding rows. Each numeric pair passes when |submitted − reference| is within the larger packaged absolute-or-relative tolerance shown below.</p><table><tr><th>Measurement</th><th>Unit</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Reference</th><th>Submitted</th><th>Numeric pairs</th><th>Within tolerance</th><th>Tolerance rule</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>%s</table></body></html>" % (html.escape(report["target"]), report["options"]["pairing_window_seconds"], "".join(rows))
+    rr_note = ""
+    if report.get("options", {}).get("rr_pairing_method"):
+        rr_note = "<p class=\"help\">RR intervals use their R-peak endpoint and duration. Associations require more than %.0f%% overlap of the shorter interval, localizing FP splits and FN merges instead of shifting later RR comparisons.</p>" % (100.0 * report["options"]["rr_minimum_shorter_interval_overlap_fraction"])
+    return "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font:14px Arial,sans-serif;color:#202124;max-width:1400px;margin:32px auto;padding:0 20px}table{border-collapse:collapse;width:100%%}th,td{border:1px solid #d1d5db;padding:7px;text-align:left}th{background:#f3f4f6}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}.help{color:#5f6b7a}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>Target: %s | Pairing window: %.6g s</p><p class=\"help\">The pairing window identifies corresponding non-RR rows. Each numeric pair passes when |submitted − reference| is within the larger packaged absolute-or-relative tolerance shown below.</p>%s<table><tr><th>Measurement</th><th>Unit</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Reference</th><th>Submitted</th><th>Numeric pairs</th><th>Within tolerance</th><th>Tolerance rule</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>%s</table></body></html>" % (html.escape(report["target"]), report["options"]["pairing_window_seconds"], rr_note, "".join(rows))
 
 
 def _context_tolerance_rule(context, rules):
@@ -268,9 +328,11 @@ def _metrics(context, name=None, channel=None, descriptor=None):
     assertions = [item for item in selected_matches if "ground_truth_assertion_passed" in item]
     numeric = len(errors)
     matched = len(selected_matches)
+    covered_truth = len(set(item["ground_truth_index"] for item in selected_matches))
+    matched_predictions = len(set(item["prediction_index"] for item in selected_matches))
     metrics = {
         "ground_truth_count": len(truth_selected), "valid_truth_count": statuses.count("valid"), "undefined_truth_count": statuses.count("undefined"), "absent_truth_count": statuses.count("absent"), "not_evaluable_truth_count": statuses.count("not_evaluable"),
-        "prediction_count": len(prediction_selected), "matched_count": matched, "numeric_pair_count": numeric,
+        "prediction_count": len(prediction_selected), "matched_count": matched, "covered_truth_count": covered_truth, "matched_prediction_count": matched_predictions, "numeric_pair_count": numeric,
         "tolerance_pass_count": sum(1 for item in selected_matches if item.get("within_tolerance", False)), "status_match_count": sum(1 for item in selected_matches if item["status_matches"]), "status_mismatch_count": sum(1 for item in selected_matches if not item["status_matches"]),
         "missing_count": sum(1 for index in context["missing"] if index in truth_set), "extra_count": sum(1 for index in context["extra"] if index in prediction_set),
         "assertion_comparable_count": len(assertions), "assertion_agreement_count": sum(1 for item in assertions if item["ground_truth_assertion_passed"] == item["prediction_assertion_passed"]),
@@ -280,8 +342,8 @@ def _metrics(context, name=None, channel=None, descriptor=None):
     metrics["tolerance_pass_fraction"] = float(metrics["tolerance_pass_count"]) / numeric if numeric else None
     metrics["status_match_fraction"] = float(metrics["status_match_count"]) / matched if matched else None
     metrics["assertion_agreement_fraction"] = float(metrics["assertion_agreement_count"]) / len(assertions) if assertions else None
-    metrics["truth_match_fraction"] = float(matched) / len(truth_selected) if truth_selected else None
-    metrics["prediction_match_fraction"] = float(matched) / len(prediction_selected) if prediction_selected else None
+    metrics["truth_match_fraction"] = float(covered_truth) / len(truth_selected) if truth_selected else None
+    metrics["prediction_match_fraction"] = float(matched_predictions) / len(prediction_selected) if prediction_selected else None
     if errors:
         metrics["error"] = {"bias": sum(errors) / len(errors), "mean_absolute": sum(absolute) / len(absolute), "root_mean_square": math.sqrt(sum(item * item for item in absolute) / len(absolute)), "median_absolute": _median(absolute), "p95_absolute": absolute[int(math.ceil(0.95 * len(absolute))) - 1], "maximum_absolute": absolute[-1]}
     return metrics

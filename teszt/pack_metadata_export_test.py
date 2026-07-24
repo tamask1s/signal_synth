@@ -218,15 +218,22 @@ def assert_rpeak_frontier_metadata(item):
 
 def assert_simple_rpeak_metadata(generated):
     stress = pack(generated, "r_peak_rr_simple_stress_v1")
-    assert stress["version"] == "1.0"
-    assert stress["case_ids"] == ["clean_70", "slow_45", "fast_120", "baseline_powerline"]
-    assert stress["duration"]["total_seconds"] == 100
+    assert stress["version"] == "2.0"
+    assert stress["case_ids"] == [
+        "clean_70", "slow_45", "fast_120", "baseline_powerline",
+        "moderate_noise", "variable_rate", "mobitz_ii_pauses",
+        "combined_stress",
+    ]
+    assert stress["duration"]["total_seconds"] == 310
     ladder = pack(generated, "r_peak_rr_snr_ladder_v1")
-    assert ladder["version"] == "1.0"
-    assert ladder["case_ids"] == ["clean"] + ["snr_m%d" % level for level in range(1, 12)]
-    assert ladder["duration"]["total_seconds"] == 720
+    assert ladder["version"] == "2.0"
+    assert ladder["case_ids"] == [
+        "clean", "snr_m0p2", "snr_m0p5",
+    ] + ["snr_m%d" % level for level in range(1, 12)]
+    assert ladder["duration"]["total_seconds"] == 840
     assert ladder["sampling_rates_hz"] == [500]
     for item in (stress, ladder):
+        assert item["generator_compatibility"]["local_verifier_min_version"] == "0.15.0"
         assert item["declared_targets"] == item["targets"] == ["r_peak", "rr_interval"]
         assert item["verification_protocol"]["document"]["verdict_scope"] == "per_case"
         assert "acceptance_profile" not in item["verification_protocol"]["document"]
@@ -380,7 +387,7 @@ def main():
         assert generated["release_set_id"] == "synsigra_curated_release_2026_07_24_simple_rpeak_cases"
         assert generated["release_set_status"] == "beta"
         assert generated["catalog_id"] == "synsigra_verification_packs"
-        assert generated["catalog_version"] == "3.3"
+        assert generated["catalog_version"] == "3.4"
         assert generated["pack_count"] == 21
         assert [item["pack_id"] for item in generated["packs"]] == RELEASE_PACK_IDS
         for pack_id in RELEASE_PACK_IDS:

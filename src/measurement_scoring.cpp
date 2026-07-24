@@ -673,13 +673,70 @@ namespace
         return error;
     }
 
+    bool rr_interval_bounds(const signal_synth::measurement_value& value, double& start, double& end)
+    {
+        if (value.name != "rr_interval" || value.unit != "s"
+            || (value.scope != signal_synth::measurement_beat
+                && value.scope != signal_synth::measurement_beat_lead
+                && value.scope != signal_synth::measurement_paired_signal)
+            || value.status != signal_synth::measurement_valid
+            || !value.has_time_seconds || !value.has_value || value.value <= 0.0)
+            return false;
+        start = value.time_seconds - value.value;
+        end = value.time_seconds;
+        return true;
+    }
+
+    signal_synth::measurement_score_match make_match(
+        const signal_synth::measurement_truth& truth,
+        const signal_synth::measurement_value& prediction,
+        unsigned int truth_index,
+        unsigned int prediction_index,
+        const char* pairing_method)
+    {
+        signal_synth::measurement_score_match match;
+        match.ground_truth_index = truth_index;
+        match.prediction_index = prediction_index;
+        match.pairing_method = pairing_method;
+        match.ground_truth_status = truth.measurement.status;
+        match.prediction_status = prediction.status;
+        match.status_matches = match.ground_truth_status == match.prediction_status;
+        match.numeric_pair = truth.measurement.status == signal_synth::measurement_valid
+            && prediction.status == signal_synth::measurement_valid;
+        if (!match.numeric_pair)
+            return match;
+        match.signed_error = signed_error(truth, prediction);
+        match.absolute_error = std::fabs(match.signed_error);
+        match.has_relative_error = std::fabs(truth.measurement.value) > 1e-15;
+        if (match.has_relative_error)
+            match.relative_error_percent = 100.0 * match.absolute_error / std::fabs(truth.measurement.value);
+        double tolerance = truth.absolute_tolerance;
+        if (match.has_relative_error)
+            tolerance = std::max(
+                tolerance,
+                std::fabs(truth.measurement.value)
+                    * truth.relative_tolerance_percent / 100.0);
+        match.within_tolerance = match.absolute_error <= tolerance;
+        if (truth.has_expected_range)
+        {
+            match.has_assertion_result = true;
+            match.ground_truth_assertion_passed =
+                truth.measurement.value >= truth.expected_minimum
+                && truth.measurement.value <= truth.expected_maximum;
+            match.prediction_assertion_passed =
+                prediction.value >= truth.expected_minimum
+                && prediction.value <= truth.expected_maximum;
+        }
+        return match;
+    }
+
     void finalize_metrics(signal_synth::measurement_score_metrics& metrics, const std::vector<double>& signed_errors, const std::vector<double>& absolute_errors)
     {
         if (metrics.numeric_pair_count) metrics.tolerance_pass_fraction = static_cast<double>(metrics.tolerance_pass_count) / metrics.numeric_pair_count;
         if (metrics.matched_count) metrics.status_match_fraction = static_cast<double>(metrics.status_match_count) / metrics.matched_count;
         if (metrics.assertion_comparable_count) metrics.assertion_agreement_fraction = static_cast<double>(metrics.assertion_agreement_count) / metrics.assertion_comparable_count;
-        if (metrics.ground_truth_count) metrics.truth_match_fraction = static_cast<double>(metrics.matched_count) / metrics.ground_truth_count;
-        if (metrics.prediction_count) metrics.prediction_match_fraction = static_cast<double>(metrics.matched_count) / metrics.prediction_count;
+        if (metrics.ground_truth_count) metrics.truth_match_fraction = static_cast<double>(metrics.covered_truth_count) / metrics.ground_truth_count;
+        if (metrics.prediction_count) metrics.prediction_match_fraction = static_cast<double>(metrics.matched_prediction_count) / metrics.prediction_count;
         if (absolute_errors.empty()) return;
         std::vector<double> sorted = absolute_errors;
         std::sort(sorted.begin(), sorted.end());
@@ -730,11 +787,23 @@ namespace
         }
         std::vector<double> signed_errors;
         std::vector<double> absolute_errors;
+        std::vector<bool> covered_truth(result.ground_truth.size(), false);
+        std::vector<bool> matched_predictions(result.predictions.size(), false);
         for (std::size_t i = 0; i < result.matches.size(); ++i)
         {
             const signal_synth::measurement_score_match& match = result.matches[i];
             if (!truth_selected[match.ground_truth_index] || !prediction_selected[match.prediction_index]) continue;
             ++metrics.matched_count;
+            if (!covered_truth[match.ground_truth_index])
+            {
+                covered_truth[match.ground_truth_index] = true;
+                ++metrics.covered_truth_count;
+            }
+            if (!matched_predictions[match.prediction_index])
+            {
+                matched_predictions[match.prediction_index] = true;
+                ++metrics.matched_prediction_count;
+            }
             if (match.status_matches) ++metrics.status_match_count; else ++metrics.status_mismatch_count;
             if (match.numeric_pair)
             {
@@ -837,6 +906,8 @@ namespace
                << ",\"not_evaluable_truth_count\":" << metrics.not_evaluable_truth_count
                << ",\"prediction_count\":" << metrics.prediction_count
                << ",\"matched_count\":" << metrics.matched_count
+               << ",\"covered_truth_count\":" << metrics.covered_truth_count
+               << ",\"matched_prediction_count\":" << metrics.matched_prediction_count
                << ",\"numeric_pair_count\":" << metrics.numeric_pair_count
                << ",\"tolerance_pass_count\":" << metrics.tolerance_pass_count
                << ",\"status_match_count\":" << metrics.status_match_count
@@ -925,11 +996,11 @@ namespace signal_synth
         : measurement(), absolute_tolerance(0.0), relative_tolerance_percent(0.0), error_model(measurement_error_linear), has_expected_range(false), expected_minimum(0.0), expected_maximum(0.0), reason() {}
     measurement_score_options::measurement_score_options() : pairing_window_seconds(0.20) {}
     measurement_score_metrics::measurement_score_metrics()
-        : ground_truth_count(0), valid_truth_count(0), undefined_truth_count(0), absent_truth_count(0), not_evaluable_truth_count(0), prediction_count(0), matched_count(0), numeric_pair_count(0), tolerance_pass_count(0), status_match_count(0), status_mismatch_count(0), missing_count(0), extra_count(0), assertion_comparable_count(0), assertion_agreement_count(0), tolerance_pass_fraction(0.0), status_match_fraction(0.0), assertion_agreement_fraction(0.0), truth_match_fraction(0.0), prediction_match_fraction(0.0), bias(0.0), mean_absolute_error(0.0), root_mean_square_error(0.0), median_absolute_error(0.0), p95_absolute_error(0.0), maximum_absolute_error(0.0) {}
+        : ground_truth_count(0), valid_truth_count(0), undefined_truth_count(0), absent_truth_count(0), not_evaluable_truth_count(0), prediction_count(0), matched_count(0), covered_truth_count(0), matched_prediction_count(0), numeric_pair_count(0), tolerance_pass_count(0), status_match_count(0), status_mismatch_count(0), missing_count(0), extra_count(0), assertion_comparable_count(0), assertion_agreement_count(0), tolerance_pass_fraction(0.0), status_match_fraction(0.0), assertion_agreement_fraction(0.0), truth_match_fraction(0.0), prediction_match_fraction(0.0), bias(0.0), mean_absolute_error(0.0), root_mean_square_error(0.0), median_absolute_error(0.0), p95_absolute_error(0.0), maximum_absolute_error(0.0) {}
     measurement_score_context_group::measurement_score_context_group()
         : name(), unit(), scope(measurement_record), channel(), formula(), method_id(), preprocessing_policy_id(), window_start_seconds(0.0), has_window_start_seconds(false), window_end_seconds(0.0), has_window_end_seconds(false), metrics() {}
     measurement_score_match::measurement_score_match()
-        : ground_truth_index(0), prediction_index(0), ground_truth_status(measurement_undefined), prediction_status(measurement_undefined), status_matches(false), numeric_pair(false), signed_error(0.0), absolute_error(0.0), relative_error_percent(0.0), has_relative_error(false), within_tolerance(false), has_assertion_result(false), ground_truth_assertion_passed(false), prediction_assertion_passed(false) {}
+        : ground_truth_index(0), prediction_index(0), pairing_method(), ground_truth_status(measurement_undefined), prediction_status(measurement_undefined), status_matches(false), numeric_pair(false), signed_error(0.0), absolute_error(0.0), relative_error_percent(0.0), has_relative_error(false), within_tolerance(false), has_assertion_result(false), ground_truth_assertion_passed(false), prediction_assertion_passed(false) {}
     measurement_score_result::measurement_score_result()
         : success(false), target(), pairing_window_seconds(0.0), total(), measurements(), channels(), measurement_channels(), contexts(), ground_truth(), predictions(), matches(), missing_ground_truth_indices(), extra_prediction_indices(), messages() {}
 
@@ -1014,6 +1085,7 @@ namespace signal_synth
         if (!finite_value(options.pairing_window_seconds) || options.pairing_window_seconds <= 0.0) fresh.messages.push_back("pairing window must be finite and positive");
         if (!fresh.messages.empty()) { result = fresh; return false; }
         std::vector<match_candidate> candidates;
+        std::vector<match_candidate> rr_associations;
         for (std::size_t truth_index = 0; truth_index < ground_truth.size(); ++truth_index)
         {
             const measurement_value& truth = ground_truth[truth_index].measurement;
@@ -1024,6 +1096,29 @@ namespace signal_synth
                 match_candidate candidate;
                 candidate.truth_index = static_cast<unsigned int>(truth_index);
                 candidate.prediction_index = static_cast<unsigned int>(prediction_index);
+                candidate.exact_beat = false;
+                candidate.distance = 0.0;
+                double truth_start = 0.0;
+                double truth_end = 0.0;
+                double prediction_start = 0.0;
+                double prediction_end = 0.0;
+                if (
+                    target == "rr_interval"
+                    && rr_interval_bounds(truth, truth_start, truth_end)
+                    && rr_interval_bounds(
+                        prediction, prediction_start, prediction_end))
+                {
+                    const double overlap = std::max(
+                        0.0,
+                        std::min(truth_end, prediction_end)
+                            - std::max(truth_start, prediction_start));
+                    const double shorter = std::min(
+                        truth_end - truth_start,
+                        prediction_end - prediction_start);
+                    if (shorter > 0.0 && overlap / shorter > 0.5)
+                        rr_associations.push_back(candidate);
+                    continue;
+                }
                 candidate.exact_beat = truth.has_beat_index && prediction.has_beat_index && truth.beat_index == prediction.beat_index;
                 if (truth.has_beat_index && prediction.has_beat_index && !candidate.exact_beat) continue;
                 if (truth.scope == measurement_record || truth.scope == measurement_lead || truth.scope == measurement_window || truth.scope == measurement_window_lead) candidate.distance = 0.0;
@@ -1037,42 +1132,39 @@ namespace signal_synth
         std::sort(candidates.begin(), candidates.end(), candidate_less);
         std::vector<bool> truth_used(ground_truth.size(), false);
         std::vector<bool> prediction_used(predictions.size(), false);
+        for (std::size_t i = 0; i < rr_associations.size(); ++i)
+        {
+            const match_candidate& candidate = rr_associations[i];
+            truth_used[candidate.truth_index] = true;
+            prediction_used[candidate.prediction_index] = true;
+            fresh.matches.push_back(make_match(
+                ground_truth[candidate.truth_index],
+                predictions[candidate.prediction_index],
+                candidate.truth_index,
+                candidate.prediction_index,
+                "rr_peak_anchored_interval_overlap"));
+        }
         for (std::size_t i = 0; i < candidates.size(); ++i)
         {
             const match_candidate& candidate = candidates[i];
             if (truth_used[candidate.truth_index] || prediction_used[candidate.prediction_index]) continue;
             truth_used[candidate.truth_index] = true;
             prediction_used[candidate.prediction_index] = true;
-            const measurement_truth& truth = ground_truth[candidate.truth_index];
-            const measurement_value& prediction = predictions[candidate.prediction_index];
-            measurement_score_match match;
-            match.ground_truth_index = candidate.truth_index;
-            match.prediction_index = candidate.prediction_index;
-            match.ground_truth_status = truth.measurement.status;
-            match.prediction_status = prediction.status;
-            match.status_matches = match.ground_truth_status == match.prediction_status;
-            match.numeric_pair = truth.measurement.status == measurement_valid && prediction.status == measurement_valid;
-            if (match.numeric_pair)
-            {
-                match.signed_error = ::signed_error(truth, prediction);
-                match.absolute_error = std::fabs(match.signed_error);
-                match.has_relative_error = std::fabs(truth.measurement.value) > 1e-15;
-                if (match.has_relative_error) match.relative_error_percent = 100.0 * match.absolute_error / std::fabs(truth.measurement.value);
-                double tolerance = truth.absolute_tolerance;
-                if (match.has_relative_error) tolerance = std::max(tolerance, std::fabs(truth.measurement.value) * truth.relative_tolerance_percent / 100.0);
-                match.within_tolerance = match.absolute_error <= tolerance;
-                if (truth.has_expected_range)
-                {
-                    match.has_assertion_result = true;
-                    match.ground_truth_assertion_passed = truth.measurement.value >= truth.expected_minimum && truth.measurement.value <= truth.expected_maximum;
-                    match.prediction_assertion_passed = prediction.value >= truth.expected_minimum && prediction.value <= truth.expected_maximum;
-                }
-            }
-            fresh.matches.push_back(match);
+            fresh.matches.push_back(make_match(
+                ground_truth[candidate.truth_index],
+                predictions[candidate.prediction_index],
+                candidate.truth_index,
+                candidate.prediction_index,
+                "identity_and_temporal_anchor"));
         }
         for (std::size_t i = 0; i < truth_used.size(); ++i) if (!truth_used[i]) fresh.missing_ground_truth_indices.push_back(static_cast<unsigned int>(i));
         for (std::size_t i = 0; i < prediction_used.size(); ++i) if (!prediction_used[i]) fresh.extra_prediction_indices.push_back(static_cast<unsigned int>(i));
         build_groups(fresh);
+        if (target == "rr_interval")
+            fresh.messages.push_back(
+                "Valid RR intervals are associated by R-peak-anchored interval "
+                "overlap; coverage counts unique intervals while split/merge "
+                "associations remain local.");
         fresh.success = true;
         result = fresh;
         return true;
@@ -1127,7 +1219,11 @@ namespace signal_synth
         output << std::setprecision(std::numeric_limits<double>::max_digits10)
                << "{\"schema_version\":2,\"contract\":\"synsigra_measurement_score_v2\",\"score_type\":\"measurement_qa\",\"target\":" << json_string(result.target)
                << ",\"scenario\":{\"scenario_id\":" << json_string(render.document.scenario_id) << ",\"document_fingerprint\":" << json_string(render.document_identity.document_fingerprint) << ",\"render_identity\":" << json_string(render.render_identity) << "}"
-               << ",\"options\":{\"pairing_window_seconds\":" << result.pairing_window_seconds << "},\"overall\":";
+               << ",\"options\":{\"pairing_window_seconds\":" << result.pairing_window_seconds;
+        if (result.target == "rr_interval")
+            output << ",\"rr_pairing_method\":\"peak_anchored_interval_overlap\""
+                   << ",\"rr_minimum_shorter_interval_overlap_fraction\":0.5";
+        output << "},\"overall\":";
         write_metrics_json(output, result.total);
         output << ",\"by_measurement\":[";
         for (std::size_t i = 0; i < result.measurements.size(); ++i) { output << (i ? "," : "") << "{\"name\":" << json_string(result.measurements[i].name) << ",\"metrics\":"; write_metrics_json(output, result.measurements[i].metrics); output << '}'; }
@@ -1152,6 +1248,7 @@ namespace signal_synth
             const measurement_truth& truth_item = result.ground_truth[match.ground_truth_index];
             const measurement_value& truth = truth_item.measurement;
             output << (i ? "," : "") << "{\"ground_truth_index\":" << match.ground_truth_index << ",\"prediction_index\":" << match.prediction_index
+                   << ",\"pairing_method\":" << json_string(match.pairing_method)
                    << ",\"name\":" << json_string(truth.name) << ",\"unit\":" << json_string(truth.unit) << ",\"scope\":" << json_string(measurement_scope_name(truth.scope)) << ",\"channel\":" << json_string(truth.channel.empty() ? "global" : truth.channel)
                    << ",\"formula\":" << json_string(truth.formula) << ",\"method_id\":" << json_string(truth.method_id) << ",\"preprocessing_policy_id\":" << json_string(truth.preprocessing_policy_id)
                    << ",\"ground_truth_status\":" << json_string(measurement_status_name(match.ground_truth_status)) << ",\"prediction_status\":" << json_string(measurement_status_name(match.prediction_status))
@@ -1188,14 +1285,14 @@ namespace signal_synth
     std::string measurement_score_result_csv(const measurement_score_result& result)
     {
         std::ostringstream output;
-        output << "row_type,name,scope,channel,formula,method_id,preprocessing_policy_id,window_start_seconds,window_end_seconds,ground_truth_count,prediction_count,matched_count,truth_match_fraction,prediction_match_fraction,numeric_pair_count,tolerance_pass_count,tolerance_pass_fraction,status_mismatch_count,missing_count,extra_count,bias,mean_absolute_error,root_mean_square_error,p95_absolute_error\n";
+        output << "row_type,name,scope,channel,formula,method_id,preprocessing_policy_id,window_start_seconds,window_end_seconds,ground_truth_count,prediction_count,association_count,covered_truth_count,matched_prediction_count,truth_match_fraction,prediction_match_fraction,numeric_pair_count,tolerance_pass_count,tolerance_pass_fraction,status_mismatch_count,missing_count,extra_count,bias,mean_absolute_error,median_absolute_error,root_mean_square_error,p95_absolute_error\n";
         const measurement_score_metrics* total = &result.total;
-        output << "overall,,,,,,,,," << total->ground_truth_count << ',' << total->prediction_count << ',' << total->matched_count << ',' << csv_optional(total->ground_truth_count > 0u, total->truth_match_fraction) << ',' << csv_optional(total->prediction_count > 0u, total->prediction_match_fraction) << ',' << total->numeric_pair_count << ',' << total->tolerance_pass_count << ',' << csv_optional(total->numeric_pair_count > 0u, total->tolerance_pass_fraction) << ',' << total->status_mismatch_count << ',' << total->missing_count << ',' << total->extra_count << ',' << csv_optional(total->numeric_pair_count > 0u, total->bias) << ',' << csv_optional(total->numeric_pair_count > 0u, total->mean_absolute_error) << ',' << csv_optional(total->numeric_pair_count > 0u, total->root_mean_square_error) << ',' << csv_optional(total->numeric_pair_count > 0u, total->p95_absolute_error) << '\n';
+        output << "overall,,,,,,,,," << total->ground_truth_count << ',' << total->prediction_count << ',' << total->matched_count << ',' << total->covered_truth_count << ',' << total->matched_prediction_count << ',' << csv_optional(total->ground_truth_count > 0u, total->truth_match_fraction) << ',' << csv_optional(total->prediction_count > 0u, total->prediction_match_fraction) << ',' << total->numeric_pair_count << ',' << total->tolerance_pass_count << ',' << csv_optional(total->numeric_pair_count > 0u, total->tolerance_pass_fraction) << ',' << total->status_mismatch_count << ',' << total->missing_count << ',' << total->extra_count << ',' << csv_optional(total->numeric_pair_count > 0u, total->bias) << ',' << csv_optional(total->numeric_pair_count > 0u, total->mean_absolute_error) << ',' << csv_optional(total->numeric_pair_count > 0u, total->median_absolute_error) << ',' << csv_optional(total->numeric_pair_count > 0u, total->root_mean_square_error) << ',' << csv_optional(total->numeric_pair_count > 0u, total->p95_absolute_error) << '\n';
         for (std::size_t i = 0; i < result.contexts.size(); ++i)
         {
             const measurement_score_context_group& group = result.contexts[i];
             const measurement_score_metrics& metrics = group.metrics;
-            output << "measurement_context," << csv_cell(group.name) << ',' << measurement_scope_name(group.scope) << ',' << csv_cell(group.channel.empty() ? "global" : group.channel) << ',' << csv_cell(group.formula) << ',' << csv_cell(group.method_id) << ',' << csv_cell(group.preprocessing_policy_id) << ',' << csv_optional(group.has_window_start_seconds, group.window_start_seconds) << ',' << csv_optional(group.has_window_end_seconds, group.window_end_seconds) << ',' << metrics.ground_truth_count << ',' << metrics.prediction_count << ',' << metrics.matched_count << ',' << csv_optional(metrics.ground_truth_count > 0u, metrics.truth_match_fraction) << ',' << csv_optional(metrics.prediction_count > 0u, metrics.prediction_match_fraction) << ',' << metrics.numeric_pair_count << ',' << metrics.tolerance_pass_count << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.tolerance_pass_fraction) << ',' << metrics.status_mismatch_count << ',' << metrics.missing_count << ',' << metrics.extra_count << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.bias) << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.mean_absolute_error) << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.root_mean_square_error) << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.p95_absolute_error) << '\n';
+            output << "measurement_context," << csv_cell(group.name) << ',' << measurement_scope_name(group.scope) << ',' << csv_cell(group.channel.empty() ? "global" : group.channel) << ',' << csv_cell(group.formula) << ',' << csv_cell(group.method_id) << ',' << csv_cell(group.preprocessing_policy_id) << ',' << csv_optional(group.has_window_start_seconds, group.window_start_seconds) << ',' << csv_optional(group.has_window_end_seconds, group.window_end_seconds) << ',' << metrics.ground_truth_count << ',' << metrics.prediction_count << ',' << metrics.matched_count << ',' << metrics.covered_truth_count << ',' << metrics.matched_prediction_count << ',' << csv_optional(metrics.ground_truth_count > 0u, metrics.truth_match_fraction) << ',' << csv_optional(metrics.prediction_count > 0u, metrics.prediction_match_fraction) << ',' << metrics.numeric_pair_count << ',' << metrics.tolerance_pass_count << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.tolerance_pass_fraction) << ',' << metrics.status_mismatch_count << ',' << metrics.missing_count << ',' << metrics.extra_count << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.bias) << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.mean_absolute_error) << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.median_absolute_error) << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.root_mean_square_error) << ',' << csv_optional(metrics.numeric_pair_count > 0u, metrics.p95_absolute_error) << '\n';
         }
         return output.str();
     }
@@ -1211,7 +1308,10 @@ namespace signal_synth
             rows << "<tr><td>" << html_text(group.name) << "</td><td>" << html_text(group.unit) << "</td><td>" << measurement_scope_name(group.scope) << "</td><td>" << html_text(group.method_id) << "</td><td>" << html_text(group.preprocessing_policy_id) << "</td><td>" << html_text(window) << "</td><td>" << group.metrics.ground_truth_count << "</td><td>" << group.metrics.prediction_count << "</td><td>" << group.metrics.numeric_pair_count << "</td><td>" << csv_optional(group.metrics.numeric_pair_count > 0u, group.metrics.tolerance_pass_fraction) << "</td><td>" << group.metrics.missing_count << "</td><td>" << group.metrics.extra_count << "</td><td>" << csv_optional(group.metrics.numeric_pair_count > 0u, group.metrics.mean_absolute_error) << "</td></tr>";
         }
         std::ostringstream output;
-        output << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#20252b}table{border-collapse:collapse}th,td{border:1px solid #c9ced4;padding:6px 9px;text-align:right}th:first-child,td:first-child{text-align:left}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}.help{color:#5f6b7a}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>Scenario: " << html_text(render.document.scenario_id) << " | Target: " << html_text(result.target) << " | Pairing window: " << result.pairing_window_seconds << " s</p><p class=\"help\">Reference values come from the package. Submitted measurements are paired by identity and temporal anchor. Numeric pairs pass when their absolute error is within the larger packaged absolute-or-relative tolerance.</p><table><tr><th>Measurement</th><th>Unit</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Reference</th><th>Submitted</th><th>Numeric pairs</th><th>Within tolerance</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>" << rows.str() << "</table></body></html>";
+        const char* association_help = result.target == "rr_interval"
+            ? "Valid RR intervals use R-peak-anchored interval overlap. FP splits and FN merges remain local, while unique truth and submission coverage cannot exceed 100%."
+            : "Submitted measurements are paired one-to-one by identity and temporal anchor.";
+        output << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Measurement QA</title><style>body{font-family:Arial,sans-serif;margin:24px;color:#20252b}table{border-collapse:collapse}th,td{border:1px solid #c9ced4;padding:6px 9px;text-align:right}th:first-child,td:first-child{text-align:left}.notice{border-left:4px solid #6b7280;padding:10px 14px;background:#f3f4f6;color:#374151}.help{color:#5f6b7a}</style></head><body><h1>Measurement QA Report</h1><p class=\"notice\">Synthetic engineering QA evidence; not diagnosis, nor clinical evidence</p><p>Scenario: " << html_text(render.document.scenario_id) << " | Target: " << html_text(result.target) << " | Pairing window: " << result.pairing_window_seconds << " s</p><p class=\"help\">Reference values come from the package. " << association_help << " Numeric pairs pass when their absolute error is within the larger packaged absolute-or-relative tolerance.</p><table><tr><th>Measurement</th><th>Unit</th><th>Scope</th><th>Method</th><th>Preprocessing</th><th>Window</th><th>Reference</th><th>Submitted</th><th>Numeric pairs</th><th>Within tolerance</th><th>Missing</th><th>Extra</th><th>MAE</th></tr>" << rows.str() << "</table></body></html>";
         return output.str();
     }
 }

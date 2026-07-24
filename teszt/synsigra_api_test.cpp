@@ -114,7 +114,7 @@ int main()
         && integration_contract.find("\"contract\":\"synsigra_core_integration_v7\"") != std::string::npos
         && integration_contract.find("\"cpp_facade\":\"1.5.0\"") != std::string::npos
         && integration_contract.find("\"pack_schema_version\":2") != std::string::npos
-        && integration_contract.find("\"python_verifier\":\"0.14.0\"") != std::string::npos
+        && integration_contract.find("\"python_verifier\":\"0.15.0\"") != std::string::npos
         && integration_contract.find("\"latest_schema_version\":9") != std::string::npos
         && integration_contract.find("\"metric_definition\":\"synsigra_hrv_metrics_v2\"") != std::string::npos
         && integration_contract.find("\"sd1_sd2_ratio\"") != std::string::npos

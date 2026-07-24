@@ -279,8 +279,11 @@ def main():
         os.path.join(rr_perfect_dir, external_rr_result["report_path"]), "r"
     ).read()
     assert "Case contribution breakdown" in overview_html
-    assert "Evidence counts" in overview_html and "Case diagnostic" in overview_html
-    assert "Submitted measurements matched to reference" in overview_html
+    assert "Per-case results" in overview_html and "Case view" in overview_html
+    assert "bins, strata and pooled acceptance remain authoritative" in overview_html
+    assert 'class="per-case-wide"' in overview_html
+    assert "Submitted measurements associated with reference" in overview_html
+    assert "Reference values covered" in overview_html
     assert "Predictions matched" not in overview_html and "Truth matched" not in overview_html
     assert "Measurement tolerance rules" in external_detail_html
     assert "larger of ±10.000 ms (0.01 s) absolute or ±2% of |reference|" in external_detail_html

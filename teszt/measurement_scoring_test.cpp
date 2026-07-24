@@ -64,7 +64,7 @@ int main()
     signal_synth::measurement_score_options options;
     signal_synth::measurement_score_result score;
     ok &= check(signal_synth::score_measurements("morphology_assertions", manual_truth, predictions, options, score) && score.success, "manual_score");
-    ok &= check(score.total.matched_count == 4u && score.total.numeric_pair_count == 3u && score.total.tolerance_pass_count == 2u, "numeric_counts");
+    ok &= check(score.total.matched_count == 4u && score.total.covered_truth_count == 4u && score.total.matched_prediction_count == 4u && score.total.numeric_pair_count == 3u && score.total.tolerance_pass_count == 2u, "numeric_counts");
     ok &= check(score.total.status_mismatch_count == 1u && score.total.missing_count == 0u && score.total.extra_count == 0u, "status_counts");
     bool circular_axis_error = false;
     for (std::size_t i = 0; i < score.matches.size(); ++i)
@@ -84,6 +84,46 @@ int main()
     ok &= check(signal_synth::score_measurements("hrv", window_truth, window_prediction, options, score) && score.total.matched_count == 1u && score.contexts.size() == 1u, "window_method_match");
     window_prediction[0].method_id = "another_method_v1";
     ok &= check(signal_synth::score_measurements("hrv", window_truth, window_prediction, options, score) && score.total.missing_count == 1u && score.total.extra_count == 1u, "method_identity_mismatch");
+
+    std::vector<signal_synth::measurement_truth> rr_truth;
+    rr_truth.push_back(truth("rr_interval", 1.0, "s", signal_synth::measurement_beat, 1.0, 1));
+    rr_truth.push_back(truth("rr_interval", 1.0, "s", signal_synth::measurement_beat, 2.0, 2));
+    std::vector<signal_synth::measurement_value> rr_split;
+    rr_split.push_back(rr_truth[0].measurement);
+    rr_split.back().value = 0.5;
+    rr_split.back().time_seconds = 0.5;
+    rr_split.back().beat_index = 10;
+    rr_split.push_back(rr_truth[0].measurement);
+    rr_split.back().value = 0.5;
+    rr_split.back().time_seconds = 1.0;
+    rr_split.back().beat_index = 11;
+    rr_split.push_back(rr_truth[1].measurement);
+    ok &= check(
+        signal_synth::score_measurements("rr_interval", rr_truth, rr_split, options, score)
+        && score.total.matched_count == 3u
+        && score.total.covered_truth_count == 2u
+        && score.total.matched_prediction_count == 3u
+        && score.total.truth_match_fraction == 1.0
+        && score.total.prediction_match_fraction == 1.0
+        && score.total.missing_count == 0u
+        && score.total.extra_count == 0u
+        && !score.matches.empty()
+        && score.matches[0].pairing_method == "rr_peak_anchored_interval_overlap"
+        && std::fabs(score.total.median_absolute_error - 0.5) < 1e-12,
+        "rr_split_local_associations");
+    std::vector<signal_synth::measurement_value> rr_merge(1u, rr_truth[1].measurement);
+    rr_merge[0].value = 2.0;
+    ok &= check(
+        signal_synth::score_measurements("rr_interval", rr_truth, rr_merge, options, score)
+        && score.total.matched_count == 2u
+        && score.total.covered_truth_count == 2u
+        && score.total.matched_prediction_count == 1u
+        && score.total.truth_match_fraction == 1.0
+        && score.total.prediction_match_fraction == 1.0
+        && score.total.missing_count == 0u
+        && score.total.extra_count == 0u
+        && std::fabs(score.total.median_absolute_error - 1.0) < 1e-12,
+        "rr_merge_local_associations");
 
     predictions.pop_back();
     signal_synth::measurement_value extra = manual_truth[0].measurement;

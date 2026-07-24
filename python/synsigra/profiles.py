@@ -155,7 +155,7 @@ PROFILE_SCHEMA["prv"] = PROFILE_SCHEMA["measurement"]
 PROFILE_SCHEMA["respiratory_rate"] = PROFILE_SCHEMA["measurement"]
 PROFILE_SCHEMA["rhythm_burden"] = PROFILE_SCHEMA["measurement"]
 
-TIMING_MEASUREMENT_METRICS = set(["truth_match_fraction", "prediction_match_fraction", "tolerance_pass_fraction", "status_match_fraction", "assertion_agreement_fraction", "mean_absolute_error", "root_mean_square_error", "p95_absolute_error", "maximum_absolute_error"])
+TIMING_MEASUREMENT_METRICS = set(["truth_match_fraction", "prediction_match_fraction", "tolerance_pass_fraction", "status_match_fraction", "assertion_agreement_fraction", "mean_absolute_error", "median_absolute_error", "root_mean_square_error", "p95_absolute_error", "maximum_absolute_error"])
 PROFILE_SCHEMA["rr_interval"] = {"overall": PROFILE_SCHEMA["measurement"]["overall"], "rr_interval": TIMING_MEASUREMENT_METRICS}
 PROFILE_SCHEMA["qtc"] = {"overall": PROFILE_SCHEMA["measurement"]["overall"], "rr_interval": TIMING_MEASUREMENT_METRICS, "qt_interval": TIMING_MEASUREMENT_METRICS, "qtc_interval": TIMING_MEASUREMENT_METRICS}
 PROFILE_SCHEMA["hrv"] = {"overall": PROFILE_SCHEMA["measurement"]["overall"]}

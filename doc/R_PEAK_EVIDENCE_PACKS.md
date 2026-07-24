@@ -19,45 +19,77 @@ failed case.
 
 ### `r_peak_rr_simple_stress_v1` — simple first run
 
-This is the shortest human-readable detector pack:
+This is the compact, human-readable first-run detector pack:
 
-| Case | What changes | Official output |
+| Case | What changes | Why it is present |
 |---|---|---|
-| `clean_70` | Clean 70 bpm control | One R-peak + RR verdict |
-| `slow_45` | Clean 45 bpm bradycardia | One R-peak + RR verdict |
-| `fast_120` | Clean 120 bpm tachycardia | One R-peak + RR verdict |
-| `baseline_powerline` | Baseline wander and powerline interference | One R-peak + RR verdict |
+| `clean_70` | Clean 70 bpm control | Nominal anchor |
+| `slow_45` | Clean 45 bpm bradycardia | Slow-rate boundary |
+| `fast_120` | Clean 120 bpm tachycardia | Fast-rate boundary |
+| `baseline_powerline` | Baseline wander and powerline interference | Persistent structured interference |
+| `moderate_noise` | Full-record baseline and powerline noise, EMG bursts, RR variability, PVCs | Realistic mixed acquisition stress |
+| `variable_rate` | Sinus baseline with AF and PSVT episodes | Strong rate and regularity changes |
+| `mobitz_ii_pauses` | Deterministic non-conducted atrial events | A genuine missing QRS has no R-peak truth; the surrounding long RR remains scoreable |
+| `combined_stress` | Rate changes plus baseline, powerline and EMG artifacts | Several stressors in one independent case |
 
-The report opens with these four verdicts. Metric-level gates and the two
-case-target detail pages remain available as audit detail.
+The report opens with eight independent verdicts. Metric-level gates and the
+two case-target detail pages remain available as audit detail. A good detector
+can reasonably pass every case, but none of the thresholds is selected after
+seeing the submitted result.
 
 ### `r_peak_rr_snr_ladder_v1` — simple robustness curve
 
-This pack contains 12 paired 60-second signals: one clean control and every
-integer target SNR from −1 through −11 dB. Every case uses the same
-variable-rate cardiac truth and periodic PVC cadence. In noisy cases,
+This pack contains 14 paired 60-second signals: one clean control, fractional
+−0.2 and −0.5 dB transition points, and every integer target SNR from −1
+through −11 dB. Every case uses the same variable-rate cardiac truth and
+periodic PVC cadence. In noisy cases,
 project-owned baseline, muscle, and electrode-motion noise covers the complete
 0–60 second record without clean gaps; the source type changes every three
 seconds.
 
-| SNR | R-peak F1 min | PPV / sensitivity min | RR MAE max |
+| SNR | R-peak F1 min | PPV / sensitivity min | RR median absolute error max |
 |---:|---:|---:|---:|
-| Clean | 0.98 | 0.98 | 25 ms |
-| −1 dB | 0.95 | 0.92 | 25 ms |
+| Clean | 0.98 | 0.98 | 10 ms |
+| −0.2 dB | 0.97 | 0.95 | 15 ms |
+| −0.5 dB | 0.96 | 0.94 | 18 ms |
+| −1 dB | 0.95 | 0.92 | 20 ms |
 | −2 dB | 0.93 | 0.90 | 25 ms |
-| −3 dB | 0.90 | 0.85 | 25 ms |
-| −4 dB | 0.85 | 0.80 | 25 ms |
-| −5 dB | 0.78 | 0.73 | 25 ms |
-| −6 dB | 0.74 | 0.69 | 25 ms |
-| −7 dB | 0.70 | 0.65 | 25 ms |
-| −8 dB | 0.65 | 0.60 | 25 ms |
-| −9 dB | 0.62 | 0.58 | 25 ms |
-| −10 dB | 0.60 | 0.55 | 25 ms |
-| −11 dB | 0.55 | 0.50 | 30 ms |
+| −3 dB | 0.90 | 0.85 | 30 ms |
+| −4 dB | 0.85 | 0.80 | 40 ms |
+| −5 dB | 0.78 | 0.73 | 55 ms |
+| −6 dB | 0.74 | 0.69 | 70 ms |
+| −7 dB | 0.70 | 0.65 | 85 ms |
+| −8 dB | 0.65 | 0.60 | 100 ms |
+| −9 dB | 0.62 | 0.58 | 120 ms |
+| −10 dB | 0.60 | 0.55 | 140 ms |
+| −11 dB | 0.55 | 0.50 | 160 ms |
 
 The main report is one row per case, with R-peak F1, sensitivity, PPV, timing
-MAE, RR coverage, RR MAE, thresholds, and the case verdict. The 30 ms RR
-allowance remains isolated to −11 dB.
+MAE, RR coverage, RR status agreement, RR tolerance rate, RR MAE, RR median,
+thresholds, and the case verdict. RR MAE, P95 and tolerance rate remain visible
+diagnostics in the detail report, but the noise ladder's robust RR error gate
+is the median. This prevents a single correctly localized split or merge from
+turning the rest of a case into a misleading cascade while still showing its
+full error cost.
+
+## RR association policy
+
+Every valid RR row defines an interval from
+`time_seconds − value` through its ending R-peak at `time_seconds`. Reference
+and submitted intervals associate when their overlap covers more than half of
+the shorter interval:
+
+- one false-positive R peak splits one truth RR into local submitted fragments;
+- one missed R peak merges adjacent truth RRs into one local submitted interval;
+- multiple local splits or merges remain multiple numeric comparisons;
+- truth and prediction coverage count unique intervals, so neither can exceed
+  100%;
+- all non-RR and non-valid-status measurements keep strict one-to-one identity
+  and time-anchor matching.
+
+This is deliberately an association, not a device for hiding detector errors.
+The split or merge produces large local RR errors; it simply cannot shift every
+subsequent otherwise-correct RR pair.
 
 ## Detailed legacy packs
 
@@ -129,7 +161,7 @@ than a changing rhythm, the main independent variable.
 Every tier is an independent acceptance stratum. Performance on clean or
 easier cases cannot compensate for failure at a harder tier. Reports expose
 per-case R-peak TP, FP, FN, sensitivity, PPV, F1 and timing error plus RR
-coverage, status agreement, tolerance rate, MAE and P95 error.
+coverage, status agreement, tolerance rate, MAE, median and P95 error.
 
 ## Why there is one policy, not “classical” and “deep-learning” modes
 
@@ -141,9 +173,16 @@ engineering gates for this exact deterministic pack.
 Published results are useful context but not directly transferable. The
 official MIT-BIH Noise Stress Test Database uses six-decibel steps down to
 −6 dB and alternates clean and noisy segments, while detector results also
-depend strongly on noise construction and event-matching tolerance:
+depend strongly on noise construction and event-matching tolerance. The
+150 ms R-peak event window is comparable to the default WFDB `bxb` reporting
+window. WFDB also records that proposed RR error statistics were dropped from
+the EC38/EC57 standards; consequently the RR limits above are transparent
+Synsigra engineering gates, not claimed EC57 requirements.
 
 - <https://physionet.org/content/nstdb/1.0.0/>
+- <https://physionet.org/physiotools/wag/bxb-1.htm>
+- <https://www.accessdata.fda.gov/scripts/cdrh/cfdocs/cfstandards/detail.cfm?standard__identification_no=31679>
+- <https://pmc.ncbi.nlm.nih.gov/articles/PMC6818956/>
 - <https://pmc.ncbi.nlm.nih.gov/articles/PMC10934794/>
 
 ## Claim boundary

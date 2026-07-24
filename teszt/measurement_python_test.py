@@ -32,6 +32,70 @@ def truth_for_target(path, target):
     return matches[0]["measurements"]
 
 
+def rr_measurement(value, endpoint):
+    return {
+        "name": "rr_interval",
+        "value": value,
+        "unit": "s",
+        "status": "valid",
+        "scope": "beat",
+        "time_seconds": endpoint,
+        "method_id": "observable_r_peak_difference",
+        "preprocessing_policy_id": "none",
+    }
+
+
+def rr_truth(value, endpoint):
+    return {
+        "measurement": rr_measurement(value, endpoint),
+        "absolute_tolerance": 0.025,
+        "relative_tolerance_percent": 0,
+        "error_model": "linear",
+        "reason": "Deterministic R-peak interval fixture.",
+        "original_index": int(endpoint),
+    }
+
+
+def assert_local_rr_split_merge_scoring():
+    truth = [rr_truth(1.0, 1.0), rr_truth(1.0, 2.0)]
+
+    split = ss.score_measurements(
+        truth,
+        [
+            rr_measurement(0.5, 0.5),
+            rr_measurement(0.5, 1.0),
+            rr_measurement(1.0, 2.0),
+        ],
+        "rr_interval",
+    )
+    assert split["options"]["rr_pairing_method"] == "peak_anchored_interval_overlap"
+    assert split["overall"]["matched_count"] == 3
+    assert split["overall"]["covered_truth_count"] == 2
+    assert split["overall"]["matched_prediction_count"] == 3
+    assert split["overall"]["truth_match_fraction"] == 1.0
+    assert split["overall"]["prediction_match_fraction"] == 1.0
+    assert split["overall"]["missing_count"] == 0
+    assert split["overall"]["extra_count"] == 0
+    assert split["overall"]["error"]["median_absolute"] == 0.5
+    assert set(item["pairing_method"] for item in split["matches"]) == set([
+        "rr_peak_anchored_interval_overlap",
+    ])
+
+    merged = ss.score_measurements(
+        truth,
+        [rr_measurement(2.0, 2.0)],
+        "rr_interval",
+    )
+    assert merged["overall"]["matched_count"] == 2
+    assert merged["overall"]["covered_truth_count"] == 2
+    assert merged["overall"]["matched_prediction_count"] == 1
+    assert merged["overall"]["truth_match_fraction"] == 1.0
+    assert merged["overall"]["prediction_match_fraction"] == 1.0
+    assert merged["overall"]["missing_count"] == 0
+    assert merged["overall"]["extra_count"] == 0
+    assert merged["overall"]["error"]["median_absolute"] == 1.0
+
+
 def main():
     source = os.environ["SIGNAL_SYNTH_SOURCE_DIR"]
     cli = os.environ["SIGNAL_SYNTH_CLI"]
@@ -78,7 +142,7 @@ def main():
 
     verify_dir = os.path.join(work, "verify")
     report = ss.verify_package(challenge, submission_dir, verify_dir, mode="diagnostic", profile="regression")
-    assert report.evidence["success"] and report.evidence["scoring_version"] == "synsigra-python-local-v9"
+    assert report.evidence["success"] and report.evidence["scoring_version"] == "synsigra-python-local-v10"
     assert report.evidence["contract"] == "synsigra_local_verification_v3" and not report.evidence["verification"]["evidence_eligible"]
     assert set(item["target"] for item in report.evidence["targets"]) == set(["morphology_assertions", "ecg_ppg_alignment"])
     for item in report.evidence["targets"]:
@@ -105,7 +169,7 @@ def main():
         "effective_tolerance" in item
         for item in cpp_report["matches"] if item["numeric_pair"]
     )
-    for name in ("ground_truth_count", "prediction_count", "matched_count", "numeric_pair_count", "tolerance_pass_count", "status_match_count", "missing_count", "extra_count", "truth_match_fraction", "prediction_match_fraction", "tolerance_pass_fraction", "status_match_fraction"):
+    for name in ("ground_truth_count", "prediction_count", "matched_count", "covered_truth_count", "matched_prediction_count", "numeric_pair_count", "tolerance_pass_count", "status_match_count", "missing_count", "extra_count", "truth_match_fraction", "prediction_match_fraction", "tolerance_pass_fraction", "status_match_fraction"):
         assert python_case_report["overall"][name] == cpp_report["overall"][name], name
     for name in ("bias", "mean_absolute", "root_mean_square", "median_absolute", "p95_absolute", "maximum_absolute"):
         assert abs(python_case_report["overall"]["error"][name] - cpp_report["overall"]["error"][name]) < 1e-15, name
@@ -142,6 +206,7 @@ def main():
         raise AssertionError("measurement v1 input was accepted")
     except ss.MeasurementError:
         pass
+    assert_local_rr_split_merge_scoring()
     challenge.close()
     print("measurement_python_test=passed")
     return 0

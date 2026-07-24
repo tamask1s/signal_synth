@@ -46,6 +46,8 @@ namespace signal_synth
         unsigned int not_evaluable_truth_count;
         unsigned int prediction_count;
         unsigned int matched_count;
+        unsigned int covered_truth_count;
+        unsigned int matched_prediction_count;
         unsigned int numeric_pair_count;
         unsigned int tolerance_pass_count;
         unsigned int status_match_count;
@@ -98,6 +100,7 @@ namespace signal_synth
 
         unsigned int ground_truth_index;
         unsigned int prediction_index;
+        std::string pairing_method;
         measurement_status ground_truth_status;
         measurement_status prediction_status;
         bool status_matches;

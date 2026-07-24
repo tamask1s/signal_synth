@@ -15,7 +15,7 @@ from .reporting import NOTICE_TEXT, annotate_policy, render_detail, render_index
 from .submission import SubmissionError, load_submission
 
 
-SCORING_VERSION = "synsigra-python-local-v9"
+SCORING_VERSION = "synsigra-python-local-v10"
 LIMITATION_TEXT = NOTICE_TEXT
 BEAT_CLASSES = ["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion", "unscored"]
 SCORED_BEAT_CLASSES = set(["normal", "supraventricular_ectopic", "ventricular_ectopic", "paced", "escape", "fusion"])
@@ -981,7 +981,16 @@ def _case_result_from_report(case, case_summary, target, relative_out, submissio
         result["_delineation_errors"] = [float(item["error_seconds"]) for item in report_json.get("matches", [])]
     elif target in MEASUREMENT_TARGETS:
         result["score_type"] = "measurement"
-        result["exclusion_policy"] = "Measurement identity includes name, unit, scope, channel, formula, method, preprocessing policy, window, and beat/time anchor; explicit non-valid states are status-scored without numeric error."
+        result["exclusion_policy"] = (
+            "Valid beat-level RR intervals use peak-anchored interval-overlap associations, "
+            "which localize false-positive splits and false-negative merges. Coverage counts "
+            "unique intervals. Other measurements use one-to-one identity and temporal-anchor "
+            "pairing; explicit non-valid states are status-scored without numeric error."
+            if target == "rr_interval" else
+            "Measurement identity includes name, unit, scope, channel, formula, method, "
+            "preprocessing policy, window, and beat/time anchor; explicit non-valid states "
+            "are status-scored without numeric error."
+        )
         result["summary"] = dict(report_json.get("overall", {}))
         result["by_measurement"] = list(report_json.get("by_measurement", []))
         result["by_channel"] = list(report_json.get("by_channel", []))
@@ -1489,7 +1498,7 @@ def _measurement_error_record(item):
 
 
 def _empty_measurement_metrics():
-    names = ("ground_truth_count", "valid_truth_count", "undefined_truth_count", "absent_truth_count", "not_evaluable_truth_count", "prediction_count", "matched_count", "numeric_pair_count", "tolerance_pass_count", "status_match_count", "status_mismatch_count", "missing_count", "extra_count", "assertion_comparable_count", "assertion_agreement_count")
+    names = ("ground_truth_count", "valid_truth_count", "undefined_truth_count", "absent_truth_count", "not_evaluable_truth_count", "prediction_count", "matched_count", "covered_truth_count", "matched_prediction_count", "numeric_pair_count", "tolerance_pass_count", "status_match_count", "status_mismatch_count", "missing_count", "extra_count", "assertion_comparable_count", "assertion_agreement_count")
     output = dict((name, 0) for name in names)
     output.update({"tolerance_pass_fraction": None, "status_match_fraction": None, "assertion_agreement_fraction": None, "truth_match_fraction": None, "prediction_match_fraction": None, "error": _empty_measurement_error()})
     return output
@@ -1500,7 +1509,7 @@ def _empty_measurement_error():
 
 
 def _accumulate_measurement_metrics(destination, source):
-    for name in ("ground_truth_count", "valid_truth_count", "undefined_truth_count", "absent_truth_count", "not_evaluable_truth_count", "prediction_count", "matched_count", "numeric_pair_count", "tolerance_pass_count", "status_match_count", "status_mismatch_count", "missing_count", "extra_count", "assertion_comparable_count", "assertion_agreement_count"):
+    for name in ("ground_truth_count", "valid_truth_count", "undefined_truth_count", "absent_truth_count", "not_evaluable_truth_count", "prediction_count", "matched_count", "covered_truth_count", "matched_prediction_count", "numeric_pair_count", "tolerance_pass_count", "status_match_count", "status_mismatch_count", "missing_count", "extra_count", "assertion_comparable_count", "assertion_agreement_count"):
         destination[name] += int(source.get(name, 0))
 
 
@@ -1508,8 +1517,8 @@ def _finalize_measurement_metrics(metrics, errors):
     metrics["tolerance_pass_fraction"] = float(metrics["tolerance_pass_count"]) / metrics["numeric_pair_count"] if metrics["numeric_pair_count"] else None
     metrics["status_match_fraction"] = float(metrics["status_match_count"]) / metrics["matched_count"] if metrics["matched_count"] else None
     metrics["assertion_agreement_fraction"] = float(metrics["assertion_agreement_count"]) / metrics["assertion_comparable_count"] if metrics["assertion_comparable_count"] else None
-    metrics["truth_match_fraction"] = float(metrics["matched_count"]) / metrics["ground_truth_count"] if metrics["ground_truth_count"] else None
-    metrics["prediction_match_fraction"] = float(metrics["matched_count"]) / metrics["prediction_count"] if metrics["prediction_count"] else None
+    metrics["truth_match_fraction"] = float(metrics["covered_truth_count"]) / metrics["ground_truth_count"] if metrics["ground_truth_count"] else None
+    metrics["prediction_match_fraction"] = float(metrics["matched_prediction_count"]) / metrics["prediction_count"] if metrics["prediction_count"] else None
     absolute = sorted(abs(item) for item in errors)
     metrics["error"] = _empty_measurement_error()
     if absolute:
@@ -1736,6 +1745,7 @@ def _case_metric_counts(score_type, metrics):
     else:
         names = (
             "ground_truth_count", "prediction_count", "matched_count",
+            "covered_truth_count", "matched_prediction_count",
             "numeric_pair_count", "tolerance_pass_count",
             "status_match_count", "status_mismatch_count",
             "missing_count", "extra_count",
@@ -1748,6 +1758,7 @@ def _measurement_policy_metrics(metrics):
     error = metrics.get("error", {})
     output.update({
         "mean_absolute_error": error.get("mean_absolute"),
+        "median_absolute_error": error.get("median_absolute"),
         "root_mean_square_error": error.get("root_mean_square"),
         "p95_absolute_error": error.get("p95_absolute"),
         "maximum_absolute_error": error.get("maximum_absolute"),

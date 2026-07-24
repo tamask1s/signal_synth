@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "catalog_id": "synsigra_verification_packs",
-  "version": "3.3",
+  "version": "3.4",
   "product": "Synsigra Testbench",
   "intended_use": "Synthetic biosignal engineering QA and algorithm verification",
   "not_for": "Diagnosis, patient monitoring, clinical validation certification, or standalone conformity assessment",
@@ -159,13 +159,13 @@
       "recommended_profile": "stress",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
       "scoring_mode": "local",
-      "feature_tags": ["r_peak", "rr_interval", "per_case_verdict", "no_pooling", "clean", "bradycardia", "tachycardia", "baseline_wander", "powerline"],
+      "feature_tags": ["r_peak", "rr_interval", "per_case_verdict", "no_pooling", "clean", "bradycardia", "tachycardia", "variable_rate", "mobitz_ii", "physiologic_pause", "baseline_wander", "powerline", "emg_noise", "combined_stress"],
       "release_status": "beta",
       "release_date": "2026-07-24",
       "deprecation_message": "",
       "recommended_for": [
         "A first, human-readable R-peak and beat-to-beat RR evidence run",
-        "Independent clean, slow-rate, fast-rate, and acquisition-artifact verdicts",
+        "Independent clean, rate-boundary, variable-rate, physiologic-pause, moderate-noise, and combined-stress verdicts",
         "Reports where a strong case must never compensate for a failed case"
       ],
       "not_recommended_for": [
@@ -174,6 +174,7 @@
         "Clinical validation or regulatory qualification"
       ],
       "changelog": [
+        {"version": "2.0", "date": "2026-07-24", "changes": ["Expanded to eight independent cases with variable-rate episodes, true Mobitz II dropped-QRS pauses, moderate mixed noise and combined rhythm/noise stress; adopted peak-anchored RR split/merge scoring and median error reporting."]},
         {"version": "1.0", "date": "2026-07-24", "changes": ["Initial simple four-case R-peak and RR pack with one official verdict per complete signal and no pooled acceptance."]}
       ],
       "generator_compatibility": {
@@ -183,7 +184,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.14.0"
+        "local_verifier_min_version": "0.15.0"
       }
     },
     {
@@ -195,12 +196,12 @@
       "recommended_profile": "benchmark",
       "supported_threshold_profiles": ["smoke", "regression", "stress", "benchmark"],
       "scoring_mode": "local",
-      "feature_tags": ["r_peak", "rr_interval", "per_case_verdict", "no_pooling", "continuous_noise", "calibrated_snr", "snr_ladder", "variable_rate", "pvc", "all_lead"],
+      "feature_tags": ["r_peak", "rr_interval", "per_case_verdict", "no_pooling", "continuous_noise", "calibrated_snr", "fractional_snr", "snr_ladder", "variable_rate", "pvc", "all_lead"],
       "release_status": "beta",
       "release_date": "2026-07-24",
       "deprecation_message": "",
       "recommended_for": [
-        "A plain clean-to-minus-11 dB detector robustness curve with every integer SNR represented",
+        "A plain clean-to-minus-11 dB detector robustness curve with -0.2 dB, -0.5 dB, and every integer SNR represented",
         "Independent per-case R-peak and beat-to-beat RR verdicts without bins or pooling",
         "Comparing where classical and learned detectors begin to degrade"
       ],
@@ -210,6 +211,7 @@
         "Regulatory qualification or replacement of representative real-world validation"
       ],
       "changelog": [
+        {"version": "2.0", "date": "2026-07-24", "changes": ["Added -0.2 dB and -0.5 dB cases; replaced outlier-dominated RR P95 acceptance with peak-anchored split/merge associations and pre-specified median RR gates while retaining MAE, P95 and tolerance diagnostics."]},
         {"version": "1.0", "date": "2026-07-24", "changes": ["Initial clean plus -1 through -11 dB continuous-noise ladder with identical variable-rate/PVC truth and one official verdict per complete case."]}
       ],
       "generator_compatibility": {
@@ -219,7 +221,7 @@
         "challenge_package_contract": "synsigra_challenge_package_v3",
         "scoring_manifest_contract": "synsigra_scoring_manifest_v3",
         "submission_contract": "synsigra_submission_v1",
-        "local_verifier_min_version": "0.14.0"
+        "local_verifier_min_version": "0.15.0"
       }
     },
     {

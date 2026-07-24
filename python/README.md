@@ -7,7 +7,7 @@ and does not execute customer detector code.
 ## Install
 
 ```bash
-python -m pip install synsigra-0.14.0-py3-none-any.whl
+python -m pip install synsigra-0.15.0-py3-none-any.whl
 synsigra-verify --help
 ```
 
@@ -64,6 +64,14 @@ Status is one of `valid`, `undefined`, `absent`, or `not_evaluable`. Beat-level
 outputs may use a decimal-string beat index or a time anchor. Windowed values
 use explicit half-open bounds, and method/preprocessing identifiers are part of
 measurement identity and matching.
+
+Valid beat-level `rr_interval` rows are paired by the overlap of the intervals
+implied by their R-peak endpoint and duration. This preserves local
+false-positive splits and false-negative merges instead of shifting every
+later RR comparison. Association counts may therefore exceed the number of
+unique intervals; truth and prediction coverage always count unique intervals
+and cannot exceed 100%. Other measurement types retain strict one-to-one
+identity and time-anchor matching.
 
 ## Reports
 
